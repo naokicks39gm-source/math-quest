@@ -46,23 +46,33 @@ const preprocessCanvasImage = async (imageDataUrl: string, originalWidth: number
         return;
       }
 
+      // Ensure dimensions are valid integers, minimum 1 pixel
+      const w = Math.max(1, Math.floor(originalWidth));
+      const h = Math.max(1, Math.floor(originalHeight));
+
+      // Add guard clause for invalid dimensions
+      if (!w || !h || isNaN(w) || isNaN(h)) {
+        resolve(imageDataUrl); // Fallback if dimensions are invalid
+        return;
+      }
+
       // Draw the original image onto a temporary canvas
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = Math.floor(originalWidth);
-      tempCanvas.height = Math.floor(originalHeight);
+      tempCanvas.width = w;
+      tempCanvas.height = h;
       const tempCtx = tempCanvas.getContext('2d');
       if (!tempCtx) {
         resolve(imageDataUrl);
         return;
       }
       tempCtx.fillStyle = '#ffffff'; // Ensure white background
-      tempCtx.fillRect(0, 0, Math.floor(originalWidth), Math.floor(originalHeight));
+      tempCtx.fillRect(0, 0, w, h);
       tempCtx.drawImage(img, 0, 0);
 
-      const imgData = tempCtx.getImageData(0, 0, Math.floor(originalWidth), Math.floor(originalHeight));
+      const imgData = tempCtx.getImageData(0, 0, w, h);
       const data = imgData.data;
 
-      let minX = Math.floor(originalWidth), minY = Math.floor(originalHeight), maxX = 0, maxY = 0;
+      let minX = w, minY = h, maxX = 0, maxY = 0;
 
       // Binarization and find bounding box of non-white pixels
       for (let i = 0; i < data.length; i += 4) {
@@ -74,8 +84,8 @@ const preprocessCanvasImage = async (imageDataUrl: string, originalWidth: number
         const isBlack = gray < 128; // Consider anything darker than mid-gray as "black"
         
         if (isBlack) {
-          const x = (i / 4) % Math.floor(originalWidth);
-          const y = Math.floor((i / 4) / Math.floor(originalWidth));
+          const x = (i / 4) % w;
+          const y = Math.floor((i / 4) / w);
 
           minX = Math.min(minX, x);
           minY = Math.min(minY, y);
@@ -103,6 +113,8 @@ const preprocessCanvasImage = async (imageDataUrl: string, originalWidth: number
 
       if (contentWidth <= 0 || contentHeight <= 0) {
         resolve(imageDataUrl); // No content drawn, return original
+        // Clear tempCtx for memory release
+        tempCtx.clearRect(0, 0, w, h);
         return;
       }
 
@@ -137,6 +149,8 @@ const preprocessCanvasImage = async (imageDataUrl: string, originalWidth: number
           drawX, drawY, drawWidth, drawHeight      // Destination rectangle
         );
       }
+      // Clear tempCtx for memory release
+      tempCtx.clearRect(0, 0, w, h);
       resolve(offscreenCanvas.toDataURL("image/png"));
     };
     img.src = imageDataUrl;
