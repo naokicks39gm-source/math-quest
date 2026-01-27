@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -31,6 +32,115 @@ const CHARACTERS = {
     misses: ['Check the digits.', 'Reconfirm the calculation.', 'A slight miscalculation.'],
     win: 'A logical conclusion.'
   }
+};
+
+const preprocessCanvasImage = async (imageDataUrl: string, originalWidth: number, originalHeight: number) => {
+  return new Promise<string>((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const offscreenCanvas = document.createElement('canvas');
+      const ctx = offscreenCanvas.getContext('2d');
+
+      if (!ctx) {
+        resolve(imageDataUrl); // Fallback
+        return;
+      }
+
+      // Draw the original image onto a temporary canvas
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = originalWidth;
+      tempCanvas.height = originalHeight;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) {
+        resolve(imageDataUrl);
+        return;
+      }
+      tempCtx.fillStyle = '#ffffff'; // Ensure white background
+      tempCtx.fillRect(0, 0, originalWidth, originalHeight);
+      tempCtx.drawImage(img, 0, 0);
+
+      const imgData = tempCtx.getImageData(0, 0, originalWidth, originalHeight);
+      const data = imgData.data;
+
+      let minX = originalWidth, minY = originalHeight, maxX = 0, maxY = 0;
+
+      // Binarization and find bounding box of non-white pixels
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        // Convert to grayscale and binarize (threshold 128)
+        const gray = (r + g + b) / 3;
+        const isBlack = gray < 128; // Consider anything darker than mid-gray as "black"
+        
+        if (isBlack) {
+          const x = (i / 4) % originalWidth;
+          const y = Math.floor((i / 4) / originalWidth);
+
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+
+          // Make the line thicker and fully black for OCR
+          data[i] = 0;     // Red
+          data[i + 1] = 0; // Green
+          data[i + 2] = 0; // Blue
+          data[i + 3] = 255; // Alpha
+        } else {
+          // Make background pure white
+          data[i] = 255;
+          data[i + 1] = 255;
+          data[i + 2] = 255;
+          data[i + 3] = 255;
+        }
+      }
+
+      tempCtx.putImageData(imgData, 0, 0); // Apply binarized data back to tempCanvas
+
+      const contentWidth = maxX - minX + 1;
+      const contentHeight = maxY - minY + 1;
+
+      if (contentWidth <= 0 || contentHeight <= 0) {
+        resolve(imageDataUrl); // No content drawn, return original
+        return;
+      }
+
+      // Create a new canvas for the cropped and resized image
+      const padding = 20; // Add some padding around the cropped digit
+      const targetSize = 200; // Standard size for OCR input
+
+      offscreenCanvas.width = targetSize;
+      offscreenCanvas.height = targetSize;
+
+      if (ctx) { // Check if ctx is still valid after resizing
+        ctx.fillStyle = '#ffffff'; // White background for the new canvas
+        ctx.fillRect(0, 0, targetSize, targetSize);
+
+        const aspectRatio = contentWidth / contentHeight;
+        let drawWidth, drawHeight;
+
+        if (aspectRatio > 1) { // Wider than tall
+          drawWidth = targetSize - padding * 2;
+          drawHeight = drawWidth / aspectRatio;
+        } else { // Taller than wide or square
+          drawHeight = targetSize - padding * 2;
+          drawWidth = drawHeight * aspectRatio;
+        }
+
+        const drawX = (targetSize - drawWidth) / 2;
+        const drawY = (targetSize - drawHeight) / 2;
+
+        ctx.drawImage(
+          tempCanvas,
+          minX, minY, contentWidth, contentHeight, // Source rectangle
+          drawX, drawY, drawWidth, drawHeight      // Destination rectangle
+        );
+      }
+      resolve(offscreenCanvas.toDataURL("image/png"));
+    };
+    img.src = imageDataUrl;
+  });
 };
 
 export default function QuestPage() {
@@ -122,7 +232,7 @@ export default function QuestPage() {
       setCombo(0);
       const charData = CHARACTERS[character];
       setMessage(charData.misses[Math.floor(Math.random() * charData.misses.length)]);
-      
+
       // Check if explanation is needed (Carry over addition)
       if (question.operator === '+' && !showExplanation) {
         const val1 = question.val1;
@@ -160,13 +270,15 @@ export default function QuestPage() {
     setMessage("解析中...");
     setRecognizedNumber(null); // Clear previous recognition
 
-    const imageData = canvasRef.current.getDataURL("png", false, "#ffffff");
+    const imageDataUrl = canvasRef.current.getDataURL("png", false, "#ffffff");
+    const preprocessedImageData = await preprocessCanvasImage(imageDataUrl, canvasRef.current.canvas.width, canvasRef.current.canvas.height);
 
     const worker = await createWorker("eng");
     await worker.setParameters({
       tessedit_char_whitelist: "0123456789",
+      psm: 10, // PSM_SINGLE_CHAR for single digit recognition
     });
-    const { data: { text } } = await worker.recognize(imageData);
+    const { data: { text } } = await worker.recognize(preprocessedImageData);
     await worker.terminate();
 
     const recognizedNum = parseInt(text.trim().replace(/\D/g, "")); // Clean up recognized text
@@ -277,7 +389,7 @@ export default function QuestPage() {
         </div>
       </div>
 
-      {/* Center: Character & Message */}
+      {/* Center: Character & Message */} 
       <div className="flex flex-col items-center space-y-4 my-4 flex-1 justify-center w-full">
         {status === 'cleared' ? (
           <div className="text-center animate-bounce">
