@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ExplanationModal from '@/components/ExplanationModal';
+import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
+import { createWorker } from 'tesseract.js'; // Import tesseract.js
 
 type CharacterType = 'warrior' | 'mage';
 
@@ -40,6 +42,10 @@ export default function QuestPage() {
   const [character, setCharacter] = useState<CharacterType>('warrior');
   const [status, setStatus] = useState<'playing' | 'cleared'>('playing');
   const [showExplanation, setShowExplanation] = useState(false);
+  const [inputMode, setInputMode] = useState<'numpad' | 'handwriting'>('numpad'); // New state for input mode
+  const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
+  const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
+  const canvasRef = useRef<any>(null); // Ref for CanvasDraw component
 
   // Initialize first question
   useEffect(() => {
@@ -147,8 +153,102 @@ export default function QuestPage() {
     setCharacter(prev => prev === 'warrior' ? 'mage' : 'warrior');
   };
 
+  const handleHandwritingJudge = async () => {
+    if (!canvasRef.current || !question || isRecognizing) return;
+
+    setIsRecognizing(true);
+    setMessage("解析中...");
+    setRecognizedNumber(null); // Clear previous recognition
+
+    const imageData = canvasRef.current.getDataURL("png", false, "#ffffff");
+
+    const worker = await createWorker("eng");
+    await worker.setParameters({
+      tessedit_char_whitelist: "0123456789",
+    });
+    const { data: { text } } = await worker.recognize(imageData);
+    await worker.terminate();
+
+    const recognizedNum = parseInt(text.trim().replace(/\D/g, "")); // Clean up recognized text
+    setRecognizedNumber(isNaN(recognizedNum) ? null : recognizedNum.toString());
+
+    if (isNaN(recognizedNum)) {
+      setMessage("数字を認識できませんでした。もう一度お試しください。");
+      setCombo(0);
+    } else {
+      setMessage(`認識結果: ${recognizedNum}`);
+      // Simulate handleAttack logic
+      if (recognizedNum === question.answer) {
+        // Correct
+        const damage = 10 + (combo * 2);
+        const newHp = Math.max(0, enemyHp - damage);
+        setEnemyHp(newHp);
+
+        const newCombo = combo + 1;
+        setCombo(newCombo);
+
+        const charData = CHARACTERS[character];
+        let hitMsg = charData.hits[Math.floor(Math.random() * charData.hits.length)];
+        if (newCombo >= 3) {
+          hitMsg += ` (Combo x${newCombo}!)`;
+        }
+        setMessage(hitMsg);
+
+        if (newHp === 0) {
+          setStatus("cleared");
+          setMessage(charData.win);
+        } else {
+          generateQuestion();
+        }
+      } else {
+        // Incorrect
+        setCombo(0);
+        const charData = CHARACTERS[character];
+        setMessage(charData.misses[Math.floor(Math.random() * charData.misses.length)]);
+
+        // Check if explanation is needed (Carry over addition)
+        if (question.operator === "+" && !showExplanation) {
+          const val1 = question.val1;
+          const val2 = question.val2;
+          const needsExplanation = (val1 % 10) + (val2 % 10) >= 10;
+
+          if (needsExplanation) {
+            setShowExplanation(true);
+            return;
+          }
+        }
+      }
+    }
+
+    canvasRef.current?.clear();
+    setIsRecognizing(false);
+  };
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-between p-4 max-w-md mx-auto border-x border-slate-200 shadow-sm relative">
+      {/* Debug Button */}
+      <button
+        onClick={() => setShowExplanation(true)}
+        className="absolute top-4 left-4 px-3 py-1 bg-purple-500 text-white text-xs rounded-md shadow-md z-[9999]"
+      >
+        【テスト】さくらんぼ解説を表示
+      </button>
+
+      {/* Input Mode Toggle */}
+      <div className="absolute top-4 right-4 flex bg-slate-200 rounded-md p-1 shadow-md z-[9999]">
+        <button
+          onClick={() => setInputMode('numpad')}
+          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${inputMode === 'numpad' ? 'bg-indigo-500 text-white shadow' : 'text-slate-700 hover:bg-slate-100'}`}
+        >
+          テンキー
+        </button>
+        <button
+          onClick={() => setInputMode('handwriting')}
+          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${inputMode === 'handwriting' ? 'bg-indigo-500 text-white shadow' : 'text-slate-700 hover:bg-slate-100'}`}
+        >
+          手書き
+        </button>
+      </div>
       
       {/* Explanation Modal */}
       {showExplanation && question && (
@@ -208,7 +308,7 @@ export default function QuestPage() {
               {question && (
                 <div className="text-4xl font-black text-indigo-900 tracking-wider">
                   {question.val1} {question.operator} {question.val2} = <span className={`${input ? 'text-indigo-600' : 'text-slate-300'} underline decoration-4 underline-offset-8`}>
-                    {input || '?'}
+                    {inputMode === 'handwriting' && recognizedNumber !== null ? recognizedNumber : input || '?'}
                   </span>
                 </div>
               )}
@@ -224,41 +324,72 @@ export default function QuestPage() {
         )}
       </div>
 
-      {/* Bottom: Numpad */}
-      <div className="w-full grid grid-cols-3 gap-3 pb-4">
-        {[7, 8, 9, 4, 5, 6, 1, 2, 3, 0].map((num) => (
+      {/* Bottom: Input Area */}
+      {inputMode === 'numpad' ? (
+        <div className="w-full grid grid-cols-3 gap-3 pb-4">
+          {[7, 8, 9, 4, 5, 6, 1, 2, 3, 0].map((num) => (
+            <button
+              key={num}
+              onClick={() => handleInput(num.toString())}
+              disabled={status === 'cleared'}
+              className={`
+                h-16 rounded-xl text-2xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all
+                ${num === 0 ? 'col-span-1' : ''}
+                bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50
+              `}
+            >
+              {num}
+            </button>
+          ))}
+          
+          {/* Delete Button */}
           <button
-            key={num}
-            onClick={() => handleInput(num.toString())}
+            onClick={handleDelete}
             disabled={status === 'cleared'}
-            className={`
-              h-16 rounded-xl text-2xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all
-              ${num === 0 ? 'col-span-1' : ''}
-              bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50
-            `}
+            className="h-16 rounded-xl text-xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all bg-red-100 text-red-600 border-2 border-red-200 hover:bg-red-200 flex items-center justify-center"
           >
-            {num}
+            ⌫
           </button>
-        ))}
-        
-        {/* Delete Button */}
-        <button
-          onClick={handleDelete}
-          disabled={status === 'cleared'}
-          className="h-16 rounded-xl text-xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all bg-red-100 text-red-600 border-2 border-red-200 hover:bg-red-200 flex items-center justify-center"
-        >
-          ⌫
-        </button>
 
-        {/* Attack/Enter Button */}
-        <button
-          onClick={handleAttack}
-          disabled={status === 'cleared' || input === ''}
-          className="h-16 rounded-xl text-xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all bg-indigo-500 text-white border-2 border-indigo-600 hover:bg-indigo-600 flex items-center justify-center"
-        >
-          Attack!
-        </button>
-      </div>
+          {/* Attack/Enter Button */}
+          <button
+            onClick={handleAttack}
+            disabled={status === 'cleared' || input === ''}
+            className="h-16 rounded-xl text-xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all bg-indigo-500 text-white border-2 border-indigo-600 hover:bg-indigo-600 flex items-center justify-center"
+          >
+            Attack!
+          </button>
+        </div>
+      ) : (
+        <div className="w-full flex flex-col items-center gap-4 pb-4">
+          <CanvasDraw
+            ref={canvasRef}
+            hideGrid={true}
+            brushRadius={3}
+            brushColor="#4f46e5"
+            canvasWidth={300}
+            canvasHeight={300}
+            className="rounded-xl border-2 border-slate-300 shadow-lg"
+            disabled={status === 'cleared'}
+          />
+          <div className="flex gap-3 w-full justify-center">
+            <button
+              onClick={() => canvasRef.current?.clear()}
+              disabled={status === 'cleared' || isRecognizing}
+              className="px-6 py-2 bg-red-100 text-red-600 rounded-lg font-bold shadow-md active:translate-y-1"
+            >
+              リセット
+            </button>
+            <button
+              onClick={() => handleHandwritingJudge()}
+              disabled={status === 'cleared' || isRecognizing}
+              className="px-6 py-2 bg-indigo-500 text-white rounded-lg font-bold shadow-md active:translate-y-1"
+            >
+              {isRecognizing ? '解析中...' : '判定'}
+            </button>
+          </div>
+        </div>
+      )}
 
     </main>
   );
