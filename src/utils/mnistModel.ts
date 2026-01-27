@@ -1,19 +1,39 @@
 import * as tf from '@tensorflow/tfjs';
 
 let model: tf.LayersModel | null = null;
+let _isModelLoading = false; // Internal loading state
+
+export const isModelLoading = () => _isModelLoading;
 
 export const loadMnistModel = async () => {
   if (model) {
     return model;
   }
+  if (_isModelLoading) {
+    // If already loading, wait for it to complete
+    await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+    return model;
+  }
+
+  _isModelLoading = true;
   try {
-    // Assuming the model is hosted in the public directory under /models/mnist/
-    model = await tf.loadLayersModel('/models/mnist/model.json');
-    console.log('MNIST model loaded successfully.');
+    // Try loading from local path first (assuming user places it here)
+    try {
+      model = await tf.loadLayersModel('/models/mnist/model.json');
+      console.log('MNIST model loaded successfully from local path.');
+    } catch (localError) {
+      console.warn('Local MNIST model not found or failed to load, attempting remote:', localError);
+      // Fallback to a publicly hosted model
+      // This is a simple 1-layer MNIST model from a TensorFlow.js example
+      model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mnist_cnn_v1/model.json');
+      console.log('MNIST model loaded successfully from remote URL.');
+    }
     return model;
   } catch (error) {
-    console.error('Error loading MNIST model:', error);
+    console.error('Error loading MNIST model from any source:', error);
     return null;
+  } finally {
+    _isModelLoading = false;
   }
 };
 
