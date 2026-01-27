@@ -48,21 +48,21 @@ const preprocessCanvasImage = async (imageDataUrl: string, originalWidth: number
 
       // Draw the original image onto a temporary canvas
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = originalWidth;
-      tempCanvas.height = originalHeight;
+      tempCanvas.width = Math.floor(originalWidth);
+      tempCanvas.height = Math.floor(originalHeight);
       const tempCtx = tempCanvas.getContext('2d');
       if (!tempCtx) {
         resolve(imageDataUrl);
         return;
       }
       tempCtx.fillStyle = '#ffffff'; // Ensure white background
-      tempCtx.fillRect(0, 0, originalWidth, originalHeight);
+      tempCtx.fillRect(0, 0, Math.floor(originalWidth), Math.floor(originalHeight));
       tempCtx.drawImage(img, 0, 0);
 
-      const imgData = tempCtx.getImageData(0, 0, originalWidth, originalHeight);
+      const imgData = tempCtx.getImageData(0, 0, Math.floor(originalWidth), Math.floor(originalHeight));
       const data = imgData.data;
 
-      let minX = originalWidth, minY = originalHeight, maxX = 0, maxY = 0;
+      let minX = Math.floor(originalWidth), minY = Math.floor(originalHeight), maxX = 0, maxY = 0;
 
       // Binarization and find bounding box of non-white pixels
       for (let i = 0; i < data.length; i += 4) {
@@ -74,8 +74,8 @@ const preprocessCanvasImage = async (imageDataUrl: string, originalWidth: number
         const isBlack = gray < 128; // Consider anything darker than mid-gray as "black"
         
         if (isBlack) {
-          const x = (i / 4) % originalWidth;
-          const y = Math.floor((i / 4) / originalWidth);
+          const x = (i / 4) % Math.floor(originalWidth);
+          const y = Math.floor((i / 4) / Math.floor(originalWidth));
 
           minX = Math.min(minX, x);
           minY = Math.min(minY, y);
@@ -156,6 +156,26 @@ export default function QuestPage() {
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
   const canvasRef = useRef<any>(null); // Ref for CanvasDraw component
+  const tesseractWorkerRef = useRef<Tesseract.Worker | null>(null);
+
+  useEffect(() => {
+    const initializeWorker = async () => {
+      tesseractWorkerRef.current = await createWorker("eng");
+      await tesseractWorkerRef.current.setParameters({
+        tessedit_char_whitelist: "0123456789",
+        psm: 10, // PSM_SINGLE_CHAR for single digit recognition
+      });
+    };
+
+    initializeWorker();
+
+    return () => {
+      if (tesseractWorkerRef.current) {
+        tesseractWorkerRef.current.terminate();
+        tesseractWorkerRef.current = null;
+      }
+    };
+  }, []);
 
   // Initialize first question
   useEffect(() => {
@@ -232,7 +252,7 @@ export default function QuestPage() {
       setCombo(0);
       const charData = CHARACTERS[character];
       setMessage(charData.misses[Math.floor(Math.random() * charData.misses.length)]);
-
+      
       // Check if explanation is needed (Carry over addition)
       if (question.operator === '+' && !showExplanation) {
         const val1 = question.val1;
@@ -273,14 +293,14 @@ export default function QuestPage() {
     const imageDataUrl = canvasRef.current.getDataURL("png", false, "#ffffff");
     const preprocessedImageData = await preprocessCanvasImage(imageDataUrl, canvasRef.current.canvas.width, canvasRef.current.canvas.height);
 
-    const worker = await createWorker("eng");
-    await worker.setParameters({
-      tessedit_char_whitelist: "0123456789",
-      psm: 10, // PSM_SINGLE_CHAR for single digit recognition
-    });
-    const { data: { text } } = await worker.recognize(preprocessedImageData);
-    await worker.terminate();
+    if (!tesseractWorkerRef.current) {
+      setMessage("OCR初期化中...少々お待ちください。");
+      setIsRecognizing(false);
+      return;
+    }
 
+    const { data: { text } } = await tesseractWorkerRef.current.recognize(preprocessedImageData);
+    
     const recognizedNum = parseInt(text.trim().replace(/\D/g, "")); // Clean up recognized text
     setRecognizedNumber(isNaN(recognizedNum) ? null : recognizedNum.toString());
 
