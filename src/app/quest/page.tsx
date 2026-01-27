@@ -79,9 +79,9 @@ const preprocessCanvasImage = async (imageDataUrl: string, originalWidth: number
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
-        // Convert to grayscale and binarize (threshold 128)
+        // Convert to grayscale and binarize (threshold 150 for bolder lines)
         const gray = (r + g + b) / 3;
-        const isBlack = gray < 128; // Consider anything darker than mid-gray as "black"
+        const isBlack = gray < 150; // Consider anything darker than 150 as "black"
         
         if (isBlack) {
           const x = (i / 4) % w;
@@ -177,7 +177,7 @@ export default function QuestPage() {
       tesseractWorkerRef.current = await createWorker("eng");
       await tesseractWorkerRef.current.setParameters({
         tessedit_char_whitelist: "0123456789",
-        psm: 10, // PSM_SINGLE_CHAR for single digit recognition
+        psm: 7, // PSM_SINGLE_LINE for 2-digit recognition
       });
     };
 
@@ -346,7 +346,8 @@ export default function QuestPage() {
         } else {
           generateQuestion();
         }
-      } else {
+      }
+       else {
         // Incorrect
         setCombo(0);
         const charData = CHARACTERS[character];
@@ -444,6 +445,11 @@ export default function QuestPage() {
             >
               <div className="text-6xl mb-2">{CHARACTERS[character].emoji}</div>
               <p className="font-bold text-lg min-h-[1.75rem]">{message}</p>
+              {inputMode === 'handwriting' && recognizedNumber !== null && ( // Digital number display
+                <div className="text-6xl font-mono text-indigo-700 mt-2">
+                  [ {recognizedNumber} ]
+                </div>
+              )}
               <span className="absolute top-2 right-2 text-xs opacity-50 bg-white/50 px-2 rounded cursor-pointer">
                 ↻ Switch
               </span>
