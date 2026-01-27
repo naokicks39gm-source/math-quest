@@ -4,7 +4,8 @@
 import { useState, useEffect, useRef } from 'react';
 import ExplanationModal from '@/components/ExplanationModal';
 import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
-import { createWorker } from 'tesseract.js'; // Import tesseract.js
+import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
+import { loadMnistModel, predictMnistDigit } from '@/utils/mnistModel'; // Import MNIST model utilities
 
 type CharacterType = 'warrior' | 'mage';
 
@@ -34,38 +35,29 @@ const CHARACTERS = {
   }
 };
 
-const preprocessCanvasImage = async (imageDataUrl: string, originalWidth: number, originalHeight: number) => {
-  return new Promise<string>((resolve) => {
+// Preprocessing for MNIST model: 28x28 grayscale, cropped and centered
+const preprocessCanvasImage = async (imageDataUrl: string, originalWidth: number, originalHeight: number): Promise<tf.Tensor2D | null> => {
+  return new Promise<tf.Tensor2D | null>((resolve) => {
     const img = new Image();
     img.onload = () => {
-      const offscreenCanvas = document.createElement('canvas');
-      const ctx = offscreenCanvas.getContext('2d');
-
-      if (!ctx) {
-        resolve(imageDataUrl); // Fallback
-        return;
-      }
-
       // Ensure dimensions are valid integers, minimum 1 pixel
       const w = Math.max(1, Math.floor(originalWidth));
       const h = Math.max(1, Math.floor(originalHeight));
 
-      // Add guard clause for invalid dimensions
       if (!w || !h || isNaN(w) || isNaN(h)) {
-        resolve(imageDataUrl); // Fallback if dimensions are invalid
+        resolve(null); // Fallback if dimensions are invalid
         return;
       }
 
-      // Draw the original image onto a temporary canvas
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = w;
       tempCanvas.height = h;
       const tempCtx = tempCanvas.getContext('2d');
       if (!tempCtx) {
-        resolve(imageDataUrl);
+        resolve(null);
         return;
       }
-      tempCtx.fillStyle = '#ffffff'; // Ensure white background
+      tempCtx.fillStyle = '#000000'; // Black background for drawing area
       tempCtx.fillRect(0, 0, w, h);
       tempCtx.drawImage(img, 0, 0);
 
@@ -74,88 +66,95 @@ const preprocessCanvasImage = async (imageDataUrl: string, originalWidth: number
 
       let minX = w, minY = h, maxX = 0, maxY = 0;
 
-      // Binarization and find bounding box of non-white pixels
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        // Convert to grayscale and binarize (threshold 150 for bolder lines)
-        const gray = (r + g + b) / 3;
-        const isBlack = gray < 150; // Consider anything darker than 150 as "black"
-        
-        if (isBlack) {
-          const x = (i / 4) % w;
-          const y = Math.floor((i / 4) / w);
-
-          minX = Math.min(minX, x);
-          minY = Math.min(minY, y);
-          maxX = Math.max(maxX, x);
-          maxY = Math.max(maxY, y);
-
-          // Make the line thicker and fully black for OCR
-          data[i] = 0;     // Red
-          data[i + 1] = 0; // Green
-          data[i + 2] = 0; // Blue
-          data[i + 3] = 255; // Alpha
-        } else {
-          // Make background pure white
-          data[i] = 255;
-          data[i + 1] = 255;
-          data[i + 2] = 255;
-          data[i + 3] = 255;
+      // Find bounding box of non-black pixels (drawn content)
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          // Convert to grayscale and check if it's "drawn" (not pure black)
+          const gray = (r + g + b) / 3;
+          if (gray > 0) { // If it's not pure black, it's drawn content
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+          }
         }
       }
-
-      tempCtx.putImageData(imgData, 0, 0); // Apply binarized data back to tempCanvas
 
       const contentWidth = maxX - minX + 1;
       const contentHeight = maxY - minY + 1;
 
       if (contentWidth <= 0 || contentHeight <= 0) {
-        resolve(imageDataUrl); // No content drawn, return original
-        // Clear tempCtx for memory release
         tempCtx.clearRect(0, 0, w, h);
+        resolve(null); // No content drawn
         return;
       }
 
-      // Create a new canvas for the cropped and resized image
-      const padding = 20; // Add some padding around the cropped digit
-      const targetSize = 200; // Standard size for OCR input
-
-      offscreenCanvas.width = targetSize;
-      offscreenCanvas.height = targetSize;
-
-      if (ctx) { // Check if ctx is still valid after resizing
-        ctx.fillStyle = '#ffffff'; // White background for the new canvas
-        ctx.fillRect(0, 0, targetSize, targetSize);
-
-        const aspectRatio = contentWidth / contentHeight;
-        let drawWidth, drawHeight;
-
-        if (aspectRatio > 1) { // Wider than tall
-          drawWidth = targetSize - padding * 2;
-          drawHeight = drawWidth / aspectRatio;
-        } else { // Taller than wide or square
-          drawHeight = targetSize - padding * 2;
-          drawWidth = drawHeight * aspectRatio;
-        }
-
-        const drawX = (targetSize - drawWidth) / 2;
-        const drawY = (targetSize - drawHeight) / 2;
-
-        ctx.drawImage(
-          tempCanvas,
-          minX, minY, contentWidth, contentHeight, // Source rectangle
-          drawX, drawY, drawWidth, drawHeight      // Destination rectangle
-        );
+      const croppedCanvas = document.createElement('canvas');
+      const croppedSize = Math.max(contentWidth, contentHeight); // Take the larger dimension
+      croppedCanvas.width = croppedSize;
+      croppedCanvas.height = croppedSize;
+      const croppedCtx = croppedCanvas.getContext('2d');
+      if (!croppedCtx) {
+        tempCtx.clearRect(0, 0, w, h);
+        resolve(null);
+        return;
       }
-      // Clear tempCtx for memory release
+
+      croppedCtx.fillStyle = '#000000'; // Black background for cropped canvas
+      croppedCtx.fillRect(0, 0, croppedSize, croppedSize);
+      
+      // Draw cropped content, centering it within the new square canvas
+      const offsetX = (croppedSize - contentWidth) / 2;
+      const offsetY = (croppedSize - contentHeight) / 2;
+
+      croppedCtx.drawImage(
+        tempCanvas,
+        minX, minY, contentWidth, contentHeight, // Source rectangle
+        offsetX, offsetY, contentWidth, contentHeight // Destination rectangle
+      );
+
+      // Final resize to 28x28 and convert to grayscale tensor
+      const targetSize = 28;
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = targetSize;
+      finalCanvas.height = targetSize;
+      const finalCtx = finalCanvas.getContext('2d');
+      if (!finalCtx) {
+        tempCtx.clearRect(0, 0, w, h);
+        croppedCtx.clearRect(0, 0, croppedSize, croppedSize);
+        resolve(null);
+        return;
+      }
+      finalCtx.fillStyle = '#000000'; // Ensure black background for final canvas
+      finalCtx.fillRect(0, 0, targetSize, targetSize);
+      finalCtx.drawImage(croppedCanvas, 0, 0, targetSize, targetSize);
+
+      const finalImageData = finalCtx.getImageData(0, 0, targetSize, targetSize);
+      const grayscaleData = new Float32Array(targetSize * targetSize);
+
+      for (let i = 0; i < finalImageData.data.length; i += 4) {
+        const r = finalImageData.data[i];
+        const g = finalImageData.data[i + 1];
+        const b = finalImageData.data[i + 2];
+        // Invert and normalize to 0-1 (MNIST expects white digit on black background)
+        grayscaleData[i / 4] = (255 - ((r + g + b) / 3)) / 255; 
+      }
+      
+      // Clear all temporary canvases for memory release
       tempCtx.clearRect(0, 0, w, h);
-      resolve(offscreenCanvas.toDataURL("image/png"));
+      croppedCtx.clearRect(0, 0, croppedSize, croppedSize);
+      finalCtx.clearRect(0, 0, targetSize, targetSize);
+
+      resolve(tf.tensor2d(grayscaleData, [targetSize, targetSize]));
     };
     img.src = imageDataUrl;
   });
 };
+
 
 export default function QuestPage() {
   const [enemyHp, setEnemyHp] = useState(100);
@@ -170,25 +169,17 @@ export default function QuestPage() {
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
   const canvasRef = useRef<any>(null); // Ref for CanvasDraw component
-  const tesseractWorkerRef = useRef<Tesseract.Worker | null>(null);
+  const mnistModelRef = useRef<tf.LayersModel | null>(null); // Ref for TensorFlow.js model
 
+  // Load MNIST model on component mount
   useEffect(() => {
-    const initializeWorker = async () => {
-      tesseractWorkerRef.current = await createWorker("eng");
-      await tesseractWorkerRef.current.setParameters({
-        tessedit_char_whitelist: "0123456789",
-        psm: 7, // PSM_SINGLE_LINE for 2-digit recognition
-      });
-    };
-
-    initializeWorker();
-
-    return () => {
-      if (tesseractWorkerRef.current) {
-        tesseractWorkerRef.current.terminate();
-        tesseractWorkerRef.current = null;
+    const loadModel = async () => {
+      mnistModelRef.current = await loadMnistModel();
+      if (!mnistModelRef.current) {
+        setMessage("MNISTモデルの読み込みに失敗しました。");
       }
     };
+    loadModel();
   }, []);
 
   // Initialize first question
@@ -299,32 +290,36 @@ export default function QuestPage() {
 
   const handleHandwritingJudge = async () => {
     if (!canvasRef.current || !question || isRecognizing) return;
+    if (!mnistModelRef.current) {
+      setMessage("モデルがまだロードされていません。少々お待ちください。");
+      return;
+    }
 
     setIsRecognizing(true);
     setMessage("解析中...");
     setRecognizedNumber(null); // Clear previous recognition
 
-    const imageDataUrl = canvasRef.current.getDataURL("png", false, "#ffffff");
-    const preprocessedImageData = await preprocessCanvasImage(imageDataUrl, canvasRef.current.canvas.width, canvasRef.current.canvas.height);
+    const imageDataUrl = canvasRef.current.getDataURL("png", false, "#000000"); // Black background for MNIST
+    const preprocessedTensor = await preprocessCanvasImage(imageDataUrl, canvasRef.current.canvas.width, canvasRef.current.canvas.height);
 
-    if (!tesseractWorkerRef.current) {
-      setMessage("OCR初期化中...少々お待ちください。");
+    if (!preprocessedTensor) {
+      setMessage("認識可能な手書き数字が見つかりませんでした。");
+      canvasRef.current?.clear();
       setIsRecognizing(false);
       return;
     }
 
-    const { data: { text } } = await tesseractWorkerRef.current.recognize(preprocessedImageData);
-    
-    const recognizedNum = parseInt(text.trim().replace(/\D/g, "")); // Clean up recognized text
-    setRecognizedNumber(isNaN(recognizedNum) ? null : recognizedNum.toString());
+    const predictedDigit = predictMnistDigit(preprocessedTensor); // Pass the tensor directly
 
-    if (isNaN(recognizedNum)) {
+    if (predictedDigit === null) {
       setMessage("数字を認識できませんでした。もう一度お試しください。");
       setCombo(0);
     } else {
-      setMessage(`認識結果: ${recognizedNum}`);
+      setMessage(`認識結果: ${predictedDigit}`);
+      setRecognizedNumber(predictedDigit.toString());
+      
       // Simulate handleAttack logic
-      if (recognizedNum === question.answer) {
+      if (predictedDigit === question.answer) {
         // Correct
         const damage = 10 + (combo * 2);
         const newHp = Math.max(0, enemyHp - damage);
@@ -346,8 +341,7 @@ export default function QuestPage() {
         } else {
           generateQuestion();
         }
-      }
-       else {
+      } else {
         // Incorrect
         setCombo(0);
         const charData = CHARACTERS[character];
@@ -431,8 +425,7 @@ export default function QuestPage() {
             <div className="text-6xl mb-2">🎉</div>
             <h2 className="text-2xl font-bold text-yellow-600">STAGE CLEAR!</h2>
             <button 
-              onClick={() => window.location.reload()}
-              className="mt-4 px-6 py-2 bg-yellow-500 text-white rounded-lg font-bold shadow-md active:translate-y-1"
+              onClick={() => window.location.reload()}              className="mt-4 px-6 py-2 bg-yellow-500 text-white rounded-lg font-bold shadow-md active:translate-y-1"
             >
               Play Again
             </button>
@@ -460,8 +453,7 @@ export default function QuestPage() {
               {question && (
                 <div className="text-4xl font-black text-indigo-900 tracking-wider">
                   {question.val1} {question.operator} {question.val2} = <span className={`${input ? 'text-indigo-600' : 'text-slate-300'} underline decoration-4 underline-offset-8`}>
-                    {inputMode === 'handwriting' && recognizedNumber !== null ? recognizedNumber : input || '?'}
-                  </span>
+                    {inputMode === 'handwriting' && recognizedNumber !== null ? recognizedNumber : input || '?'}                  </span>
                 </div>
               )}
             </div>
@@ -526,15 +518,13 @@ export default function QuestPage() {
           />
           <div className="flex gap-3 w-full justify-center">
             <button
-              onClick={() => canvasRef.current?.clear()}
-              disabled={status === 'cleared' || isRecognizing}
+              onClick={() => canvasRef.current?.clear()}              disabled={status === 'cleared' || isRecognizing}
               className="px-6 py-2 bg-red-100 text-red-600 rounded-lg font-bold shadow-md active:translate-y-1"
             >
               リセット
             </button>
             <button
-              onClick={() => handleHandwritingJudge()}
-              disabled={status === 'cleared' || isRecognizing}
+              onClick={() => handleHandwritingJudge()}              disabled={status === 'cleared' || isRecognizing}
               className="px-6 py-2 bg-indigo-500 text-white rounded-lg font-bold shadow-md active:translate-y-1"
             >
               {isRecognizing ? '解析中...' : '判定'}
