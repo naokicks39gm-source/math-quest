@@ -630,6 +630,8 @@ export default function QuestPage() {
   const AUTO_NEXT_WAIT_MS = 700;
   const [statusMsg, setStatusMsg] = useState<string>("");
   const autoNextTimerRef = useRef<number | null>(null);
+  const idleCheckTimerRef = useRef<number | null>(null);
+  const enemyHitTimerRef = useRef<number | null>(null);
   const grades = (data.grades as GradeDef[])
     .map((grade) => ({
       ...grade,
@@ -645,7 +647,6 @@ export default function QuestPage() {
   const [selectedType, setSelectedType] = useState<TypeDef | null>(defaultType);
   const [itemIndex, setItemIndex] = useState(0);
   const [practiceResult, setPracticeResult] = useState<{ ok: boolean; correctAnswer: string } | null>(null);
-  const enemyHitTimerRef = useRef<number | null>(null);
 
   // Load MNIST model on component mount
   useEffect(() => {
@@ -686,6 +687,9 @@ export default function QuestPage() {
       if (autoNextTimerRef.current) {
         window.clearTimeout(autoNextTimerRef.current);
       }
+      if (idleCheckTimerRef.current) {
+        window.clearInterval(idleCheckTimerRef.current);
+      }
     };
   }, []);
 
@@ -706,6 +710,7 @@ export default function QuestPage() {
       setEnemyHit(false);
     }, 300);
   };
+
 
   const startReadyGo = () => {
     if (isStarting) return;
@@ -742,9 +747,41 @@ export default function QuestPage() {
       timerRef.current = window.setInterval(() => {
         setElapsedSec(Math.floor((Date.now() - startedAt) / 1000));
       }, 500);
+      if (autoJudgeEnabled && pendingRecognizeRef.current) {
+        pendingRecognizeRef.current = false;
+        if (autoRecognizeTimerRef.current) {
+          window.clearTimeout(autoRecognizeTimerRef.current);
+        }
+        autoRecognizeTimerRef.current = window.setTimeout(() => {
+          runInference();
+        }, delayMs);
+      }
     }, 2000);
     startTimersRef.current = [t1, t2];
   };
+
+  useEffect(() => {
+    if (idleCheckTimerRef.current) {
+      window.clearInterval(idleCheckTimerRef.current);
+    }
+    idleCheckTimerRef.current = window.setInterval(() => {
+      if (!autoJudgeEnabled) return;
+      if (isStarting) return;
+      if (status !== 'playing') return;
+      if (Date.now() < cooldownUntilRef.current) return;
+      if (isRecognizing || inFlightRef.current) return;
+      const idleFor = Date.now() - lastDrawAtRef.current;
+      if (idleFor >= delayMs && lastDrawAtRef.current > 0) {
+        runInference();
+      }
+    }, 200);
+    return () => {
+      if (idleCheckTimerRef.current) {
+        window.clearInterval(idleCheckTimerRef.current);
+      }
+    };
+  }, [autoJudgeEnabled, delayMs, isStarting, status, isRecognizing]);
+
 
   useEffect(() => {
     if (!typeFromQuery) return;
@@ -905,7 +942,6 @@ export default function QuestPage() {
       const damage = 10 + (combo * 2);
       const newHp = Math.max(0, enemyHp - damage);
       setEnemyHp(newHp);
-      
       const newCombo = combo + 1;
       setCombo(newCombo);
 
@@ -1046,10 +1082,8 @@ export default function QuestPage() {
         const damage = 10 + (combo * 2);
         const newHp = Math.max(0, enemyHp - damage);
         setEnemyHp(newHp);
-
         const newCombo = combo + 1;
         setCombo(newCombo);
-
         if (newHp === 0) {
           setStatus("cleared");
           if (timerRef.current) {
@@ -1093,7 +1127,10 @@ export default function QuestPage() {
       pendingRecognizeRef.current = true;
       return;
     }
-    if (isStarting) return;
+    if (isStarting) {
+      pendingRecognizeRef.current = true;
+      return;
+    }
 
     inFlightRef.current = true;
     try {
@@ -1111,18 +1148,11 @@ export default function QuestPage() {
 
   const handleCanvasChange = () => {
     lastDrawAtRef.current = Date.now();
-    if (!autoJudgeEnabled) return;
-    if (Date.now() < cooldownUntilRef.current) return;
-    if (autoRecognizeTimerRef.current) {
-      window.clearTimeout(autoRecognizeTimerRef.current);
-    }
-    autoRecognizeTimerRef.current = window.setTimeout(() => {
-      runInference();
-    }, delayMs);
+    if (isStarting) return;
+    // 入力中はここでスケジュールしない（描画終了時にのみ予約）
   };
 
   const handleDrawStart = () => {
-    if (isStarting) return;
     isDrawingRef.current = true;
     lastDrawAtRef.current = Date.now();
     if (autoRecognizeTimerRef.current) {
@@ -1203,7 +1233,7 @@ export default function QuestPage() {
             enemyHit ? 'animate-[enemyFlash_0.3s_ease-in-out]' : ''
           }`}
         >
-          <div 
+          <div
             className="bg-red-500 h-full transition-all duration-300 ease-out"
             style={{ width: `${enemyHp}%` }}
           ></div>
@@ -1212,7 +1242,6 @@ export default function QuestPage() {
           </span>
         </div>
       </div>
-
       {selectedPath && (
         <div className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600">
           {selectedPath.gradeName} / {selectedPath.categoryName} / {selectedPath.typeName}
@@ -1463,7 +1492,7 @@ export default function QuestPage() {
               canvasWidth={300}
               canvasHeight={300}
               className="rounded-xl border-2 border-slate-300 shadow-lg"
-              disabled={status === 'cleared' || isStarting}
+              disabled={status === 'cleared'}
               onChange={handleCanvasChange}
             />
             {!hasStarted && status === 'playing' && (
