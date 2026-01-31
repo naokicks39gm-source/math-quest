@@ -1,0 +1,1207 @@
+{
+  "schema_version": "1.0",
+  "scope": {
+    "stage": "elementary",
+    "grades": ["E3", "E4", "E5", "E6"],
+    "focus": "calculation_mvp"
+  },
+  "global_rules": {
+    "language": "ja",
+    "input_rules": {
+      "no_units": true,
+      "no_commas_in_numbers": false,
+      "allow_minus_sign": false
+    },
+    "answer_normalization": {
+      "fraction": {
+        "require_simplified": true,
+        "allow_mixed_number": false,
+        "sign_on_numerator": true
+      },
+      "decimal": {
+        "rounding": "half_up",
+        "strip_trailing_zeros": false
+      },
+      "pair": {
+        "separator": ",",
+        "labels": ["q", "r"]
+      },
+      "expression": {
+        "use_cas_equivalence": false,
+        "allowed_forms": ["p*a", "p*a+q", "p*a-q"],
+        "canonical_multiply": "*"
+      }
+    }
+  },
+  "grades": [
+    {
+      "grade_id": "E3",
+      "grade_name": "小3",
+      "categories": [
+        {
+          "category_id": "E3.NA",
+          "category_name": "整数（加減乗）",
+          "types": [
+            {
+              "type_id": "E3.NA.ADD.01",
+              "type_name": "3桁+3桁（繰り上がりあり）",
+              "prompt_template": "{a}+{b}を計算しなさい。",
+              "answer_format": { "kind": "int" },
+              "generator_params": {
+                "a_range": [100, 999],
+                "b_range": [100, 999],
+                "require_carry": true,
+                "max_carries": 3
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 478, "b": 659 },
+                  "prompt": "478+659を計算しなさい。",
+                  "answer": "1137"
+                },
+                {
+                  "vars": { "a": 582, "b": 397 },
+                  "prompt": "582+397を計算しなさい。",
+                  "answer": "979"
+                },
+                {
+                  "vars": { "a": 764, "b": 238 },
+                  "prompt": "764+238を計算しなさい。",
+                  "answer": "1002"
+                }
+              ]
+            },
+            {
+              "type_id": "E3.NA.SUB.01",
+              "type_name": "3桁-3桁（繰り下がりあり）",
+              "prompt_template": "{a}-{b}を計算しなさい。",
+              "answer_format": { "kind": "int" },
+              "generator_params": {
+                "a_range": [200, 999],
+                "b_range": [100, 999],
+                "require_a_ge_b": true,
+                "require_borrow": true,
+                "max_borrows": 3
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 702, "b": 458 },
+                  "prompt": "702-458を計算しなさい。",
+                  "answer": "244"
+                },
+                {
+                  "vars": { "a": 900, "b": 367 },
+                  "prompt": "900-367を計算しなさい。",
+                  "answer": "533"
+                },
+                {
+                  "vars": { "a": 615, "b": 289 },
+                  "prompt": "615-289を計算しなさい。",
+                  "answer": "326"
+                }
+              ]
+            },
+            {
+              "type_id": "E3.NA.MUL.01",
+              "type_name": "2桁×1桁",
+              "prompt_template": "{a}×{b}を計算しなさい。",
+              "answer_format": { "kind": "int" },
+              "generator_params": {
+                "a_range": [10, 99],
+                "b_range": [2, 9]
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 47, "b": 8 },
+                  "prompt": "47×8を計算しなさい。",
+                  "answer": "376"
+                },
+                {
+                  "vars": { "a": 69, "b": 7 },
+                  "prompt": "69×7を計算しなさい。",
+                  "answer": "483"
+                },
+                {
+                  "vars": { "a": 58, "b": 6 },
+                  "prompt": "58×6を計算しなさい。",
+                  "answer": "348"
+                }
+              ]
+            },
+            {
+              "type_id": "E3.NA.MUL.02",
+              "type_name": "3桁×1桁（基礎）",
+              "prompt_template": "{a}×{b}を計算しなさい。",
+              "answer_format": { "kind": "int" },
+              "generator_params": {
+                "a_range": [100, 999],
+                "b_range": [2, 9],
+                "limit_internal_products": true,
+                "internal_product_max": 72
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 132, "b": 6 },
+                  "prompt": "132×6を計算しなさい。",
+                  "answer": "792"
+                },
+                {
+                  "vars": { "a": 243, "b": 3 },
+                  "prompt": "243×3を計算しなさい。",
+                  "answer": "729"
+                },
+                {
+                  "vars": { "a": 408, "b": 7 },
+                  "prompt": "408×7を計算しなさい。",
+                  "answer": "2856"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "E3.DV",
+          "category_name": "わり算（商・余り）",
+          "types": [
+            {
+              "type_id": "E3.DV.DIV.01",
+              "type_name": "2桁÷1桁（割り切れる）",
+              "prompt_template": "{a}÷{b}を計算しなさい。",
+              "answer_format": { "kind": "int" },
+              "generator_params": {
+                "b_range": [2, 9],
+                "q_range": [2, 9],
+                "build_a_as_bq": true
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 56, "b": 7 },
+                  "prompt": "56÷7を計算しなさい。",
+                  "answer": "8"
+                },
+                {
+                  "vars": { "a": 72, "b": 8 },
+                  "prompt": "72÷8を計算しなさい。",
+                  "answer": "9"
+                },
+                {
+                  "vars": { "a": 81, "b": 9 },
+                  "prompt": "81÷9を計算しなさい。",
+                  "answer": "9"
+                }
+              ]
+            },
+            {
+              "type_id": "E3.DV.DIV.02",
+              "type_name": "2桁÷1桁（余りあり）",
+              "prompt_template": "{a}÷{b}の商と余りを答えなさい。",
+              "answer_format": { "kind": "pair", "pair_kind": "quotient_remainder" },
+              "generator_params": {
+                "b_range": [2, 9],
+                "q_range": [2, 9],
+                "r_range_mode": "1_to_b_minus_1",
+                "build_a_as_bq_plus_r": true
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 59, "b": 7 },
+                  "prompt": "59÷7の商と余りを答えなさい。",
+                  "answer": "8,3"
+                },
+                {
+                  "vars": { "a": 68, "b": 9 },
+                  "prompt": "68÷9の商と余りを答えなさい。",
+                  "answer": "7,5"
+                },
+                {
+                  "vars": { "a": 56, "b": 6 },
+                  "prompt": "56÷6の商と余りを答えなさい。",
+                  "answer": "9,2"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "E3.DC",
+          "category_name": "小数（0.1）",
+          "types": [
+            {
+              "type_id": "E3.DC.ADD.01",
+              "type_name": "小数(1桁)のたし算",
+              "prompt_template": "{x}+{y}を計算しなさい。",
+              "answer_format": { "kind": "dec", "precision": 1 },
+              "generator_params": {
+                "decimal_places": 1,
+                "x_range": [0.1, 9.9],
+                "y_range": [0.1, 9.9],
+                "avoid_carry_to_10": false
+              },
+              "example_items": [
+                {
+                  "vars": { "x": 2.4, "y": 5.7 },
+                  "prompt": "2.4+5.7を計算しなさい。",
+                  "answer": "8.1"
+                },
+                {
+                  "vars": { "x": 3.8, "y": 1.6 },
+                  "prompt": "3.8+1.6を計算しなさい。",
+                  "answer": "5.4"
+                },
+                {
+                  "vars": { "x": 9.3, "y": 0.4 },
+                  "prompt": "9.3+0.4を計算しなさい。",
+                  "answer": "9.7"
+                }
+              ]
+            },
+            {
+              "type_id": "E3.DC.SUB.01",
+              "type_name": "小数(1桁)のひき算",
+              "prompt_template": "{x}-{y}を計算しなさい。",
+              "answer_format": { "kind": "dec", "precision": 1 },
+              "generator_params": {
+                "decimal_places": 1,
+                "x_range": [0.1, 9.9],
+                "y_range": [0.1, 9.9],
+                "require_x_ge_y": true
+              },
+              "example_items": [
+                {
+                  "vars": { "x": 7.5, "y": 2.8 },
+                  "prompt": "7.5-2.8を計算しなさい。",
+                  "answer": "4.7"
+                },
+                {
+                  "vars": { "x": 6.2, "y": 1.9 },
+                  "prompt": "6.2-1.9を計算しなさい。",
+                  "answer": "4.3"
+                },
+                {
+                  "vars": { "x": 9.0, "y": 3.6 },
+                  "prompt": "9.0-3.6を計算しなさい。",
+                  "answer": "5.4"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "E3.FR",
+          "category_name": "分数（同分母）",
+          "types": [
+            {
+              "type_id": "E3.FR.ADD.01",
+              "type_name": "同分母のたし算",
+              "prompt_template": "{p}/{d}+{q}/{d}を計算しなさい。",
+              "answer_format": { "kind": "frac" },
+              "generator_params": {
+                "denominators": [2, 3, 4, 5, 6, 8, 10, 12],
+                "p_range_mode": "1_to_d_minus_1",
+                "q_range_mode": "1_to_d_minus_1",
+                "limit_sum_lt_2": true
+              },
+              "example_items": [
+                {
+                  "vars": { "p": 3, "q": 2, "d": 8 },
+                  "prompt": "3/8+2/8を計算しなさい。",
+                  "answer": "5/8"
+                },
+                {
+                  "vars": { "p": 1, "q": 4, "d": 6 },
+                  "prompt": "1/6+4/6を計算しなさい。",
+                  "answer": "5/6"
+                },
+                {
+                  "vars": { "p": 7, "q": 1, "d": 10 },
+                  "prompt": "7/10+1/10を計算しなさい。",
+                  "answer": "4/5"
+                }
+              ]
+            },
+            {
+              "type_id": "E3.FR.SUB.01",
+              "type_name": "同分母のひき算",
+              "prompt_template": "{p}/{d}-{q}/{d}を計算しなさい。",
+              "answer_format": { "kind": "frac" },
+              "generator_params": {
+                "denominators": [2, 3, 4, 5, 6, 8, 10, 12],
+                "require_p_gt_q": true,
+                "p_range_mode": "1_to_d_minus_1",
+                "q_range_mode": "1_to_d_minus_1"
+              },
+              "example_items": [
+                {
+                  "vars": { "p": 7, "q": 3, "d": 8 },
+                  "prompt": "7/8-3/8を計算しなさい。",
+                  "answer": "1/2"
+                },
+                {
+                  "vars": { "p": 5, "q": 1, "d": 6 },
+                  "prompt": "5/6-1/6を計算しなさい。",
+                  "answer": "2/3"
+                },
+                {
+                  "vars": { "p": 9, "q": 2, "d": 10 },
+                  "prompt": "9/10-2/10を計算しなさい。",
+                  "answer": "7/10"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "grade_id": "E4",
+      "grade_name": "小4",
+      "categories": [
+        {
+          "category_id": "E4.NA",
+          "category_name": "整数（四則混合）",
+          "types": [
+            {
+              "type_id": "E4.NA.MIX.01",
+              "type_name": "四則混合（括弧なし）",
+              "prompt_template": "{expr}を計算しなさい。",
+              "answer_format": { "kind": "int" },
+              "generator_params": {
+                "operands_range": [10, 99],
+                "operations": ["+", "-", "×", "÷"],
+                "num_operations": [2, 3],
+                "use_parentheses": false,
+                "require_integer_division": true,
+                "avoid_negative_result": true
+              },
+              "example_items": [
+                {
+                  "vars": { "expr": "48+36÷6" },
+                  "prompt": "48+36÷6を計算しなさい。",
+                  "answer": "54"
+                },
+                {
+                  "vars": { "expr": "72-18×3" },
+                  "prompt": "72-18×3を計算しなさい。",
+                  "answer": "18"
+                },
+                {
+                  "vars": { "expr": "96÷8+25" },
+                  "prompt": "96÷8+25を計算しなさい。",
+                  "answer": "37"
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.MIX.02",
+              "type_name": "四則混合（括弧あり）",
+              "prompt_template": "{expr}を計算しなさい。",
+              "answer_format": { "kind": "int" },
+              "generator_params": {
+                "operands_range": [10, 99],
+                "operations": ["+", "-", "×", "÷"],
+                "num_operations": [2, 3],
+                "use_parentheses": true,
+                "require_integer_division": true,
+                "avoid_negative_result": true
+              },
+              "example_items": [
+                {
+                  "vars": { "expr": "(84-24)÷6" },
+                  "prompt": "(84-24)÷6を計算しなさい。",
+                  "answer": "10"
+                },
+                {
+                  "vars": { "expr": "7×(15-8)" },
+                  "prompt": "7×(15-8)を計算しなさい。",
+                  "answer": "49"
+                },
+                {
+                  "vars": { "expr": "(36+24)÷5" },
+                  "prompt": "(36+24)÷5を計算しなさい。",
+                  "answer": "12"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "E4.DV",
+          "category_name": "わり算（2桁のわる数）",
+          "types": [
+            {
+              "type_id": "E4.DV.DIV.01",
+              "type_name": "3桁÷2桁（割り切れる）",
+              "prompt_template": "{a}÷{b}を計算しなさい。",
+              "answer_format": { "kind": "int" },
+              "generator_params": {
+                "b_range": [10, 99],
+                "q_range": [2, 9],
+                "build_a_as_bq": true
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 120, "b": 24 },
+                  "prompt": "120÷24を計算しなさい。",
+                  "answer": "5"
+                },
+                {
+                  "vars": { "a": 112, "b": 16 },
+                  "prompt": "112÷16を計算しなさい。",
+                  "answer": "7"
+                },
+                {
+                  "vars": { "a": 162, "b": 18 },
+                  "prompt": "162÷18を計算しなさい。",
+                  "answer": "9"
+                }
+              ]
+            },
+            {
+              "type_id": "E4.DV.DIV.02",
+              "type_name": "3桁÷2桁（余りあり）",
+              "prompt_template": "{a}÷{b}の商と余りを答えなさい。",
+              "answer_format": { "kind": "pair", "pair_kind": "quotient_remainder" },
+              "generator_params": {
+                "b_range": [10, 99],
+                "q_range": [2, 9],
+                "r_range_mode": "1_to_b_minus_1",
+                "build_a_as_bq_plus_r": true
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 166, "b": 23 },
+                  "prompt": "166÷23の商と余りを答えなさい。",
+                  "answer": "7,5"
+                },
+                {
+                  "vars": { "a": 363, "b": 45 },
+                  "prompt": "363÷45の商と余りを答えなさい。",
+                  "answer": "8,3"
+                },
+                {
+                  "vars": { "a": 115, "b": 12 },
+                  "prompt": "115÷12の商と余りを答えなさい。",
+                  "answer": "9,7"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "E4.DC",
+          "category_name": "小数（×整数／÷整数）",
+          "types": [
+            {
+              "type_id": "E4.DC.MUL.01",
+              "type_name": "小数(1〜2桁)×整数",
+              "prompt_template": "{x}×{n}を計算しなさい。",
+              "answer_format": { "kind": "dec", "precision": 2 },
+              "generator_params": {
+                "x_decimal_places": [1, 2],
+                "x_range": [0.1, 99.99],
+                "n_range": [2, 12],
+                "ensure_terminating": true
+              },
+              "example_items": [
+                {
+                  "vars": { "x": 3.2, "n": 7 },
+                  "prompt": "3.2×7を計算しなさい。",
+                  "answer": "22.40"
+                },
+                {
+                  "vars": { "x": 0.45, "n": 8 },
+                  "prompt": "0.45×8を計算しなさい。",
+                  "answer": "3.60"
+                },
+                {
+                  "vars": { "x": 12.5, "n": 4 },
+                  "prompt": "12.5×4を計算しなさい。",
+                  "answer": "50.00"
+                }
+              ]
+            },
+            {
+              "type_id": "E4.DC.DIV.01",
+              "type_name": "小数(1〜2桁)÷整数（割り切れる）",
+              "prompt_template": "{x}÷{n}を計算しなさい。",
+              "answer_format": { "kind": "dec", "precision": 2 },
+              "generator_params": {
+                "x_decimal_places": [1, 2],
+                "n_range": [2, 12],
+                "force_terminating_result": true,
+                "max_result_decimal_places": 2
+              },
+              "example_items": [
+                {
+                  "vars": { "x": 6.4, "n": 8 },
+                  "prompt": "6.4÷8を計算しなさい。",
+                  "answer": "0.80"
+                },
+                {
+                  "vars": { "x": 12.6, "n": 7 },
+                  "prompt": "12.6÷7を計算しなさい。",
+                  "answer": "1.80"
+                },
+                {
+                  "vars": { "x": 25.2, "n": 6 },
+                  "prompt": "25.2÷6を計算しなさい。",
+                  "answer": "4.20"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "E4.FR",
+          "category_name": "分数（約分・同値）",
+          "types": [
+            {
+              "type_id": "E4.FR.RED.01",
+              "type_name": "約分（いちばん簡単）",
+              "prompt_template": "{p}/{q}をいちばん簡単な分数にしなさい。",
+              "answer_format": { "kind": "frac" },
+              "generator_params": {
+                "p_range": [2, 120],
+                "q_range": [2, 120],
+                "require_gcd_gt_1": true,
+                "avoid_improper": false
+              },
+              "example_items": [
+                {
+                  "vars": { "p": 18, "q": 24 },
+                  "prompt": "18/24をいちばん簡単な分数にしなさい。",
+                  "answer": "3/4"
+                },
+                {
+                  "vars": { "p": 42, "q": 56 },
+                  "prompt": "42/56をいちばん簡単な分数にしなさい。",
+                  "answer": "3/4"
+                },
+                {
+                  "vars": { "p": 35, "q": 50 },
+                  "prompt": "35/50をいちばん簡単な分数にしなさい。",
+                  "answer": "7/10"
+                }
+              ]
+            },
+            {
+              "type_id": "E4.FR.EQ.01",
+              "type_name": "同値分数（拡大）",
+              "prompt_template": "{p}/{q}と同じ大きさになる分数で、分母を{target_den}にしなさい。",
+              "answer_format": { "kind": "frac" },
+              "generator_params": {
+                "base_fraction_mode": "simplified",
+                "q_range": [2, 20],
+                "multiplier_k_range": [2, 9],
+                "build_target_den_as_q_times_k": true
+              },
+              "example_items": [
+                {
+                  "vars": { "p": 3, "q": 5, "target_den": 20 },
+                  "prompt": "3/5と同じ大きさになる分数で、分母を20にしなさい。",
+                  "answer": "12/20"
+                },
+                {
+                  "vars": { "p": 2, "q": 3, "target_den": 12 },
+                  "prompt": "2/3と同じ大きさになる分数で、分母を12にしなさい。",
+                  "answer": "8/12"
+                },
+                {
+                  "vars": { "p": 7, "q": 10, "target_den": 50 },
+                  "prompt": "7/10と同じ大きさになる分数で、分母を50にしなさい。",
+                  "answer": "35/50"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "E4.AP",
+          "category_name": "概数（四捨五入）",
+          "types": [
+            {
+              "type_id": "E4.AP.ROUND.01",
+              "type_name": "四捨五入（十・百・千）",
+              "prompt_template": "{n}を{place}の位で四捨五入しなさい。",
+              "answer_format": { "kind": "int" },
+              "generator_params": {
+                "n_digits": [3, 6],
+                "place_values": [10, 100, 1000]
+              },
+              "example_items": [
+                {
+                  "vars": { "n": 6482, "place": 100 },
+                  "prompt": "6482を100の位で四捨五入しなさい。",
+                  "answer": "6500"
+                },
+                {
+                  "vars": { "n": 53419, "place": 1000 },
+                  "prompt": "53419を1000の位で四捨五入しなさい。",
+                  "answer": "53000"
+                },
+                {
+                  "vars": { "n": 12049, "place": 10 },
+                  "prompt": "12049を10の位で四捨五入しなさい。",
+                  "answer": "12050"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "grade_id": "E5",
+      "grade_name": "小5",
+      "categories": [
+        {
+          "category_id": "E5.DC",
+          "category_name": "小数（×小数／÷小数）",
+          "types": [
+            {
+              "type_id": "E5.DC.MUL.01",
+              "type_name": "小数(最大2桁)×小数(最大2桁)",
+              "prompt_template": "{x}×{y}を計算しなさい。",
+              "answer_format": { "kind": "dec", "precision": 3 },
+              "generator_params": {
+                "x_decimal_places": [1, 2],
+                "y_decimal_places": [1, 2],
+                "x_range": [0.1, 9.99],
+                "y_range": [0.1, 9.99],
+                "prefer_terminating": true,
+                "max_result_decimal_places": 3
+              },
+              "example_items": [
+                {
+                  "vars": { "x": 1.25, "y": 0.8 },
+                  "prompt": "1.25×0.8を計算しなさい。",
+                  "answer": "1.000"
+                },
+                {
+                  "vars": { "x": 3.2, "y": 1.5 },
+                  "prompt": "3.2×1.5を計算しなさい。",
+                  "answer": "4.800"
+                },
+                {
+                  "vars": { "x": 0.75, "y": 0.24 },
+                  "prompt": "0.75×0.24を計算しなさい。",
+                  "answer": "0.180"
+                }
+              ]
+            },
+            {
+              "type_id": "E5.DC.DIV.01",
+              "type_name": "小数(最大2桁)÷小数(最大2桁)（答えが有限小数）",
+              "prompt_template": "{x}÷{y}を計算しなさい。",
+              "answer_format": { "kind": "dec", "precision": 3 },
+              "generator_params": {
+                "x_decimal_places": [1, 2],
+                "y_decimal_places": [1, 2],
+                "x_range": [0.1, 99.99],
+                "y_range": [0.1, 9.99],
+                "force_terminating_result": true,
+                "max_result_decimal_places": 3
+              },
+              "example_items": [
+                {
+                  "vars": { "x": 4.5, "y": 0.3 },
+                  "prompt": "4.5÷0.3を計算しなさい。",
+                  "answer": "15.000"
+                },
+                {
+                  "vars": { "x": 7.2, "y": 0.6 },
+                  "prompt": "7.2÷0.6を計算しなさい。",
+                  "answer": "12.000"
+                },
+                {
+                  "vars": { "x": 3.75, "y": 1.25 },
+                  "prompt": "3.75÷1.25を計算しなさい。",
+                  "answer": "3.000"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "E5.FR",
+          "category_name": "分数（異分母の加減）",
+          "types": [
+            {
+              "type_id": "E5.FR.ADD.01",
+              "type_name": "異分母のたし算（通分→既約）",
+              "prompt_template": "{a}/{b}+{c}/{d}を計算しなさい。",
+              "answer_format": { "kind": "frac" },
+              "generator_params": {
+                "b_range": [2, 12],
+                "d_range": [2, 12],
+                "a_range_mode": "1_to_b_minus_1",
+                "c_range_mode": "1_to_d_minus_1",
+                "limit_lcm_max": 60
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 1, "b": 4, "c": 2, "d": 3 },
+                  "prompt": "1/4+2/3を計算しなさい。",
+                  "answer": "11/12"
+                },
+                {
+                  "vars": { "a": 5, "b": 6, "c": 1, "d": 8 },
+                  "prompt": "5/6+1/8を計算しなさい。",
+                  "answer": "23/24"
+                },
+                {
+                  "vars": { "a": 3, "b": 10, "c": 1, "d": 5 },
+                  "prompt": "3/10+1/5を計算しなさい。",
+                  "answer": "1/2"
+                }
+              ]
+            },
+            {
+              "type_id": "E5.FR.SUB.01",
+              "type_name": "異分母のひき算（通分→既約）",
+              "prompt_template": "{a}/{b}-{c}/{d}を計算しなさい。",
+              "answer_format": { "kind": "frac" },
+              "generator_params": {
+                "b_range": [2, 12],
+                "d_range": [2, 12],
+                "a_range_mode": "1_to_b_minus_1",
+                "c_range_mode": "1_to_d_minus_1",
+                "require_positive_result": true,
+                "limit_lcm_max": 60
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 3, "b": 4, "c": 1, "d": 6 },
+                  "prompt": "3/4-1/6を計算しなさい。",
+                  "answer": "7/12"
+                },
+                {
+                  "vars": { "a": 5, "b": 8, "c": 1, "d": 3 },
+                  "prompt": "5/8-1/3を計算しなさい。",
+                  "answer": "7/24"
+                },
+                {
+                  "vars": { "a": 7, "b": 10, "c": 2, "d": 5 },
+                  "prompt": "7/10-2/5を計算しなさい。",
+                  "answer": "3/10"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "E5.NT",
+          "category_name": "整数の性質（約数・倍数）",
+          "types": [
+            {
+              "type_id": "E5.NT.GCD.01",
+              "type_name": "最大公約数",
+              "prompt_template": "{m}と{n}の最大公約数を答えなさい。",
+              "answer_format": { "kind": "int" },
+              "generator_params": {
+                "m_range": [10, 300],
+                "n_range": [10, 300],
+                "avoid_trivial_gcd_1": false
+              },
+              "example_items": [
+                {
+                  "vars": { "m": 84, "n": 126 },
+                  "prompt": "84と126の最大公約数を答えなさい。",
+                  "answer": "42"
+                },
+                {
+                  "vars": { "m": 96, "n": 144 },
+                  "prompt": "96と144の最大公約数を答えなさい。",
+                  "answer": "48"
+                },
+                {
+                  "vars": { "m": 105, "n": 60 },
+                  "prompt": "105と60の最大公約数を答えなさい。",
+                  "answer": "15"
+                }
+              ]
+            },
+            {
+              "type_id": "E5.NT.LCM.01",
+              "type_name": "最小公倍数",
+              "prompt_template": "{m}と{n}の最小公倍数を答えなさい。",
+              "answer_format": { "kind": "int" },
+              "generator_params": {
+                "m_range": [2, 60],
+                "n_range": [2, 60],
+                "limit_lcm_max": 600
+              },
+              "example_items": [
+                {
+                  "vars": { "m": 12, "n": 18 },
+                  "prompt": "12と18の最小公倍数を答えなさい。",
+                  "answer": "36"
+                },
+                {
+                  "vars": { "m": 8, "n": 15 },
+                  "prompt": "8と15の最小公倍数を答えなさい。",
+                  "answer": "120"
+                },
+                {
+                  "vars": { "m": 14, "n": 21 },
+                  "prompt": "14と21の最小公倍数を答えなさい。",
+                  "answer": "42"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "E5.RT",
+          "category_name": "割合・比（計算）",
+          "types": [
+            {
+              "type_id": "E5.RT.PCT.01",
+              "type_name": "○の△%（値を求める）",
+              "prompt_template": "{base}の{pct}%はいくつですか。",
+              "answer_format": { "kind": "dec", "precision": 2 },
+              "generator_params": {
+                "base_range": [10, 1000],
+                "pct_range": [1, 99],
+                "prefer_terminating": true
+              },
+              "example_items": [
+                {
+                  "vars": { "base": 80, "pct": 15 },
+                  "prompt": "80の15%はいくつですか。",
+                  "answer": "12.00"
+                },
+                {
+                  "vars": { "base": 250, "pct": 8 },
+                  "prompt": "250の8%はいくつですか。",
+                  "answer": "20.00"
+                },
+                {
+                  "vars": { "base": 360, "pct": 12 },
+                  "prompt": "360の12%はいくつですか。",
+                  "answer": "43.20"
+                }
+              ]
+            },
+            {
+              "type_id": "E5.RT.PCT.02",
+              "type_name": "割合（何%か）",
+              "prompt_template": "{part}は{base}の何%ですか。",
+              "answer_format": { "kind": "dec", "precision": 1, "suffix": "%" },
+              "generator_params": {
+                "base_range": [10, 1000],
+                "part_range_mode": "0_to_base",
+                "force_clean_percent": true,
+                "percent_decimal_places": 1
+              },
+              "example_items": [
+                {
+                  "vars": { "part": 45, "base": 200 },
+                  "prompt": "45は200の何%ですか。",
+                  "answer": "22.5%"
+                },
+                {
+                  "vars": { "part": 30, "base": 120 },
+                  "prompt": "30は120の何%ですか。",
+                  "answer": "25.0%"
+                },
+                {
+                  "vars": { "part": 18, "base": 80 },
+                  "prompt": "18は80の何%ですか。",
+                  "answer": "22.5%"
+                }
+              ]
+            },
+            {
+              "type_id": "E5.RT.RATIO.01",
+              "type_name": "比の簡単化",
+              "prompt_template": "{m}:{n}をいちばん簡単な比にしなさい。",
+              "answer_format": { "kind": "pair", "pair_kind": "ratio", "separator": ":" },
+              "generator_params": {
+                "m_range": [2, 200],
+                "n_range": [2, 200],
+                "require_gcd_gt_1": false
+              },
+              "example_items": [
+                {
+                  "vars": { "m": 12, "n": 18 },
+                  "prompt": "12:18をいちばん簡単な比にしなさい。",
+                  "answer": "2:3"
+                },
+                {
+                  "vars": { "m": 35, "n": 50 },
+                  "prompt": "35:50をいちばん簡単な比にしなさい。",
+                  "answer": "7:10"
+                },
+                {
+                  "vars": { "m": 24, "n": 36 },
+                  "prompt": "24:36をいちばん簡単な比にしなさい。",
+                  "answer": "2:3"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "grade_id": "E6",
+      "grade_name": "小6",
+      "categories": [
+        {
+          "category_id": "E6.FR",
+          "category_name": "分数（乗法・除法）",
+          "types": [
+            {
+              "type_id": "E6.FR.MUL.01",
+              "type_name": "分数×分数（既約）",
+              "prompt_template": "{a}/{b}×{c}/{d}を計算しなさい。",
+              "answer_format": { "kind": "frac" },
+              "generator_params": {
+                "b_range": [2, 12],
+                "d_range": [2, 12],
+                "a_range_mode": "1_to_b_minus_1",
+                "c_range_mode": "1_to_d_minus_1",
+                "allow_improper_result": true
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 2, "b": 3, "c": 3, "d": 5 },
+                  "prompt": "2/3×3/5を計算しなさい。",
+                  "answer": "2/5"
+                },
+                {
+                  "vars": { "a": 5, "b": 8, "c": 4, "d": 7 },
+                  "prompt": "5/8×4/7を計算しなさい。",
+                  "answer": "5/14"
+                },
+                {
+                  "vars": { "a": 3, "b": 10, "c": 5, "d": 6 },
+                  "prompt": "3/10×5/6を計算しなさい。",
+                  "answer": "1/4"
+                }
+              ]
+            },
+            {
+              "type_id": "E6.FR.DIV.01",
+              "type_name": "分数÷分数（逆数・既約）",
+              "prompt_template": "{a}/{b}÷{c}/{d}を計算しなさい。",
+              "answer_format": { "kind": "frac" },
+              "generator_params": {
+                "b_range": [2, 12],
+                "d_range": [2, 12],
+                "a_range_mode": "1_to_b_minus_1",
+                "c_range_mode": "1_to_d_minus_1",
+                "require_c_nonzero": true,
+                "avoid_zero_division": true
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 2, "b": 3, "c": 4, "d": 5 },
+                  "prompt": "2/3÷4/5を計算しなさい。",
+                  "answer": "5/6"
+                },
+                {
+                  "vars": { "a": 5, "b": 6, "c": 1, "d": 3 },
+                  "prompt": "5/6÷1/3を計算しなさい。",
+                  "answer": "5/2"
+                },
+                {
+                  "vars": { "a": 3, "b": 4, "c": 2, "d": 5 },
+                  "prompt": "3/4÷2/5を計算しなさい。",
+                  "answer": "15/8"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "E6.MX",
+          "category_name": "小数↔分数・混合計算",
+          "types": [
+            {
+              "type_id": "E6.MX.CONV.01",
+              "type_name": "分数→小数（割り切れる）",
+              "prompt_template": "{a}/{b}を小数にしなさい。",
+              "answer_format": { "kind": "dec", "precision": 2 },
+              "generator_params": {
+                "denominators": [2, 4, 5, 8, 10, 20, 25, 40, 50, 100],
+                "a_range_mode": "1_to_b_minus_1",
+                "force_terminating": true,
+                "max_result_decimal_places": 2
+              },
+              "example_items": [
+                {
+                  "vars": { "a": 3, "b": 4 },
+                  "prompt": "3/4を小数にしなさい。",
+                  "answer": "0.75"
+                },
+                {
+                  "vars": { "a": 7, "b": 20 },
+                  "prompt": "7/20を小数にしなさい。",
+                  "answer": "0.35"
+                },
+                {
+                  "vars": { "a": 9, "b": 25 },
+                  "prompt": "9/25を小数にしなさい。",
+                  "answer": "0.36"
+                }
+              ]
+            },
+            {
+              "type_id": "E6.MX.CONV.02",
+              "type_name": "小数→分数（既約）",
+              "prompt_template": "{x}を分数にしなさい。",
+              "answer_format": { "kind": "frac" },
+              "generator_params": {
+                "x_decimal_places": [1, 2],
+                "x_range": [0.1, 9.99],
+                "require_simplified": true
+              },
+              "example_items": [
+                {
+                  "vars": { "x": 0.6 },
+                  "prompt": "0.6を分数にしなさい。",
+                  "answer": "3/5"
+                },
+                {
+                  "vars": { "x": 1.25 },
+                  "prompt": "1.25を分数にしなさい。",
+                  "answer": "5/4"
+                },
+                {
+                  "vars": { "x": 2.4 },
+                  "prompt": "2.4を分数にしなさい。",
+                  "answer": "12/5"
+                }
+              ]
+            },
+            {
+              "type_id": "E6.MX.MIX.01",
+              "type_name": "小数＋分数（答えを小数で）",
+              "prompt_template": "{x}+{a}/{b}を計算しなさい。",
+              "answer_format": { "kind": "dec", "precision": 2 },
+              "generator_params": {
+                "x_decimal_places": [1, 2],
+                "b_choices": [2, 4, 5, 8, 10],
+                "a_range_mode": "1_to_b_minus_1",
+                "force_terminating_sum": true,
+                "max_result_decimal_places": 2
+              },
+              "example_items": [
+                {
+                  "vars": { "x": 1.2, "a": 3, "b": 5 },
+                  "prompt": "1.2+3/5を計算しなさい。",
+                  "answer": "1.80"
+                },
+                {
+                  "vars": { "x": 0.75, "a": 1, "b": 4 },
+                  "prompt": "0.75+1/4を計算しなさい。",
+                  "answer": "1.00"
+                },
+                {
+                  "vars": { "x": 2.3, "a": 7, "b": 10 },
+                  "prompt": "2.3+7/10を計算しなさい。",
+                  "answer": "3.00"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "E6.EX",
+          "category_name": "文字式（入口：式で表す・代入）",
+          "types": [
+            {
+              "type_id": "E6.EX.FORM.01",
+              "type_name": "文→式（単価×個数）",
+              "prompt_template": "1こ{p}円の品物をaこ買います。代金を式で表しなさい。",
+              "answer_format": { "kind": "expr", "form": "p*a" },
+              "generator_params": {
+                "p_range": [10, 500],
+                "variable": "a",
+                "require_canonical_form": true
+              },
+              "example_items": [
+                {
+                  "vars": { "p": 120 },
+                  "prompt": "1こ120円の品物をaこ買います。代金を式で表しなさい。",
+                  "answer": "120*a"
+                },
+                {
+                  "vars": { "p": 75 },
+                  "prompt": "1こ75円の品物をaこ買います。代金を式で表しなさい。",
+                  "answer": "75*a"
+                },
+                {
+                  "vars": { "p": 300 },
+                  "prompt": "1こ300円の品物をaこ買います。代金を式で表しなさい。",
+                  "answer": "300*a"
+                }
+              ]
+            },
+            {
+              "type_id": "E6.EX.FORM.02",
+              "type_name": "文→式（単価×個数＋固定料金）",
+              "prompt_template": "入場料が{q}円で、1回{p}円の乗り物にa回乗ります。合計を式で表しなさい。",
+              "answer_format": { "kind": "expr", "form": "p*a+q" },
+              "generator_params": {
+                "p_range": [10, 300],
+                "q_range": [50, 500],
+                "variable": "a",
+                "require_canonical_form": true
+              },
+              "example_items": [
+                {
+                  "vars": { "p": 50, "q": 200 },
+                  "prompt": "入場料が200円で、1回50円の乗り物にa回乗ります。合計を式で表しなさい。",
+                  "answer": "50*a+200"
+                },
+                {
+                  "vars": { "p": 120, "q": 80 },
+                  "prompt": "入場料が80円で、1回120円の乗り物にa回乗ります。合計を式で表しなさい。",
+                  "answer": "120*a+80"
+                },
+                {
+                  "vars": { "p": 30, "q": 150 },
+                  "prompt": "入場料が150円で、1回30円の乗り物にa回乗ります。合計を式で表しなさい。",
+                  "answer": "30*a+150"
+                }
+              ]
+            },
+            {
+              "type_id": "E6.EX.SUB.01",
+              "type_name": "代入計算（pa±q）",
+              "prompt_template": "a={v}のとき、{p}×a{op}{q}の値を求めなさい。",
+              "answer_format": { "kind": "int" },
+              "generator_params": {
+                "p_range": [2, 20],
+                "q_range": [1, 50],
+                "v_range": [1, 20],
+                "op_choices": ["+", "-"],
+                "avoid_negative_result": true
+              },
+              "example_items": [
+                {
+                  "vars": { "v": 6, "p": 7, "op": "+", "q": 5 },
+                  "prompt": "a=6のとき、7×a+5の値を求めなさい。",
+                  "answer": "47"
+                },
+                {
+                  "vars": { "v": 4, "p": 9, "op": "-", "q": 12 },
+                  "prompt": "a=4のとき、9×a-12の値を求めなさい。",
+                  "answer": "24"
+                },
+                {
+                  "vars": { "v": 3, "p": 15, "op": "+", "q": 20 },
+                  "prompt": "a=3のとき、15×a+20の値を求めなさい。",
+                  "answer": "65"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

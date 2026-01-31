@@ -4,12 +4,19 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "test": "node -e \"console.log('no tests')\"",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate-model": "node scripts/generate-model.js",
+    "generate-model-2digit": "node scripts/generate-model-2digit.js",
+    "backtest-mnist": "node scripts/mnist-backtest.js",
+    "backtest-mnist-2digit": "node scripts/mnist-backtest-2digit.js",
+    "backtest-mnist-2digit-model": "node scripts/mnist-backtest-2digit-model.js"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-node": "^4.22.0",
     "framer-motion": "^12.29.2",
     "next": "16.1.5",
     "react": "19.2.3",

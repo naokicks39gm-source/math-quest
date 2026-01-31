@@ -1,40 +1,66 @@
 import * as tf from '@tensorflow/tfjs';
 
 let model: tf.LayersModel | null = null;
-let _isModelLoading = false; // Internal loading state
+let modelPromise: Promise<tf.LayersModel | null> | null = null;
+let model2Digit: tf.LayersModel | null = null;
+let model2DigitPromise: Promise<tf.LayersModel | null> | null = null;
+export let isModelLoaded: boolean = false;
+export let is2DigitModelLoaded: boolean = false;
 
-export const isModelLoading = () => _isModelLoading;
-
-export const loadMnistModel = async () => {
+export const loadMnistModel = async (): Promise<tf.LayersModel | null> => {
   if (model) {
     return model;
   }
-  if (_isModelLoading) {
-    // If already loading, wait for it to complete
-    await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
-    return model;
+  if (modelPromise) {
+    return modelPromise;
   }
 
-  _isModelLoading = true;
-  try {
-    // Try loading from local path first (assuming user places it here)
+  modelPromise = new Promise<tf.LayersModel | null>(async (resolve) => {
     try {
-      model = await tf.loadLayersModel('/models/mnist/model.json');
-      console.log('MNIST model loaded successfully from local path.');
-    } catch (localError) {
-      console.warn('Local MNIST model not found or failed to load, attempting remote:', localError);
-      // Fallback to a publicly hosted model
-      // This is a simple 1-layer MNIST model from a TensorFlow.js example
-      model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mnist_cnn_v1/model.json');
-      console.log('MNIST model loaded successfully from remote URL.');
+      try {
+        model = await tf.loadLayersModel('/models/mnist/model.json');
+        console.log('MNIST model loaded successfully from local path.');
+      } catch (localError) {
+        console.warn('Local MNIST model not found or failed to load, attempting remote:', localError);
+        model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mnist_cnn_v1/model.json');
+        console.log('MNIST model loaded successfully from remote URL.');
+      }
+      isModelLoaded = true;
+      resolve(model);
+    } catch (error) {
+      console.error('Error loading MNIST model from any source:', error);
+      isModelLoaded = false;
+      resolve(null);
+    } finally {
+      // modelPromise = null; // Removed this line, as it could cause race conditions if multiple calls are made quickly
     }
-    return model;
-  } catch (error) {
-    console.error('Error loading MNIST model from any source:', error);
-    return null;
-  } finally {
-    _isModelLoading = false;
+  });
+
+  return modelPromise;
+};
+
+export const loadMnist2DigitModel = async (): Promise<tf.LayersModel | null> => {
+  if (model2Digit) {
+    return model2Digit;
   }
+  if (model2DigitPromise) {
+    return model2DigitPromise;
+  }
+
+  model2DigitPromise = new Promise<tf.LayersModel | null>(async (resolve) => {
+    try {
+      model2Digit = await tf.loadLayersModel('/models/mnist-2digit/model.json');
+      console.log('2-digit MNIST model loaded successfully from local path.');
+      is2DigitModelLoaded = true;
+      resolve(model2Digit);
+    } catch (error) {
+      console.error('Error loading 2-digit MNIST model:', error);
+      is2DigitModelLoaded = false;
+      resolve(null);
+    }
+  });
+
+  return model2DigitPromise;
 };
 
 export const predictMnistDigit = (input: tf.Tensor<tf.Rank>) => {
@@ -43,18 +69,53 @@ export const predictMnistDigit = (input: tf.Tensor<tf.Rank>) => {
     return null;
   }
 
-  // The model expects a batch of images, so we add a batch dimension
-  // The input should be a 28x28 grayscale image, reshaped to [1, 28, 28, 1]
-  const reshapedInput = input.expandDims(0).expandDims(-1); // [28, 28] -> [1, 28, 28, 1]
+  const reshapedInput = input.expandDims(0).expandDims(-1);
   
   const prediction = model.predict(reshapedInput) as tf.Tensor;
   const probabilities = Array.from(prediction.dataSync());
   const predictedDigit = probabilities.indexOf(Math.max(...probabilities));
 
-  // Dispose of the tensors to free up GPU memory
   input.dispose();
   reshapedInput.dispose();
   prediction.dispose();
 
   return predictedDigit;
+};
+
+export const predictMnistDigitWithProbs = (input: tf.Tensor<tf.Rank>) => {
+  if (!model) {
+    console.error('MNIST model not loaded.');
+    return null;
+  }
+
+  const reshapedInput = input.expandDims(0).expandDims(-1);
+  const prediction = model.predict(reshapedInput) as tf.Tensor;
+  const probabilities = Array.from(prediction.dataSync());
+  const predictedDigit = probabilities.indexOf(Math.max(...probabilities));
+
+  input.dispose();
+  reshapedInput.dispose();
+  prediction.dispose();
+
+  return { predictedDigit, probabilities };
+};
+
+export const predictMnist2DigitWithProbs = (input: tf.Tensor2D) => {
+  if (!model2Digit) {
+    console.error('2-digit MNIST model not loaded.');
+    return null;
+  }
+
+  const reshapedInput = input.expandDims(0).expandDims(-1);
+  const prediction = model2Digit.predict(reshapedInput) as tf.Tensor;
+  const probabilities = Array.from(prediction.dataSync());
+  const predicted = probabilities.indexOf(Math.max(...probabilities));
+
+  input.dispose();
+  reshapedInput.dispose();
+  prediction.dispose();
+
+  const tens = Math.floor(predicted / 10);
+  const ones = predicted % 10;
+  return { predictedValue: `${tens}${ones}`, probabilities };
 };

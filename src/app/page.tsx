@@ -1,65 +1,168 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import data from "@/content/mvp_e3_e6_types.json";
+import { isSupportedType } from "@/lib/questSupport";
+
+type AnswerFormat = {
+  kind: "int" | "dec" | "frac" | "pair" | "expr";
+};
+
+type TypeDef = {
+  type_id: string;
+  type_name: string;
+  answer_format: AnswerFormat;
+  example_items: Array<{ prompt: string; answer: string }>;
+};
+
+type CategoryDef = {
+  category_id: string;
+  category_name: string;
+  types: TypeDef[];
+};
+
+type GradeDef = {
+  grade_id: string;
+  grade_name: string;
+  categories: CategoryDef[];
+};
 
 export default function Home() {
+  const router = useRouter();
+  const allGrades = data.grades as GradeDef[];
+  const grades = useMemo(() => {
+    return allGrades
+      .map((grade) => ({
+        ...grade,
+        categories: grade.categories
+          .map((cat) => ({
+            ...cat,
+            types: cat.types.filter(isSupportedType)
+          }))
+          .filter((cat) => cat.types.length > 0)
+      }))
+      .filter((grade) => grade.categories.length > 0);
+  }, [allGrades]);
+  const LS_KEY = "mq:last_type_id";
+  const [gradeId, setGradeId] = useState(grades[0]?.grade_id ?? "");
+  const [categoryId, setCategoryId] = useState("");
+  const [typeId, setTypeId] = useState("");
+
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem(LS_KEY) : null;
+    if (saved) {
+      const foundGrade = grades.find((g) =>
+        g.categories.some((c) => c.types.some((t) => t.type_id === saved))
+      );
+      if (foundGrade) {
+        setGradeId(foundGrade.grade_id);
+        const foundCat = foundGrade.categories.find((c) =>
+          c.types.some((t) => t.type_id === saved)
+        );
+        if (foundCat) {
+          setCategoryId(foundCat.category_id);
+          setTypeId(saved);
+        }
+      }
+    }
+  }, [grades]);
+
+  const categories = useMemo(() => {
+    return grades.find((g) => g.grade_id === gradeId)?.categories ?? [];
+  }, [grades, gradeId]);
+
+  const types = useMemo(() => {
+    return categories.find((c) => c.category_id === categoryId)?.types ?? [];
+  }, [categories, categoryId]);
+
+  useEffect(() => {
+    if (categories.length > 0 && !categoryId) {
+      setCategoryId(categories[0].category_id);
+    }
+  }, [categories, categoryId]);
+
+  useEffect(() => {
+    if (types.length > 0 && !typeId) {
+      setTypeId(types[0].type_id);
+    }
+  }, [types, typeId]);
+
+  const handleStart = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (!typeId) {
+      console.warn("typeId empty");
+      return;
+    }
+    localStorage.setItem(LS_KEY, typeId);
+    const url = `/quest?type=${encodeURIComponent(typeId)}`;
+    router.push(url);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <main className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-6">
+      <div className="w-full max-w-xl bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
+        <h1 className="text-2xl font-black text-slate-900 text-center">Math Quest</h1>
+        <div className="space-y-3">
+          <label className="block text-sm font-bold text-slate-700">
+            学年
+            <select
+              className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
+              value={gradeId}
+              onChange={(e) => {
+                setGradeId(e.target.value);
+                setCategoryId("");
+                setTypeId("");
+              }}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              {grades.map((g) => (
+                <option key={g.grade_id} value={g.grade_id}>
+                  {g.grade_name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-bold text-slate-700">
+            カテゴリ
+            <select
+              className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
+              value={categoryId}
+              onChange={(e) => {
+                setCategoryId(e.target.value);
+                setTypeId("");
+              }}
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              {categories.map((c) => (
+                <option key={c.category_id} value={c.category_id}>
+                  {c.category_name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-bold text-slate-700">
+            タイプ
+            <select
+              className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
+              value={typeId}
+              onChange={(e) => setTypeId(e.target.value)}
+            >
+              {types.map((t) => (
+                <option key={t.type_id} value={t.type_id}>
+                  {t.type_name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        <button
+          type="button"
+          onClick={handleStart}
+          disabled={!typeId}
+          className="w-full py-3 rounded-lg font-bold text-white bg-indigo-600 disabled:bg-slate-300"
+        >
+          はじめる
+        </button>
+      </div>
+    </main>
   );
 }
