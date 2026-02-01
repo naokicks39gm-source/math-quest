@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from "next/navigation";
 import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
@@ -630,17 +630,21 @@ export default function QuestPage() {
   const [statusMsg, setStatusMsg] = useState<string>("");
   const autoNextTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
-  const grades = (data.grades as GradeDef[])
-    .map((grade) => ({
-      ...grade,
-      categories: grade.categories
-        .map((cat) => ({
-          ...cat,
-          types: cat.types.filter(isSupportedType)
+  const grades = useMemo(
+    () =>
+      (data.grades as GradeDef[])
+        .map((grade) => ({
+          ...grade,
+          categories: grade.categories
+            .map((cat) => ({
+              ...cat,
+              types: cat.types.filter(isSupportedType)
+            }))
+            .filter((cat) => cat.types.length > 0)
         }))
-        .filter((cat) => cat.types.length > 0)
-    }))
-    .filter((grade) => grade.categories.length > 0);
+        .filter((grade) => grade.categories.length > 0),
+    []
+  );
   const defaultType = grades[0]?.categories[0]?.types[0] ?? null;
   const [selectedType, setSelectedType] = useState<TypeDef | null>(defaultType);
   const [itemIndex, setItemIndex] = useState(0);
