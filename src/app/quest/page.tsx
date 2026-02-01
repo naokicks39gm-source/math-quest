@@ -520,6 +520,12 @@ const quadrantInk = (data: Float32Array, x0: number, y0: number, x1: number, y1:
   return count === 0 ? 0 : sum / count;
 };
 
+const getDrawingCanvas = (ref: any): HTMLCanvasElement | null => {
+  const base = ref?.canvas;
+  const candidate = base?.drawing?.canvas ?? base?.drawing ?? null;
+  return candidate instanceof HTMLCanvasElement ? candidate : null;
+};
+
 const countHoles = (data: Float32Array, width = 28, height = 28, minArea = 18) => {
   const size = width * height;
   const bg = new Uint8Array(size);
@@ -621,7 +627,7 @@ export default function QuestPage() {
   const [elapsedSec, setElapsedSec] = useState(0);
   const timerRef = useRef<number | null>(null);
   const [autoJudgeEnabled, setAutoJudgeEnabled] = useState(true);
-  const [delayMs, setDelayMs] = useState(600);
+  const delayMs = 1500;
   const [autoNextEnabled, setAutoNextEnabled] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const inFlightRef = useRef(false);
@@ -799,7 +805,6 @@ export default function QuestPage() {
     if (found) {
       setSelectedType(found);
       setItemIndex(0);
-      setRecognizedNumber("");
       setPracticeResult(null);
       setResultMark(null);
       canvasRef.current?.clear();
@@ -840,7 +845,6 @@ export default function QuestPage() {
 
   useEffect(() => {
     setStatusMsg("");
-    setRecognizedNumber("");
     setPracticeResult(null);
     setResultMark(null);
     canvasRef.current?.clear();
@@ -883,7 +887,6 @@ export default function QuestPage() {
     const current = createQuestion();
     setQuestion(current);
     setInput('');
-    setRecognizedNumber(null);
     setResultMark(null);
   };
 
@@ -986,9 +989,8 @@ export default function QuestPage() {
     }
 
     setIsRecognizing(true);
-    setRecognizedNumber(null); // Clear previous recognition
 
-    const drawingCanvas = canvasRef.current?.canvas?.drawing as HTMLCanvasElement | undefined;
+    const drawingCanvas = getDrawingCanvas(canvasRef.current);
     if (!drawingCanvas) {
       setIsRecognizing(false);
       return;
@@ -1173,6 +1175,32 @@ export default function QuestPage() {
     }, delayMs);
   };
 
+  const runAutoDrawTest = async () => {
+    const canvas = getDrawingCanvas(canvasRef.current);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 10;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(40, 60);
+    ctx.lineTo(160, 60);
+    ctx.lineTo(200, 140);
+    ctx.lineTo(120, 220);
+    ctx.lineTo(60, 220);
+    ctx.stroke();
+    lastDrawAtRef.current = Date.now();
+    setPreviewImages([]);
+    await runInference();
+  };
+
+  const displayedAnswer = inputMode === 'numpad' ? input : (recognizedNumber ?? "");
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-between p-4 max-w-md mx-auto border-x border-slate-200 shadow-sm relative">
       <style>{`
@@ -1324,10 +1352,10 @@ export default function QuestPage() {
                             fontSize: 22,
                             fontWeight: 800,
                             textAlign: "right",
-                            opacity: recognizedNumber ? 1 : 0.35
+                            opacity: displayedAnswer ? 1 : 0.35
                           }}
                         >
-                          {recognizedNumber ? recognizedNumber : ""}
+                          {displayedAnswer}
                         </div>
                       </div>
                     </div>
@@ -1358,6 +1386,7 @@ export default function QuestPage() {
                 <div className={`text-sm font-bold ${practiceResult.ok ? "text-green-600" : "text-red-600"}`}>
                   {practiceResult.ok ? "正解！" : "不正解"}
                   <span className="ml-2 text-slate-600">正答: {practiceResult.correctAnswer}</span>
+                  <span className="ml-2 text-slate-600">入力: {displayedAnswer || "?"}</span>
                 </div>
               )}
             </div>
@@ -1424,22 +1453,6 @@ export default function QuestPage() {
                 </button>
               </div>
               <div className="flex items-center gap-1">
-                <span>DLY</span>
-                <button
-                  onClick={() => setDelayMs((v) => Math.max(100, v - 100))}
-                  className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700"
-                >
-                  -
-                </button>
-                <span className="min-w-[64px] text-center">{delayMs}ms</span>
-                <button
-                  onClick={() => setDelayMs((v) => Math.min(1500, v + 100))}
-                  className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700"
-                >
-                  +
-                </button>
-              </div>
-              <div className="flex items-center gap-1">
                 <span>NEXT</span>
                 <button
                   onClick={() => setAutoNextEnabled((prev) => !prev)}
@@ -1458,6 +1471,13 @@ export default function QuestPage() {
                 判定
               </button>
               <button
+                data-testid="auto-draw-test"
+                onClick={runAutoDrawTest}
+                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+              >
+                AutoDraw Test
+              </button>
+              <button
                 onClick={() => setSettingsOpen((v) => !v)}
                 className="ml-auto px-2 py-0.5 rounded-md bg-slate-200 text-slate-700"
               >
@@ -1467,7 +1487,6 @@ export default function QuestPage() {
             {settingsOpen && (
               <div className="mt-2 text-[11px] text-slate-600 space-y-1">
                 <div>AUTO: 自動判定のON/OFF</div>
-                <div>DLY: 自動判定までの待ち時間（100ms刻み）</div>
                 <div>NEXT: 正解で自動的に次の問題へ</div>
               </div>
             )}
@@ -1495,14 +1514,6 @@ export default function QuestPage() {
               disabled={status === 'cleared'}
               onChange={handleCanvasChange}
             />
-            {!hasStarted && status === 'playing' && (
-              <button
-                onClick={startReadyGo}
-                className="absolute top-2 right-2 px-3 py-1 bg-indigo-600 text-white font-bold text-xs rounded-full shadow-lg active:translate-y-1"
-              >
-                スタート
-              </button>
-            )}
             {startPopup && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
                 <div className="px-6 py-3 rounded-full bg-white text-indigo-700 font-black text-2xl shadow-lg">
