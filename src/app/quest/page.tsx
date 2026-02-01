@@ -3,8 +3,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from "next/navigation";
-import ExplanationModal from '@/components/ExplanationModal';
-import RabbitFairyScene from '@/components/RabbitFairyScene';
 import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
 import data from '@/content/mvp_e3_e6_types.json';
@@ -594,10 +592,8 @@ const countHoles = (data: Float32Array, width = 28, height = 28, minArea = 18) =
 export default function QuestPage() {
   const params = useSearchParams();
   const typeFromQuery = params.get("type");
+  const categoryFromQuery = params.get("category");
   const TOTAL_QUESTIONS = 10;
-  const [enemyHp, setEnemyHp] = useState(100);
-  const [enemyHit, setEnemyHit] = useState(false);
-  const [enemyDefeated, setEnemyDefeated] = useState(false);
   const [combo, setCombo] = useState(0);
   const [question, setQuestion] = useState<Question | null>(null);
   const [history, setHistory] = useState<Array<{ id: number; text: string }>>([]);
@@ -607,7 +603,6 @@ export default function QuestPage() {
   const [message, setMessage] = useState('Battle Start!');
   const [character, setCharacter] = useState<CharacterType>('warrior');
   const [status, setStatus] = useState<'playing' | 'cleared' | 'finished'>('playing');
-  const [showExplanation, setShowExplanation] = useState(false);
   const [inputMode, setInputMode] = useState<'numpad' | 'handwriting'>('handwriting'); // New state for input mode
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
@@ -624,8 +619,6 @@ export default function QuestPage() {
   const [hasStarted, setHasStarted] = useState(false);
   const [startPopup, setStartPopup] = useState<'ready' | 'go' | null>(null);
   const startTimersRef = useRef<number[]>([]);
-  const [elapsedSec, setElapsedSec] = useState(0);
-  const timerRef = useRef<number | null>(null);
   const [autoJudgeEnabled, setAutoJudgeEnabled] = useState(true);
   const delayMs = 1500;
   const [autoNextEnabled, setAutoNextEnabled] = useState(true);
@@ -637,7 +630,6 @@ export default function QuestPage() {
   const [statusMsg, setStatusMsg] = useState<string>("");
   const autoNextTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
-  const enemyHitTimerRef = useRef<number | null>(null);
   const grades = (data.grades as GradeDef[])
     .map((grade) => ({
       ...grade,
@@ -683,13 +675,7 @@ export default function QuestPage() {
       if (resultAdvanceTimerRef.current) {
         window.clearTimeout(resultAdvanceTimerRef.current);
       }
-      if (enemyHitTimerRef.current) {
-        window.clearTimeout(enemyHitTimerRef.current);
-      }
       startTimersRef.current.forEach((t) => window.clearTimeout(t));
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-      }
       if (autoNextTimerRef.current) {
         window.clearTimeout(autoNextTimerRef.current);
       }
@@ -698,25 +684,6 @@ export default function QuestPage() {
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (enemyHp <= 0) {
-      setEnemyDefeated(true);
-    } else {
-      setEnemyDefeated(false);
-    }
-  }, [enemyHp]);
-
-  const triggerEnemyHit = () => {
-    setEnemyHit(true);
-    if (enemyHitTimerRef.current) {
-      window.clearTimeout(enemyHitTimerRef.current);
-    }
-    enemyHitTimerRef.current = window.setTimeout(() => {
-      setEnemyHit(false);
-    }, 300);
-  };
-
 
   const startReadyGo = () => {
     if (isStarting) return;
@@ -745,14 +712,6 @@ export default function QuestPage() {
       setStartPopup(null);
       setIsStarting(false);
       setMessage("Battle Start!");
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-      }
-      const startedAt = Date.now();
-      setElapsedSec(0);
-      timerRef.current = window.setInterval(() => {
-        setElapsedSec(Math.floor((Date.now() - startedAt) / 1000));
-      }, 500);
       if (autoJudgeEnabled && pendingRecognizeRef.current) {
         pendingRecognizeRef.current = false;
         if (autoRecognizeTimerRef.current) {
@@ -790,17 +749,18 @@ export default function QuestPage() {
 
 
   useEffect(() => {
-    if (!typeFromQuery) return;
     let found: TypeDef | null = null;
-    for (const g of grades) {
-      for (const c of g.categories) {
-        const hit = c.types.find((t) => t.type_id === typeFromQuery);
-        if (hit) {
-          found = hit;
-          break;
+    if (typeFromQuery) {
+      for (const g of grades) {
+        for (const c of g.categories) {
+          const hit = c.types.find((t) => t.type_id === typeFromQuery);
+          if (hit) {
+            found = hit;
+            break;
+          }
         }
+        if (found) break;
       }
-      if (found) break;
     }
     if (found) {
       setSelectedType(found);
@@ -808,12 +768,47 @@ export default function QuestPage() {
       setPracticeResult(null);
       setResultMark(null);
       canvasRef.current?.clear();
-    } else if (!selectedType && defaultType) {
+      return;
+    }
+    if (categoryFromQuery) {
+      const category = grades
+        .flatMap((g) => g.categories)
+        .find((c) => c.category_id === categoryFromQuery);
+      if (category && category.types[0]) {
+        setSelectedType(category.types[0]);
+        setItemIndex(0);
+        setPracticeResult(null);
+        setResultMark(null);
+        canvasRef.current?.clear();
+        return;
+      }
+    }
+    if (!selectedType && defaultType) {
       setSelectedType(defaultType);
     }
-  }, [typeFromQuery, grades, selectedType, defaultType]);
+  }, [typeFromQuery, categoryFromQuery, grades, selectedType, defaultType]);
+
+  const categoryContext = (() => {
+    if (!categoryFromQuery) return null;
+    for (const g of grades) {
+      for (const c of g.categories) {
+        if (c.category_id === categoryFromQuery) {
+          return { grade: g, category: c };
+        }
+      }
+    }
+    return null;
+  })();
 
   const selectedPath = (() => {
+    if (categoryContext) {
+      const typeName = selectedType?.type_name ?? "カテゴリ内";
+      return {
+        gradeName: categoryContext.grade.grade_name,
+        categoryName: categoryContext.category.category_name,
+        typeName
+      };
+    }
     if (!selectedType) return null;
     for (const g of grades) {
       for (const c of g.categories) {
@@ -830,13 +825,33 @@ export default function QuestPage() {
     return null;
   })();
 
+  const categoryItems = categoryContext
+    ? categoryContext.category.types.flatMap((t) =>
+        t.example_items
+          .filter((item) => /^\d{1,4}$/.test(item.answer))
+          .map((item) => ({ item, type: t }))
+      )
+    : [];
 
-  const filteredItems =
-    selectedType?.example_items?.filter((item) => /^\d{1,4}$/.test(item.answer)) ?? [];
-  const safeIndex = filteredItems.length > 0 ? itemIndex % filteredItems.length : 0;
-  const currentItem = filteredItems[safeIndex] ?? null;
-  const prevItem = filteredItems.length > 0 ? filteredItems[(safeIndex - 1 + filteredItems.length) % filteredItems.length] : null;
-  const nextItem = filteredItems.length > 0 ? filteredItems[(safeIndex + 1) % filteredItems.length] : null;
+  const typeItems = selectedType
+    ? selectedType.example_items
+        .filter((item) => /^\d{1,4}$/.test(item.answer))
+        .map((item) => ({ item, type: selectedType }))
+    : [];
+
+  const activeItems = categoryItems.length > 0 ? categoryItems : typeItems;
+  const usingCategory = categoryItems.length > 0;
+  const emptyMessage = usingCategory
+    ? "このカテゴリは4桁超が混ざるので未対応です。"
+    : "このタイプは4桁超が混ざるので未対応です。";
+  const safeIndex = activeItems.length > 0 ? itemIndex % activeItems.length : 0;
+  const currentEntry = activeItems[safeIndex] ?? null;
+  const prevEntry = activeItems.length > 0 ? activeItems[(safeIndex - 1 + activeItems.length) % activeItems.length] : null;
+  const nextEntry = activeItems.length > 0 ? activeItems[(safeIndex + 1) % activeItems.length] : null;
+  const currentItem = currentEntry?.item ?? null;
+  const currentType = currentEntry?.type ?? selectedType;
+  const prevItem = prevEntry?.item ?? null;
+  const nextItem = nextEntry?.item ?? null;
   const currentCardRef = useRef<HTMLDivElement | null>(null);
 
   const nextQuestion = () => {
@@ -908,9 +923,6 @@ export default function QuestPage() {
     ]);
     if (questionIndex >= TOTAL_QUESTIONS) {
       setStatus('finished');
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-      }
       return;
     }
     setQuestionIndex((prev) => prev + 1);
@@ -941,10 +953,6 @@ export default function QuestPage() {
     if (playerAns === question.answer) {
       // Correct
       setResultMark('correct');
-      triggerEnemyHit();
-      const damage = 10 + (combo * 2);
-      const newHp = Math.max(0, enemyHp - damage);
-      setEnemyHp(newHp);
       const newCombo = combo + 1;
       setCombo(newCombo);
 
@@ -955,13 +963,6 @@ export default function QuestPage() {
       }
       setMessage(hitMsg);
 
-      if (newHp === 0) {
-        setStatus('cleared');
-        setMessage(charData.win);
-        if (timerRef.current) {
-          window.clearInterval(timerRef.current);
-        }
-      }
       recordResult(input, true);
     } else {
       // Incorrect
@@ -974,10 +975,6 @@ export default function QuestPage() {
     }
   };
 
-  const handleExplanationClose = () => {
-    setShowExplanation(false);
-    advanceQuestion(); // Reset/New problem as per instruction
-  };
 
   const toggleCharacter = () => {
     setCharacter(prev => prev === 'warrior' ? 'mage' : 'warrior');
@@ -1073,25 +1070,16 @@ export default function QuestPage() {
       setRecognizedNumber(predictedText);
     }
 
-    if (predictedText && currentItem && selectedType) {
-      const verdict = gradeAnswer(predictedText, currentItem.answer, selectedType.answer_format);
+    if (predictedText && currentItem && currentType) {
+      const verdict = gradeAnswer(predictedText, currentItem.answer, currentType.answer_format);
       setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
 
       if (verdict.ok) {
         setStatusMsg("✅ 合っている");
         setResultMark('correct');
-        triggerEnemyHit();
-        const damage = 10 + (combo * 2);
-        const newHp = Math.max(0, enemyHp - damage);
-        setEnemyHp(newHp);
         const newCombo = combo + 1;
         setCombo(newCombo);
-        if (newHp === 0) {
-          setStatus("cleared");
-          if (timerRef.current) {
-            window.clearInterval(timerRef.current);
-          }
-        } else if (autoNextEnabled) {
+        if (autoNextEnabled) {
           cooldownUntilRef.current = Date.now() + AUTO_NEXT_WAIT_MS;
           if (autoNextTimerRef.current) {
             window.clearTimeout(autoNextTimerRef.current);
@@ -1187,13 +1175,34 @@ export default function QuestPage() {
     ctx.lineWidth = 10;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.beginPath();
-    ctx.moveTo(40, 60);
-    ctx.lineTo(160, 60);
-    ctx.lineTo(200, 140);
-    ctx.lineTo(120, 220);
-    ctx.lineTo(60, 220);
-    ctx.stroke();
+    const drawDigit = (digit: "1" | "2" | "3", x: number, y: number, w: number, h: number) => {
+      ctx.beginPath();
+      if (digit === "1") {
+        ctx.moveTo(x + w * 0.5, y + h * 0.1);
+        ctx.lineTo(x + w * 0.5, y + h * 0.9);
+      } else if (digit === "2") {
+        ctx.moveTo(x + w * 0.15, y + h * 0.25);
+        ctx.lineTo(x + w * 0.5, y + h * 0.05);
+        ctx.lineTo(x + w * 0.85, y + h * 0.25);
+        ctx.lineTo(x + w * 0.15, y + h * 0.85);
+        ctx.lineTo(x + w * 0.85, y + h * 0.85);
+      } else {
+        ctx.moveTo(x + w * 0.2, y + h * 0.2);
+        ctx.lineTo(x + w * 0.8, y + h * 0.2);
+        ctx.lineTo(x + w * 0.5, y + h * 0.5);
+        ctx.lineTo(x + w * 0.8, y + h * 0.8);
+        ctx.lineTo(x + w * 0.2, y + h * 0.8);
+      }
+      ctx.stroke();
+    };
+    const boxW = 70;
+    const boxH = 140;
+    const startX = 30;
+    const startY = 60;
+    const gap = 25;
+    drawDigit("1", startX, startY, boxW, boxH);
+    drawDigit("2", startX + boxW + gap, startY, boxW, boxH);
+    drawDigit("3", startX + (boxW + gap) * 2, startY, boxW, boxH);
     lastDrawAtRef.current = Date.now();
     setPreviewImages([]);
     await runInference();
@@ -1203,82 +1212,14 @@ export default function QuestPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-between p-4 max-w-md mx-auto border-x border-slate-200 shadow-sm relative">
-      <style>{`
-        @keyframes enemyHit {
-          0% { transform: translateX(0); }
-          25% { transform: translateX(-6px) rotate(-8deg); }
-          50% { transform: translateX(6px) rotate(8deg); }
-          75% { transform: translateX(-4px) rotate(-4deg); }
-          100% { transform: translateX(0); }
-        }
-        @keyframes enemyFlash {
-          0% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
-          50% { box-shadow: 0 0 12px rgba(239, 68, 68, 0.6); }
-          100% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
-        }
-      `}</style>
-      {/* Debug Button */}
-      <button
-        onClick={() => setShowExplanation(true)}
-        className="absolute top-4 left-4 px-3 py-1 bg-purple-500 text-white text-xs rounded-md shadow-md z-[9999]"
-      >
-        【テスト】さくらんぼ解説を表示
-      </button>
-
-      {/* Input Mode Toggle removed */}
       
-      {/* Explanation Modal */}
-      {showExplanation && question && (
-        <ExplanationModal
-          val1={question.val1}
-          val2={question.val2}
-          character={character}
-          onClose={handleExplanationClose}
-        />
-      )}
+      {/* Input Mode Toggle removed */}
 
-      {/* Top: Enemy HP */}
-      <div className="w-full pt-4 space-y-2">
-        <div className="flex justify-between items-center text-slate-700 font-bold">
-          <span>Enemy</span>
-          <span className="text-xs font-bold text-slate-500 bg-white/70 rounded-full px-2 py-0.5">
-            ⏱ {Math.floor(elapsedSec / 60)}:{String(elapsedSec % 60).padStart(2, '0')}
-          </span>
-          <span
-            className={`inline-flex text-2xl ${
-              enemyDefeated
-                ? 'opacity-0 scale-75 transition-all duration-700'
-                : enemyHit
-                ? 'animate-[enemyHit_0.3s_ease-in-out]'
-                : ''
-            }`}
-          >
-            👾
-          </span>
-        </div>
-        <div
-          className={`w-full bg-slate-200 rounded-full h-6 border-2 border-slate-300 overflow-hidden relative ${
-            enemyHit ? 'animate-[enemyFlash_0.3s_ease-in-out]' : ''
-          }`}
-        >
-          <div
-            className="bg-red-500 h-full transition-all duration-300 ease-out"
-            style={{ width: `${enemyHp}%` }}
-          ></div>
-          <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow-md">
-            HP {enemyHp}/100
-          </span>
-        </div>
-      </div>
       {selectedPath && (
         <div className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600">
           {selectedPath.gradeName} / {selectedPath.categoryName} / {selectedPath.typeName}
         </div>
       )}
-
-      <div className="w-full pt-3">
-        <RabbitFairyScene combo={combo} />
-      </div>
 
       {/* Center: Character & Message */} 
       <div className="flex flex-col items-center space-y-4 my-4 flex-1 justify-center w-full">
@@ -1323,9 +1264,9 @@ export default function QuestPage() {
         ) : (
           <>
             <div className="w-full bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[40vh] overflow-y-auto">
-              {filteredItems.length === 0 ? (
+              {activeItems.length === 0 ? (
                 <div className="text-slate-500 text-center">
-                  このタイプは4桁超が混ざるので未対応です。
+                  {emptyMessage}
                 </div>
               ) : currentItem ? (
                 <div className="flex flex-col gap-3">

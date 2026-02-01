@@ -95,7 +95,7 @@ export default function Home() {
       return;
     }
     localStorage.setItem(LS_KEY, typeId);
-    const url = `/quest?type=${encodeURIComponent(typeId)}`;
+    const url = `/quest?type=${encodeURIComponent(typeId)}&category=${encodeURIComponent(categoryId)}`;
     router.push(url);
   };
 
