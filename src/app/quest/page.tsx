@@ -1538,6 +1538,17 @@ export default function QuestPage() {
               </div>
             </div>
           )}
+          <div className="w-full flex justify-center">
+            <div className="w-full max-w-sm bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
+              <button
+                onClick={nextQuestion}
+                disabled={status === 'cleared' || isStarting}
+                className="w-full py-2 rounded-lg bg-indigo-600 text-white font-bold shadow-md active:translate-y-1 disabled:opacity-50"
+              >
+                次の問題へ
+              </button>
+            </div>
+          </div>
           <div className="flex gap-3 w-full justify-center">
             <button
               onClick={() => canvasRef.current?.clear()}              disabled={status === 'cleared' || isRecognizing}
