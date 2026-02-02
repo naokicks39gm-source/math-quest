@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
 import data from '@/content/mvp_e3_e6_types.json';
+import explanations from '@/content/explanations.json';
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { isSupportedType } from "@/lib/questSupport";
 import { runMemoOcr, checkMemoContainsAnswer } from '@/utils/memoOcr';
@@ -41,6 +42,10 @@ type TypeDef = {
   example_items: ExampleItem[];
 };
 
+type ExplanationBlock = { title: string; text: string };
+type ExplanationEntry = { blocks: ExplanationBlock[] };
+type ExplanationMap = Record<string, ExplanationEntry>;
+
 type CategoryDef = {
   category_id: string;
   category_name: string;
@@ -61,6 +66,39 @@ declare global {
 
 const formatPrompt = (prompt: string) => {
   return prompt.replace(/を計算しなさい。$/g, "");
+};
+
+const explanationMap = explanations as ExplanationMap;
+
+const renderTemplate = (text: string, vars: Record<string, string>) => {
+  return text.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? "");
+};
+
+const buildExplanation = (typeId: string, prompt: string, answer: string) => {
+  const def = explanationMap[typeId];
+  if (!def) return null;
+  const vars: Record<string, string> = {};
+  const numbers = prompt.match(/\d+/g) ?? [];
+  if (typeId === "E3.DV.DIV.01") {
+    const match = prompt.match(/(\d+)\s*÷\s*(\d+)/);
+    const a = match?.[1] ?? numbers[0];
+    const b = match?.[2] ?? numbers[1];
+    if (a) vars.a = a;
+    if (b) vars.b = b;
+    vars.q = answer;
+  }
+  if (typeId === "E5.NT.GCD.01") {
+    const match = prompt.match(/(\d+)\s*と\s*(\d+)\s*の最大公約数/);
+    const a = match?.[1] ?? numbers[0];
+    const b = match?.[2] ?? numbers[1];
+    if (a) vars.a = a;
+    if (b) vars.b = b;
+    vars.ans = answer;
+  }
+  return def.blocks.map((block) => ({
+    ...block,
+    text: renderTemplate(block.text, vars)
+  }));
 };
 
 const CHARACTERS = {
@@ -789,6 +827,7 @@ function QuestPageInner() {
   const [memoExpanded, setMemoExpanded] = useState(false);
   const [memoCanvasWidth, setMemoCanvasWidth] = useState(320);
   const [isMobileView, setIsMobileView] = useState(false);
+  const [explanationOpen, setExplanationOpen] = useState(false);
 
   // Load MNIST model on component mount
   useEffect(() => {
@@ -997,6 +1036,10 @@ function QuestPageInner() {
   const prevItem = prevEntry?.item ?? null;
   const nextItem = nextEntry?.item ?? null;
   const currentCardRef = useRef<HTMLDivElement | null>(null);
+  const explanationBlocks = useMemo(() => {
+    if (!currentItem || !currentType) return null;
+    return buildExplanation(currentType.type_id, currentItem.prompt, currentItem.answer);
+  }, [currentItem, currentType]);
 
   const nextQuestion = () => {
     setItemIndex((v) => v + 1);
@@ -1008,6 +1051,7 @@ function QuestPageInner() {
     setResultMark(null);
     setMemoOcrText("");
     setMemoCheckResult('idle');
+    setExplanationOpen(false);
     canvasRef.current?.clear();
     memoCanvasRef.current?.clear();
     memoExpandedCanvasRef.current?.clear();
@@ -1527,6 +1571,17 @@ function QuestPageInner() {
                         {practiceResult.ok ? "正解" : "不正解"}
                       </div>
                     )}
+                    {explanationBlocks && (
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setExplanationOpen(true)}
+                          className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 active:translate-y-0.5"
+                        >
+                          解説を見る
+                        </button>
+                      </div>
+                    )}
                   </div>
                   {statusMsg && (
                     <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, opacity: 0.85 }}>
@@ -1636,6 +1691,36 @@ function QuestPageInner() {
                     </div>
                   </div>
                   <div className="mt-2 text-xs text-slate-500">横スクロールしながらメモを書けます</div>
+                </div>
+              </div>
+            )}
+
+            {explanationOpen && explanationBlocks && currentItem && (
+              <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-300 shadow-lg p-4">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                      <div className="text-xs font-bold text-slate-500">解説</div>
+                      <div className="text-base font-black text-slate-900">
+                        {formatPrompt(currentItem.prompt)}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExplanationOpen(false)}
+                      className="px-3 py-1 rounded-md bg-slate-800 text-white text-xs font-bold"
+                    >
+                      閉じる
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {explanationBlocks.map((block) => (
+                      <div key={block.title} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <div className="text-xs font-bold text-slate-500 mb-1">{block.title}</div>
+                        <div className="text-sm font-bold text-slate-800 leading-relaxed">{block.text}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
