@@ -1,13 +1,14 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from "next/navigation";
 import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
 import data from '@/content/mvp_e3_e6_types.json';
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { isSupportedType } from "@/lib/questSupport";
+import { runMemoOcr, checkMemoContainsAnswer } from '@/utils/memoOcr';
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -16,6 +17,8 @@ import {
   isModelLoaded,
   is2DigitModelLoaded
 } from '@/utils/mnistModel'; // Import MNIST model utilities
+
+export const dynamic = 'force-dynamic';
 
 type CharacterType = 'warrior' | 'mage';
 
@@ -50,6 +53,12 @@ type GradeDef = {
   categories: CategoryDef[];
 };
 
+declare global {
+  interface Window {
+    __memoOcrOverride?: string;
+  }
+}
+
 const formatPrompt = (prompt: string) => {
   return prompt.replace(/を計算しなさい。$/g, "");
 };
@@ -76,6 +85,14 @@ const CHARACTERS = {
 type BBox = { minX: number; minY: number; maxX: number; maxY: number };
 type DigitSample = { tensor: tf.Tensor2D; preview: ImageData; width: number; height: number };
 type Component = { mask: Uint8Array; bbox: BBox; area: number };
+type CanvasDrawRef = {
+  clear: () => void;
+  getSaveData?: () => string;
+  loadSaveData?: (saveData: string, immediate?: boolean) => void;
+  canvas?: {
+    drawing?: HTMLCanvasElement | { canvas?: HTMLCanvasElement };
+  };
+};
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
@@ -518,10 +535,13 @@ const quadrantInk = (data: Float32Array, x0: number, y0: number, x1: number, y1:
   return count === 0 ? 0 : sum / count;
 };
 
-const getDrawingCanvas = (ref: any): HTMLCanvasElement | null => {
+const getDrawingCanvas = (ref: CanvasDrawRef | null | undefined): HTMLCanvasElement | null => {
   const base = ref?.canvas;
-  const candidate = base?.drawing?.canvas ?? base?.drawing ?? null;
-  return candidate instanceof HTMLCanvasElement ? candidate : null;
+  const drawing = base?.drawing;
+  if (!drawing) return null;
+  if (drawing instanceof HTMLCanvasElement) return drawing;
+  const nested = drawing.canvas;
+  return nested instanceof HTMLCanvasElement ? nested : null;
 };
 
 const countHoles = (data: Float32Array, width = 28, height = 28, minArea = 18) => {
@@ -698,7 +718,7 @@ const predictDigitEnsemble = (tensor: tf.Tensor2D) => {
   return { predictedDigit: String(bestIdx), probabilities };
 };
 
-export default function QuestPage() {
+function QuestPageInner() {
   const params = useSearchParams();
   const typeFromQuery = params.get("type");
   const categoryFromQuery = params.get("category");
@@ -716,7 +736,10 @@ export default function QuestPage() {
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
   const [resultMark, setResultMark] = useState<'correct' | 'wrong' | null>(null);
-  const canvasRef = useRef<any>(null); // Ref for CanvasDraw component
+  const canvasRef = useRef<CanvasDrawRef | null>(null); // Ref for CanvasDraw component
+  const memoCanvasRef = useRef<CanvasDrawRef | null>(null);
+  const memoExpandedCanvasRef = useRef<CanvasDrawRef | null>(null);
+  const memoCanvasHostRef = useRef<HTMLDivElement | null>(null);
   const [isModelReady, setIsModelReady] = useState(false); // New state for model readiness
   const [is2DigitModelReady, setIs2DigitModelReady] = useState(false);
   const autoRecognizeTimerRef = useRef<number | null>(null);
@@ -761,6 +784,11 @@ export default function QuestPage() {
   const [practiceResult, setPracticeResult] = useState<{ ok: boolean; correctAnswer: string } | null>(null);
   const [lastAutoDrawExpected, setLastAutoDrawExpected] = useState("");
   const [autoDrawBatchSummary, setAutoDrawBatchSummary] = useState<string | null>(null);
+  const [memoOcrText, setMemoOcrText] = useState("");
+  const [memoCheckResult, setMemoCheckResult] = useState<'idle' | 'ok' | 'ng'>('idle');
+  const [memoExpanded, setMemoExpanded] = useState(false);
+  const [memoCanvasWidth, setMemoCanvasWidth] = useState(320);
+  const [isMobileView, setIsMobileView] = useState(false);
 
   // Load MNIST model on component mount
   useEffect(() => {
@@ -978,8 +1006,36 @@ export default function QuestPage() {
     setStatusMsg("");
     setPracticeResult(null);
     setResultMark(null);
+    setMemoOcrText("");
+    setMemoCheckResult('idle');
     canvasRef.current?.clear();
+    memoCanvasRef.current?.clear();
+    memoExpandedCanvasRef.current?.clear();
   }, [itemIndex]);
+
+  useEffect(() => {
+    const updateLayout = () => {
+      const host = memoCanvasHostRef.current;
+      if (host) {
+        setMemoCanvasWidth(Math.max(220, Math.floor(host.clientWidth) - 4));
+      }
+      setIsMobileView(window.innerWidth <= 768);
+    };
+
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+    return () => window.removeEventListener('resize', updateLayout);
+  }, []);
+
+  useEffect(() => {
+    if (!memoExpanded) return;
+    const from = memoCanvasRef.current;
+    const to = memoExpandedCanvasRef.current;
+    const saved = from?.getSaveData?.();
+    if (!saved || !to?.loadSaveData) return;
+    to.clear();
+    to.loadSaveData(saved, true);
+  }, [memoExpanded]);
 
   useEffect(() => {
     if (currentCardRef.current) {
@@ -1123,7 +1179,7 @@ export default function QuestPage() {
     const refined = perDigitPreds.map((pred, i) =>
       !pred ? null : refineDigitPrediction(pred.predictedDigit, samples[i].tensor, pred.probabilities)
     );
-    let perDigitString = refined.some((d) => d === null) ? '' : refined.join('');
+    const perDigitString = refined.some((d) => d === null) ? '' : refined.join('');
 
     let predictedText = perDigitString;
     if (samples.length === 2 && is2DigitModelReady) {
@@ -1328,6 +1384,52 @@ export default function QuestPage() {
     );
   };
 
+  const handleMemoAnalyze = async () => {
+    if (!currentItem) {
+      setMemoOcrText("");
+      setMemoCheckResult('ng');
+      return;
+    }
+
+    const override = window.__memoOcrOverride;
+    if (override) {
+      setMemoOcrText(override);
+      setMemoCheckResult(checkMemoContainsAnswer(override, currentItem.answer) ? 'ok' : 'ng');
+      return;
+    }
+
+    const memoCanvas = getDrawingCanvas(memoExpanded ? memoExpandedCanvasRef.current : memoCanvasRef.current);
+    if (!memoCanvas) {
+      setMemoOcrText("");
+      setMemoCheckResult('ng');
+      return;
+    }
+
+    const text = await runMemoOcr(memoCanvas);
+    setMemoOcrText(text);
+    setMemoCheckResult(checkMemoContainsAnswer(text, currentItem.answer) ? 'ok' : 'ng');
+  };
+
+  const openMemoExpanded = () => {
+    setMemoExpanded(true);
+  };
+
+  const closeMemoExpanded = () => {
+    const from = memoExpandedCanvasRef.current;
+    const to = memoCanvasRef.current;
+    const saved = from?.getSaveData?.();
+    if (saved && to?.loadSaveData) {
+      to.clear();
+      to.loadSaveData(saved, true);
+    }
+    setMemoExpanded(false);
+  };
+
+  const clearMemoCanvas = () => {
+    memoCanvasRef.current?.clear();
+    memoExpandedCanvasRef.current?.clear();
+  };
+
   const displayedAnswer = inputMode === 'numpad' ? input : (recognizedNumber ?? "");
 
   return (
@@ -1406,11 +1508,11 @@ export default function QuestPage() {
                         <div
                           aria-label="recognized-answer"
                           style={{
-                            minWidth: 120,
-                            padding: "6px 10px",
+                            minWidth: 72,
+                            padding: "4px 8px",
                             borderRadius: 10,
                             border: "2px solid #111",
-                            fontSize: 22,
+                            fontSize: 20,
                             fontWeight: 800,
                             textAlign: "right",
                             opacity: displayedAnswer ? 1 : 0.35
@@ -1451,6 +1553,92 @@ export default function QuestPage() {
                 </div>
               )}
             </div>
+
+            <div className="w-full bg-white border border-slate-200 rounded-xl p-3">
+              <div className="text-xs font-bold text-slate-700 mb-2">計算メモキャンバス（MVP）</div>
+              <div
+                ref={memoCanvasHostRef}
+                data-testid="memo-canvas"
+                onClick={() => {
+                  if (isMobileView) openMemoExpanded();
+                }}
+                className={isMobileView ? "cursor-zoom-in" : ""}
+              >
+                <CanvasDraw
+                  ref={memoCanvasRef}
+                  hideGrid={true}
+                  brushRadius={3}
+                  brushColor="#000000"
+                  backgroundColor="#ffffff"
+                  canvasWidth={memoCanvasWidth}
+                  canvasHeight={220}
+                  className="rounded-xl border-2 border-slate-300 shadow-sm"
+                />
+              </div>
+              {isMobileView && (
+                <div className="mt-1 text-[11px] text-slate-500">メモ欄をタップすると拡大して横スクロールで書けます</div>
+              )}
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  onClick={handleMemoAnalyze}
+                  disabled={isStarting || !currentItem}
+                  className="px-3 py-1 rounded-md bg-emerald-600 text-white text-sm font-bold disabled:opacity-50"
+                >
+                  メモ解析
+                </button>
+                <button
+                  onClick={openMemoExpanded}
+                  className="px-3 py-1 rounded-md bg-indigo-600 text-white text-sm font-bold"
+                >
+                  拡大
+                </button>
+                <button
+                  onClick={clearMemoCanvas}
+                  className="px-3 py-1 rounded-md bg-slate-200 text-slate-700 text-sm font-bold"
+                >
+                  メモ消去
+                </button>
+              </div>
+              <div className="mt-2 text-xs text-slate-700">
+                メモOCR: <span className="font-bold">{memoOcrText || "-"}</span>
+              </div>
+              <div className="text-xs font-bold">
+                {memoCheckResult === 'ok' && <span className="text-green-600">計算メモ: OK</span>}
+                {memoCheckResult === 'ng' && <span className="text-red-600">計算メモ: 要確認</span>}
+                {memoCheckResult === 'idle' && <span className="text-slate-500">計算メモ: -</span>}
+              </div>
+            </div>
+
+            {memoExpanded && (
+              <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3">
+                <div className="w-full max-w-5xl bg-white rounded-xl border border-slate-300 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-bold text-slate-700">計算メモ（拡大）</div>
+                    <button
+                      onClick={closeMemoExpanded}
+                      className="px-3 py-1 rounded-md bg-slate-800 text-white text-sm font-bold"
+                    >
+                      閉じる
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                    <div style={{ width: Math.max(1200, memoCanvasWidth * 2) }}>
+                      <CanvasDraw
+                        ref={memoExpandedCanvasRef}
+                        hideGrid={true}
+                        brushRadius={3}
+                        brushColor="#000000"
+                        backgroundColor="#ffffff"
+                        canvasWidth={Math.max(1200, memoCanvasWidth * 2)}
+                        canvasHeight={420}
+                        className="rounded-lg"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-slate-500">横スクロールしながらメモを書けます</div>
+                </div>
+              </div>
+            )}
             
             {/* Combo Indicator */}
             {combo >= 2 && (
@@ -1533,7 +1721,9 @@ export default function QuestPage() {
               </button>
               <button
                 data-testid="auto-draw-test"
-                onClick={runAutoDrawTest}
+                onClick={() => {
+                  void runAutoDrawTest();
+                }}
                 className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
               >
                 AutoDraw Test
@@ -1666,5 +1856,13 @@ export default function QuestPage() {
       )}
 
     </main>
+  );
+}
+
+export default function QuestPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-slate-50" />}>
+      <QuestPageInner />
+    </Suspense>
   );
 }
