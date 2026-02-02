@@ -1,13 +1,14 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { useSearchParams } from "next/navigation";
+import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
+import { useRouter, useSearchParams } from "next/navigation";
 import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
-import data from '@/content/mathquest_all_grades_types_v1.json';
+import { InlineMath } from "react-katex";
+import "katex/dist/katex.min.css";
+import data from '@/content/mathquest_all_grades_from_split_v1';
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
-import { isSupportedType } from "@/lib/questSupport";
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -28,6 +29,7 @@ interface Question {
 
 type ExampleItem = {
   prompt: string;
+  prompt_tex?: string;
   answer: string;
 };
 
@@ -37,6 +39,7 @@ type TypeDef = {
   answer_format: AnswerFormat;
   example_items: ExampleItem[];
 };
+
 
 type CategoryDef = {
   category_id: string;
@@ -53,6 +56,15 @@ type GradeDef = {
 const formatPrompt = (prompt: string) => {
   return prompt.replace(/を計算しなさい。$/g, "");
 };
+
+const renderPrompt = (item: ExampleItem) => {
+  const tex = item.prompt_tex?.trim();
+  if (tex) {
+    return <InlineMath math={tex} renderError={() => <span>{formatPrompt(item.prompt)}</span>} />;
+  }
+  return <span>{formatPrompt(item.prompt)}</span>;
+};
+
 
 const CHARACTERS = {
   warrior: {
@@ -74,7 +86,7 @@ const CHARACTERS = {
 };
 
 type BBox = { minX: number; minY: number; maxX: number; maxY: number };
-type DigitSample = { tensor: tf.Tensor2D; preview: ImageData; width: number; height: number };
+type DigitSample = { tensor: tf.Tensor2D; preview: ImageData; width: number; height: number; centerX: number };
 type Component = { mask: Uint8Array; bbox: BBox; area: number };
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
@@ -165,7 +177,7 @@ const binarizeCanvas = (canvas: HTMLCanvasElement) => {
   for (let i = 0; i < w * h; i++) {
     bin[i] = ink[i] >= threshold ? 1 : 0;
   }
-  return { bin, w, h };
+  return { bin, w, h, ink, threshold };
 };
 
 const findComponents = (bin: Uint8Array, w: number, h: number) => {
@@ -303,12 +315,27 @@ const componentToTensor = (component: Component, w: number, h: number): DigitSam
     }
   }
 
+  const centerX = (bbox.minX + bbox.maxX) / 2;
   return {
     tensor: tf.tensor2d(input, [28, 28]),
     preview: finalImageData,
     width: boxW,
-    height: boxH
+    height: boxH,
+    centerX
   };
+};
+
+const detectDecimalDots = (components: Component[], maxArea: number, h: number) => {
+  const maxDotArea = Math.max(10, Math.floor(maxArea * 0.02));
+  return components.filter((c) => {
+    const bw = c.bbox.maxX - c.bbox.minX + 1;
+    const bh = c.bbox.maxY - c.bbox.minY + 1;
+    if (c.area < 4) return false;
+    if (c.area > maxDotArea) return false;
+    if (bw > h * 0.25 || bh > h * 0.25) return false;
+    if (c.bbox.minY < h * 0.4) return false;
+    return true;
+  });
 };
 
 const splitByProjection = (bin: Uint8Array, w: number, h: number, bbox: BBox) => {
@@ -427,22 +454,34 @@ const splitBySpans = (bin: Uint8Array, w: number, h: number, bbox: BBox, expecte
   return components;
 };
 
-const preprocessDigits = (canvas: HTMLCanvasElement, expectedDigits: number): DigitSample[] => {
+const preprocessDigits = (
+  canvas: HTMLCanvasElement,
+  expectedDigits: number
+): { samples: DigitSample[]; dotXs: number[] } => {
   const binData = binarizeCanvas(canvas);
-  if (!binData) return [];
-  const { bin, w, h } = binData;
+  if (!binData) return { samples: [], dotXs: [] };
+  const { bin, w, h, ink, threshold } = binData;
 
   let components = findComponents(bin, w, h);
-  if (components.length === 0) return [];
+  if (components.length === 0) return { samples: [], dotXs: [] };
 
   let maxArea = 0;
   for (const c of components) {
     if (c.area > maxArea) maxArea = c.area;
   }
+  const dotThreshold = Math.max(5, Math.floor(threshold * 0.4));
+  const dotBin = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    dotBin[i] = ink[i] >= dotThreshold ? 1 : 0;
+  }
+  const dotComponents = findComponents(dotBin, w, h);
+  const dotCandidates = detectDecimalDots(dotComponents, maxArea, h);
+  const dotXs = dotCandidates.map((c) => (c.bbox.minX + c.bbox.maxX) / 2).sort((a, b) => a - b);
+  const dotSet = new Set(dotCandidates);
   const minKeep = Math.max(40, Math.floor(maxArea * 0.08));
-  components = components.filter((c) => c.area >= minKeep);
+  components = components.filter((c) => c.area >= minKeep && !dotSet.has(c));
 
-  if (components.length === 0) return [];
+  if (components.length === 0) return { samples: [], dotXs };
 
   if (components.length === 1 && expectedDigits > 1) {
     const split = splitBySpans(bin, w, h, components[0].bbox, expectedDigits) || splitByProjection(bin, w, h, components[0].bbox);
@@ -459,7 +498,7 @@ const preprocessDigits = (canvas: HTMLCanvasElement, expectedDigits: number): Di
     const sample = componentToTensor(component, w, h);
     if (sample) samples.push(sample);
   }
-  return samples;
+  return { samples, dotXs };
 };
 
 const hasUpperLoop = (data: Float32Array, width = 28, height = 28) => {
@@ -712,7 +751,8 @@ const predictDigitEnsemble = (tensor: tf.Tensor2D) => {
   return { predictedDigit: String(bestIdx), probabilities };
 };
 
-export default function QuestPage() {
+function QuestPageInner() {
+  const router = useRouter();
   const params = useSearchParams();
   const typeFromQuery = params.get("type");
   const categoryFromQuery = params.get("category");
@@ -759,11 +799,6 @@ export default function QuestPage() {
         .map((grade) => ({
           ...grade,
           categories: grade.categories
-            .map((cat) => ({
-              ...cat,
-              types: cat.types.filter(isSupportedType)
-            }))
-            .filter((cat) => cat.types.length > 0)
         }))
         .filter((grade) => grade.categories.length > 0),
     []
@@ -966,39 +1001,28 @@ export default function QuestPage() {
 
   const categoryItems = categoryContext
     ? categoryContext.category.types.flatMap((t) =>
-        t.example_items
-          .filter((item) => /^\d{1,4}$/.test(item.answer))
-          .map((item) => ({ item, type: t }))
+        t.example_items.map((item) => ({ item, type: t }))
       )
     : [];
 
   const typeItems = selectedType
-    ? selectedType.example_items
-        .filter((item) => /^\d{1,4}$/.test(item.answer))
-        .map((item) => ({ item, type: selectedType }))
+    ? selectedType.example_items.map((item) => ({ item, type: selectedType }))
     : [];
 
   const allCategoryItems = grades.flatMap((g) =>
     g.categories.flatMap((c) =>
       c.types.flatMap((t) =>
-        t.example_items
-          .filter((item) => /^\d{1,4}$/.test(item.answer))
-          .map((item) => ({ item, type: t }))
+        t.example_items.map((item) => ({ item, type: t }))
       )
     )
   );
 
-  const activeItems = hasCategoryQuery
-    ? categoryItems
-    : hasTypeQuery
-      ? typeItems
+  const activeItems = hasTypeQuery
+    ? typeItems
+    : hasCategoryQuery
+      ? categoryItems
       : allCategoryItems;
-  const usingCategory = hasCategoryQuery;
-  const emptyMessage = usingCategory
-    ? "このカテゴリは4桁超が混ざるので未対応です。"
-    : hasTypeQuery
-      ? "このタイプは4桁超が混ざるので未対応です。"
-      : "このデータは4桁超が混ざるので未対応です。";
+  const emptyMessage = "このカテゴリ/タイプには表示できる問題がありません。";
   const safeIndex = activeItems.length > 0 ? itemIndex % activeItems.length : 0;
   const currentEntry = activeItems[safeIndex] ?? null;
   const nextEntry = activeItems.length > 0 ? activeItems[(safeIndex + 1) % activeItems.length] : null;
@@ -1006,7 +1030,6 @@ export default function QuestPage() {
   const currentType = currentEntry?.type ?? selectedType;
   const nextItem = nextEntry?.item ?? null;
   const currentCardRef = useRef<HTMLDivElement | null>(null);
-
   const nextQuestion = () => {
     setItemIndex((v) => v + 1);
   };
@@ -1148,7 +1171,7 @@ export default function QuestPage() {
     }
 
     const digits = getAnswerDigits();
-    const samples = preprocessDigits(drawingCanvas, digits);
+    const { samples, dotXs } = preprocessDigits(drawingCanvas, digits);
 
     if (samples.length === 0) {
       canvasRef.current?.clear();
@@ -1183,6 +1206,27 @@ export default function QuestPage() {
         if (maxProb >= 0.6) {
           predictedText = multi.predictedValue;
         }
+      }
+    }
+
+    if (predictedText && dotXs.length > 0) {
+      const centers = samples.map((s) => s.centerX);
+      let dotX = dotXs[0];
+      if (centers.length >= 2) {
+        for (let i = 1; i < centers.length; i++) {
+          const left = centers[i - 1];
+          const right = centers[i];
+          const between = dotXs.find((x) => x > left && x < right);
+          if (between !== undefined) {
+            dotX = between;
+            break;
+          }
+        }
+      }
+      let insertAt = 0;
+      while (insertAt < centers.length && dotX > centers[insertAt]) insertAt += 1;
+      if (insertAt > 0 && insertAt < predictedText.length) {
+        predictedText = `${predictedText.slice(0, insertAt)}.${predictedText.slice(insertAt)}`;
       }
     }
 
@@ -1329,6 +1373,44 @@ export default function QuestPage() {
     }
   };
 
+  const runAutoDrawDecimalTest = async (places = 1) => {
+    const canvas = getDrawingCanvas(canvasRef.current);
+    if (!canvas) return { expected: "", predicted: "" };
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { expected: "", predicted: "" };
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#000000";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold 84px monospace";
+    const digits = Array.from({ length: places + 1 }, () => String(Math.floor(Math.random() * 10)));
+    const expected = `${digits[0]}.${digits.slice(1).join("")}`;
+    setLastAutoDrawExpected(expected);
+    const startX = 16;
+    const baselineY = 200;
+    const gap = 64;
+    for (let i = 0; i < digits.length; i++) {
+      ctx.fillText(digits[i], startX + i * gap, baselineY);
+    }
+    const dotX = startX + gap / 2 + 14;
+    const dotY = baselineY + 20;
+    ctx.beginPath();
+    ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    lastDrawAtRef.current = Date.now();
+    setPreviewImages([]);
+    forcedDigitsRef.current = digits.length;
+    try {
+      const predicted = await runInference();
+      return { expected, predicted };
+    } finally {
+      forcedDigitsRef.current = null;
+    }
+  };
+
   const runAutoDrawBatchTest = async (runs: number, pool: string[], label: string) => {
     setAutoDrawBatchSummary(`${label} 実行中...`);
     let total = 0;
@@ -1371,6 +1453,26 @@ export default function QuestPage() {
     );
   };
 
+  const runAutoDrawDecimalBatchTest = async (runs: number, label: string) => {
+    setAutoDrawBatchSummary(`${label} 実行中...`);
+    let total = 0;
+    let exact = 0;
+    let dotOk = 0;
+    for (let i = 0; i < runs; i++) {
+      const { expected, predicted } = await runAutoDrawDecimalTest(1);
+      if (!expected) continue;
+      total++;
+      if (predicted === expected) exact++;
+      if (predicted.includes(".")) dotOk++;
+      await new Promise((resolve) => window.setTimeout(resolve, 40));
+    }
+    const overall = total ? ((exact / total) * 100).toFixed(1) : "0.0";
+    const dotRate = total ? ((dotOk / total) * 100).toFixed(1) : "0.0";
+    setAutoDrawBatchSummary(
+      `${label} 完了: 全体一致 ${exact}/${total} (${overall}%) / 小数点検出 ${dotOk}/${total} (${dotRate}%)`
+    );
+  };
+
   const displayedAnswer = inputMode === 'numpad' ? input : (recognizedNumber ?? "");
 
   return (
@@ -1379,9 +1481,13 @@ export default function QuestPage() {
       {/* Input Mode Toggle removed */}
 
       {selectedPath && (
-        <div className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600">
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 text-left hover:bg-slate-50"
+        >
           {selectedPath.gradeName} / {selectedPath.categoryName} / {selectedPath.typeName}
-        </div>
+        </button>
       )}
 
       {/* Center: Character & Message */} 
@@ -1438,7 +1544,7 @@ export default function QuestPage() {
                     className="rounded-2xl border-4 border-indigo-200 bg-white px-5 py-4 text-indigo-900 text-xl font-black shadow-md"
                   >
                     <div className="flex items-center justify-between gap-4">
-                      <div className="text-[22px] font-extrabold">{formatPrompt(currentItem.prompt)}</div>
+                      <div className="text-[22px] font-extrabold">{renderPrompt(currentItem)}</div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-[22px] font-bold text-slate-500">=</span>
                         <div
@@ -1472,7 +1578,7 @@ export default function QuestPage() {
                   </div>
                   {nextItem && (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500 opacity-35">
-                      {formatPrompt(nextItem.prompt)}
+                      {renderPrompt(nextItem)}
                     </div>
                   )}
                 </div>
@@ -1562,7 +1668,9 @@ export default function QuestPage() {
               </button>
               <button
                 data-testid="auto-draw-test"
-                onClick={runAutoDrawTest}
+                onClick={() => {
+                  void runAutoDrawTest();
+                }}
                 className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
               >
                 AutoDraw Test
@@ -1579,6 +1687,12 @@ export default function QuestPage() {
                 className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
               >
                 Batch100
+              </button>
+              <button
+                onClick={() => runAutoDrawDecimalBatchTest(100, "BatchDec100")}
+                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+              >
+                BatchDec100
               </button>
               <button
                 onClick={() =>
@@ -1701,5 +1815,13 @@ export default function QuestPage() {
       )}
 
     </main>
+  );
+}
+
+export default function QuestPage() {
+  return (
+    <Suspense fallback={<div />}>
+      <QuestPageInner />
+    </Suspense>
   );
 }
