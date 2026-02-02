@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import data from "@/content/mvp_e3_e6_types.json";
+import data from "@/content/mathquest_all_grades_types_v1.json";
 import { isSupportedType } from "@/lib/questSupport";
 
 type AnswerFormat = {
@@ -99,6 +99,11 @@ export default function Home() {
     router.push(url);
   };
 
+  const handleStartAll = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    router.push("/quest");
+  };
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-6">
       <div className="w-full max-w-xl bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
@@ -161,6 +166,13 @@ export default function Home() {
           className="w-full py-3 rounded-lg font-bold text-white bg-indigo-600 disabled:bg-slate-300"
         >
           はじめる
+        </button>
+        <button
+          type="button"
+          onClick={handleStartAll}
+          className="w-full py-3 rounded-lg font-bold text-indigo-700 bg-indigo-50 border border-indigo-200"
+        >
+          全学年まとめてはじめる
         </button>
       </div>
     </main>

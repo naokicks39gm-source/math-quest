@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from "next/navigation";
 import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
-import data from '@/content/mvp_e3_e6_types.json';
+import data from '@/content/mathquest_all_grades_types_v1.json';
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { isSupportedType } from "@/lib/questSupport";
 import {
@@ -595,6 +595,7 @@ const refineDigitPrediction = (pred: string, tensor: tf.Tensor2D, probs?: number
   const holes = countHoles(data, 28, 28, 8);
   const hasLower = hasLowerLoop(data);
   const p4 = probs?.[4] ?? 0;
+  const p0 = probs?.[0] ?? 0;
   const p8 = probs?.[8] ?? 0;
   const p9 = probs?.[9] ?? 0;
   const p5 = probs?.[5] ?? 0;
@@ -637,6 +638,19 @@ const refineDigitPrediction = (pred: string, tensor: tf.Tensor2D, probs?: number
     if (Math.max(p4, p8, p9) === p4) return '4';
     if (Math.max(p4, p8, p9) === p9) return '9';
     return '8';
+  }
+
+  if (out === '0' || out === '8') {
+    const center = quadrantInk(data, 10, 10, 18, 18);
+    const midBand = quadrantInk(data, 8, 12, 20, 16);
+    if (holes >= 2) return '8';
+    if (holes === 1) {
+      if (p8 - p0 > 0.22 && center > 0.16 && midBand > 0.12) return '8';
+      if (p0 - p8 > 0.08) return '0';
+      return center > 0.2 ? '8' : '0';
+    }
+    if (p8 > 0.9 && center > 0.22 && midBand > 0.15) return '8';
+    return '0';
   }
 
   if (out === '9') {
@@ -736,8 +750,7 @@ export default function QuestPage() {
   const pendingRecognizeRef = useRef(false);
   const forcedDigitsRef = useRef<number | null>(null);
   const cooldownUntilRef = useRef(0);
-  const AUTO_NEXT_WAIT_MS = 700;
-  const [statusMsg, setStatusMsg] = useState<string>("");
+  const AUTO_NEXT_WAIT_MS = 900;
   const autoNextTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
   const grades = useMemo(
@@ -916,7 +929,17 @@ export default function QuestPage() {
     return null;
   })();
 
+  const hasTypeQuery = Boolean(typeFromQuery);
+  const hasCategoryQuery = Boolean(categoryFromQuery);
+
   const selectedPath = (() => {
+    if (!hasTypeQuery && !hasCategoryQuery) {
+      return {
+        gradeName: "全学年",
+        categoryName: "全カテゴリ",
+        typeName: "総合クエスト"
+      };
+    }
     if (categoryContext) {
       const typeName = selectedType?.type_name ?? "カテゴリ内";
       return {
@@ -955,18 +978,32 @@ export default function QuestPage() {
         .map((item) => ({ item, type: selectedType }))
     : [];
 
-  const activeItems = categoryItems.length > 0 ? categoryItems : typeItems;
-  const usingCategory = categoryItems.length > 0;
+  const allCategoryItems = grades.flatMap((g) =>
+    g.categories.flatMap((c) =>
+      c.types.flatMap((t) =>
+        t.example_items
+          .filter((item) => /^\d{1,4}$/.test(item.answer))
+          .map((item) => ({ item, type: t }))
+      )
+    )
+  );
+
+  const activeItems = hasCategoryQuery
+    ? categoryItems
+    : hasTypeQuery
+      ? typeItems
+      : allCategoryItems;
+  const usingCategory = hasCategoryQuery;
   const emptyMessage = usingCategory
     ? "このカテゴリは4桁超が混ざるので未対応です。"
-    : "このタイプは4桁超が混ざるので未対応です。";
+    : hasTypeQuery
+      ? "このタイプは4桁超が混ざるので未対応です。"
+      : "このデータは4桁超が混ざるので未対応です。";
   const safeIndex = activeItems.length > 0 ? itemIndex % activeItems.length : 0;
   const currentEntry = activeItems[safeIndex] ?? null;
-  const prevEntry = activeItems.length > 0 ? activeItems[(safeIndex - 1 + activeItems.length) % activeItems.length] : null;
   const nextEntry = activeItems.length > 0 ? activeItems[(safeIndex + 1) % activeItems.length] : null;
   const currentItem = currentEntry?.item ?? null;
   const currentType = currentEntry?.type ?? selectedType;
-  const prevItem = prevEntry?.item ?? null;
   const nextItem = nextEntry?.item ?? null;
   const currentCardRef = useRef<HTMLDivElement | null>(null);
 
@@ -975,9 +1012,10 @@ export default function QuestPage() {
   };
 
   useEffect(() => {
-    setStatusMsg("");
     setPracticeResult(null);
     setResultMark(null);
+    setRecognizedNumber(null);
+    setPreviewImages([]);
     canvasRef.current?.clear();
   }, [itemIndex]);
 
@@ -1164,7 +1202,6 @@ export default function QuestPage() {
       setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
 
       if (verdict.ok) {
-        setStatusMsg("✅ 合っている");
         setResultMark('correct');
         const newCombo = combo + 1;
         setCombo(newCombo);
@@ -1185,7 +1222,6 @@ export default function QuestPage() {
           }, AUTO_NEXT_WAIT_MS);
         }
       } else {
-        setStatusMsg("❌ ちがう");
         setResultMark('wrong');
         setCombo(0);
       }
@@ -1301,6 +1337,8 @@ export default function QuestPage() {
     let fiveSixExact = 0;
     let fourEightNineTotal = 0;
     let fourEightNineExact = 0;
+    let zeroEightTotal = 0;
+    let zeroEightExact = 0;
     for (let i = 0; i < runs; i++) {
       const { expected, predicted } = await runAutoDrawTest(pool);
       if (!expected) continue;
@@ -1313,6 +1351,10 @@ export default function QuestPage() {
           fiveSixTotal++;
           if (p === e) fiveSixExact++;
         }
+        if (e === "0" || e === "8") {
+          zeroEightTotal++;
+          if (p === e) zeroEightExact++;
+        }
         if (e === "4" || e === "8" || e === "9") {
           fourEightNineTotal++;
           if (p === e) fourEightNineExact++;
@@ -1323,8 +1365,9 @@ export default function QuestPage() {
     const overall = total ? ((exact / total) * 100).toFixed(1) : "0.0";
     const fiveSix = fiveSixTotal ? ((fiveSixExact / fiveSixTotal) * 100).toFixed(1) : "0.0";
     const fourEightNine = fourEightNineTotal ? ((fourEightNineExact / fourEightNineTotal) * 100).toFixed(1) : "0.0";
+    const zeroEight = zeroEightTotal ? ((zeroEightExact / zeroEightTotal) * 100).toFixed(1) : "0.0";
     setAutoDrawBatchSummary(
-      `${label} 完了: 全体一致 ${exact}/${total} (${overall}%) / 4&8&9一致 ${fourEightNineExact}/${fourEightNineTotal} (${fourEightNine}%) / 5&6一致 ${fiveSixExact}/${fiveSixTotal} (${fiveSix}%)`
+      `${label} 完了: 全体一致 ${exact}/${total} (${overall}%) / 0&8一致 ${zeroEightExact}/${zeroEightTotal} (${zeroEight}%) / 4&8&9一致 ${fourEightNineExact}/${fourEightNineTotal} (${fourEightNine}%) / 5&6一致 ${fiveSixExact}/${fiveSixTotal} (${fiveSix}%)`
     );
   };
 
@@ -1390,11 +1433,6 @@ export default function QuestPage() {
                 </div>
               ) : currentItem ? (
                 <div className="flex flex-col gap-3">
-                  {prevItem && (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500 opacity-60">
-                      {formatPrompt(prevItem.prompt)}
-                    </div>
-                  )}
                   <div
                     ref={currentCardRef}
                     className="rounded-2xl border-4 border-indigo-200 bg-white px-5 py-4 text-indigo-900 text-xl font-black shadow-md"
@@ -1421,16 +1459,17 @@ export default function QuestPage() {
                       </div>
                     </div>
                     {practiceResult && (
-                      <div className={`mt-2 text-xs font-bold ${practiceResult.ok ? "text-green-600" : "text-red-600"}`}>
-                        {practiceResult.ok ? "正解" : "不正解"}
+                      <div className="mt-2 flex justify-end">
+                        <div
+                          className={`text-xs font-bold ${
+                            practiceResult.ok ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          {practiceResult.ok ? "⭕ 正解" : "❌ 不正解"}
+                        </div>
                       </div>
                     )}
                   </div>
-                  {statusMsg && (
-                    <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, opacity: 0.85 }}>
-                      {statusMsg}
-                    </div>
-                  )}
                   {nextItem && (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500 opacity-35">
                       {formatPrompt(nextItem.prompt)}
@@ -1442,16 +1481,6 @@ export default function QuestPage() {
               )}
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-slate-200 w-full text-center text-slate-700">
-              {practiceResult && (
-                <div className={`text-sm font-bold ${practiceResult.ok ? "text-green-600" : "text-red-600"}`}>
-                  {practiceResult.ok ? "正解！" : "不正解"}
-                  <span className="ml-2 text-slate-600">正答: {practiceResult.correctAnswer}</span>
-                  <span className="ml-2 text-slate-600">入力: {displayedAnswer || "?"}</span>
-                </div>
-              )}
-            </div>
-            
             {/* Combo Indicator */}
             {combo >= 2 && (
               <div className="text-yellow-500 font-black text-xl animate-pulse">
@@ -1562,6 +1591,12 @@ export default function QuestPage() {
                 className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
               >
                 Batch500
+              </button>
+              <button
+                onClick={() => runAutoDrawBatchTest(200, ["0", "8"], "Batch08")}
+                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+              >
+                Batch08
               </button>
               <button
                 onClick={() => runAutoDrawBatchTest(200, ["4", "8", "9"], "Batch489")}

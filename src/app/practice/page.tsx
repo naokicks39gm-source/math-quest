@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import data from "@/content/mvp_e3_e6_types.json";
+import data from "@/content/mathquest_all_grades_types_v1.json";
 
 type AnswerFormat = {
   kind: "int" | "dec" | "frac" | "pair" | "expr";
