@@ -594,6 +594,9 @@ const refineDigitPrediction = (pred: string, tensor: tf.Tensor2D, probs?: number
   const hasLoop = hasUpperLoop(data);
   const holes = countHoles(data, 28, 28, 8);
   const hasLower = hasLowerLoop(data);
+  const p4 = probs?.[4] ?? 0;
+  const p8 = probs?.[8] ?? 0;
+  const p9 = probs?.[9] ?? 0;
   const p5 = probs?.[5] ?? 0;
   const p6 = probs?.[6] ?? 0;
 
@@ -607,6 +610,33 @@ const refineDigitPrediction = (pred: string, tensor: tf.Tensor2D, probs?: number
     if (hasLower && (midRight > 0.14 || lowerMid > 0.2)) return '6';
     if (!hasLower && topBand > 0.16 && midLeft >= midRight) return '5';
     if (Math.abs(p5 - p6) >= 0.08) return p6 > p5 ? '6' : '5';
+  }
+
+  if (out === '4' || out === '8' || out === '9') {
+    const lowerRight = quadrantInk(data, 14, 14, 28, 28);
+    const lowerLeft = quadrantInk(data, 0, 14, 14, 28);
+    const center = quadrantInk(data, 10, 10, 18, 18);
+    const rightMid = quadrantInk(data, 18, 8, 28, 20);
+    const bestProb = Math.max(p4, p8, p9);
+    if (bestProb >= 0.78) {
+      if (bestProb === p8) return '8';
+      if (bestProb === p9) return '9';
+      return '4';
+    }
+    if (holes >= 2) return '8';
+    if (holes === 0) {
+      if (p9 - p4 > 0.14 && hasLower && rightMid > 0.12) return '9';
+      return '4';
+    }
+    // holes === 1
+    if (hasLoop && hasLower && center < 0.11) return '8';
+    if (p8 > 0.72 && hasLoop && hasLower && lowerLeft > 0.1 && lowerRight > 0.1) return '8';
+    if (hasLower && rightMid > 0.14 && lowerLeft < 0.1) return '9';
+    if (hasLower && rightMid > 0.12 && lowerRight > lowerLeft + 0.05) return '9';
+    if (center > 0.14 && lowerLeft < 0.12) return '4';
+    if (Math.max(p4, p8, p9) === p4) return '4';
+    if (Math.max(p4, p8, p9) === p9) return '9';
+    return '8';
   }
 
   if (out === '9') {
@@ -1228,7 +1258,7 @@ export default function QuestPage() {
     }, delayMs);
   };
 
-  const runAutoDrawTest = async () => {
+  const runAutoDrawTest = async (poolOverride?: string[]) => {
     const canvas = getDrawingCanvas(canvasRef.current);
     if (!canvas) return { expected: "", predicted: "" };
     const ctx = canvas.getContext('2d');
@@ -1240,7 +1270,9 @@ export default function QuestPage() {
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
     ctx.font = "bold 84px monospace";
-    const pool = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+    const pool = poolOverride && poolOverride.length > 0
+      ? poolOverride
+      : ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
     const digits = Array.from({ length: 4 }, () => pool[Math.floor(Math.random() * pool.length)]);
     const expected = digits.join("");
     setLastAutoDrawExpected(expected);
@@ -1261,14 +1293,16 @@ export default function QuestPage() {
     }
   };
 
-  const runAutoDrawBatchTest = async () => {
-    setAutoDrawBatchSummary("実行中...");
+  const runAutoDrawBatchTest = async (runs: number, pool: string[], label: string) => {
+    setAutoDrawBatchSummary(`${label} 実行中...`);
     let total = 0;
     let exact = 0;
     let fiveSixTotal = 0;
     let fiveSixExact = 0;
-    for (let i = 0; i < 100; i++) {
-      const { expected, predicted } = await runAutoDrawTest();
+    let fourEightNineTotal = 0;
+    let fourEightNineExact = 0;
+    for (let i = 0; i < runs; i++) {
+      const { expected, predicted } = await runAutoDrawTest(pool);
       if (!expected) continue;
       total++;
       if (predicted === expected) exact++;
@@ -1279,12 +1313,19 @@ export default function QuestPage() {
           fiveSixTotal++;
           if (p === e) fiveSixExact++;
         }
+        if (e === "4" || e === "8" || e === "9") {
+          fourEightNineTotal++;
+          if (p === e) fourEightNineExact++;
+        }
       }
       await new Promise((resolve) => window.setTimeout(resolve, 40));
     }
     const overall = total ? ((exact / total) * 100).toFixed(1) : "0.0";
     const fiveSix = fiveSixTotal ? ((fiveSixExact / fiveSixTotal) * 100).toFixed(1) : "0.0";
-    setAutoDrawBatchSummary(`Batch100 完了: 全体一致 ${exact}/${total} (${overall}%) / 5&6一致 ${fiveSixExact}/${fiveSixTotal} (${fiveSix}%)`);
+    const fourEightNine = fourEightNineTotal ? ((fourEightNineExact / fourEightNineTotal) * 100).toFixed(1) : "0.0";
+    setAutoDrawBatchSummary(
+      `${label} 完了: 全体一致 ${exact}/${total} (${overall}%) / 4&8&9一致 ${fourEightNineExact}/${fourEightNineTotal} (${fourEightNine}%) / 5&6一致 ${fiveSixExact}/${fiveSixTotal} (${fiveSix}%)`
+    );
   };
 
   const displayedAnswer = inputMode === 'numpad' ? input : (recognizedNumber ?? "");
@@ -1499,10 +1540,34 @@ export default function QuestPage() {
               </button>
               <button
                 data-testid="auto-draw-batch"
-                onClick={runAutoDrawBatchTest}
+                onClick={() =>
+                  runAutoDrawBatchTest(
+                    100,
+                    ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+                    "Batch100"
+                  )
+                }
                 className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
               >
                 Batch100
+              </button>
+              <button
+                onClick={() =>
+                  runAutoDrawBatchTest(
+                    500,
+                    ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+                    "Batch500"
+                  )
+                }
+                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+              >
+                Batch500
+              </button>
+              <button
+                onClick={() => runAutoDrawBatchTest(200, ["4", "8", "9"], "Batch489")}
+                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+              >
+                Batch489
               </button>
               <button
                 onClick={() => setSettingsOpen((v) => !v)}
