@@ -589,6 +589,85 @@ const countHoles = (data: Float32Array, width = 28, height = 28, minArea = 18) =
   return holes;
 };
 
+const refineDigitPrediction = (pred: string, tensor: tf.Tensor2D, probs?: number[]) => {
+  const data = Float32Array.from(tensor.dataSync());
+  const hasLoop = hasUpperLoop(data);
+  const holes = countHoles(data, 28, 28, 8);
+  const hasLower = hasLowerLoop(data);
+  const p5 = probs?.[5] ?? 0;
+  const p6 = probs?.[6] ?? 0;
+
+  let out = pred;
+  if (out === '5' || out === '6') {
+    if (holes >= 1) return '6';
+    const lowerMid = quadrantInk(data, 8, 16, 20, 28);
+    const midRight = quadrantInk(data, 16, 10, 28, 20);
+    const midLeft = quadrantInk(data, 0, 10, 12, 20);
+    const topBand = quadrantInk(data, 6, 0, 22, 8);
+    if (hasLower && (midRight > 0.14 || lowerMid > 0.2)) return '6';
+    if (!hasLower && topBand > 0.16 && midLeft >= midRight) return '5';
+    if (Math.abs(p5 - p6) >= 0.08) return p6 > p5 ? '6' : '5';
+  }
+
+  if (out === '9') {
+    if (holes >= 2 || (hasLoop && hasLower)) out = '8';
+    else if (holes === 0 || !hasLower) {
+      const bottomLeft = quadrantInk(data, 0, 16, 14, 28);
+      out = bottomLeft > 0.12 ? '4' : '7';
+    }
+  }
+  if (out === '4' && hasLoop) {
+    if (holes >= 2) out = '8';
+    else if (holes >= 1 && hasLower) out = '9';
+  }
+  if (out === '8') {
+    if (holes >= 2) out = '8';
+    else out = !hasLoop || !hasLower ? '4' : '9';
+  }
+  return out;
+};
+
+const shift28 = (src: Float32Array, dx: number, dy: number) => {
+  const out = new Float32Array(28 * 28);
+  for (let y = 0; y < 28; y++) {
+    for (let x = 0; x < 28; x++) {
+      const sx = x - dx;
+      const sy = y - dy;
+      if (sx < 0 || sx >= 28 || sy < 0 || sy >= 28) continue;
+      out[y * 28 + x] = src[sy * 28 + sx];
+    }
+  }
+  return out;
+};
+
+const predictDigitEnsemble = (tensor: tf.Tensor2D) => {
+  const base = Float32Array.from(tensor.dataSync());
+  const variants = [
+    base,
+    shift28(base, 1, 0),
+    shift28(base, -1, 0),
+    shift28(base, 0, 1),
+    shift28(base, 0, -1)
+  ];
+  const sum = new Array<number>(10).fill(0);
+  let used = 0;
+  for (const v of variants) {
+    const t = tf.tensor2d(v, [28, 28]);
+    const pred = predictMnistDigitWithProbs(t);
+    t.dispose();
+    if (!pred) continue;
+    for (let i = 0; i < 10; i++) sum[i] += pred.probabilities[i] ?? 0;
+    used++;
+  }
+  if (!used) return null;
+  const probabilities = sum.map((v) => v / used);
+  let bestIdx = 0;
+  for (let i = 1; i < probabilities.length; i++) {
+    if (probabilities[i] > probabilities[bestIdx]) bestIdx = i;
+  }
+  return { predictedDigit: String(bestIdx), probabilities };
+};
+
 export default function QuestPage() {
   const params = useSearchParams();
   const typeFromQuery = params.get("type");
@@ -625,6 +704,7 @@ export default function QuestPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const inFlightRef = useRef(false);
   const pendingRecognizeRef = useRef(false);
+  const forcedDigitsRef = useRef<number | null>(null);
   const cooldownUntilRef = useRef(0);
   const AUTO_NEXT_WAIT_MS = 700;
   const [statusMsg, setStatusMsg] = useState<string>("");
@@ -649,6 +729,8 @@ export default function QuestPage() {
   const [selectedType, setSelectedType] = useState<TypeDef | null>(defaultType);
   const [itemIndex, setItemIndex] = useState(0);
   const [practiceResult, setPracticeResult] = useState<{ ok: boolean; correctAnswer: string } | null>(null);
+  const [lastAutoDrawExpected, setLastAutoDrawExpected] = useState("");
+  const [autoDrawBatchSummary, setAutoDrawBatchSummary] = useState<string | null>(null);
 
   // Load MNIST model on component mount
   useEffect(() => {
@@ -984,9 +1066,9 @@ export default function QuestPage() {
     setCharacter(prev => prev === 'warrior' ? 'mage' : 'warrior');
   };
 
-  const handleHandwritingJudge = async () => {
+  const handleHandwritingJudge = async (): Promise<string> => {
     if (!canvasRef.current || isRecognizing || !isModelReady || isStarting) {
-      return;
+      return "";
     }
 
     setIsRecognizing(true);
@@ -994,51 +1076,24 @@ export default function QuestPage() {
     const drawingCanvas = getDrawingCanvas(canvasRef.current);
     if (!drawingCanvas) {
       setIsRecognizing(false);
-      return;
+      return "";
     }
 
-    const digits = 4;
+    const digits = getAnswerDigits();
     const samples = preprocessDigits(drawingCanvas, digits);
 
     if (samples.length === 0) {
       canvasRef.current?.clear();
       setIsRecognizing(false);
       setPreviewImages([]);
-      return;
+      return "";
     }
 
-    const perDigitPreds = samples.map((s) => {
-      const pred = predictMnistDigitWithProbs(s.tensor.clone());
-      return pred ? pred.predictedDigit : null;
-    });
-    let perDigitString = perDigitPreds.some((d) => d === null) ? '' : perDigitPreds.join('');
-
-    if (perDigitString.length === 1 && samples.length === 1) {
-      const raw = samples[0].tensor.dataSync();
-      const data = Float32Array.from(raw);
-      const hasLoop = hasUpperLoop(data);
-      const holes = countHoles(data, 28, 28, 8);
-      const hasLower = hasLowerLoop(data);
-      if (perDigitString === '9') {
-        if (holes >= 2 || (hasLoop && hasLower)) perDigitString = '8';
-        else if (holes === 0 || !hasLower) {
-          const bottomLeft = quadrantInk(data, 0, 16, 14, 28);
-          perDigitString = bottomLeft > 0.12 ? '4' : '7';
-        }
-      }
-      if (perDigitString === '4' && hasLoop) {
-        if (holes >= 2) perDigitString = '8';
-        else if (holes >= 1 && hasLower) perDigitString = '9';
-      }
-      if (perDigitString === '8') {
-        if (holes >= 2) {
-          perDigitString = '8';
-        } else {
-          if (!hasLoop || !hasLower) perDigitString = '4';
-          else perDigitString = '9';
-        }
-      }
-    }
+    const perDigitPreds = samples.map((s) => predictDigitEnsemble(s.tensor));
+    const refined = perDigitPreds.map((pred, i) =>
+      !pred ? null : refineDigitPrediction(pred.predictedDigit, samples[i].tensor, pred.probabilities)
+    );
+    let perDigitString = refined.some((d) => d === null) ? '' : refined.join('');
 
     let predictedText = perDigitString;
     if (samples.length === 2 && is2DigitModelReady) {
@@ -1108,27 +1163,33 @@ export default function QuestPage() {
 
     canvasRef.current?.clear();
     setIsRecognizing(false);
+    return predictedText;
   };
 
-  const getAnswerDigits = () => 1;
+  const getAnswerDigits = () => {
+    if (forcedDigitsRef.current) return forcedDigitsRef.current;
+    if (!currentItem) return 1;
+    const n = String(currentItem.answer).replace(/\D/g, '').length;
+    return Math.min(4, Math.max(1, n || 1));
+  };
 
-  const runInference = async () => {
-    if (inputMode !== 'handwriting') return;
-    if (status !== 'playing') return;
-    if (!isModelReady) return;
-    if (Date.now() < cooldownUntilRef.current) return;
+  const runInference = async (): Promise<string> => {
+    if (inputMode !== 'handwriting') return "";
+    if (status !== 'playing') return "";
+    if (!isModelReady) return "";
+    if (Date.now() < cooldownUntilRef.current) return "";
     if (isRecognizing || inFlightRef.current) {
       pendingRecognizeRef.current = true;
-      return;
+      return "";
     }
     if (isStarting) {
       pendingRecognizeRef.current = true;
-      return;
+      return "";
     }
 
     inFlightRef.current = true;
     try {
-      await handleHandwritingJudge();
+      return await handleHandwritingJudge();
     } finally {
       inFlightRef.current = false;
       if (pendingRecognizeRef.current) {
@@ -1169,47 +1230,61 @@ export default function QuestPage() {
 
   const runAutoDrawTest = async () => {
     const canvas = getDrawingCanvas(canvasRef.current);
-    if (!canvas) return;
+    if (!canvas) return { expected: "", predicted: "" };
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) return { expected: "", predicted: "" };
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 10;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    const drawDigit = (digit: "1" | "2" | "3", x: number, y: number, w: number, h: number) => {
-      ctx.beginPath();
-      if (digit === "1") {
-        ctx.moveTo(x + w * 0.5, y + h * 0.1);
-        ctx.lineTo(x + w * 0.5, y + h * 0.9);
-      } else if (digit === "2") {
-        ctx.moveTo(x + w * 0.15, y + h * 0.25);
-        ctx.lineTo(x + w * 0.5, y + h * 0.05);
-        ctx.lineTo(x + w * 0.85, y + h * 0.25);
-        ctx.lineTo(x + w * 0.15, y + h * 0.85);
-        ctx.lineTo(x + w * 0.85, y + h * 0.85);
-      } else {
-        ctx.moveTo(x + w * 0.2, y + h * 0.2);
-        ctx.lineTo(x + w * 0.8, y + h * 0.2);
-        ctx.lineTo(x + w * 0.5, y + h * 0.5);
-        ctx.lineTo(x + w * 0.8, y + h * 0.8);
-        ctx.lineTo(x + w * 0.2, y + h * 0.8);
-      }
-      ctx.stroke();
-    };
-    const boxW = 70;
-    const boxH = 140;
-    const startX = 30;
-    const startY = 60;
-    const gap = 25;
-    drawDigit("1", startX, startY, boxW, boxH);
-    drawDigit("2", startX + boxW + gap, startY, boxW, boxH);
-    drawDigit("3", startX + (boxW + gap) * 2, startY, boxW, boxH);
+    ctx.fillStyle = "#000000";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold 84px monospace";
+    const pool = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+    const digits = Array.from({ length: 4 }, () => pool[Math.floor(Math.random() * pool.length)]);
+    const expected = digits.join("");
+    setLastAutoDrawExpected(expected);
+    const startX = 16;
+    const baselineY = 200;
+    const gap = 64;
+    for (let i = 0; i < digits.length; i++) {
+      ctx.fillText(digits[i], startX + i * gap, baselineY);
+    }
     lastDrawAtRef.current = Date.now();
     setPreviewImages([]);
-    await runInference();
+    forcedDigitsRef.current = 4;
+    try {
+      const predicted = await runInference();
+      return { expected, predicted };
+    } finally {
+      forcedDigitsRef.current = null;
+    }
+  };
+
+  const runAutoDrawBatchTest = async () => {
+    setAutoDrawBatchSummary("実行中...");
+    let total = 0;
+    let exact = 0;
+    let fiveSixTotal = 0;
+    let fiveSixExact = 0;
+    for (let i = 0; i < 100; i++) {
+      const { expected, predicted } = await runAutoDrawTest();
+      if (!expected) continue;
+      total++;
+      if (predicted === expected) exact++;
+      for (let j = 0; j < Math.min(expected.length, predicted.length); j++) {
+        const e = expected[j];
+        const p = predicted[j];
+        if (e === "5" || e === "6") {
+          fiveSixTotal++;
+          if (p === e) fiveSixExact++;
+        }
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 40));
+    }
+    const overall = total ? ((exact / total) * 100).toFixed(1) : "0.0";
+    const fiveSix = fiveSixTotal ? ((fiveSixExact / fiveSixTotal) * 100).toFixed(1) : "0.0";
+    setAutoDrawBatchSummary(`Batch100 完了: 全体一致 ${exact}/${total} (${overall}%) / 5&6一致 ${fiveSixExact}/${fiveSixTotal} (${fiveSix}%)`);
   };
 
   const displayedAnswer = inputMode === 'numpad' ? input : (recognizedNumber ?? "");
@@ -1423,6 +1498,13 @@ export default function QuestPage() {
                 AutoDraw Test
               </button>
               <button
+                data-testid="auto-draw-batch"
+                onClick={runAutoDrawBatchTest}
+                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+              >
+                Batch100
+              </button>
+              <button
                 onClick={() => setSettingsOpen((v) => !v)}
                 className="ml-auto px-2 py-0.5 rounded-md bg-slate-200 text-slate-700"
               >
@@ -1433,6 +1515,8 @@ export default function QuestPage() {
               <div className="mt-2 text-[11px] text-slate-600 space-y-1">
                 <div>AUTO: 自動判定のON/OFF</div>
                 <div>NEXT: 正解で自動的に次の問題へ</div>
+                {lastAutoDrawExpected && <div>AutoDraw正解: {lastAutoDrawExpected}</div>}
+                {autoDrawBatchSummary && <div>{autoDrawBatchSummary}</div>}
               </div>
             )}
           </div>
