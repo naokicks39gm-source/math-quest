@@ -1,0 +1,1850 @@
+{
+  "version": "v2",
+  "generated_at": "2026-02-02T05:51:38.721Z",
+  "notes": [
+    "Merged from mathquest_all_grades_types_v1.json",
+    "システム数学（啓林館）の中学および高校（数学I〜III）の教科書を参考に、計算単元ごとの出題パターンを詳細に調査し、既存のタイプ構造を強化・拡張していきます。各タイプには複数の代表的例題（例：3〜5問）を含め、大学入試に必要な基礎力を網羅できる内容にします。完了後、従来形式で一覧提示・JSON出力もいたします。"
+  ],
+  "grades": [
+    {
+      "grade_id": "E4",
+      "grade_name": "小4",
+      "categories": [
+        {
+          "category_id": "NA",
+          "category_name": "数と計算",
+          "curriculum_domain": "A 数と計算",
+          "types": [
+            {
+              "type_id": "E4.NA.ADD.ADD_2D_2D_NO",
+              "type_name": "たし算（2けた+2けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_2D_2D_NO",
+                "a_digits": 2,
+                "b_digits": 2,
+                "carry": false
+              },
+              "example_items": [
+                {
+                  "prompt": "27 + 61 =",
+                  "answer": "88",
+                  "prompt_tex": "27 + 61 ="
+                },
+                {
+                  "prompt": "26 + 11 =",
+                  "answer": "37",
+                  "prompt_tex": "26 + 11 ="
+                },
+                {
+                  "prompt": "30 + 17 =",
+                  "answer": "47",
+                  "prompt_tex": "30 + 17 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_2D_2D_YES",
+              "type_name": "たし算（2けた+2けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_2D_2D_YES",
+                "a_digits": 2,
+                "b_digits": 2,
+                "carry": true
+              },
+              "example_items": [
+                {
+                  "prompt": "20 + 95 =",
+                  "answer": "115",
+                  "prompt_tex": "20 + 95 ="
+                },
+                {
+                  "prompt": "58 + 74 =",
+                  "answer": "132",
+                  "prompt_tex": "58 + 74 ="
+                },
+                {
+                  "prompt": "95 + 46 =",
+                  "answer": "141",
+                  "prompt_tex": "95 + 46 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_2D_2D_ANY",
+              "type_name": "たし算（2けた+2けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_2D_2D_ANY",
+                "a_digits": 2,
+                "b_digits": 2,
+                "carry": null
+              },
+              "example_items": [
+                {
+                  "prompt": "86 + 41 =",
+                  "answer": "127",
+                  "prompt_tex": "86 + 41 ="
+                },
+                {
+                  "prompt": "98 + 47 =",
+                  "answer": "145",
+                  "prompt_tex": "98 + 47 ="
+                },
+                {
+                  "prompt": "15 + 68 =",
+                  "answer": "83",
+                  "prompt_tex": "15 + 68 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_2D_3D_NO",
+              "type_name": "たし算（2けた+3けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_2D_3D_NO",
+                "a_digits": 2,
+                "b_digits": 3,
+                "carry": false
+              },
+              "example_items": [
+                {
+                  "prompt": "33 + 261 =",
+                  "answer": "294",
+                  "prompt_tex": "33 + 261 ="
+                },
+                {
+                  "prompt": "10 + 369 =",
+                  "answer": "379",
+                  "prompt_tex": "10 + 369 ="
+                },
+                {
+                  "prompt": "41 + 135 =",
+                  "answer": "176",
+                  "prompt_tex": "41 + 135 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_2D_3D_YES",
+              "type_name": "たし算（2けた+3けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_2D_3D_YES",
+                "a_digits": 2,
+                "b_digits": 3,
+                "carry": true
+              },
+              "example_items": [
+                {
+                  "prompt": "49 + 323 =",
+                  "answer": "372",
+                  "prompt_tex": "49 + 323 ="
+                },
+                {
+                  "prompt": "55 + 287 =",
+                  "answer": "342",
+                  "prompt_tex": "55 + 287 ="
+                },
+                {
+                  "prompt": "58 + 185 =",
+                  "answer": "243",
+                  "prompt_tex": "58 + 185 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_2D_3D_ANY",
+              "type_name": "たし算（2けた+3けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_2D_3D_ANY",
+                "a_digits": 2,
+                "b_digits": 3,
+                "carry": null
+              },
+              "example_items": [
+                {
+                  "prompt": "70 + 385 =",
+                  "answer": "455",
+                  "prompt_tex": "70 + 385 ="
+                },
+                {
+                  "prompt": "74 + 771 =",
+                  "answer": "845",
+                  "prompt_tex": "74 + 771 ="
+                },
+                {
+                  "prompt": "35 + 354 =",
+                  "answer": "389",
+                  "prompt_tex": "35 + 354 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_3D_3D_NO",
+              "type_name": "たし算（3けた+3けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_3D_3D_NO",
+                "a_digits": 3,
+                "b_digits": 3,
+                "carry": false
+              },
+              "example_items": [
+                {
+                  "prompt": "105 + 193 =",
+                  "answer": "298",
+                  "prompt_tex": "105 + 193 ="
+                },
+                {
+                  "prompt": "142 + 503 =",
+                  "answer": "645",
+                  "prompt_tex": "142 + 503 ="
+                },
+                {
+                  "prompt": "123 + 406 =",
+                  "answer": "529",
+                  "prompt_tex": "123 + 406 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_3D_3D_YES",
+              "type_name": "たし算（3けた+3けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_3D_3D_YES",
+                "a_digits": 3,
+                "b_digits": 3,
+                "carry": true
+              },
+              "example_items": [
+                {
+                  "prompt": "411 + 744 =",
+                  "answer": "1155",
+                  "prompt_tex": "411 + 744 ="
+                },
+                {
+                  "prompt": "338 + 186 =",
+                  "answer": "524",
+                  "prompt_tex": "338 + 186 ="
+                },
+                {
+                  "prompt": "699 + 641 =",
+                  "answer": "1340",
+                  "prompt_tex": "699 + 641 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_3D_3D_ANY",
+              "type_name": "たし算（3けた+3けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_3D_3D_ANY",
+                "a_digits": 3,
+                "b_digits": 3,
+                "carry": null
+              },
+              "example_items": [
+                {
+                  "prompt": "973 + 868 =",
+                  "answer": "1841",
+                  "prompt_tex": "973 + 868 ="
+                },
+                {
+                  "prompt": "258 + 773 =",
+                  "answer": "1031",
+                  "prompt_tex": "258 + 773 ="
+                },
+                {
+                  "prompt": "833 + 902 =",
+                  "answer": "1735",
+                  "prompt_tex": "833 + 902 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_3D_4D_NO",
+              "type_name": "たし算（3けた+4けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_3D_4D_NO",
+                "a_digits": 3,
+                "b_digits": 4,
+                "carry": false
+              },
+              "example_items": [
+                {
+                  "prompt": "144 + 9404 =",
+                  "answer": "9548",
+                  "prompt_tex": "144 + 9404 ="
+                },
+                {
+                  "prompt": "742 + 8032 =",
+                  "answer": "8774",
+                  "prompt_tex": "742 + 8032 ="
+                },
+                {
+                  "prompt": "187 + 1510 =",
+                  "answer": "1697",
+                  "prompt_tex": "187 + 1510 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_3D_4D_YES",
+              "type_name": "たし算（3けた+4けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_3D_4D_YES",
+                "a_digits": 3,
+                "b_digits": 4,
+                "carry": true
+              },
+              "example_items": [
+                {
+                  "prompt": "142 + 3180 =",
+                  "answer": "3322",
+                  "prompt_tex": "142 + 3180 ="
+                },
+                {
+                  "prompt": "752 + 6909 =",
+                  "answer": "7661",
+                  "prompt_tex": "752 + 6909 ="
+                },
+                {
+                  "prompt": "955 + 8395 =",
+                  "answer": "9350",
+                  "prompt_tex": "955 + 8395 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_3D_4D_ANY",
+              "type_name": "たし算（3けた+4けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_3D_4D_ANY",
+                "a_digits": 3,
+                "b_digits": 4,
+                "carry": null
+              },
+              "example_items": [
+                {
+                  "prompt": "671 + 1831 =",
+                  "answer": "2502",
+                  "prompt_tex": "671 + 1831 ="
+                },
+                {
+                  "prompt": "742 + 1308 =",
+                  "answer": "2050",
+                  "prompt_tex": "742 + 1308 ="
+                },
+                {
+                  "prompt": "741 + 9707 =",
+                  "answer": "10448",
+                  "prompt_tex": "741 + 9707 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_4D_4D_NO",
+              "type_name": "たし算（4けた+4けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_4D_4D_NO",
+                "a_digits": 4,
+                "b_digits": 4,
+                "carry": false
+              },
+              "example_items": [
+                {
+                  "prompt": "5321 + 1054 =",
+                  "answer": "6375",
+                  "prompt_tex": "5321 + 1054 ="
+                },
+                {
+                  "prompt": "4437 + 4452 =",
+                  "answer": "8889",
+                  "prompt_tex": "4437 + 4452 ="
+                },
+                {
+                  "prompt": "4207 + 1192 =",
+                  "answer": "5399",
+                  "prompt_tex": "4207 + 1192 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_4D_4D_YES",
+              "type_name": "たし算（4けた+4けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_4D_4D_YES",
+                "a_digits": 4,
+                "b_digits": 4,
+                "carry": true
+              },
+              "example_items": [
+                {
+                  "prompt": "5748 + 5148 =",
+                  "answer": "10896",
+                  "prompt_tex": "5748 + 5148 ="
+                },
+                {
+                  "prompt": "7098 + 2064 =",
+                  "answer": "9162",
+                  "prompt_tex": "7098 + 2064 ="
+                },
+                {
+                  "prompt": "7437 + 7392 =",
+                  "answer": "14829",
+                  "prompt_tex": "7437 + 7392 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.ADD.ADD_4D_4D_ANY",
+              "type_name": "たし算（4けた+4けた）",
+              "school": "E4",
+              "curriculum_label": "整数の加法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "ADD"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ADD_4D_4D_ANY",
+                "a_digits": 4,
+                "b_digits": 4,
+                "carry": null
+              },
+              "example_items": [
+                {
+                  "prompt": "2251 + 6909 =",
+                  "answer": "9160",
+                  "prompt_tex": "2251 + 6909 ="
+                },
+                {
+                  "prompt": "8013 + 5508 =",
+                  "answer": "13521",
+                  "prompt_tex": "8013 + 5508 ="
+                },
+                {
+                  "prompt": "1790 + 5597 =",
+                  "answer": "7387",
+                  "prompt_tex": "1790 + 5597 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.SUB.SUB_3D_2D_NO",
+              "type_name": "ひき算（3けた-2けた）",
+              "school": "E4",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_3D_2D_NO",
+                "a_digits": 3,
+                "b_digits": 2,
+                "borrow": false
+              },
+              "example_items": [
+                {
+                  "prompt": "392 - 91 =",
+                  "answer": "301",
+                  "prompt_tex": "392 - 91 ="
+                },
+                {
+                  "prompt": "252 - 41 =",
+                  "answer": "211",
+                  "prompt_tex": "252 - 41 ="
+                },
+                {
+                  "prompt": "836 - 20 =",
+                  "answer": "816",
+                  "prompt_tex": "836 - 20 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.SUB.SUB_3D_2D_YES",
+              "type_name": "ひき算（3けた-2けた）",
+              "school": "E4",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_3D_2D_YES",
+                "a_digits": 3,
+                "b_digits": 2,
+                "borrow": true
+              },
+              "example_items": [
+                {
+                  "prompt": "150 - 62 =",
+                  "answer": "88",
+                  "prompt_tex": "150 - 62 ="
+                },
+                {
+                  "prompt": "561 - 88 =",
+                  "answer": "473",
+                  "prompt_tex": "561 - 88 ="
+                },
+                {
+                  "prompt": "870 - 27 =",
+                  "answer": "843",
+                  "prompt_tex": "870 - 27 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.SUB.SUB_3D_2D_ANY",
+              "type_name": "ひき算（3けた-2けた）",
+              "school": "E4",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_3D_2D_ANY",
+                "a_digits": 3,
+                "b_digits": 2,
+                "borrow": null
+              },
+              "example_items": [
+                {
+                  "prompt": "759 - 46 =",
+                  "answer": "713",
+                  "prompt_tex": "759 - 46 ="
+                },
+                {
+                  "prompt": "597 - 16 =",
+                  "answer": "581",
+                  "prompt_tex": "597 - 16 ="
+                },
+                {
+                  "prompt": "663 - 26 =",
+                  "answer": "637",
+                  "prompt_tex": "663 - 26 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.SUB.SUB_3D_3D_NO",
+              "type_name": "ひき算（3けた-3けた）",
+              "school": "E4",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_3D_3D_NO",
+                "a_digits": 3,
+                "b_digits": 3,
+                "borrow": false
+              },
+              "example_items": [
+                {
+                  "prompt": "784 - 670 =",
+                  "answer": "114",
+                  "prompt_tex": "784 - 670 ="
+                },
+                {
+                  "prompt": "612 - 312 =",
+                  "answer": "300",
+                  "prompt_tex": "612 - 312 ="
+                },
+                {
+                  "prompt": "563 - 440 =",
+                  "answer": "123",
+                  "prompt_tex": "563 - 440 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.SUB.SUB_3D_3D_YES",
+              "type_name": "ひき算（3けた-3けた）",
+              "school": "E4",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_3D_3D_YES",
+                "a_digits": 3,
+                "b_digits": 3,
+                "borrow": true
+              },
+              "example_items": [
+                {
+                  "prompt": "537 - 242 =",
+                  "answer": "295",
+                  "prompt_tex": "537 - 242 ="
+                },
+                {
+                  "prompt": "660 - 297 =",
+                  "answer": "363",
+                  "prompt_tex": "660 - 297 ="
+                },
+                {
+                  "prompt": "349 - 192 =",
+                  "answer": "157",
+                  "prompt_tex": "349 - 192 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.SUB.SUB_3D_3D_ANY",
+              "type_name": "ひき算（3けた-3けた）",
+              "school": "E4",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_3D_3D_ANY",
+                "a_digits": 3,
+                "b_digits": 3,
+                "borrow": null
+              },
+              "example_items": [
+                {
+                  "prompt": "450 - 278 =",
+                  "answer": "172",
+                  "prompt_tex": "450 - 278 ="
+                },
+                {
+                  "prompt": "669 - 193 =",
+                  "answer": "476",
+                  "prompt_tex": "669 - 193 ="
+                },
+                {
+                  "prompt": "426 - 344 =",
+                  "answer": "82",
+                  "prompt_tex": "426 - 344 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.SUB.SUB_4D_3D_NO",
+              "type_name": "ひき算（4けた-3けた）",
+              "school": "E4",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_4D_3D_NO",
+                "a_digits": 4,
+                "b_digits": 3,
+                "borrow": false
+              },
+              "example_items": [
+                {
+                  "prompt": "9587 - 315 =",
+                  "answer": "9272",
+                  "prompt_tex": "9587 - 315 ="
+                },
+                {
+                  "prompt": "1357 - 230 =",
+                  "answer": "1127",
+                  "prompt_tex": "1357 - 230 ="
+                },
+                {
+                  "prompt": "8754 - 701 =",
+                  "answer": "8053",
+                  "prompt_tex": "8754 - 701 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.SUB.SUB_4D_3D_YES",
+              "type_name": "ひき算（4けた-3けた）",
+              "school": "E4",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_4D_3D_YES",
+                "a_digits": 4,
+                "b_digits": 3,
+                "borrow": true
+              },
+              "example_items": [
+                {
+                  "prompt": "9025 - 100 =",
+                  "answer": "8925",
+                  "prompt_tex": "9025 - 100 ="
+                },
+                {
+                  "prompt": "2198 - 500 =",
+                  "answer": "1698",
+                  "prompt_tex": "2198 - 500 ="
+                },
+                {
+                  "prompt": "9648 - 975 =",
+                  "answer": "8673",
+                  "prompt_tex": "9648 - 975 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.SUB.SUB_4D_3D_ANY",
+              "type_name": "ひき算（4けた-3けた）",
+              "school": "E4",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_4D_3D_ANY",
+                "a_digits": 4,
+                "b_digits": 3,
+                "borrow": null
+              },
+              "example_items": [
+                {
+                  "prompt": "8670 - 559 =",
+                  "answer": "8111",
+                  "prompt_tex": "8670 - 559 ="
+                },
+                {
+                  "prompt": "5070 - 901 =",
+                  "answer": "4169",
+                  "prompt_tex": "5070 - 901 ="
+                },
+                {
+                  "prompt": "2786 - 329 =",
+                  "answer": "2457",
+                  "prompt_tex": "2786 - 329 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.SUB.SUB_4D_4D_NO",
+              "type_name": "ひき算（4けた-4けた）",
+              "school": "E4",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_4D_4D_NO",
+                "a_digits": 4,
+                "b_digits": 4,
+                "borrow": false
+              },
+              "example_items": [
+                {
+                  "prompt": "8492 - 2392 =",
+                  "answer": "6100",
+                  "prompt_tex": "8492 - 2392 ="
+                },
+                {
+                  "prompt": "1647 - 1022 =",
+                  "answer": "625",
+                  "prompt_tex": "1647 - 1022 ="
+                },
+                {
+                  "prompt": "5977 - 1615 =",
+                  "answer": "4362",
+                  "prompt_tex": "5977 - 1615 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.SUB.SUB_4D_4D_YES",
+              "type_name": "ひき算（4けた-4けた）",
+              "school": "E4",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_4D_4D_YES",
+                "a_digits": 4,
+                "b_digits": 4,
+                "borrow": true
+              },
+              "example_items": [
+                {
+                  "prompt": "5125 - 3096 =",
+                  "answer": "2029",
+                  "prompt_tex": "5125 - 3096 ="
+                },
+                {
+                  "prompt": "9654 - 8166 =",
+                  "answer": "1488",
+                  "prompt_tex": "9654 - 8166 ="
+                },
+                {
+                  "prompt": "2837 - 2629 =",
+                  "answer": "208",
+                  "prompt_tex": "2837 - 2629 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.SUB.SUB_4D_4D_ANY",
+              "type_name": "ひき算（4けた-4けた）",
+              "school": "E4",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_4D_4D_ANY",
+                "a_digits": 4,
+                "b_digits": 4,
+                "borrow": null
+              },
+              "example_items": [
+                {
+                  "prompt": "5920 - 2152 =",
+                  "answer": "3768",
+                  "prompt_tex": "5920 - 2152 ="
+                },
+                {
+                  "prompt": "9592 - 4140 =",
+                  "answer": "5452",
+                  "prompt_tex": "9592 - 4140 ="
+                },
+                {
+                  "prompt": "7358 - 5274 =",
+                  "answer": "2084",
+                  "prompt_tex": "7358 - 5274 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.MUL.MUL_1D_1D",
+              "type_name": "かけ算（1けた×1けた）",
+              "school": "E4",
+              "curriculum_label": "整数の乗法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "MUL"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "MUL_1D_1D",
+                "a_digits": 1,
+                "b_digits": 1
+              },
+              "example_items": [
+                {
+                  "prompt": "4 × 1 =",
+                  "answer": "4",
+                  "prompt_tex": "4 \\times 1 ="
+                },
+                {
+                  "prompt": "1 × 9 =",
+                  "answer": "9",
+                  "prompt_tex": "1 \\times 9 ="
+                },
+                {
+                  "prompt": "5 × 8 =",
+                  "answer": "40",
+                  "prompt_tex": "5 \\times 8 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.MUL.MUL_2D_1D",
+              "type_name": "かけ算（2けた×1けた）",
+              "school": "E4",
+              "curriculum_label": "整数の乗法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "MUL"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "MUL_2D_1D",
+                "a_digits": 2,
+                "b_digits": 1
+              },
+              "example_items": [
+                {
+                  "prompt": "45 × 6 =",
+                  "answer": "270",
+                  "prompt_tex": "45 \\times 6 ="
+                },
+                {
+                  "prompt": "92 × 4 =",
+                  "answer": "368",
+                  "prompt_tex": "92 \\times 4 ="
+                },
+                {
+                  "prompt": "70 × 9 =",
+                  "answer": "630",
+                  "prompt_tex": "70 \\times 9 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.MUL.MUL_2D_2D",
+              "type_name": "かけ算（2けた×2けた）",
+              "school": "E4",
+              "curriculum_label": "整数の乗法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "MUL"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "MUL_2D_2D",
+                "a_digits": 2,
+                "b_digits": 2
+              },
+              "example_items": [
+                {
+                  "prompt": "40 × 80 =",
+                  "answer": "3200",
+                  "prompt_tex": "40 \\times 80 ="
+                },
+                {
+                  "prompt": "41 × 13 =",
+                  "answer": "533",
+                  "prompt_tex": "41 \\times 13 ="
+                },
+                {
+                  "prompt": "62 × 93 =",
+                  "answer": "5766",
+                  "prompt_tex": "62 \\times 93 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.MUL.MUL_3D_1D",
+              "type_name": "かけ算（3けた×1けた）",
+              "school": "E4",
+              "curriculum_label": "整数の乗法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "MUL"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "MUL_3D_1D",
+                "a_digits": 3,
+                "b_digits": 1
+              },
+              "example_items": [
+                {
+                  "prompt": "414 × 1 =",
+                  "answer": "414",
+                  "prompt_tex": "414 \\times 1 ="
+                },
+                {
+                  "prompt": "122 × 4 =",
+                  "answer": "488",
+                  "prompt_tex": "122 \\times 4 ="
+                },
+                {
+                  "prompt": "610 × 7 =",
+                  "answer": "4270",
+                  "prompt_tex": "610 \\times 7 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.DIV.DIV_Q1D_EXACT",
+              "type_name": "わり算（商1けた・わり切れる）",
+              "school": "E4",
+              "curriculum_label": "整数の除法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "DIV"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "DIV_Q1D_EXACT",
+                "q_digits": 1,
+                "exact": true
+              },
+              "example_items": [
+                {
+                  "prompt": "15 ÷ 3 =",
+                  "answer": "5",
+                  "prompt_tex": "15 \\div 3 ="
+                },
+                {
+                  "prompt": "35 ÷ 5 =",
+                  "answer": "7",
+                  "prompt_tex": "35 \\div 5 ="
+                },
+                {
+                  "prompt": "28 ÷ 7 =",
+                  "answer": "4",
+                  "prompt_tex": "28 \\div 7 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.DIV.DIV_Q1D_REM",
+              "type_name": "わり算（商1けた・あまり）",
+              "school": "E4",
+              "curriculum_label": "整数の除法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "DIV"
+              },
+              "answer_format": {
+                "kind": "pair",
+                "sep": ",",
+                "allow_spaces": true,
+                "items": [
+                  {
+                    "kind": "int"
+                  },
+                  {
+                    "kind": "int"
+                  }
+                ]
+              },
+              "grading": {
+                "kind": "pair",
+                "normalize": {
+                  "trim": true,
+                  "sep": ",",
+                  "allow_spaces": true,
+                  "items": [
+                    {
+                      "kind": "int"
+                    },
+                    {
+                      "kind": "int"
+                    }
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "DIV_Q1D_REM",
+                "q_digits": 1,
+                "remainder": true,
+                "sep": ","
+              },
+              "example_items": [
+                {
+                  "prompt": "15 ÷ 9 = (商,あまり)",
+                  "answer": "1,6"
+                },
+                {
+                  "prompt": "54 ÷ 8 = (商,あまり)",
+                  "answer": "6,6"
+                },
+                {
+                  "prompt": "33 ÷ 8 = (商,あまり)",
+                  "answer": "4,1"
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.DIV.DIV_Q2D_EXACT",
+              "type_name": "わり算（商2けた・わり切れる）",
+              "school": "E4",
+              "curriculum_label": "整数の除法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "DIV"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "DIV_Q2D_EXACT",
+                "q_digits": 2,
+                "exact": true
+              },
+              "example_items": [
+                {
+                  "prompt": "444 ÷ 6 =",
+                  "answer": "74",
+                  "prompt_tex": "444 \\div 6 ="
+                },
+                {
+                  "prompt": "108 ÷ 3 =",
+                  "answer": "36",
+                  "prompt_tex": "108 \\div 3 ="
+                },
+                {
+                  "prompt": "315 ÷ 9 =",
+                  "answer": "35",
+                  "prompt_tex": "315 \\div 9 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.DIV.DIV_Q2D_REM",
+              "type_name": "わり算（商2けた・あまり）",
+              "school": "E4",
+              "curriculum_label": "整数の除法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "DIV"
+              },
+              "answer_format": {
+                "kind": "pair",
+                "sep": ",",
+                "allow_spaces": true,
+                "items": [
+                  {
+                    "kind": "int"
+                  },
+                  {
+                    "kind": "int"
+                  }
+                ]
+              },
+              "grading": {
+                "kind": "pair",
+                "normalize": {
+                  "trim": true,
+                  "sep": ",",
+                  "allow_spaces": true,
+                  "items": [
+                    {
+                      "kind": "int"
+                    },
+                    {
+                      "kind": "int"
+                    }
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "DIV_Q2D_REM",
+                "q_digits": 2,
+                "remainder": true,
+                "sep": ","
+              },
+              "example_items": [
+                {
+                  "prompt": "206 ÷ 6 = (商,あまり)",
+                  "answer": "34,2"
+                },
+                {
+                  "prompt": "347 ÷ 9 = (商,あまり)",
+                  "answer": "38,5"
+                },
+                {
+                  "prompt": "143 ÷ 6 = (商,あまり)",
+                  "answer": "23,5"
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.DIV.DIV_Q3D_EXACT",
+              "type_name": "わり算（商3けた・わり切れる）",
+              "school": "E4",
+              "curriculum_label": "整数の除法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "DIV"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "DIV_Q3D_EXACT",
+                "q_digits": 3,
+                "exact": true
+              },
+              "example_items": [
+                {
+                  "prompt": "6516 ÷ 9 =",
+                  "answer": "724",
+                  "prompt_tex": "6516 \\div 9 ="
+                },
+                {
+                  "prompt": "1312 ÷ 4 =",
+                  "answer": "328",
+                  "prompt_tex": "1312 \\div 4 ="
+                },
+                {
+                  "prompt": "4743 ÷ 9 =",
+                  "answer": "527",
+                  "prompt_tex": "4743 \\div 9 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.DIV.DIV_Q3D_REM",
+              "type_name": "わり算（商3けた・あまり）",
+              "school": "E4",
+              "curriculum_label": "整数の除法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "DIV"
+              },
+              "answer_format": {
+                "kind": "pair",
+                "sep": ",",
+                "allow_spaces": true,
+                "items": [
+                  {
+                    "kind": "int"
+                  },
+                  {
+                    "kind": "int"
+                  }
+                ]
+              },
+              "grading": {
+                "kind": "pair",
+                "normalize": {
+                  "trim": true,
+                  "sep": ",",
+                  "allow_spaces": true,
+                  "items": [
+                    {
+                      "kind": "int"
+                    },
+                    {
+                      "kind": "int"
+                    }
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "DIV_Q3D_REM",
+                "q_digits": 3,
+                "remainder": true,
+                "sep": ","
+              },
+              "example_items": [
+                {
+                  "prompt": "1419 ÷ 2 = (商,あまり)",
+                  "answer": "709,1"
+                },
+                {
+                  "prompt": "1242 ÷ 8 = (商,あまり)",
+                  "answer": "155,2"
+                },
+                {
+                  "prompt": "1421 ÷ 2 = (商,あまり)",
+                  "answer": "710,1"
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.DEC.DEC_ADD_1DP",
+              "type_name": "小数のたし算（小数第1位）",
+              "school": "E4",
+              "curriculum_label": "小数",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "DEC"
+              },
+              "answer_format": {
+                "kind": "dec",
+                "decimal_places": 1
+              },
+              "grading": {
+                "kind": "dec",
+                "normalize": {
+                  "trim": true,
+                  "decimal_places": 1
+                }
+              },
+              "generation_params": {
+                "pattern_id": "DEC_ADD_1DP",
+                "decimal_places": 1
+              },
+              "example_items": [
+                {
+                  "prompt": "681.5 + 85.9 =",
+                  "answer": "767.4",
+                  "prompt_tex": "681.5 + 85.9 ="
+                },
+                {
+                  "prompt": "99.5 + 302.6 =",
+                  "answer": "402.1",
+                  "prompt_tex": "99.5 + 302.6 ="
+                },
+                {
+                  "prompt": "645.4 + 737.6 =",
+                  "answer": "1383.0",
+                  "prompt_tex": "645.4 + 737.6 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E4.NA.DEC.DEC_MUL_1DP",
+              "type_name": "小数のかけ算（小数第1位）",
+              "school": "E4",
+              "curriculum_label": "小数",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "DEC"
+              },
+              "answer_format": {
+                "kind": "dec",
+                "decimal_places": 1
+              },
+              "grading": {
+                "kind": "dec",
+                "normalize": {
+                  "trim": true,
+                  "decimal_places": 1
+                }
+              },
+              "generation_params": {
+                "pattern_id": "DEC_MUL_1DP",
+                "decimal_places": 1
+              },
+              "example_items": [
+                {
+                  "prompt": "92.9 × 73.9 =",
+                  "answer": "6865.3",
+                  "prompt_tex": "92.9 \\times 73.9 ="
+                },
+                {
+                  "prompt": "91.4 × 33.1 =",
+                  "answer": "3025.3",
+                  "prompt_tex": "91.4 \\times 33.1 ="
+                },
+                {
+                  "prompt": "76.0 × 12.5 =",
+                  "answer": "950.0",
+                  "prompt_tex": "76.0 \\times 12.5 ="
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "ME",
+          "category_name": "量と測定",
+          "curriculum_domain": "B 量と測定",
+          "types": [
+            {
+              "type_id": "E4.ME.UNIT.UNIT_LEN_MC",
+              "type_name": "長さの換算（m↔cm）",
+              "school": "E4",
+              "curriculum_label": "量と測定（単位）",
+              "display_mapping": {
+                "domain": "ME",
+                "subdomain": "UNIT"
+              },
+              "answer_format": {
+                "kind": "dec",
+                "decimal_places": 1
+              },
+              "grading": {
+                "kind": "dec",
+                "normalize": {
+                  "trim": true,
+                  "decimal_places": 1
+                }
+              },
+              "generation_params": {
+                "pattern_id": "UNIT_LEN_MC",
+                "decimal_places": 1
+              },
+              "example_items": [
+                {
+                  "prompt": "3m = 何cm？",
+                  "answer": "300.0"
+                },
+                {
+                  "prompt": "120cm = 何m？",
+                  "answer": "1.2"
+                },
+                {
+                  "prompt": "250cm = 何m？",
+                  "answer": "2.5"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "GE",
+          "category_name": "図形",
+          "curriculum_domain": "C 図形",
+          "types": [
+            {
+              "type_id": "E4.GE.ANG.ANGLE_BASIC",
+              "type_name": "角の基本",
+              "school": "E4",
+              "curriculum_label": "角",
+              "display_mapping": {
+                "domain": "GE",
+                "subdomain": "ANG"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "ANGLE_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "直角は何度？ =",
+                  "answer": "90"
+                },
+                {
+                  "prompt": "半回転は何度？ =",
+                  "answer": "180"
+                },
+                {
+                  "prompt": "1回転は何度？ =",
+                  "answer": "360"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "RE",
+          "category_name": "数量関係",
+          "curriculum_domain": "D 数量関係",
+          "types": [
+            {
+              "type_id": "E4.RE.EQ.MAKE_EXPR_X",
+              "type_name": "式に表す",
+              "school": "E4",
+              "curriculum_label": "数量関係",
+              "display_mapping": {
+                "domain": "RE",
+                "subdomain": "EQ"
+              },
+              "answer_format": {
+                "kind": "expr",
+                "engine": "mathjs",
+                "vars": [
+                  "x"
+                ]
+              },
+              "grading": {
+                "kind": "expr",
+                "normalize": {
+                  "trim": true,
+                  "remove_spaces": true,
+                  "engine": "mathjs",
+                  "vars": [
+                    "x"
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "MAKE_EXPR_X",
+                "engine": "mathjs",
+                "vars": [
+                  "x"
+                ]
+              },
+              "example_items": [
+                {
+                  "prompt": "xに5をたす式 =",
+                  "answer": "x+5"
+                },
+                {
+                  "prompt": "xを3倍する式 =",
+                  "answer": "3*x"
+                },
+                {
+                  "prompt": "xから7をひく式 =",
+                  "answer": "x-7"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import data from "@/content/mathquest_all_grades_types_v1.json";
+import { InlineMath } from "react-katex";
+import "katex/dist/katex.min.css";
+import data from "@/content/mathquest_all_grades_from_split_v1";
 
 type AnswerFormat = {
   kind: "int" | "dec" | "frac" | "pair" | "expr";
@@ -14,6 +16,7 @@ type AnswerFormat = {
 
 type ExampleItem = {
   prompt: string;
+  prompt_tex?: string;
   answer: string;
 };
 
@@ -87,6 +90,14 @@ const normalizePair = (input: string, kind: AnswerFormat["pair_kind"], separator
 
 const normalizeExpr = (input: string) => {
   return input.replace(/\s+/g, "").replace(/×/g, "*");
+};
+
+const renderPrompt = (item: ExampleItem) => {
+  const tex = item.prompt_tex?.trim();
+  if (tex) {
+    return <InlineMath math={tex} renderError={() => <span>{item.prompt}</span>} />;
+  }
+  return <span>{item.prompt}</span>;
 };
 
 const judgeAnswer = (userInput: string, answer: string, format: AnswerFormat) => {
@@ -207,7 +218,7 @@ export default function PracticePage() {
             <>
               <div className="mb-6">
                 <div className="text-sm text-slate-500 mb-1">問題</div>
-                <div className="text-xl font-bold">{currentItem.prompt}</div>
+                <div className="text-xl font-bold">{renderPrompt(currentItem)}</div>
               </div>
 
               <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">

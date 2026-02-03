@@ -326,14 +326,15 @@ const componentToTensor = (component: Component, w: number, h: number): DigitSam
 };
 
 const detectDecimalDots = (components: Component[], maxArea: number, h: number) => {
-  const maxDotArea = Math.max(10, Math.floor(maxArea * 0.02));
+  const maxDotArea = Math.max(12, Math.floor(maxArea * 0.03));
   return components.filter((c) => {
     const bw = c.bbox.maxX - c.bbox.minX + 1;
     const bh = c.bbox.maxY - c.bbox.minY + 1;
-    if (c.area < 4) return false;
+    const minArea = c.area <= 10 ? 3 : 6;
+    if (c.area < minArea) return false;
     if (c.area > maxDotArea) return false;
     if (bw > h * 0.25 || bh > h * 0.25) return false;
-    if (c.bbox.minY < h * 0.4) return false;
+    if (c.bbox.minY < h * 0.45) return false;
     return true;
   });
 };
@@ -1187,7 +1188,7 @@ function QuestPageInner() {
     let perDigitString = refined.some((d) => d === null) ? '' : refined.join('');
 
     let predictedText = perDigitString;
-    if (samples.length === 2 && is2DigitModelReady) {
+    if (samples.length === 2 && is2DigitModelReady && dotXs.length === 0) {
       const gap = 6;
       const width = 28 * 2 + gap;
       const composite = new Float32Array(28 * width);
@@ -1211,20 +1212,17 @@ function QuestPageInner() {
 
     if (predictedText && dotXs.length > 0) {
       const centers = samples.map((s) => s.centerX);
-      let dotX = dotXs[0];
+      let chosenDot = dotXs[0];
       if (centers.length >= 2) {
-        for (let i = 1; i < centers.length; i++) {
-          const left = centers[i - 1];
-          const right = centers[i];
-          const between = dotXs.find((x) => x > left && x < right);
-          if (between !== undefined) {
-            dotX = between;
-            break;
-          }
+        const between = dotXs.find((x) => x > centers[0] && x < centers[1]);
+        if (between !== undefined) {
+          chosenDot = between;
+        } else if (dotXs.length > 1) {
+          chosenDot = dotXs[dotXs.length - 1];
         }
       }
       let insertAt = 0;
-      while (insertAt < centers.length && dotX > centers[insertAt]) insertAt += 1;
+      while (insertAt < centers.length && chosenDot > centers[insertAt]) insertAt += 1;
       if (insertAt > 0 && insertAt < predictedText.length) {
         predictedText = `${predictedText.slice(0, insertAt)}.${predictedText.slice(insertAt)}`;
       }

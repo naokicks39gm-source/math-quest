@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import data from "@/content/mathquest_all_grades_types_v1.json";
-import { isSupportedType } from "@/lib/questSupport";
+import data from "@/content/mathquest_all_grades_from_split_v1";
 
 type AnswerFormat = {
   kind: "int" | "dec" | "frac" | "pair" | "expr";
@@ -31,19 +30,7 @@ type GradeDef = {
 export default function Home() {
   const router = useRouter();
   const allGrades = data.grades as GradeDef[];
-  const grades = useMemo(() => {
-    return allGrades
-      .map((grade) => ({
-        ...grade,
-        categories: grade.categories
-          .map((cat) => ({
-            ...cat,
-            types: cat.types.filter(isSupportedType)
-          }))
-          .filter((cat) => cat.types.length > 0)
-      }))
-      .filter((grade) => grade.categories.length > 0);
-  }, [allGrades]);
+  const grades = useMemo(() => allGrades, [allGrades]);
   const LS_KEY = "mq:last_type_id";
   const [gradeId, setGradeId] = useState(grades[0]?.grade_id ?? "");
   const [categoryId, setCategoryId] = useState("");

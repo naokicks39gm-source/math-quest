@@ -1,0 +1,1035 @@
+{
+  "version": "v2",
+  "generated_at": "2026-02-02T05:51:38.721Z",
+  "notes": [
+    "Merged from mathquest_all_grades_types_v1.json",
+    "システム数学（啓林館）の中学および高校（数学I〜III）の教科書を参考に、計算単元ごとの出題パターンを詳細に調査し、既存のタイプ構造を強化・拡張していきます。各タイプには複数の代表的例題（例：3〜5問）を含め、大学入試に必要な基礎力を網羅できる内容にします。完了後、従来形式で一覧提示・JSON出力もいたします。"
+  ],
+  "grades": [
+    {
+      "grade_id": "J1",
+      "grade_name": "中1",
+      "categories": [
+        {
+          "category_id": "AL",
+          "category_name": "式と計算",
+          "curriculum_domain": "A 数と式",
+          "types": [
+            {
+              "type_id": "J1.AL.INT.INT_ADD",
+              "type_name": "正負の数（add）",
+              "school": "J1",
+              "curriculum_label": "正負の数",
+              "display_mapping": {
+                "domain": "AL",
+                "subdomain": "INT"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "INT_ADD"
+              },
+              "example_items": [
+                {
+                  "prompt": "(-7) + 3 =",
+                  "answer": "-4",
+                  "prompt_tex": "(-7) + 3 ="
+                },
+                {
+                  "prompt": "(-9) + (-8) =",
+                  "answer": "-17",
+                  "prompt_tex": "(-9) + (-8) ="
+                },
+                {
+                  "prompt": "7 + (-10) =",
+                  "answer": "-3",
+                  "prompt_tex": "7 + (-10) ="
+                }
+              ]
+            },
+            {
+              "type_id": "J1.AL.INT.INT_SUB",
+              "type_name": "正負の数（sub）",
+              "school": "J1",
+              "curriculum_label": "正負の数",
+              "display_mapping": {
+                "domain": "AL",
+                "subdomain": "INT"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "INT_SUB"
+              },
+              "example_items": [
+                {
+                  "prompt": "5 - (-12) =",
+                  "answer": "17",
+                  "prompt_tex": "5 - (-12) ="
+                },
+                {
+                  "prompt": "(-9) - (-8) =",
+                  "answer": "-1",
+                  "prompt_tex": "(-9) - (-8) ="
+                },
+                {
+                  "prompt": "(-4) - 9 =",
+                  "answer": "-13",
+                  "prompt_tex": "(-4) - 9 ="
+                }
+              ]
+            },
+            {
+              "type_id": "J1.AL.INT.INT_MUL",
+              "type_name": "正負の数（mul）",
+              "school": "J1",
+              "curriculum_label": "正負の数",
+              "display_mapping": {
+                "domain": "AL",
+                "subdomain": "INT"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "INT_MUL"
+              },
+              "example_items": [
+                {
+                  "prompt": "(-5) × (-4) =",
+                  "answer": "20",
+                  "prompt_tex": "(-5) \\times (-4) ="
+                },
+                {
+                  "prompt": "12 × (-3) =",
+                  "answer": "-36",
+                  "prompt_tex": "12 \\times (-3) ="
+                },
+                {
+                  "prompt": "(-2) × 15 =",
+                  "answer": "-30",
+                  "prompt_tex": "(-2) \\times 15 ="
+                }
+              ]
+            },
+            {
+              "type_id": "J1.AL.INT.INT_DIV",
+              "type_name": "正負の数（div）",
+              "school": "J1",
+              "curriculum_label": "正負の数",
+              "display_mapping": {
+                "domain": "AL",
+                "subdomain": "INT"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "INT_DIV"
+              },
+              "example_items": [
+                {
+                  "prompt": "(-21) ÷ 3 =",
+                  "answer": "-7",
+                  "prompt_tex": "(-21) \\div 3 ="
+                },
+                {
+                  "prompt": "(-36) ÷ (-3) =",
+                  "answer": "12",
+                  "prompt_tex": "(-36) \\div (-3) ="
+                },
+                {
+                  "prompt": "30 ÷ (-6) =",
+                  "answer": "-5",
+                  "prompt_tex": "30 \\div (-6) ="
+                }
+              ]
+            },
+            {
+              "type_id": "J1.AL.POW.POW_INT",
+              "type_name": "指数の計算",
+              "school": "J1",
+              "curriculum_label": "指数",
+              "display_mapping": {
+                "domain": "AL",
+                "subdomain": "POW"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "POW_INT"
+              },
+              "example_items": [
+                {
+                  "prompt": "2^5 =",
+                  "answer": "32",
+                  "prompt_tex": "2^{5} ="
+                },
+                {
+                  "prompt": "3^4 =",
+                  "answer": "81",
+                  "prompt_tex": "3^{4} ="
+                },
+                {
+                  "prompt": "10^3 =",
+                  "answer": "1000",
+                  "prompt_tex": "10^{3} ="
+                }
+              ]
+            },
+            {
+              "type_id": "J1.AL.ROOT.SQRT_VAL",
+              "type_name": "平方根（値）",
+              "school": "J1",
+              "curriculum_label": "平方根",
+              "display_mapping": {
+                "domain": "AL",
+                "subdomain": "ROOT"
+              },
+              "answer_format": {
+                "kind": "dec",
+                "decimal_places": 3
+              },
+              "grading": {
+                "kind": "dec",
+                "normalize": {
+                  "trim": true,
+                  "decimal_places": 3
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SQRT_VAL",
+                "decimal_places": 3
+              },
+              "example_items": [
+                {
+                  "prompt": "√4 =",
+                  "answer": "2",
+                  "prompt_tex": "\\sqrt{4} ="
+                },
+                {
+                  "prompt": "√2 ≈ (小数第3位) ",
+                  "answer": "1.414"
+                },
+                {
+                  "prompt": "√9 =",
+                  "answer": "3",
+                  "prompt_tex": "\\sqrt{9} ="
+                }
+              ]
+            },
+            {
+              "type_id": "J1.AL.EXP.FACTOR_GCF",
+              "type_name": "因数分解（共通因数）",
+              "school": "J1",
+              "curriculum_label": "文字式",
+              "display_mapping": {
+                "domain": "AL",
+                "subdomain": "EXP"
+              },
+              "answer_format": {
+                "kind": "expr",
+                "engine": "mathjs",
+                "vars": [
+                  "x",
+                  "a",
+                  "y"
+                ]
+              },
+              "grading": {
+                "kind": "expr",
+                "normalize": {
+                  "trim": true,
+                  "remove_spaces": true,
+                  "engine": "mathjs",
+                  "vars": [
+                    "x",
+                    "a",
+                    "y"
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_GCF",
+                "engine": "mathjs",
+                "vars": [
+                  "x",
+                  "a",
+                  "y"
+                ]
+              },
+              "example_items": [
+                {
+                  "prompt": "6x+9 =",
+                  "answer": "3(2x+3)",
+                  "prompt_tex": "6x+9 ="
+                },
+                {
+                  "prompt": "8y-12 =",
+                  "answer": "4(2y-3)",
+                  "prompt_tex": "8y-12 ="
+                },
+                {
+                  "prompt": "15a+10 =",
+                  "answer": "5(3a+2)",
+                  "prompt_tex": "15a+10 ="
+                }
+              ]
+            },
+            {
+              "type_id": "J1.AL.EXP.FACTOR_TRINOM",
+              "type_name": "因数分解（x^2+bx+c）",
+              "school": "J1",
+              "curriculum_label": "文字式",
+              "display_mapping": {
+                "domain": "AL",
+                "subdomain": "EXP"
+              },
+              "answer_format": {
+                "kind": "expr",
+                "engine": "mathjs",
+                "vars": [
+                  "x",
+                  "a",
+                  "y"
+                ]
+              },
+              "grading": {
+                "kind": "expr",
+                "normalize": {
+                  "trim": true,
+                  "remove_spaces": true,
+                  "engine": "mathjs",
+                  "vars": [
+                    "x",
+                    "a",
+                    "y"
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_TRINOM",
+                "engine": "mathjs",
+                "vars": [
+                  "x",
+                  "a",
+                  "y"
+                ]
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2+5x+6 =",
+                  "answer": "(x+2)(x+3)",
+                  "prompt_tex": "x^{2}+5x+6 ="
+                },
+                {
+                  "prompt": "x^2-5x+6 =",
+                  "answer": "(x-2)(x-3)",
+                  "prompt_tex": "x^{2}-5x+6 ="
+                },
+                {
+                  "prompt": "x^2+x-6 =",
+                  "answer": "(x+3)(x-2)",
+                  "prompt_tex": "x^{2}+x-6 ="
+                }
+              ]
+            },
+            {
+              "type_id": "J1.AL.EXP.FACTOR_DIFF_SQ",
+              "type_name": "因数分解（平方差）",
+              "school": "J1",
+              "curriculum_label": "文字式",
+              "display_mapping": {
+                "domain": "AL",
+                "subdomain": "EXP"
+              },
+              "answer_format": {
+                "kind": "expr",
+                "engine": "mathjs",
+                "vars": [
+                  "x",
+                  "a",
+                  "y"
+                ]
+              },
+              "grading": {
+                "kind": "expr",
+                "normalize": {
+                  "trim": true,
+                  "remove_spaces": true,
+                  "engine": "mathjs",
+                  "vars": [
+                    "x",
+                    "a",
+                    "y"
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_DIFF_SQ",
+                "engine": "mathjs",
+                "vars": [
+                  "x",
+                  "a",
+                  "y"
+                ]
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2-16 =",
+                  "answer": "(x-4)(x+4)",
+                  "prompt_tex": "x^{2}-16 ="
+                },
+                {
+                  "prompt": "9a^2-1 =",
+                  "answer": "(3a-1)(3a+1)",
+                  "prompt_tex": "9a^{2}-1 ="
+                },
+                {
+                  "prompt": "4x^2-25 =",
+                  "answer": "(2x-5)(2x+5)",
+                  "prompt_tex": "4x^{2}-25 ="
+                }
+              ]
+            },
+            {
+              "type_id": "J1.AL.EXP.FACTOR_PERF_SQ",
+              "type_name": "因数分解（完全平方）",
+              "school": "J1",
+              "curriculum_label": "文字式",
+              "display_mapping": {
+                "domain": "AL",
+                "subdomain": "EXP"
+              },
+              "answer_format": {
+                "kind": "expr",
+                "engine": "mathjs",
+                "vars": [
+                  "x",
+                  "a",
+                  "y"
+                ]
+              },
+              "grading": {
+                "kind": "expr",
+                "normalize": {
+                  "trim": true,
+                  "remove_spaces": true,
+                  "engine": "mathjs",
+                  "vars": [
+                    "x",
+                    "a",
+                    "y"
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_PERF_SQ",
+                "engine": "mathjs",
+                "vars": [
+                  "x",
+                  "a",
+                  "y"
+                ]
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2+6x+9 =",
+                  "answer": "(x+3)^2",
+                  "prompt_tex": "x^{2}+6x+9 ="
+                },
+                {
+                  "prompt": "x^2-10x+25 =",
+                  "answer": "(x-5)^2",
+                  "prompt_tex": "x^{2}-10x+25 ="
+                },
+                {
+                  "prompt": "4x^2+12x+9 =",
+                  "answer": "(2x+3)^2",
+                  "prompt_tex": "4x^{2}+12x+9 ="
+                }
+              ]
+            },
+            {
+              "type_id": "J1.AL.EXP.EXPAND",
+              "type_name": "展開（乗法公式）",
+              "school": "J1",
+              "curriculum_label": "文字式",
+              "display_mapping": {
+                "domain": "AL",
+                "subdomain": "EXP"
+              },
+              "answer_format": {
+                "kind": "expr",
+                "engine": "mathjs",
+                "vars": [
+                  "x",
+                  "a",
+                  "y"
+                ]
+              },
+              "grading": {
+                "kind": "expr",
+                "normalize": {
+                  "trim": true,
+                  "remove_spaces": true,
+                  "engine": "mathjs",
+                  "vars": [
+                    "x",
+                    "a",
+                    "y"
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND",
+                "engine": "mathjs",
+                "vars": [
+                  "x",
+                  "a",
+                  "y"
+                ]
+              },
+              "example_items": [
+                {
+                  "prompt": "(x+2)(x+5) =",
+                  "answer": "x^2+7x+10",
+                  "prompt_tex": "(x+2)(x+5) ="
+                },
+                {
+                  "prompt": "(x-3)^2 =",
+                  "answer": "x^2-6x+9",
+                  "prompt_tex": "(x-3)^{2} ="
+                },
+                {
+                  "prompt": "(2x-1)(x+4) =",
+                  "answer": "2x^2+7x-4",
+                  "prompt_tex": "(2x-1)(x+4) ="
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "EQ",
+          "category_name": "方程式・不等式",
+          "curriculum_domain": "A 数と式",
+          "types": [
+            {
+              "type_id": "J1.EQ.LIN.LIN_EQ",
+              "type_name": "一次方程式（解）",
+              "school": "J1",
+              "curriculum_label": "方程式",
+              "display_mapping": {
+                "domain": "EQ",
+                "subdomain": "LIN"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "LIN_EQ",
+                "var": "x"
+              },
+              "example_items": [
+                {
+                  "prompt": "2x + 3 = 11, x =",
+                  "answer": "4",
+                  "prompt_tex": "2x + 3 = 11, x ="
+                },
+                {
+                  "prompt": "5x - 10 = 0, x =",
+                  "answer": "2",
+                  "prompt_tex": "5x - 10 = 0, x ="
+                },
+                {
+                  "prompt": "3x + 7 = 1, x =",
+                  "answer": "-2",
+                  "prompt_tex": "3x + 7 = 1, x ="
+                }
+              ]
+            },
+            {
+              "type_id": "J1.EQ.INEQ.LIN_INEQ",
+              "type_name": "一次不等式（解）",
+              "school": "J1",
+              "curriculum_label": "不等式",
+              "display_mapping": {
+                "domain": "EQ",
+                "subdomain": "INEQ"
+              },
+              "answer_format": {
+                "kind": "expr",
+                "engine": "mathjs",
+                "vars": [
+                  "x"
+                ]
+              },
+              "grading": {
+                "kind": "expr",
+                "normalize": {
+                  "trim": true,
+                  "remove_spaces": true,
+                  "engine": "mathjs",
+                  "vars": [
+                    "x"
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "LIN_INEQ",
+                "engine": "mathjs",
+                "vars": [
+                  "x"
+                ]
+              },
+              "example_items": [
+                {
+                  "prompt": "2x+1 < 7 の解を x<... の形で =",
+                  "answer": "x<3"
+                },
+                {
+                  "prompt": "3x-6 ≥ 0 の解を x≥... の形で =",
+                  "answer": "x>=2"
+                },
+                {
+                  "prompt": "-x > 5 の解を x<... の形で =",
+                  "answer": "x<-5"
+                }
+              ]
+            },
+            {
+              "type_id": "J1.EQ.SYS.SYS_EQ",
+              "type_name": "連立方程式（x,y）",
+              "school": "J1",
+              "curriculum_label": "連立方程式",
+              "display_mapping": {
+                "domain": "EQ",
+                "subdomain": "SYS"
+              },
+              "answer_format": {
+                "kind": "pair",
+                "sep": ",",
+                "allow_spaces": true,
+                "items": [
+                  {
+                    "kind": "int"
+                  },
+                  {
+                    "kind": "int"
+                  }
+                ]
+              },
+              "grading": {
+                "kind": "pair",
+                "normalize": {
+                  "trim": true,
+                  "sep": ",",
+                  "allow_spaces": true,
+                  "items": [
+                    {
+                      "kind": "int"
+                    },
+                    {
+                      "kind": "int"
+                    }
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SYS_EQ",
+                "sep": ",",
+                "vars": [
+                  "x",
+                  "y"
+                ]
+              },
+              "example_items": [
+                {
+                  "prompt": "x + y = 7, x - y = 1 (x,y) =",
+                  "answer": "4,3",
+                  "prompt_tex": "x + y = 7, x - y = 1 (x,y) ="
+                },
+                {
+                  "prompt": "2x + y = 9, x + y = 7 (x,y) =",
+                  "answer": "2,5",
+                  "prompt_tex": "2x + y = 9, x + y = 7 (x,y) ="
+                },
+                {
+                  "prompt": "x - y = -1, x + y = 11 (x,y) =",
+                  "answer": "5,6",
+                  "prompt_tex": "x - y = -1, x + y = 11 (x,y) ="
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "FN",
+          "category_name": "関数",
+          "curriculum_domain": "C 関数",
+          "types": [
+            {
+              "type_id": "J1.FN.LIN.LIN_FUNC_PARAMS",
+              "type_name": "一次関数（傾き・切片）",
+              "school": "J1",
+              "curriculum_label": "一次関数",
+              "display_mapping": {
+                "domain": "FN",
+                "subdomain": "LIN"
+              },
+              "answer_format": {
+                "kind": "pair",
+                "sep": ",",
+                "allow_spaces": true,
+                "items": [
+                  {
+                    "kind": "int"
+                  },
+                  {
+                    "kind": "int"
+                  }
+                ]
+              },
+              "grading": {
+                "kind": "pair",
+                "normalize": {
+                  "trim": true,
+                  "sep": ",",
+                  "allow_spaces": true,
+                  "items": [
+                    {
+                      "kind": "int"
+                    },
+                    {
+                      "kind": "int"
+                    }
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "LIN_FUNC_PARAMS",
+                "sep": ",",
+                "form": "y=ax+b"
+              },
+              "example_items": [
+                {
+                  "prompt": "y=2x+3 の (a,b) =",
+                  "answer": "2,3"
+                },
+                {
+                  "prompt": "y=-x+5 の (a,b) =",
+                  "answer": "-1,5"
+                },
+                {
+                  "prompt": "y=4x-7 の (a,b) =",
+                  "answer": "4,-7"
+                }
+              ]
+            },
+            {
+              "type_id": "J1.FN.QUAD.QUAD_VERTEX",
+              "type_name": "二次関数（頂点）",
+              "school": "J1",
+              "curriculum_label": "二次関数",
+              "display_mapping": {
+                "domain": "FN",
+                "subdomain": "QUAD"
+              },
+              "answer_format": {
+                "kind": "pair",
+                "sep": ",",
+                "allow_spaces": true,
+                "items": [
+                  {
+                    "kind": "int"
+                  },
+                  {
+                    "kind": "int"
+                  }
+                ]
+              },
+              "grading": {
+                "kind": "pair",
+                "normalize": {
+                  "trim": true,
+                  "sep": ",",
+                  "allow_spaces": true,
+                  "items": [
+                    {
+                      "kind": "int"
+                    },
+                    {
+                      "kind": "int"
+                    }
+                  ]
+                }
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_VERTEX",
+                "sep": ","
+              },
+              "example_items": [
+                {
+                  "prompt": "y=x^2-4x+1 の頂点 (x,y) =",
+                  "answer": "2,-3"
+                },
+                {
+                  "prompt": "y=2x^2+8x+5 の頂点 (x,y) =",
+                  "answer": "-2,-3"
+                },
+                {
+                  "prompt": "y=-x^2+6x-8 の頂点 (x,y) =",
+                  "answer": "3,1"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "GE",
+          "category_name": "図形",
+          "curriculum_domain": "B 図形",
+          "types": [
+            {
+              "type_id": "J1.GE.POLY.POLY_ANGLE_SUM",
+              "type_name": "多角形の内角の和",
+              "school": "J1",
+              "curriculum_label": "図形の性質",
+              "display_mapping": {
+                "domain": "GE",
+                "subdomain": "POLY"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "POLY_ANGLE_SUM"
+              },
+              "example_items": [
+                {
+                  "prompt": "五角形の内角の和 =",
+                  "answer": "540"
+                },
+                {
+                  "prompt": "六角形の内角の和 =",
+                  "answer": "720"
+                },
+                {
+                  "prompt": "八角形の内角の和 =",
+                  "answer": "1080"
+                }
+              ]
+            },
+            {
+              "type_id": "J1.GE.CIRC.CIRCLE",
+              "type_name": "円周と面積（π=3.14）",
+              "school": "J1",
+              "curriculum_label": "円",
+              "display_mapping": {
+                "domain": "GE",
+                "subdomain": "CIRC"
+              },
+              "answer_format": {
+                "kind": "dec",
+                "decimal_places": 2
+              },
+              "grading": {
+                "kind": "dec",
+                "normalize": {
+                  "trim": true,
+                  "decimal_places": 2
+                }
+              },
+              "generation_params": {
+                "pattern_id": "CIRCLE",
+                "decimal_places": 2,
+                "pi": 3.14
+              },
+              "example_items": [
+                {
+                  "prompt": "半径3の円周 =",
+                  "answer": "18.84"
+                },
+                {
+                  "prompt": "半径5の円の面積 =",
+                  "answer": "78.50"
+                },
+                {
+                  "prompt": "直径10の円周 =",
+                  "answer": "31.40"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "ST",
+          "category_name": "データ",
+          "curriculum_domain": "D データの活用",
+          "types": [
+            {
+              "type_id": "J1.ST.MEAN.MEAN",
+              "type_name": "平均",
+              "school": "J1",
+              "curriculum_label": "データ",
+              "display_mapping": {
+                "domain": "ST",
+                "subdomain": "MEAN"
+              },
+              "answer_format": {
+                "kind": "dec",
+                "decimal_places": 1
+              },
+              "grading": {
+                "kind": "dec",
+                "normalize": {
+                  "trim": true,
+                  "decimal_places": 1
+                }
+              },
+              "generation_params": {
+                "pattern_id": "MEAN",
+                "decimal_places": 1
+              },
+              "example_items": [
+                {
+                  "prompt": "(2,5,7) の平均 =",
+                  "answer": "4.7"
+                },
+                {
+                  "prompt": "(10,0,5,5) の平均 =",
+                  "answer": "5.0"
+                },
+                {
+                  "prompt": "(1,2,3,4,5) の平均 =",
+                  "answer": "3.0"
+                }
+              ]
+            },
+            {
+              "type_id": "J1.ST.PROB.DICE_PROB",
+              "type_name": "確率（サイコロ）",
+              "school": "J1",
+              "curriculum_label": "確率",
+              "display_mapping": {
+                "domain": "ST",
+                "subdomain": "PROB"
+              },
+              "answer_format": {
+                "kind": "frac"
+              },
+              "grading": {
+                "kind": "frac",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "DICE_PROB"
+              },
+              "example_items": [
+                {
+                  "prompt": "偶数が出る確率 =",
+                  "answer": "1/2"
+                },
+                {
+                  "prompt": "1が出る確率 =",
+                  "answer": "1/6"
+                },
+                {
+                  "prompt": "3以上が出る確率 =",
+                  "answer": "2/3"
+                }
+              ]
+            },
+            {
+              "type_id": "J1.ST.COMB.COMB",
+              "type_name": "組合せ nCk",
+              "school": "J1",
+              "curriculum_label": "場合の数",
+              "display_mapping": {
+                "domain": "ST",
+                "subdomain": "COMB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "COMB"
+              },
+              "example_items": [
+                {
+                  "prompt": "5C2 =",
+                  "answer": "10",
+                  "prompt_tex": "5C2 ="
+                },
+                {
+                  "prompt": "6C3 =",
+                  "answer": "20",
+                  "prompt_tex": "6C3 ="
+                },
+                {
+                  "prompt": "10C1 =",
+                  "answer": "10",
+                  "prompt_tex": "10C1 ="
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
