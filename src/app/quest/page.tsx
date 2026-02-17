@@ -7,13 +7,8 @@ import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
-import { gradeAnswer } from '@/lib/grader';
-import {
-  ExampleItem,
-  GradeDef,
-  TypeDef,
-  getElementaryNumberCalculationGrades
-} from '@/lib/elementaryContent';
+import { gradeAnswer, AnswerFormat } from '@/lib/grader';
+import { getCatalogGrades } from '@/lib/gradeCatalog';
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -32,8 +27,95 @@ interface Question {
   answer: number;
 }
 
-type FractionDigits = { num: number; den: number };
+type ExampleItem = {
+  prompt: string;
+  prompt_tex?: string;
+  answer: string;
+};
+
+type TypeDef = {
+  type_id: string;
+  type_name: string;
+  display_name?: string;
+  answer_format: AnswerFormat;
+  example_items: ExampleItem[];
+};
+
+
+type CategoryDef = {
+  category_id: string;
+  category_name: string;
+  types: TypeDef[];
+};
+
+type GradeDef = {
+  grade_id: string;
+  grade_name: string;
+  categories: CategoryDef[];
+};
+
+type QuestEntry = {
+  item: ExampleItem;
+  type: TypeDef;
+};
+
 const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
+const QUESTION_POOL_SIZE = 30;
+
+const shuffle = <T,>(list: T[]) => {
+  const copied = [...list];
+  for (let i = copied.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copied[i], copied[j]] = [copied[j], copied[i]];
+  }
+  return copied;
+};
+
+const buildRandomQuestionSet = (source: QuestEntry[], poolSize: number, quizSize: number) => {
+  if (source.length === 0) return [];
+  const entryKey = (entry: QuestEntry) =>
+    `${entry.type.type_id}::${entry.item.prompt_tex ?? entry.item.prompt}::${entry.item.answer}`;
+  const uniqueMap = new Map<string, QuestEntry>();
+  for (const entry of source) {
+    uniqueMap.set(entryKey(entry), entry);
+  }
+  const uniqueSource = [...uniqueMap.values()];
+
+  if (uniqueSource.length >= quizSize) {
+    return shuffle(uniqueSource).slice(0, quizSize);
+  }
+
+  const pool: QuestEntry[] = [];
+  if (uniqueSource.length >= poolSize) {
+    pool.push(...shuffle(uniqueSource).slice(0, poolSize));
+  } else {
+    const shuffledBase = shuffle(uniqueSource);
+    while (pool.length < poolSize) {
+      const remaining = poolSize - pool.length;
+      pool.push(...shuffle(shuffledBase).slice(0, Math.min(shuffledBase.length, remaining)));
+    }
+  }
+  const shuffledPool = shuffle(pool);
+  const picked: QuestEntry[] = [];
+  for (const candidate of shuffledPool) {
+    if (picked.length >= quizSize) break;
+    const prev = picked[picked.length - 1];
+    if (prev && entryKey(prev) === entryKey(candidate)) continue;
+    picked.push(candidate);
+  }
+
+  // Fill shortfall while preventing immediate duplicates.
+  while (picked.length < quizSize && uniqueSource.length > 0) {
+    const prev = picked[picked.length - 1];
+    const options = uniqueSource.filter((entry) => !prev || entryKey(prev) !== entryKey(entry));
+    const bag = options.length > 0 ? options : uniqueSource;
+    picked.push(bag[Math.floor(Math.random() * bag.length)]);
+  }
+
+  return picked;
+};
+
+const typeSignature = (typeId: string) => typeId.replace(/^[A-Z]\d\./, "");
 
 const formatPrompt = (prompt: string) => {
   return prompt.replace(/を計算しなさい。$/g, "");
@@ -321,79 +403,6 @@ const detectDecimalDots = (components: Component[], maxArea: number, h: number) 
   });
 };
 
-const getFractionDigitCounts = (answer: string): FractionDigits => {
-  const cleaned = String(answer ?? "");
-  const parts = cleaned.split("/");
-  if (parts.length !== 2) {
-    const n = cleaned.replace(/\D/g, "").length || 1;
-    return { num: Math.min(4, n), den: Math.min(4, n) };
-  }
-  const num = parts[0].replace(/\D/g, "").length || 1;
-  const den = parts[1].replace(/\D/g, "").length || 1;
-  return { num: Math.min(4, num), den: Math.min(4, den) };
-};
-
-const pickFractionLine = (components: Component[], overall: BBox) => {
-  if (components.length === 0) return null;
-  const overallW = overall.maxX - overall.minX + 1;
-  const overallH = overall.maxY - overall.minY + 1;
-  let best: Component | null = null;
-  for (const c of components) {
-    const w = c.bbox.maxX - c.bbox.minX + 1;
-    const h = c.bbox.maxY - c.bbox.minY + 1;
-    const ratio = w / Math.max(1, h);
-    if (w < overallW * 0.55) continue;
-    if (h > overallH * 0.18) continue;
-    if (ratio < 4) continue;
-    if (!best || w > (best.bbox.maxX - best.bbox.minX + 1)) {
-      best = c;
-    }
-  }
-  return best;
-};
-
-const preprocessFraction = (
-  canvas: HTMLCanvasElement,
-  expected: FractionDigits
-): { numerator: DigitSample[]; denominator: DigitSample[] } => {
-  const binData = binarizeCanvas(canvas);
-  if (!binData) return { numerator: [], denominator: [] };
-  const { bin, w, h } = binData;
-  const components = findComponents(bin, w, h);
-  if (components.length === 0) return { numerator: [], denominator: [] };
-  const overall = computeBBox(bin, w, h);
-  if (!overall) return { numerator: [], denominator: [] };
-
-  const line = pickFractionLine(components, overall);
-  if (!line) return { numerator: [], denominator: [] };
-  const lineMidY = (line.bbox.minY + line.bbox.maxY) / 2;
-
-  const top = components.filter(
-    (c) => c !== line && (c.bbox.minY + c.bbox.maxY) / 2 < lineMidY
-  );
-  const bottom = components.filter(
-    (c) => c !== line && (c.bbox.minY + c.bbox.maxY) / 2 > lineMidY
-  );
-  if (top.length === 0 || bottom.length === 0) return { numerator: [], denominator: [] };
-
-  top.sort((a, b) => a.bbox.minX - b.bbox.minX);
-  bottom.sort((a, b) => a.bbox.minX - b.bbox.minX);
-
-  const numerator: DigitSample[] = [];
-  for (const c of top.slice(0, Math.max(1, expected.num))) {
-    const sample = componentToTensor(c, w, h);
-    if (sample) numerator.push(sample);
-  }
-
-  const denominator: DigitSample[] = [];
-  for (const c of bottom.slice(0, Math.max(1, expected.den))) {
-    const sample = componentToTensor(c, w, h);
-    if (sample) denominator.push(sample);
-  }
-
-  return { numerator, denominator };
-};
-
 const splitByProjection = (bin: Uint8Array, w: number, h: number, bbox: BBox) => {
   const width = bbox.maxX - bbox.minX + 1;
   const height = bbox.maxY - bbox.minY + 1;
@@ -613,104 +622,10 @@ const quadrantInk = (data: Float32Array, x0: number, y0: number, x1: number, y1:
   return count === 0 ? 0 : sum / count;
 };
 
-const getDrawingCanvas = (ref: { canvas?: unknown } | null): HTMLCanvasElement | null => {
-  const base = ref?.canvas as
-    | {
-        drawing?: { canvas?: unknown; ctx?: { canvas?: unknown } } | unknown;
-        canvas?: unknown;
-        canvasContainer?: ParentNode;
-        container?: ParentNode;
-      }
-    | undefined;
-  const candidate =
-    (base?.drawing as { canvas?: unknown } | undefined)?.canvas ??
-    (base?.drawing as { ctx?: { canvas?: unknown } } | undefined)?.ctx?.canvas ??
-    base?.drawing ??
-    base?.canvas ??
-    null;
-  if (candidate instanceof HTMLCanvasElement) return candidate;
-  const container = base?.canvasContainer ??
-    base?.container ??
-    null;
-  if (container && "querySelectorAll" in container) {
-    const canvases = Array.from(container.querySelectorAll("canvas"));
-    const found = canvases.find((c) => c.width > 0 && c.height > 0) ?? null;
-    if (found instanceof HTMLCanvasElement) return found;
-  }
-  return null;
-};
-
-const getDrawingCanvases = (ref: { canvas?: unknown } | null): HTMLCanvasElement[] => {
+const getDrawingCanvas = (ref: any): HTMLCanvasElement | null => {
   const base = ref?.canvas;
-  const list: HTMLCanvasElement[] = [];
-  const pushIf = (c: unknown) => {
-    if (c instanceof HTMLCanvasElement && !list.includes(c)) list.push(c);
-  };
-  const baseObj = base as
-    | {
-        drawing?: { canvas?: unknown; ctx?: { canvas?: unknown } } | unknown;
-        canvas?: unknown;
-        canvasContainer?: ParentNode;
-        container?: ParentNode;
-      }
-    | undefined;
-  pushIf((baseObj?.drawing as { canvas?: unknown } | undefined)?.canvas);
-  pushIf((baseObj?.drawing as { ctx?: { canvas?: unknown } } | undefined)?.ctx?.canvas);
-  pushIf(baseObj?.drawing);
-  pushIf(baseObj?.canvas);
-  const container = baseObj?.canvasContainer ?? baseObj?.container ?? null;
-  if (container && "querySelectorAll" in container) {
-    container.querySelectorAll("canvas").forEach((c: Element) => pushIf(c));
-  }
-  return list;
-};
-
-const waitForNextFrame = () =>
-  new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-
-const ensureDrawingCanvases = async (params: {
-  inputMode: "numpad" | "handwriting";
-  setInputMode: (mode: "numpad" | "handwriting") => void;
-  canvasRef: { current: { canvas?: unknown } | null };
-}): Promise<HTMLCanvasElement[]> => {
-  if (params.inputMode !== 'handwriting') {
-    params.setInputMode('handwriting');
-  }
-  for (let i = 0; i < 12; i++) {
-    const canvases = getDrawingCanvases(params.canvasRef.current);
-    if (canvases.length > 0) return canvases;
-    await waitForNextFrame();
-  }
-  return getDrawingCanvases(params.canvasRef.current);
-};
-
-const estimateInk = (canvas: HTMLCanvasElement) => {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return 0;
-  const { width, height } = canvas;
-  if (width <= 0 || height <= 0) return 0;
-  const data = ctx.getImageData(0, 0, width, height).data;
-  let ink = 0;
-  for (let i = 0; i < data.length; i += 4) {
-    const a = data[i + 3];
-    if (a < 10) continue;
-    const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
-    if (255 - gray > 10) ink++;
-  }
-  return ink;
-};
-
-const pickBestCanvas = (canvases: HTMLCanvasElement[]) => {
-  let best = canvases[0] ?? null;
-  let bestInk = -1;
-  for (const c of canvases) {
-    const ink = estimateInk(c);
-    if (ink > bestInk) {
-      bestInk = ink;
-      best = c;
-    }
-  }
-  return best;
+  const candidate = base?.drawing?.canvas ?? base?.drawing ?? null;
+  return candidate instanceof HTMLCanvasElement ? candidate : null;
 };
 
 const countHoles = (data: Float32Array, width = 28, height = 28, minArea = 18) => {
@@ -906,16 +821,18 @@ function QuestPageInner() {
   const params = useSearchParams();
   const typeFromQuery = params.get("type");
   const categoryFromQuery = params.get("category");
-  const TOTAL_QUESTIONS = 10;
+  const TOTAL_QUESTIONS = 5;
   const [combo, setCombo] = useState(0);
   const [question, setQuestion] = useState<Question | null>(null);
   const [history, setHistory] = useState<Array<{ id: number; text: string }>>([]);
   const [questionIndex, setQuestionIndex] = useState(1);
   const [results, setResults] = useState<Array<{ id: number; text: string; userAnswer: string; correct: boolean }>>([]);
+  const [questionResults, setQuestionResults] = useState<Record<number, { text: string; userAnswer: string; correct: boolean }>>({});
+  const [mistakeLog, setMistakeLog] = useState<Array<{ index: number; text: string; userAnswer: string; correctAnswer: string }>>([]);
   const [input, setInput] = useState('');
   const [message, setMessage] = useState('Battle Start!');
   const [character, setCharacter] = useState<CharacterType>('warrior');
-  const [status, setStatus] = useState<'playing' | 'cleared' | 'finished'>('playing');
+  const [status, setStatus] = useState<'playing' | 'cleared'>('playing');
   const [inputMode, setInputMode] = useState<'numpad' | 'handwriting'>('handwriting'); // New state for input mode
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
@@ -939,20 +856,12 @@ function QuestPageInner() {
   const inFlightRef = useRef(false);
   const pendingRecognizeRef = useRef(false);
   const forcedDigitsRef = useRef<number | null>(null);
-  const forceRecognizeRef = useRef(false);
-  const lastAutoDrawCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const cooldownUntilRef = useRef(0);
   const AUTO_NEXT_WAIT_MS = 900;
   const autoNextTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
   const grades = useMemo(
-    () =>
-      (getElementaryNumberCalculationGrades() as GradeDef[])
-        .map((grade) => ({
-          ...grade,
-          categories: grade.categories
-        }))
-        .filter((grade) => grade.categories.length > 0),
+    () => getCatalogGrades() as GradeDef[],
     []
   );
   const defaultType = grades[0]?.categories[0]?.types[0] ?? null;
@@ -963,6 +872,15 @@ function QuestPageInner() {
   const [autoDrawBatchSummary, setAutoDrawBatchSummary] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
+  const clearResults = useMemo(
+    () => Object.entries(questionResults).sort((a, b) => Number(a[0]) - Number(b[0])),
+    [questionResults]
+  );
+  const correctCount = useMemo(
+    () => clearResults.filter(([, result]) => result.correct).length,
+    [clearResults]
+  );
 
   const postJson = async (url: string, payload: unknown) => {
     const res = await fetch(url, {
@@ -1070,6 +988,7 @@ function QuestPageInner() {
       if (!autoJudgeEnabled) return;
       if (isStarting) return;
       if (status !== 'playing') return;
+      if (isDrawingRef.current) return;
       if (Date.now() < cooldownUntilRef.current) return;
       if (isRecognizing || inFlightRef.current) return;
       const idleFor = Date.now() - lastDrawAtRef.current;
@@ -1125,7 +1044,7 @@ function QuestPageInner() {
     }
   }, [typeFromQuery, categoryFromQuery, grades, selectedType, defaultType]);
 
-  const categoryContext = (() => {
+  const categoryContext = useMemo(() => {
     if (!categoryFromQuery) return null;
     for (const g of grades) {
       for (const c of g.categories) {
@@ -1135,7 +1054,7 @@ function QuestPageInner() {
       }
     }
     return null;
-  })();
+  }, [categoryFromQuery, grades]);
 
   const hasTypeQuery = Boolean(typeFromQuery);
   const hasCategoryQuery = Boolean(categoryFromQuery);
@@ -1149,7 +1068,7 @@ function QuestPageInner() {
       };
     }
     if (categoryContext) {
-      const typeName = selectedType?.type_name ?? "カテゴリ内";
+      const typeName = selectedType?.display_name ?? selectedType?.type_name ?? "カテゴリ内";
       return {
         gradeName: categoryContext.grade.grade_name,
         categoryName: categoryContext.category.category_name,
@@ -1164,7 +1083,7 @@ function QuestPageInner() {
           return {
             gradeName: g.grade_name,
             categoryName: c.category_name,
-            typeName: hit.type_name
+            typeName: hit.display_name ?? hit.type_name
           };
         }
       }
@@ -1172,39 +1091,151 @@ function QuestPageInner() {
     return null;
   })();
 
-  const categoryItems = categoryContext
-    ? categoryContext.category.types.flatMap((t) =>
-        t.example_items.map((item) => ({ item, type: t }))
-      )
-    : [];
-
-  const typeItems = selectedType
-    ? selectedType.example_items.map((item) => ({ item, type: selectedType }))
-    : [];
-
-  const allCategoryItems = grades.flatMap((g) =>
-    g.categories.flatMap((c) =>
-      c.types.flatMap((t) =>
-        t.example_items.map((item) => ({ item, type: t }))
-      )
-    )
+  const categoryItems = useMemo(
+    () =>
+      categoryContext
+        ? categoryContext.category.types.flatMap((t) =>
+            t.example_items.map((item) => ({ item, type: t }))
+          )
+        : [],
+    [categoryContext]
   );
 
-  const activeItems = hasTypeQuery
-    ? typeItems
-    : hasCategoryQuery
-      ? categoryItems
-      : allCategoryItems;
-  const emptyMessage = "このカテゴリ/タイプには表示できる問題がありません。";
-  const safeIndex = activeItems.length > 0 ? itemIndex % activeItems.length : 0;
-  const currentEntry = activeItems[safeIndex] ?? null;
-  const nextEntry = activeItems.length > 0 ? activeItems[(safeIndex + 1) % activeItems.length] : null;
+  const typeItems = useMemo(
+    () => (selectedType ? selectedType.example_items.map((item) => ({ item, type: selectedType })) : []),
+    [selectedType]
+  );
+
+  const allCategoryItems = useMemo(
+    () =>
+      grades.flatMap((g) =>
+        g.categories.flatMap((c) =>
+          c.types.flatMap((t) =>
+            t.example_items.map((item) => ({ item, type: t }))
+          )
+        )
+      ),
+    [grades]
+  );
+  const allTypePaths = useMemo(
+    () =>
+      grades.flatMap((g) =>
+        g.categories.flatMap((c) =>
+          c.types.map((t) => ({
+            typeId: t.type_id,
+            categoryId: c.category_id
+          }))
+        )
+      ),
+    [grades]
+  );
+
+  const activeItems = useMemo(
+    () =>
+      hasTypeQuery
+        ? typeItems
+        : hasCategoryQuery
+          ? categoryItems
+          : allCategoryItems,
+    [hasTypeQuery, hasCategoryQuery, typeItems, categoryItems, allCategoryItems]
+  );
+  const selectedTypeSignature = useMemo(() => {
+    if (typeFromQuery) return typeSignature(typeFromQuery);
+    if (selectedType) return typeSignature(selectedType.type_id);
+    return "";
+  }, [typeFromQuery, selectedType]);
+
+  const poolCandidates = useMemo(() => {
+    if (!hasTypeQuery) return activeItems;
+    if (!selectedTypeSignature) return activeItems;
+
+    const seen = new Set<string>();
+    const picked: QuestEntry[] = [];
+    const pushUnique = (entries: QuestEntry[]) => {
+      for (const entry of entries) {
+        const key = `${entry.type.type_id}::${entry.item.prompt_tex ?? entry.item.prompt}::${entry.item.answer}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        picked.push(entry);
+        if (picked.length >= QUESTION_POOL_SIZE) return;
+      }
+    };
+
+    const sameTypeAcrossGrades = allCategoryItems.filter(
+      (entry) => typeSignature(entry.type.type_id) === selectedTypeSignature
+    );
+    pushUnique(sameTypeAcrossGrades);
+    return picked.length > 0 ? picked : activeItems;
+  }, [hasTypeQuery, selectedTypeSignature, activeItems, allCategoryItems]);
+  const quizSize = Math.min(TOTAL_QUESTIONS, QUESTION_POOL_SIZE);
+  useEffect(() => {
+    const nextSet = buildRandomQuestionSet(poolCandidates, QUESTION_POOL_SIZE, quizSize);
+    setQuizItems(nextSet);
+    setItemIndex(0);
+    setQuestionResults({});
+    setMistakeLog([]);
+    setStatus("playing");
+    setMessage("Battle Start!");
+    setPracticeResult(null);
+    setResultMark(null);
+    setRecognizedNumber(null);
+  }, [poolCandidates, quizSize]);
+
+  const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
+  const currentEntry = quizItems[safeIndex] ?? null;
+  const nextEntry = quizItems.length > 0 ? quizItems[safeIndex + 1] ?? null : null;
   const currentItem = currentEntry?.item ?? null;
   const currentType = currentEntry?.type ?? selectedType;
   const nextItem = nextEntry?.item ?? null;
+  const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
+  const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
+  const uiText = isEarlyElementary
+    ? {
+        summary: `${TOTAL_QUESTIONS}もん かんりょう / せいかい ${correctCount}もん`,
+        yourAnswer: "あなた",
+        correct: "⭕ せいかい",
+        incorrect: "❌ ざんねん",
+        nextLevel: "つぎのレベルにすすむ",
+        noItems: "このカテゴリ/タイプには もんだいが ありません。",
+        selectType: "タイプを えらんでください。",
+        judge: "はんてい",
+        nextQuestion: "つぎの もんだいへ",
+        reset: "けす"
+      }
+    : {
+        summary: `${TOTAL_QUESTIONS}題完了 / 正解 ${correctCount}題`,
+        yourAnswer: "あなた",
+        correct: "⭕ 正解",
+        incorrect: "❌ 不正解",
+        nextLevel: "次のレベルに進む",
+        noItems: "このカテゴリ/タイプには表示できる問題がありません。",
+        selectType: "タイプを選択してください。",
+        judge: "判定",
+        nextQuestion: "次の問題へ",
+        reset: "リセット"
+      };
+  const emptyMessage = uiText.noItems;
+  const totalQuizQuestions = Math.min(TOTAL_QUESTIONS, quizItems.length);
   const currentCardRef = useRef<HTMLDivElement | null>(null);
   const nextQuestion = () => {
-    setItemIndex((v) => v + 1);
+    setItemIndex((v) => {
+      if (v + 1 >= totalQuizQuestions) {
+        setStatus('cleared');
+        setMessage("クリアー！");
+        return v;
+      }
+      return v + 1;
+    });
+  };
+  const goToNextLevel = () => {
+    if (allTypePaths.length === 0) return;
+    const currentTypeId = currentType?.type_id ?? selectedType?.type_id ?? "";
+    const currentIndex = allTypePaths.findIndex((entry) => entry.typeId === currentTypeId);
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % allTypePaths.length : 0;
+    const next = allTypePaths[nextIndex];
+    router.push(
+      `/quest?type=${encodeURIComponent(next.typeId)}&category=${encodeURIComponent(next.categoryId)}`
+    );
   };
 
   useEffect(() => {
@@ -1272,7 +1303,8 @@ function QuestPageInner() {
       { id: Date.now() + Math.random(), text, userAnswer, correct }
     ]);
     if (questionIndex >= TOTAL_QUESTIONS) {
-      setStatus('finished');
+      setStatus('cleared');
+      setMessage("クリアー！");
       return;
     }
     setQuestionIndex((prev) => prev + 1);
@@ -1331,33 +1363,20 @@ function QuestPageInner() {
   };
 
   const handleHandwritingJudge = async (): Promise<string> => {
-    if (!canvasRef.current || isRecognizing || !isModelReady || (isStarting && !forceRecognizeRef.current)) {
+    if (!canvasRef.current || isRecognizing || !isModelReady || isStarting) {
       return "";
     }
 
     setIsRecognizing(true);
 
-    const drawingCanvas = lastAutoDrawCanvasRef.current ?? getDrawingCanvas(canvasRef.current);
+    const drawingCanvas = getDrawingCanvas(canvasRef.current);
     if (!drawingCanvas) {
       setIsRecognizing(false);
       return "";
     }
 
-    const isFraction = currentType?.answer_format?.kind === "frac";
     const digits = getAnswerDigits();
-    let samples: DigitSample[] = [];
-    let dotXs: number[] = [];
-    let fractionSamples: { numerator: DigitSample[]; denominator: DigitSample[] } | null = null;
-
-    if (isFraction && currentItem) {
-      const expected = getFractionDigitCounts(currentItem.answer);
-      fractionSamples = preprocessFraction(drawingCanvas, expected);
-      samples = [...fractionSamples.numerator, ...fractionSamples.denominator];
-    } else {
-      const pre = preprocessDigits(drawingCanvas, digits);
-      samples = pre.samples;
-      dotXs = pre.dotXs;
-    }
+    const { samples, dotXs } = preprocessDigits(drawingCanvas, digits);
 
     if (samples.length === 0) {
       canvasRef.current?.clear();
@@ -1373,7 +1392,7 @@ function QuestPageInner() {
     let perDigitString = refined.some((d) => d === null) ? '' : refined.join('');
 
     let predictedText = perDigitString;
-    if (!isFraction && samples.length === 2 && is2DigitModelReady && dotXs.length === 0) {
+    if (samples.length === 2 && is2DigitModelReady && dotXs.length === 0) {
       const gap = 6;
       const width = 28 * 2 + gap;
       const composite = new Float32Array(28 * width);
@@ -1395,7 +1414,7 @@ function QuestPageInner() {
       }
     }
 
-    if (!isFraction && predictedText && dotXs.length > 0) {
+    if (predictedText && dotXs.length > 0) {
       const centers = samples.map((s) => s.centerX);
       let chosenDot = dotXs[0];
       if (centers.length >= 2) {
@@ -1413,18 +1432,6 @@ function QuestPageInner() {
       }
     }
 
-    if (isFraction && fractionSamples) {
-      const nCount = fractionSamples.numerator.length;
-      const dCount = fractionSamples.denominator.length;
-      if (nCount > 0 && dCount > 0 && refined.length === nCount + dCount) {
-        const num = refined.slice(0, nCount).some((d) => d === null) ? "" : refined.slice(0, nCount).join("");
-        const den = refined.slice(nCount, nCount + dCount).some((d) => d === null) ? "" : refined.slice(nCount, nCount + dCount).join("");
-        predictedText = num && den ? `${num}/${den}` : "";
-      } else {
-        predictedText = "";
-      }
-    }
-
     if (!predictedText) {
       setCombo(0);
     }
@@ -1439,6 +1446,7 @@ function QuestPageInner() {
     if (predictedText && currentItem && currentType) {
       const verdict = gradeAnswer(predictedText, currentItem.answer, currentType.answer_format);
       setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
+      const resultText = currentItem.prompt_tex ?? currentItem.prompt;
       if (activeSessionId) {
         void postJson("/api/session/answer", {
           sessionId: activeSessionId,
@@ -1451,6 +1459,25 @@ function QuestPageInner() {
           const message = error instanceof Error ? error.message : "answer_log_failed";
           setSessionError(message);
         });
+      }
+      setQuestionResults((prev) => ({
+        ...prev,
+        [itemIndex]: {
+          text: resultText,
+          userAnswer: predictedText,
+          correct: verdict.ok
+        }
+      }));
+      if (!verdict.ok) {
+        setMistakeLog((prev) => [
+          ...prev,
+          {
+            index: itemIndex,
+            text: resultText,
+            userAnswer: predictedText,
+            correctAnswer: currentItem.answer
+          }
+        ]);
       }
 
       if (verdict.ok) {
@@ -1492,15 +1519,16 @@ function QuestPageInner() {
   };
 
   const runInference = async (): Promise<string> => {
-    if (inputMode !== 'handwriting' && !forceRecognizeRef.current) return "";
-    if (status !== 'playing' && !forceRecognizeRef.current) return "";
+    if (inputMode !== 'handwriting') return "";
+    if (status !== 'playing') return "";
+    if (isDrawingRef.current) return "";
     if (!isModelReady) return "";
     if (Date.now() < cooldownUntilRef.current) return "";
     if (isRecognizing || inFlightRef.current) {
       pendingRecognizeRef.current = true;
       return "";
     }
-    if (isStarting && !forceRecognizeRef.current) {
+    if (isStarting) {
       pendingRecognizeRef.current = true;
       return "";
     }
@@ -1546,36 +1574,18 @@ function QuestPageInner() {
     }, delayMs);
   };
 
-  const ensureDrawingCanvas = async (): Promise<HTMLCanvasElement | null> => {
-    if (inputMode !== 'handwriting') {
-      setInputMode('handwriting');
-    }
-    for (let i = 0; i < 12; i++) {
-      const canvas = getDrawingCanvas(canvasRef.current);
-      if (canvas) return canvas;
-      await waitForNextFrame();
-    }
-    return getDrawingCanvas(canvasRef.current);
-  };
-
   const runAutoDrawTest = async (poolOverride?: string[]) => {
-    const prevMode = inputMode;
-    const canvases = await ensureDrawingCanvases({ inputMode, setInputMode, canvasRef });
-    if (canvases.length === 0) return { expected: "", predicted: "" };
-    const contexts = canvases
-      .map((c) => ({ canvas: c, ctx: c.getContext("2d") }))
-      .filter((c) => c.ctx);
-    if (contexts.length === 0) return { expected: "", predicted: "" };
-    contexts.forEach(({ canvas, ctx }) => {
-      ctx!.setTransform(1, 0, 0, 1, 0, 0);
-      ctx!.clearRect(0, 0, canvas.width, canvas.height);
-      ctx!.fillStyle = "#ffffff";
-      ctx!.fillRect(0, 0, canvas.width, canvas.height);
-      ctx!.fillStyle = "#000000";
-      ctx!.textAlign = "left";
-      ctx!.textBaseline = "alphabetic";
-      ctx!.font = "bold 84px monospace";
-    });
+    const canvas = getDrawingCanvas(canvasRef.current);
+    if (!canvas) return { expected: "", predicted: "" };
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { expected: "", predicted: "" };
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#000000";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold 84px monospace";
     const pool = poolOverride && poolOverride.length > 0
       ? poolOverride
       : ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
@@ -1586,42 +1596,31 @@ function QuestPageInner() {
     const baselineY = 200;
     const gap = 64;
     for (let i = 0; i < digits.length; i++) {
-      contexts.forEach(({ ctx }) => ctx!.fillText(digits[i], startX + i * gap, baselineY));
+      ctx.fillText(digits[i], startX + i * gap, baselineY);
     }
-    lastAutoDrawCanvasRef.current = pickBestCanvas(canvases);
     lastDrawAtRef.current = Date.now();
     setPreviewImages([]);
     forcedDigitsRef.current = 4;
     try {
-      forceRecognizeRef.current = true;
       const predicted = await runInference();
       return { expected, predicted };
     } finally {
-      forceRecognizeRef.current = false;
       forcedDigitsRef.current = null;
-      lastAutoDrawCanvasRef.current = null;
-      if (prevMode !== inputMode) setInputMode(prevMode);
     }
   };
 
   const runAutoDrawDecimalTest = async (places = 1) => {
-    const prevMode = inputMode;
-    const canvases = await ensureDrawingCanvases({ inputMode, setInputMode, canvasRef });
-    if (canvases.length === 0) return { expected: "", predicted: "" };
-    const contexts = canvases
-      .map((c) => ({ canvas: c, ctx: c.getContext("2d") }))
-      .filter((c) => c.ctx);
-    if (contexts.length === 0) return { expected: "", predicted: "" };
-    contexts.forEach(({ canvas, ctx }) => {
-      ctx!.setTransform(1, 0, 0, 1, 0, 0);
-      ctx!.clearRect(0, 0, canvas.width, canvas.height);
-      ctx!.fillStyle = "#ffffff";
-      ctx!.fillRect(0, 0, canvas.width, canvas.height);
-      ctx!.fillStyle = "#000000";
-      ctx!.textAlign = "left";
-      ctx!.textBaseline = "alphabetic";
-      ctx!.font = "bold 84px monospace";
-    });
+    const canvas = getDrawingCanvas(canvasRef.current);
+    if (!canvas) return { expected: "", predicted: "" };
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { expected: "", predicted: "" };
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#000000";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold 84px monospace";
     const digits = Array.from({ length: places + 1 }, () => String(Math.floor(Math.random() * 10)));
     const expected = `${digits[0]}.${digits.slice(1).join("")}`;
     setLastAutoDrawExpected(expected);
@@ -1629,29 +1628,22 @@ function QuestPageInner() {
     const baselineY = 200;
     const gap = 64;
     for (let i = 0; i < digits.length; i++) {
-      contexts.forEach(({ ctx }) => ctx!.fillText(digits[i], startX + i * gap, baselineY));
+      ctx.fillText(digits[i], startX + i * gap, baselineY);
     }
     const dotX = startX + gap / 2 + 14;
     const dotY = baselineY + 20;
-    contexts.forEach(({ ctx }) => {
-      ctx!.beginPath();
-      ctx!.arc(dotX, dotY, 3, 0, Math.PI * 2);
-      ctx!.fill();
-    });
-    lastAutoDrawCanvasRef.current = pickBestCanvas(canvases);
+    ctx.beginPath();
+    ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
+    ctx.fill();
 
     lastDrawAtRef.current = Date.now();
     setPreviewImages([]);
     forcedDigitsRef.current = digits.length;
     try {
-      forceRecognizeRef.current = true;
       const predicted = await runInference();
       return { expected, predicted };
     } finally {
-      forceRecognizeRef.current = false;
       forcedDigitsRef.current = null;
-      lastAutoDrawCanvasRef.current = null;
-      if (prevMode !== inputMode) setInputMode(prevMode);
     }
   };
 
@@ -1665,13 +1657,9 @@ function QuestPageInner() {
     let fourEightNineExact = 0;
     let zeroEightTotal = 0;
     let zeroEightExact = 0;
-    const first = await runAutoDrawTest(pool);
-    if (!first.expected) {
-      setAutoDrawBatchSummary(`${label} 失敗: 入力キャンバス未準備`);
-      return;
-    }
-    const runOne = (expected: string, predicted: string) => {
-      if (!expected) return;
+    for (let i = 0; i < runs; i++) {
+      const { expected, predicted } = await runAutoDrawTest(pool);
+      if (!expected) continue;
       total++;
       if (predicted === expected) exact++;
       for (let j = 0; j < Math.min(expected.length, predicted.length); j++) {
@@ -1690,18 +1678,9 @@ function QuestPageInner() {
           if (p === e) fourEightNineExact++;
         }
       }
-    };
-    runOne(first.expected, first.predicted);
-    for (let i = 1; i < runs; i++) {
-      const { expected, predicted } = await runAutoDrawTest(pool);
-      runOne(expected, predicted);
       await new Promise((resolve) => window.setTimeout(resolve, 40));
     }
-    if (total === 0) {
-      setAutoDrawBatchSummary(`${label} 失敗: 描画キャンバスが見つかりません`);
-      return;
-    }
-    const overall = ((exact / total) * 100).toFixed(1);
+    const overall = total ? ((exact / total) * 100).toFixed(1) : "0.0";
     const fiveSix = fiveSixTotal ? ((fiveSixExact / fiveSixTotal) * 100).toFixed(1) : "0.0";
     const fourEightNine = fourEightNineTotal ? ((fourEightNineExact / fourEightNineTotal) * 100).toFixed(1) : "0.0";
     const zeroEight = zeroEightTotal ? ((zeroEightExact / zeroEightTotal) * 100).toFixed(1) : "0.0";
@@ -1715,29 +1694,16 @@ function QuestPageInner() {
     let total = 0;
     let exact = 0;
     let dotOk = 0;
-    const first = await runAutoDrawDecimalTest(1);
-    if (!first.expected) {
-      setAutoDrawBatchSummary(`${label} 失敗: 入力キャンバス未準備`);
-      return;
-    }
-    const runOne = (expected: string, predicted: string) => {
-      if (!expected) return;
+    for (let i = 0; i < runs; i++) {
+      const { expected, predicted } = await runAutoDrawDecimalTest(1);
+      if (!expected) continue;
       total++;
       if (predicted === expected) exact++;
       if (predicted.includes(".")) dotOk++;
-    };
-    runOne(first.expected, first.predicted);
-    for (let i = 1; i < runs; i++) {
-      const { expected, predicted } = await runAutoDrawDecimalTest(1);
-      runOne(expected, predicted);
       await new Promise((resolve) => window.setTimeout(resolve, 40));
     }
-    if (total === 0) {
-      setAutoDrawBatchSummary(`${label} 失敗: 描画キャンバスが見つかりません`);
-      return;
-    }
-    const overall = ((exact / total) * 100).toFixed(1);
-    const dotRate = ((dotOk / total) * 100).toFixed(1);
+    const overall = total ? ((exact / total) * 100).toFixed(1) : "0.0";
+    const dotRate = total ? ((dotOk / total) * 100).toFixed(1) : "0.0";
     setAutoDrawBatchSummary(
       `${label} 完了: 全体一致 ${exact}/${total} (${overall}%) / 小数点検出 ${dotOk}/${total} (${dotRate}%)`
     );
@@ -1768,29 +1734,25 @@ function QuestPageInner() {
       {/* Center: Character & Message */} 
       <div className="flex flex-col items-center space-y-4 my-4 flex-1 justify-center w-full">
         {status === 'cleared' ? (
-          <div className="text-center animate-bounce">
-            <div className="text-6xl mb-2">🎉</div>
-            <h2 className="text-2xl font-bold text-yellow-600">STAGE CLEAR!</h2>
-            <button 
-              onClick={() => window.location.reload()}              className="mt-4 px-6 py-2 bg-yellow-500 text-white rounded-lg font-bold shadow-md active:translate-y-1"
-            >
-              Play Again
-            </button>
-          </div>
-        ) : status === 'finished' ? (
-          <div className="w-full bg-white p-6 rounded-2xl shadow-lg border-4 border-indigo-100">
-            <h2 className="text-2xl font-black text-indigo-900 mb-4 text-center">結果一覧</h2>
-            <div className="space-y-3 max-h-[45vh] overflow-y-auto">
-              {results.map((r, idx) => (
+          <div className="w-full text-center rounded-3xl border-4 border-yellow-300 bg-gradient-to-br from-fuchsia-500 via-indigo-500 to-cyan-400 px-4 py-8 shadow-[0_0_60px_rgba(99,102,241,0.55)] animate-pulse">
+            <div className="text-5xl md:text-6xl font-black text-white drop-shadow-[0_6px_0_rgba(0,0,0,0.2)] tracking-wide animate-bounce">
+              クリアー！
+            </div>
+            <div className="mt-2 text-3xl">🎉🔥✨⚡🎊</div>
+            <div className="mt-4 inline-block rounded-full bg-white/95 px-5 py-2 text-indigo-700 font-black text-lg shadow-lg">
+              {uiText.summary}
+            </div>
+            <div className="mt-5 space-y-2 max-h-[28vh] overflow-y-auto rounded-2xl bg-white/90 p-3 text-left">
+              {clearResults.map(([index, r]) => (
                 <div
-                  key={r.id}
+                  key={index}
                   className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
                     r.correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
                   }`}
                 >
-                  <div className="font-bold text-slate-700">{idx + 1}. {r.text}</div>
+                  <div className="font-bold text-slate-700">{Number(index) + 1}. {r.text}</div>
                   <div className="flex items-center gap-2 font-bold">
-                    <span className="text-slate-600">あなた: {r.userAnswer || '?'}</span>
+                    <span className="text-slate-600">{uiText.yourAnswer}: {r.userAnswer || '?'}</span>
                     <span className={r.correct ? 'text-green-600' : 'text-red-600'}>
                       {r.correct ? '◯' : '✕'}
                     </span>
@@ -1798,17 +1760,29 @@ function QuestPageInner() {
                 </div>
               ))}
             </div>
+            {mistakeLog.length > 0 && (
+              <div className="mt-4 space-y-2 max-h-[24vh] overflow-y-auto rounded-2xl bg-rose-50/95 border border-rose-200 p-3 text-left">
+                <div className="text-sm font-black text-rose-700">まちがえた もんだい</div>
+                {mistakeLog.map((row, idx) => (
+                  <div key={`${row.index}-${idx}`} className="rounded-md border border-rose-100 bg-white px-2 py-2 text-xs text-slate-700">
+                    <div className="font-bold">{row.index + 1}. {row.text}</div>
+                    <div>あなた: {row.userAnswer}</div>
+                    <div>こたえ: {row.correctAnswer}</div>
+                  </div>
+                ))}
+              </div>
+            )}
             <button
-              onClick={() => window.location.reload()}
-              className="mt-4 w-full px-6 py-2 bg-indigo-500 text-white rounded-lg font-bold shadow-md active:translate-y-1"
+              onClick={goToNextLevel}
+              className="mt-5 px-8 py-3 rounded-xl bg-yellow-400 text-slate-900 font-black text-lg shadow-[0_6px_0_rgba(0,0,0,0.2)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.2)]"
             >
-              もう一度
+              {uiText.nextLevel}
             </button>
           </div>
         ) : (
           <>
             <div className="w-full bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[40vh] overflow-y-auto">
-              {activeItems.length === 0 ? (
+              {quizItems.length === 0 ? (
                 <div className="text-slate-500 text-center">
                   {emptyMessage}
                 </div>
@@ -1846,7 +1820,7 @@ function QuestPageInner() {
                             practiceResult.ok ? "text-green-600" : "text-red-600"
                           }`}
                         >
-                          {practiceResult.ok ? "⭕ 正解" : "❌ 不正解"}
+                          {practiceResult.ok ? uiText.correct : uiText.incorrect}
                         </div>
                       </div>
                     )}
@@ -1858,7 +1832,7 @@ function QuestPageInner() {
                   )}
                 </div>
               ) : (
-                <div className="text-slate-500 text-center">タイプを選択してください。</div>
+                <div className="text-slate-500 text-center">{uiText.selectType}</div>
               )}
             </div>
 
@@ -1879,7 +1853,7 @@ function QuestPageInner() {
             <button
               key={num}
               onClick={() => handleInput(num.toString())}
-              disabled={status === 'cleared' || isStarting}
+              disabled={status !== 'playing' || isStarting}
               className={`
                 h-16 rounded-xl text-2xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all
                 ${num === 0 ? 'col-span-1' : ''}
@@ -1893,7 +1867,7 @@ function QuestPageInner() {
           {/* Delete Button */}
           <button
             onClick={handleDelete}
-            disabled={status === 'cleared' || isStarting}
+            disabled={status !== 'playing' || isStarting}
             className="h-16 rounded-xl text-xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all bg-red-100 text-red-600 border-2 border-red-200 hover:bg-red-200 flex items-center justify-center"
           >
             ⌫
@@ -1902,7 +1876,7 @@ function QuestPageInner() {
           {/* Attack/Enter Button */}
           <button
             onClick={handleAttack}
-            disabled={status === 'cleared' || input === '' || isStarting}
+            disabled={status !== 'playing' || input === '' || isStarting}
             className="h-16 rounded-xl text-xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all bg-indigo-500 text-white border-2 border-indigo-600 hover:bg-indigo-600 flex items-center justify-center"
           >
             Attack!
@@ -1939,7 +1913,7 @@ function QuestPageInner() {
                 disabled={isRecognizing || isStarting}
                 className="px-3 py-0.5 rounded-md bg-indigo-600 text-white"
               >
-                判定
+                {uiText.judge}
               </button>
               <button
                 data-testid="auto-draw-test"
@@ -1988,12 +1962,6 @@ function QuestPageInner() {
                 Batch08
               </button>
               <button
-                onClick={() => runAutoDrawBatchTest(200, ["0", "2", "4", "6", "8"], "BatchEven")}
-                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
-              >
-                BatchEven
-              </button>
-              <button
                 onClick={() => runAutoDrawBatchTest(200, ["4", "8", "9"], "Batch489")}
                 className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
               >
@@ -2035,7 +2003,7 @@ function QuestPageInner() {
               canvasWidth={300}
               canvasHeight={300}
               className="rounded-xl border-2 border-slate-300 shadow-lg"
-              disabled={status === 'cleared'}
+              disabled={status !== 'playing'}
               onChange={handleCanvasChange}
             />
             {startPopup && (
@@ -2077,19 +2045,19 @@ function QuestPageInner() {
             <div className="w-full max-w-sm bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
               <button
                 onClick={nextQuestion}
-                disabled={status === 'cleared' || isStarting}
+                disabled={status !== 'playing' || isStarting}
                 className="w-full py-2 rounded-lg bg-indigo-600 text-white font-bold shadow-md active:translate-y-1 disabled:opacity-50"
               >
-                次の問題へ
+                {uiText.nextQuestion}
               </button>
             </div>
           </div>
           <div className="flex gap-3 w-full justify-center">
             <button
-              onClick={() => canvasRef.current?.clear()}              disabled={status === 'cleared' || isRecognizing}
+              onClick={() => canvasRef.current?.clear()}              disabled={status !== 'playing' || isRecognizing}
               className="px-6 py-2 bg-red-100 text-red-600 rounded-lg font-bold shadow-md active:translate-y-1"
             >
-              リセット
+              {uiText.reset}
             </button>
           </div>
         </div>

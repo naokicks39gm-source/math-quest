@@ -2,30 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import data from "@/content/mathquest_all_grades_from_split_v1";
-
-type AnswerFormat = {
-  kind: "int" | "dec" | "frac" | "pair" | "expr";
-};
-
-type TypeDef = {
-  type_id: string;
-  type_name: string;
-  answer_format: AnswerFormat;
-  example_items: Array<{ prompt: string; answer: string }>;
-};
-
-type CategoryDef = {
-  category_id: string;
-  category_name: string;
-  types: TypeDef[];
-};
-
-type GradeDef = {
-  grade_id: string;
-  grade_name: string;
-  categories: CategoryDef[];
-};
+import { GradeDef } from "@/lib/elementaryContent";
+import { getCatalogGrades } from "@/lib/gradeCatalog";
 
 const LS_LAST_TYPE_ID = "mq:last_type_id";
 const LS_STUDENT_ID = "mq:studentId";
@@ -35,8 +13,7 @@ const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
 
 export default function Home() {
   const router = useRouter();
-  const allGrades = data.grades as GradeDef[];
-  const grades = useMemo(() => allGrades, [allGrades]);
+  const grades = useMemo(() => getCatalogGrades() as GradeDef[], []);
 
   const [gradeId, setGradeId] = useState(grades[0]?.grade_id ?? "");
   const [categoryId, setCategoryId] = useState("");
@@ -245,7 +222,7 @@ export default function Home() {
             >
               {types.map((t) => (
                 <option key={t.type_id} value={t.type_id}>
-                  {t.type_name}
+                  {t.display_name ?? t.type_name}
                 </option>
               ))}
             </select>

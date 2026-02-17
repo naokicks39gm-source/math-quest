@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --test tests/*.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint src/lib src/app/api tests",

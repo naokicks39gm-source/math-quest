@@ -3,41 +3,13 @@
 import { useMemo, useState } from "react";
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
-import data from "@/content/mathquest_all_grades_from_split_v1";
-
-type AnswerFormat = {
-  kind: "int" | "dec" | "frac" | "pair" | "expr";
-  precision?: number;
-  suffix?: string;
-  pair_kind?: "quotient_remainder" | "ratio";
-  separator?: string;
-  form?: string;
-};
-
-type ExampleItem = {
-  prompt: string;
-  prompt_tex?: string;
-  answer: string;
-};
-
-type TypeDef = {
-  type_id: string;
-  type_name: string;
-  answer_format: AnswerFormat;
-  example_items: ExampleItem[];
-};
-
-type CategoryDef = {
-  category_id: string;
-  category_name: string;
-  types: TypeDef[];
-};
-
-type GradeDef = {
-  grade_id: string;
-  grade_name: string;
-  categories: CategoryDef[];
-};
+import {
+  AnswerFormat,
+  ExampleItem,
+  GradeDef,
+  TypeDef
+} from "@/lib/elementaryContent";
+import { getCatalogGrades } from "@/lib/gradeCatalog";
 
 const gcd = (a: number, b: number) => {
   let x = Math.abs(a);
@@ -142,7 +114,7 @@ const judgeAnswer = (userInput: string, answer: string, format: AnswerFormat) =>
 };
 
 export default function PracticePage() {
-  const grades = data.grades as GradeDef[];
+  const grades = getCatalogGrades() as GradeDef[];
   const [selectedType, setSelectedType] = useState<TypeDef | null>(grades[0]?.categories[0]?.types[0] ?? null);
   const [itemIndex, setItemIndex] = useState(0);
   const [input, setInput] = useState("");
@@ -196,7 +168,7 @@ export default function PracticePage() {
                                 : "hover:bg-slate-100 text-slate-700"
                             }`}
                           >
-                            {type.type_name}
+                            {type.display_name ?? type.type_name}
                           </button>
                         ))}
                       </div>
@@ -211,7 +183,7 @@ export default function PracticePage() {
         <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <div className="mb-4">
             <div className="text-sm text-slate-500">選択タイプ</div>
-            <div className="text-lg font-bold">{selectedType?.type_name ?? "未選択"}</div>
+            <div className="text-lg font-bold">{selectedType?.display_name ?? selectedType?.type_name ?? "未選択"}</div>
           </div>
 
           {currentItem ? (

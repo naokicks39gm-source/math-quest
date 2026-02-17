@@ -19,6 +19,7 @@ export type ExampleItem = {
 export type TypeDef = {
   type_id: string;
   type_name: string;
+  display_name?: string;
   answer_format: AnswerFormat;
   example_items: ExampleItem[];
 };
@@ -35,22 +36,40 @@ export type GradeDef = {
   categories: CategoryDef[];
 };
 
-const elementaryGradePrefix = /^E[1-6]$/;
-
-const asGrades = () => (data.grades ?? []) as GradeDef[];
-
-export const getElementaryNumberCalculationGrades = (): GradeDef[] => {
-  return asGrades()
-    .filter((grade) => elementaryGradePrefix.test(grade.grade_id))
-    .map((grade) => ({
-      ...grade,
-      categories: (grade.categories ?? [])
-        .map((category) => ({
-          ...category,
-          types: (category.types ?? []).filter((type) => isSupportedType(type))
-        }))
-        .filter((category) => category.types.length > 0)
-    }))
-    .filter((grade) => grade.categories.length > 0);
+type DataShape = {
+  grades: GradeDef[];
 };
 
+const ELEMENTARY_GRADE_RE = /^E[1-6]$/;
+const NUMBER_CALCULATION_CATEGORY = "NA";
+
+export const getElementaryNumberCalculationGrades = (): GradeDef[] => {
+  const grades = ((data as DataShape).grades ?? [])
+    .filter((grade) => ELEMENTARY_GRADE_RE.test(grade.grade_id))
+    .map((grade) => {
+      const categories = grade.categories
+        .filter((category) => category.category_id === NUMBER_CALCULATION_CATEGORY)
+        .map((category) => ({
+          ...category,
+          types: category.types
+            .filter((type) => type.example_items.length > 0)
+            .filter((type) => isSupportedType(type))
+        }))
+        .filter((category) => category.types.length > 0);
+      return {
+        ...grade,
+        categories
+      };
+    })
+    .filter((grade) => grade.categories.length > 0);
+  return grades;
+};
+
+export const getElementaryTypeCounts = () => {
+  const grades = getElementaryNumberCalculationGrades();
+  return grades.map((grade) => ({
+    gradeId: grade.grade_id,
+    gradeName: grade.grade_name,
+    typeCount: grade.categories.reduce((sum, category) => sum + category.types.length, 0)
+  }));
+};
