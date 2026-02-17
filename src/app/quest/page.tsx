@@ -1,13 +1,14 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { useSearchParams } from "next/navigation";
+import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
+import { useRouter, useSearchParams } from "next/navigation";
 import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
-import data from '@/content/mvp_e3_e6_types.json';
+import { InlineMath } from "react-katex";
+import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
-import { isSupportedType } from "@/lib/questSupport";
+import { getCatalogGrades } from '@/lib/gradeCatalog';
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -28,15 +29,18 @@ interface Question {
 
 type ExampleItem = {
   prompt: string;
+  prompt_tex?: string;
   answer: string;
 };
 
 type TypeDef = {
   type_id: string;
   type_name: string;
+  display_name?: string;
   answer_format: AnswerFormat;
   example_items: ExampleItem[];
 };
+
 
 type CategoryDef = {
   category_id: string;
@@ -50,9 +54,80 @@ type GradeDef = {
   categories: CategoryDef[];
 };
 
+type QuestEntry = {
+  item: ExampleItem;
+  type: TypeDef;
+};
+
+const QUESTION_POOL_SIZE = 30;
+
+const shuffle = <T,>(list: T[]) => {
+  const copied = [...list];
+  for (let i = copied.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copied[i], copied[j]] = [copied[j], copied[i]];
+  }
+  return copied;
+};
+
+const buildRandomQuestionSet = (source: QuestEntry[], poolSize: number, quizSize: number) => {
+  if (source.length === 0) return [];
+  const entryKey = (entry: QuestEntry) =>
+    `${entry.type.type_id}::${entry.item.prompt_tex ?? entry.item.prompt}::${entry.item.answer}`;
+  const uniqueMap = new Map<string, QuestEntry>();
+  for (const entry of source) {
+    uniqueMap.set(entryKey(entry), entry);
+  }
+  const uniqueSource = [...uniqueMap.values()];
+
+  if (uniqueSource.length >= quizSize) {
+    return shuffle(uniqueSource).slice(0, quizSize);
+  }
+
+  const pool: QuestEntry[] = [];
+  if (uniqueSource.length >= poolSize) {
+    pool.push(...shuffle(uniqueSource).slice(0, poolSize));
+  } else {
+    const shuffledBase = shuffle(uniqueSource);
+    while (pool.length < poolSize) {
+      const remaining = poolSize - pool.length;
+      pool.push(...shuffle(shuffledBase).slice(0, Math.min(shuffledBase.length, remaining)));
+    }
+  }
+  const shuffledPool = shuffle(pool);
+  const picked: QuestEntry[] = [];
+  for (const candidate of shuffledPool) {
+    if (picked.length >= quizSize) break;
+    const prev = picked[picked.length - 1];
+    if (prev && entryKey(prev) === entryKey(candidate)) continue;
+    picked.push(candidate);
+  }
+
+  // Fill shortfall while preventing immediate duplicates.
+  while (picked.length < quizSize && uniqueSource.length > 0) {
+    const prev = picked[picked.length - 1];
+    const options = uniqueSource.filter((entry) => !prev || entryKey(prev) !== entryKey(entry));
+    const bag = options.length > 0 ? options : uniqueSource;
+    picked.push(bag[Math.floor(Math.random() * bag.length)]);
+  }
+
+  return picked;
+};
+
+const typeSignature = (typeId: string) => typeId.replace(/^[A-Z]\d\./, "");
+
 const formatPrompt = (prompt: string) => {
   return prompt.replace(/を計算しなさい。$/g, "");
 };
+
+const renderPrompt = (item: ExampleItem) => {
+  const tex = item.prompt_tex?.trim();
+  if (tex) {
+    return <InlineMath math={tex} renderError={() => <span>{formatPrompt(item.prompt)}</span>} />;
+  }
+  return <span>{formatPrompt(item.prompt)}</span>;
+};
+
 
 const CHARACTERS = {
   warrior: {
@@ -74,7 +149,7 @@ const CHARACTERS = {
 };
 
 type BBox = { minX: number; minY: number; maxX: number; maxY: number };
-type DigitSample = { tensor: tf.Tensor2D; preview: ImageData; width: number; height: number };
+type DigitSample = { tensor: tf.Tensor2D; preview: ImageData; width: number; height: number; centerX: number };
 type Component = { mask: Uint8Array; bbox: BBox; area: number };
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
@@ -165,7 +240,7 @@ const binarizeCanvas = (canvas: HTMLCanvasElement) => {
   for (let i = 0; i < w * h; i++) {
     bin[i] = ink[i] >= threshold ? 1 : 0;
   }
-  return { bin, w, h };
+  return { bin, w, h, ink, threshold };
 };
 
 const findComponents = (bin: Uint8Array, w: number, h: number) => {
@@ -303,12 +378,28 @@ const componentToTensor = (component: Component, w: number, h: number): DigitSam
     }
   }
 
+  const centerX = (bbox.minX + bbox.maxX) / 2;
   return {
     tensor: tf.tensor2d(input, [28, 28]),
     preview: finalImageData,
     width: boxW,
-    height: boxH
+    height: boxH,
+    centerX
   };
+};
+
+const detectDecimalDots = (components: Component[], maxArea: number, h: number) => {
+  const maxDotArea = Math.max(12, Math.floor(maxArea * 0.03));
+  return components.filter((c) => {
+    const bw = c.bbox.maxX - c.bbox.minX + 1;
+    const bh = c.bbox.maxY - c.bbox.minY + 1;
+    const minArea = c.area <= 10 ? 3 : 6;
+    if (c.area < minArea) return false;
+    if (c.area > maxDotArea) return false;
+    if (bw > h * 0.25 || bh > h * 0.25) return false;
+    if (c.bbox.minY < h * 0.45) return false;
+    return true;
+  });
 };
 
 const splitByProjection = (bin: Uint8Array, w: number, h: number, bbox: BBox) => {
@@ -427,22 +518,34 @@ const splitBySpans = (bin: Uint8Array, w: number, h: number, bbox: BBox, expecte
   return components;
 };
 
-const preprocessDigits = (canvas: HTMLCanvasElement, expectedDigits: number): DigitSample[] => {
+const preprocessDigits = (
+  canvas: HTMLCanvasElement,
+  expectedDigits: number
+): { samples: DigitSample[]; dotXs: number[] } => {
   const binData = binarizeCanvas(canvas);
-  if (!binData) return [];
-  const { bin, w, h } = binData;
+  if (!binData) return { samples: [], dotXs: [] };
+  const { bin, w, h, ink, threshold } = binData;
 
   let components = findComponents(bin, w, h);
-  if (components.length === 0) return [];
+  if (components.length === 0) return { samples: [], dotXs: [] };
 
   let maxArea = 0;
   for (const c of components) {
     if (c.area > maxArea) maxArea = c.area;
   }
+  const dotThreshold = Math.max(5, Math.floor(threshold * 0.4));
+  const dotBin = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    dotBin[i] = ink[i] >= dotThreshold ? 1 : 0;
+  }
+  const dotComponents = findComponents(dotBin, w, h);
+  const dotCandidates = detectDecimalDots(dotComponents, maxArea, h);
+  const dotXs = dotCandidates.map((c) => (c.bbox.minX + c.bbox.maxX) / 2).sort((a, b) => a - b);
+  const dotSet = new Set(dotCandidates);
   const minKeep = Math.max(40, Math.floor(maxArea * 0.08));
-  components = components.filter((c) => c.area >= minKeep);
+  components = components.filter((c) => c.area >= minKeep && !dotSet.has(c));
 
-  if (components.length === 0) return [];
+  if (components.length === 0) return { samples: [], dotXs };
 
   if (components.length === 1 && expectedDigits > 1) {
     const split = splitBySpans(bin, w, h, components[0].bbox, expectedDigits) || splitByProjection(bin, w, h, components[0].bbox);
@@ -459,7 +562,7 @@ const preprocessDigits = (canvas: HTMLCanvasElement, expectedDigits: number): Di
     const sample = componentToTensor(component, w, h);
     if (sample) samples.push(sample);
   }
-  return samples;
+  return { samples, dotXs };
 };
 
 const hasUpperLoop = (data: Float32Array, width = 28, height = 28) => {
@@ -595,6 +698,7 @@ const refineDigitPrediction = (pred: string, tensor: tf.Tensor2D, probs?: number
   const holes = countHoles(data, 28, 28, 8);
   const hasLower = hasLowerLoop(data);
   const p4 = probs?.[4] ?? 0;
+  const p0 = probs?.[0] ?? 0;
   const p8 = probs?.[8] ?? 0;
   const p9 = probs?.[9] ?? 0;
   const p5 = probs?.[5] ?? 0;
@@ -637,6 +741,19 @@ const refineDigitPrediction = (pred: string, tensor: tf.Tensor2D, probs?: number
     if (Math.max(p4, p8, p9) === p4) return '4';
     if (Math.max(p4, p8, p9) === p9) return '9';
     return '8';
+  }
+
+  if (out === '0' || out === '8') {
+    const center = quadrantInk(data, 10, 10, 18, 18);
+    const midBand = quadrantInk(data, 8, 12, 20, 16);
+    if (holes >= 2) return '8';
+    if (holes === 1) {
+      if (p8 - p0 > 0.22 && center > 0.16 && midBand > 0.12) return '8';
+      if (p0 - p8 > 0.08) return '0';
+      return center > 0.2 ? '8' : '0';
+    }
+    if (p8 > 0.9 && center > 0.22 && midBand > 0.15) return '8';
+    return '0';
   }
 
   if (out === '9') {
@@ -698,20 +815,23 @@ const predictDigitEnsemble = (tensor: tf.Tensor2D) => {
   return { predictedDigit: String(bestIdx), probabilities };
 };
 
-export default function QuestPage() {
+function QuestPageInner() {
+  const router = useRouter();
   const params = useSearchParams();
   const typeFromQuery = params.get("type");
   const categoryFromQuery = params.get("category");
-  const TOTAL_QUESTIONS = 10;
+  const TOTAL_QUESTIONS = 5;
   const [combo, setCombo] = useState(0);
   const [question, setQuestion] = useState<Question | null>(null);
   const [history, setHistory] = useState<Array<{ id: number; text: string }>>([]);
   const [questionIndex, setQuestionIndex] = useState(1);
   const [results, setResults] = useState<Array<{ id: number; text: string; userAnswer: string; correct: boolean }>>([]);
+  const [questionResults, setQuestionResults] = useState<Record<number, { text: string; userAnswer: string; correct: boolean }>>({});
+  const [mistakeLog, setMistakeLog] = useState<Array<{ index: number; text: string; userAnswer: string; correctAnswer: string }>>([]);
   const [input, setInput] = useState('');
   const [message, setMessage] = useState('Battle Start!');
   const [character, setCharacter] = useState<CharacterType>('warrior');
-  const [status, setStatus] = useState<'playing' | 'cleared' | 'finished'>('playing');
+  const [status, setStatus] = useState<'playing' | 'cleared'>('playing');
   const [inputMode, setInputMode] = useState<'numpad' | 'handwriting'>('handwriting'); // New state for input mode
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
@@ -736,23 +856,11 @@ export default function QuestPage() {
   const pendingRecognizeRef = useRef(false);
   const forcedDigitsRef = useRef<number | null>(null);
   const cooldownUntilRef = useRef(0);
-  const AUTO_NEXT_WAIT_MS = 700;
-  const [statusMsg, setStatusMsg] = useState<string>("");
+  const AUTO_NEXT_WAIT_MS = 900;
   const autoNextTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
   const grades = useMemo(
-    () =>
-      (data.grades as GradeDef[])
-        .map((grade) => ({
-          ...grade,
-          categories: grade.categories
-            .map((cat) => ({
-              ...cat,
-              types: cat.types.filter(isSupportedType)
-            }))
-            .filter((cat) => cat.types.length > 0)
-        }))
-        .filter((grade) => grade.categories.length > 0),
+    () => getCatalogGrades() as GradeDef[],
     []
   );
   const defaultType = grades[0]?.categories[0]?.types[0] ?? null;
@@ -761,6 +869,15 @@ export default function QuestPage() {
   const [practiceResult, setPracticeResult] = useState<{ ok: boolean; correctAnswer: string } | null>(null);
   const [lastAutoDrawExpected, setLastAutoDrawExpected] = useState("");
   const [autoDrawBatchSummary, setAutoDrawBatchSummary] = useState<string | null>(null);
+  const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
+  const clearResults = useMemo(
+    () => Object.entries(questionResults).sort((a, b) => Number(a[0]) - Number(b[0])),
+    [questionResults]
+  );
+  const correctCount = useMemo(
+    () => clearResults.filter(([, result]) => result.correct).length,
+    [clearResults]
+  );
 
   // Load MNIST model on component mount
   useEffect(() => {
@@ -849,6 +966,7 @@ export default function QuestPage() {
       if (!autoJudgeEnabled) return;
       if (isStarting) return;
       if (status !== 'playing') return;
+      if (isDrawingRef.current) return;
       if (Date.now() < cooldownUntilRef.current) return;
       if (isRecognizing || inFlightRef.current) return;
       const idleFor = Date.now() - lastDrawAtRef.current;
@@ -904,7 +1022,7 @@ export default function QuestPage() {
     }
   }, [typeFromQuery, categoryFromQuery, grades, selectedType, defaultType]);
 
-  const categoryContext = (() => {
+  const categoryContext = useMemo(() => {
     if (!categoryFromQuery) return null;
     for (const g of grades) {
       for (const c of g.categories) {
@@ -914,11 +1032,21 @@ export default function QuestPage() {
       }
     }
     return null;
-  })();
+  }, [categoryFromQuery, grades]);
+
+  const hasTypeQuery = Boolean(typeFromQuery);
+  const hasCategoryQuery = Boolean(categoryFromQuery);
 
   const selectedPath = (() => {
+    if (!hasTypeQuery && !hasCategoryQuery) {
+      return {
+        gradeName: "全学年",
+        categoryName: "全カテゴリ",
+        typeName: "総合クエスト"
+      };
+    }
     if (categoryContext) {
-      const typeName = selectedType?.type_name ?? "カテゴリ内";
+      const typeName = selectedType?.display_name ?? selectedType?.type_name ?? "カテゴリ内";
       return {
         gradeName: categoryContext.grade.grade_name,
         categoryName: categoryContext.category.category_name,
@@ -933,7 +1061,7 @@ export default function QuestPage() {
           return {
             gradeName: g.grade_name,
             categoryName: c.category_name,
-            typeName: hit.type_name
+            typeName: hit.display_name ?? hit.type_name
           };
         }
       }
@@ -941,43 +1069,158 @@ export default function QuestPage() {
     return null;
   })();
 
-  const categoryItems = categoryContext
-    ? categoryContext.category.types.flatMap((t) =>
-        t.example_items
-          .filter((item) => /^\d{1,4}$/.test(item.answer))
-          .map((item) => ({ item, type: t }))
-      )
-    : [];
+  const categoryItems = useMemo(
+    () =>
+      categoryContext
+        ? categoryContext.category.types.flatMap((t) =>
+            t.example_items.map((item) => ({ item, type: t }))
+          )
+        : [],
+    [categoryContext]
+  );
 
-  const typeItems = selectedType
-    ? selectedType.example_items
-        .filter((item) => /^\d{1,4}$/.test(item.answer))
-        .map((item) => ({ item, type: selectedType }))
-    : [];
+  const typeItems = useMemo(
+    () => (selectedType ? selectedType.example_items.map((item) => ({ item, type: selectedType })) : []),
+    [selectedType]
+  );
 
-  const activeItems = categoryItems.length > 0 ? categoryItems : typeItems;
-  const usingCategory = categoryItems.length > 0;
-  const emptyMessage = usingCategory
-    ? "このカテゴリは4桁超が混ざるので未対応です。"
-    : "このタイプは4桁超が混ざるので未対応です。";
-  const safeIndex = activeItems.length > 0 ? itemIndex % activeItems.length : 0;
-  const currentEntry = activeItems[safeIndex] ?? null;
-  const prevEntry = activeItems.length > 0 ? activeItems[(safeIndex - 1 + activeItems.length) % activeItems.length] : null;
-  const nextEntry = activeItems.length > 0 ? activeItems[(safeIndex + 1) % activeItems.length] : null;
+  const allCategoryItems = useMemo(
+    () =>
+      grades.flatMap((g) =>
+        g.categories.flatMap((c) =>
+          c.types.flatMap((t) =>
+            t.example_items.map((item) => ({ item, type: t }))
+          )
+        )
+      ),
+    [grades]
+  );
+  const allTypePaths = useMemo(
+    () =>
+      grades.flatMap((g) =>
+        g.categories.flatMap((c) =>
+          c.types.map((t) => ({
+            typeId: t.type_id,
+            categoryId: c.category_id
+          }))
+        )
+      ),
+    [grades]
+  );
+
+  const activeItems = useMemo(
+    () =>
+      hasTypeQuery
+        ? typeItems
+        : hasCategoryQuery
+          ? categoryItems
+          : allCategoryItems,
+    [hasTypeQuery, hasCategoryQuery, typeItems, categoryItems, allCategoryItems]
+  );
+  const selectedTypeSignature = useMemo(() => {
+    if (typeFromQuery) return typeSignature(typeFromQuery);
+    if (selectedType) return typeSignature(selectedType.type_id);
+    return "";
+  }, [typeFromQuery, selectedType]);
+
+  const poolCandidates = useMemo(() => {
+    if (!hasTypeQuery) return activeItems;
+    if (!selectedTypeSignature) return activeItems;
+
+    const seen = new Set<string>();
+    const picked: QuestEntry[] = [];
+    const pushUnique = (entries: QuestEntry[]) => {
+      for (const entry of entries) {
+        const key = `${entry.type.type_id}::${entry.item.prompt_tex ?? entry.item.prompt}::${entry.item.answer}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        picked.push(entry);
+        if (picked.length >= QUESTION_POOL_SIZE) return;
+      }
+    };
+
+    const sameTypeAcrossGrades = allCategoryItems.filter(
+      (entry) => typeSignature(entry.type.type_id) === selectedTypeSignature
+    );
+    pushUnique(sameTypeAcrossGrades);
+    return picked.length > 0 ? picked : activeItems;
+  }, [hasTypeQuery, selectedTypeSignature, activeItems, allCategoryItems]);
+  const quizSize = Math.min(TOTAL_QUESTIONS, QUESTION_POOL_SIZE);
+  useEffect(() => {
+    const nextSet = buildRandomQuestionSet(poolCandidates, QUESTION_POOL_SIZE, quizSize);
+    setQuizItems(nextSet);
+    setItemIndex(0);
+    setQuestionResults({});
+    setMistakeLog([]);
+    setStatus("playing");
+    setMessage("Battle Start!");
+    setPracticeResult(null);
+    setResultMark(null);
+    setRecognizedNumber(null);
+  }, [poolCandidates, quizSize]);
+
+  const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
+  const currentEntry = quizItems[safeIndex] ?? null;
+  const nextEntry = quizItems.length > 0 ? quizItems[safeIndex + 1] ?? null : null;
   const currentItem = currentEntry?.item ?? null;
   const currentType = currentEntry?.type ?? selectedType;
-  const prevItem = prevEntry?.item ?? null;
   const nextItem = nextEntry?.item ?? null;
+  const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
+  const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
+  const uiText = isEarlyElementary
+    ? {
+        summary: `${TOTAL_QUESTIONS}もん かんりょう / せいかい ${correctCount}もん`,
+        yourAnswer: "あなた",
+        correct: "⭕ せいかい",
+        incorrect: "❌ ざんねん",
+        nextLevel: "つぎのレベルにすすむ",
+        noItems: "このカテゴリ/タイプには もんだいが ありません。",
+        selectType: "タイプを えらんでください。",
+        judge: "はんてい",
+        nextQuestion: "つぎの もんだいへ",
+        reset: "けす"
+      }
+    : {
+        summary: `${TOTAL_QUESTIONS}題完了 / 正解 ${correctCount}題`,
+        yourAnswer: "あなた",
+        correct: "⭕ 正解",
+        incorrect: "❌ 不正解",
+        nextLevel: "次のレベルに進む",
+        noItems: "このカテゴリ/タイプには表示できる問題がありません。",
+        selectType: "タイプを選択してください。",
+        judge: "判定",
+        nextQuestion: "次の問題へ",
+        reset: "リセット"
+      };
+  const emptyMessage = uiText.noItems;
+  const totalQuizQuestions = Math.min(TOTAL_QUESTIONS, quizItems.length);
   const currentCardRef = useRef<HTMLDivElement | null>(null);
-
   const nextQuestion = () => {
-    setItemIndex((v) => v + 1);
+    setItemIndex((v) => {
+      if (v + 1 >= totalQuizQuestions) {
+        setStatus('cleared');
+        setMessage("クリアー！");
+        return v;
+      }
+      return v + 1;
+    });
+  };
+  const goToNextLevel = () => {
+    if (allTypePaths.length === 0) return;
+    const currentTypeId = currentType?.type_id ?? selectedType?.type_id ?? "";
+    const currentIndex = allTypePaths.findIndex((entry) => entry.typeId === currentTypeId);
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % allTypePaths.length : 0;
+    const next = allTypePaths[nextIndex];
+    router.push(
+      `/quest?type=${encodeURIComponent(next.typeId)}&category=${encodeURIComponent(next.categoryId)}`
+    );
   };
 
   useEffect(() => {
-    setStatusMsg("");
     setPracticeResult(null);
     setResultMark(null);
+    setRecognizedNumber(null);
+    setPreviewImages([]);
     canvasRef.current?.clear();
   }, [itemIndex]);
 
@@ -1038,7 +1281,8 @@ export default function QuestPage() {
       { id: Date.now() + Math.random(), text, userAnswer, correct }
     ]);
     if (questionIndex >= TOTAL_QUESTIONS) {
-      setStatus('finished');
+      setStatus('cleared');
+      setMessage("クリアー！");
       return;
     }
     setQuestionIndex((prev) => prev + 1);
@@ -1110,7 +1354,7 @@ export default function QuestPage() {
     }
 
     const digits = getAnswerDigits();
-    const samples = preprocessDigits(drawingCanvas, digits);
+    const { samples, dotXs } = preprocessDigits(drawingCanvas, digits);
 
     if (samples.length === 0) {
       canvasRef.current?.clear();
@@ -1126,7 +1370,7 @@ export default function QuestPage() {
     let perDigitString = refined.some((d) => d === null) ? '' : refined.join('');
 
     let predictedText = perDigitString;
-    if (samples.length === 2 && is2DigitModelReady) {
+    if (samples.length === 2 && is2DigitModelReady && dotXs.length === 0) {
       const gap = 6;
       const width = 28 * 2 + gap;
       const composite = new Float32Array(28 * width);
@@ -1148,6 +1392,24 @@ export default function QuestPage() {
       }
     }
 
+    if (predictedText && dotXs.length > 0) {
+      const centers = samples.map((s) => s.centerX);
+      let chosenDot = dotXs[0];
+      if (centers.length >= 2) {
+        const between = dotXs.find((x) => x > centers[0] && x < centers[1]);
+        if (between !== undefined) {
+          chosenDot = between;
+        } else if (dotXs.length > 1) {
+          chosenDot = dotXs[dotXs.length - 1];
+        }
+      }
+      let insertAt = 0;
+      while (insertAt < centers.length && chosenDot > centers[insertAt]) insertAt += 1;
+      if (insertAt > 0 && insertAt < predictedText.length) {
+        predictedText = `${predictedText.slice(0, insertAt)}.${predictedText.slice(insertAt)}`;
+      }
+    }
+
     if (!predictedText) {
       setCombo(0);
     }
@@ -1162,9 +1424,28 @@ export default function QuestPage() {
     if (predictedText && currentItem && currentType) {
       const verdict = gradeAnswer(predictedText, currentItem.answer, currentType.answer_format);
       setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
+      const resultText = currentItem.prompt_tex ?? currentItem.prompt;
+      setQuestionResults((prev) => ({
+        ...prev,
+        [itemIndex]: {
+          text: resultText,
+          userAnswer: predictedText,
+          correct: verdict.ok
+        }
+      }));
+      if (!verdict.ok) {
+        setMistakeLog((prev) => [
+          ...prev,
+          {
+            index: itemIndex,
+            text: resultText,
+            userAnswer: predictedText,
+            correctAnswer: currentItem.answer
+          }
+        ]);
+      }
 
       if (verdict.ok) {
-        setStatusMsg("✅ 合っている");
         setResultMark('correct');
         const newCombo = combo + 1;
         setCombo(newCombo);
@@ -1185,7 +1466,6 @@ export default function QuestPage() {
           }, AUTO_NEXT_WAIT_MS);
         }
       } else {
-        setStatusMsg("❌ ちがう");
         setResultMark('wrong');
         setCombo(0);
       }
@@ -1206,6 +1486,7 @@ export default function QuestPage() {
   const runInference = async (): Promise<string> => {
     if (inputMode !== 'handwriting') return "";
     if (status !== 'playing') return "";
+    if (isDrawingRef.current) return "";
     if (!isModelReady) return "";
     if (Date.now() < cooldownUntilRef.current) return "";
     if (isRecognizing || inFlightRef.current) {
@@ -1293,6 +1574,44 @@ export default function QuestPage() {
     }
   };
 
+  const runAutoDrawDecimalTest = async (places = 1) => {
+    const canvas = getDrawingCanvas(canvasRef.current);
+    if (!canvas) return { expected: "", predicted: "" };
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { expected: "", predicted: "" };
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#000000";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold 84px monospace";
+    const digits = Array.from({ length: places + 1 }, () => String(Math.floor(Math.random() * 10)));
+    const expected = `${digits[0]}.${digits.slice(1).join("")}`;
+    setLastAutoDrawExpected(expected);
+    const startX = 16;
+    const baselineY = 200;
+    const gap = 64;
+    for (let i = 0; i < digits.length; i++) {
+      ctx.fillText(digits[i], startX + i * gap, baselineY);
+    }
+    const dotX = startX + gap / 2 + 14;
+    const dotY = baselineY + 20;
+    ctx.beginPath();
+    ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    lastDrawAtRef.current = Date.now();
+    setPreviewImages([]);
+    forcedDigitsRef.current = digits.length;
+    try {
+      const predicted = await runInference();
+      return { expected, predicted };
+    } finally {
+      forcedDigitsRef.current = null;
+    }
+  };
+
   const runAutoDrawBatchTest = async (runs: number, pool: string[], label: string) => {
     setAutoDrawBatchSummary(`${label} 実行中...`);
     let total = 0;
@@ -1301,6 +1620,8 @@ export default function QuestPage() {
     let fiveSixExact = 0;
     let fourEightNineTotal = 0;
     let fourEightNineExact = 0;
+    let zeroEightTotal = 0;
+    let zeroEightExact = 0;
     for (let i = 0; i < runs; i++) {
       const { expected, predicted } = await runAutoDrawTest(pool);
       if (!expected) continue;
@@ -1313,6 +1634,10 @@ export default function QuestPage() {
           fiveSixTotal++;
           if (p === e) fiveSixExact++;
         }
+        if (e === "0" || e === "8") {
+          zeroEightTotal++;
+          if (p === e) zeroEightExact++;
+        }
         if (e === "4" || e === "8" || e === "9") {
           fourEightNineTotal++;
           if (p === e) fourEightNineExact++;
@@ -1323,8 +1648,29 @@ export default function QuestPage() {
     const overall = total ? ((exact / total) * 100).toFixed(1) : "0.0";
     const fiveSix = fiveSixTotal ? ((fiveSixExact / fiveSixTotal) * 100).toFixed(1) : "0.0";
     const fourEightNine = fourEightNineTotal ? ((fourEightNineExact / fourEightNineTotal) * 100).toFixed(1) : "0.0";
+    const zeroEight = zeroEightTotal ? ((zeroEightExact / zeroEightTotal) * 100).toFixed(1) : "0.0";
     setAutoDrawBatchSummary(
-      `${label} 完了: 全体一致 ${exact}/${total} (${overall}%) / 4&8&9一致 ${fourEightNineExact}/${fourEightNineTotal} (${fourEightNine}%) / 5&6一致 ${fiveSixExact}/${fiveSixTotal} (${fiveSix}%)`
+      `${label} 完了: 全体一致 ${exact}/${total} (${overall}%) / 0&8一致 ${zeroEightExact}/${zeroEightTotal} (${zeroEight}%) / 4&8&9一致 ${fourEightNineExact}/${fourEightNineTotal} (${fourEightNine}%) / 5&6一致 ${fiveSixExact}/${fiveSixTotal} (${fiveSix}%)`
+    );
+  };
+
+  const runAutoDrawDecimalBatchTest = async (runs: number, label: string) => {
+    setAutoDrawBatchSummary(`${label} 実行中...`);
+    let total = 0;
+    let exact = 0;
+    let dotOk = 0;
+    for (let i = 0; i < runs; i++) {
+      const { expected, predicted } = await runAutoDrawDecimalTest(1);
+      if (!expected) continue;
+      total++;
+      if (predicted === expected) exact++;
+      if (predicted.includes(".")) dotOk++;
+      await new Promise((resolve) => window.setTimeout(resolve, 40));
+    }
+    const overall = total ? ((exact / total) * 100).toFixed(1) : "0.0";
+    const dotRate = total ? ((dotOk / total) * 100).toFixed(1) : "0.0";
+    setAutoDrawBatchSummary(
+      `${label} 完了: 全体一致 ${exact}/${total} (${overall}%) / 小数点検出 ${dotOk}/${total} (${dotRate}%)`
     );
   };
 
@@ -1336,37 +1682,37 @@ export default function QuestPage() {
       {/* Input Mode Toggle removed */}
 
       {selectedPath && (
-        <div className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600">
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 text-left hover:bg-slate-50"
+        >
           {selectedPath.gradeName} / {selectedPath.categoryName} / {selectedPath.typeName}
-        </div>
+        </button>
       )}
 
       {/* Center: Character & Message */} 
       <div className="flex flex-col items-center space-y-4 my-4 flex-1 justify-center w-full">
         {status === 'cleared' ? (
-          <div className="text-center animate-bounce">
-            <div className="text-6xl mb-2">🎉</div>
-            <h2 className="text-2xl font-bold text-yellow-600">STAGE CLEAR!</h2>
-            <button 
-              onClick={() => window.location.reload()}              className="mt-4 px-6 py-2 bg-yellow-500 text-white rounded-lg font-bold shadow-md active:translate-y-1"
-            >
-              Play Again
-            </button>
-          </div>
-        ) : status === 'finished' ? (
-          <div className="w-full bg-white p-6 rounded-2xl shadow-lg border-4 border-indigo-100">
-            <h2 className="text-2xl font-black text-indigo-900 mb-4 text-center">結果一覧</h2>
-            <div className="space-y-3 max-h-[45vh] overflow-y-auto">
-              {results.map((r, idx) => (
+          <div className="w-full text-center rounded-3xl border-4 border-yellow-300 bg-gradient-to-br from-fuchsia-500 via-indigo-500 to-cyan-400 px-4 py-8 shadow-[0_0_60px_rgba(99,102,241,0.55)] animate-pulse">
+            <div className="text-5xl md:text-6xl font-black text-white drop-shadow-[0_6px_0_rgba(0,0,0,0.2)] tracking-wide animate-bounce">
+              クリアー！
+            </div>
+            <div className="mt-2 text-3xl">🎉🔥✨⚡🎊</div>
+            <div className="mt-4 inline-block rounded-full bg-white/95 px-5 py-2 text-indigo-700 font-black text-lg shadow-lg">
+              {uiText.summary}
+            </div>
+            <div className="mt-5 space-y-2 max-h-[28vh] overflow-y-auto rounded-2xl bg-white/90 p-3 text-left">
+              {clearResults.map(([index, r]) => (
                 <div
-                  key={r.id}
+                  key={index}
                   className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
                     r.correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
                   }`}
                 >
-                  <div className="font-bold text-slate-700">{idx + 1}. {r.text}</div>
+                  <div className="font-bold text-slate-700">{Number(index) + 1}. {r.text}</div>
                   <div className="flex items-center gap-2 font-bold">
-                    <span className="text-slate-600">あなた: {r.userAnswer || '?'}</span>
+                    <span className="text-slate-600">{uiText.yourAnswer}: {r.userAnswer || '?'}</span>
                     <span className={r.correct ? 'text-green-600' : 'text-red-600'}>
                       {r.correct ? '◯' : '✕'}
                     </span>
@@ -1374,33 +1720,40 @@ export default function QuestPage() {
                 </div>
               ))}
             </div>
+            {mistakeLog.length > 0 && (
+              <div className="mt-4 space-y-2 max-h-[24vh] overflow-y-auto rounded-2xl bg-rose-50/95 border border-rose-200 p-3 text-left">
+                <div className="text-sm font-black text-rose-700">まちがえた もんだい</div>
+                {mistakeLog.map((row, idx) => (
+                  <div key={`${row.index}-${idx}`} className="rounded-md border border-rose-100 bg-white px-2 py-2 text-xs text-slate-700">
+                    <div className="font-bold">{row.index + 1}. {row.text}</div>
+                    <div>あなた: {row.userAnswer}</div>
+                    <div>こたえ: {row.correctAnswer}</div>
+                  </div>
+                ))}
+              </div>
+            )}
             <button
-              onClick={() => window.location.reload()}
-              className="mt-4 w-full px-6 py-2 bg-indigo-500 text-white rounded-lg font-bold shadow-md active:translate-y-1"
+              onClick={goToNextLevel}
+              className="mt-5 px-8 py-3 rounded-xl bg-yellow-400 text-slate-900 font-black text-lg shadow-[0_6px_0_rgba(0,0,0,0.2)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.2)]"
             >
-              もう一度
+              {uiText.nextLevel}
             </button>
           </div>
         ) : (
           <>
             <div className="w-full bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[40vh] overflow-y-auto">
-              {activeItems.length === 0 ? (
+              {quizItems.length === 0 ? (
                 <div className="text-slate-500 text-center">
                   {emptyMessage}
                 </div>
               ) : currentItem ? (
                 <div className="flex flex-col gap-3">
-                  {prevItem && (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500 opacity-60">
-                      {formatPrompt(prevItem.prompt)}
-                    </div>
-                  )}
                   <div
                     ref={currentCardRef}
                     className="rounded-2xl border-4 border-indigo-200 bg-white px-5 py-4 text-indigo-900 text-xl font-black shadow-md"
                   >
                     <div className="flex items-center justify-between gap-4">
-                      <div className="text-[22px] font-extrabold">{formatPrompt(currentItem.prompt)}</div>
+                      <div className="text-[22px] font-extrabold">{renderPrompt(currentItem)}</div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-[22px] font-bold text-slate-500">=</span>
                         <div
@@ -1421,37 +1774,28 @@ export default function QuestPage() {
                       </div>
                     </div>
                     {practiceResult && (
-                      <div className={`mt-2 text-xs font-bold ${practiceResult.ok ? "text-green-600" : "text-red-600"}`}>
-                        {practiceResult.ok ? "正解" : "不正解"}
+                      <div className="mt-2 flex justify-end">
+                        <div
+                          className={`text-xs font-bold ${
+                            practiceResult.ok ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          {practiceResult.ok ? uiText.correct : uiText.incorrect}
+                        </div>
                       </div>
                     )}
                   </div>
-                  {statusMsg && (
-                    <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700, opacity: 0.85 }}>
-                      {statusMsg}
-                    </div>
-                  )}
                   {nextItem && (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500 opacity-35">
-                      {formatPrompt(nextItem.prompt)}
+                      {renderPrompt(nextItem)}
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="text-slate-500 text-center">タイプを選択してください。</div>
+                <div className="text-slate-500 text-center">{uiText.selectType}</div>
               )}
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-slate-200 w-full text-center text-slate-700">
-              {practiceResult && (
-                <div className={`text-sm font-bold ${practiceResult.ok ? "text-green-600" : "text-red-600"}`}>
-                  {practiceResult.ok ? "正解！" : "不正解"}
-                  <span className="ml-2 text-slate-600">正答: {practiceResult.correctAnswer}</span>
-                  <span className="ml-2 text-slate-600">入力: {displayedAnswer || "?"}</span>
-                </div>
-              )}
-            </div>
-            
             {/* Combo Indicator */}
             {combo >= 2 && (
               <div className="text-yellow-500 font-black text-xl animate-pulse">
@@ -1469,7 +1813,7 @@ export default function QuestPage() {
             <button
               key={num}
               onClick={() => handleInput(num.toString())}
-              disabled={status === 'cleared' || isStarting}
+              disabled={status !== 'playing' || isStarting}
               className={`
                 h-16 rounded-xl text-2xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all
                 ${num === 0 ? 'col-span-1' : ''}
@@ -1483,7 +1827,7 @@ export default function QuestPage() {
           {/* Delete Button */}
           <button
             onClick={handleDelete}
-            disabled={status === 'cleared' || isStarting}
+            disabled={status !== 'playing' || isStarting}
             className="h-16 rounded-xl text-xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all bg-red-100 text-red-600 border-2 border-red-200 hover:bg-red-200 flex items-center justify-center"
           >
             ⌫
@@ -1492,7 +1836,7 @@ export default function QuestPage() {
           {/* Attack/Enter Button */}
           <button
             onClick={handleAttack}
-            disabled={status === 'cleared' || input === '' || isStarting}
+            disabled={status !== 'playing' || input === '' || isStarting}
             className="h-16 rounded-xl text-xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all bg-indigo-500 text-white border-2 border-indigo-600 hover:bg-indigo-600 flex items-center justify-center"
           >
             Attack!
@@ -1529,11 +1873,13 @@ export default function QuestPage() {
                 disabled={isRecognizing || isStarting}
                 className="px-3 py-0.5 rounded-md bg-indigo-600 text-white"
               >
-                判定
+                {uiText.judge}
               </button>
               <button
                 data-testid="auto-draw-test"
-                onClick={runAutoDrawTest}
+                onClick={() => {
+                  void runAutoDrawTest();
+                }}
                 className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
               >
                 AutoDraw Test
@@ -1552,6 +1898,12 @@ export default function QuestPage() {
                 Batch100
               </button>
               <button
+                onClick={() => runAutoDrawDecimalBatchTest(100, "BatchDec100")}
+                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+              >
+                BatchDec100
+              </button>
+              <button
                 onClick={() =>
                   runAutoDrawBatchTest(
                     500,
@@ -1562,6 +1914,12 @@ export default function QuestPage() {
                 className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
               >
                 Batch500
+              </button>
+              <button
+                onClick={() => runAutoDrawBatchTest(200, ["0", "8"], "Batch08")}
+                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+              >
+                Batch08
               </button>
               <button
                 onClick={() => runAutoDrawBatchTest(200, ["4", "8", "9"], "Batch489")}
@@ -1605,7 +1963,7 @@ export default function QuestPage() {
               canvasWidth={300}
               canvasHeight={300}
               className="rounded-xl border-2 border-slate-300 shadow-lg"
-              disabled={status === 'cleared'}
+              disabled={status !== 'playing'}
               onChange={handleCanvasChange}
             />
             {startPopup && (
@@ -1647,24 +2005,32 @@ export default function QuestPage() {
             <div className="w-full max-w-sm bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
               <button
                 onClick={nextQuestion}
-                disabled={status === 'cleared' || isStarting}
+                disabled={status !== 'playing' || isStarting}
                 className="w-full py-2 rounded-lg bg-indigo-600 text-white font-bold shadow-md active:translate-y-1 disabled:opacity-50"
               >
-                次の問題へ
+                {uiText.nextQuestion}
               </button>
             </div>
           </div>
           <div className="flex gap-3 w-full justify-center">
             <button
-              onClick={() => canvasRef.current?.clear()}              disabled={status === 'cleared' || isRecognizing}
+              onClick={() => canvasRef.current?.clear()}              disabled={status !== 'playing' || isRecognizing}
               className="px-6 py-2 bg-red-100 text-red-600 rounded-lg font-bold shadow-md active:translate-y-1"
             >
-              リセット
+              {uiText.reset}
             </button>
           </div>
         </div>
       )}
 
     </main>
+  );
+}
+
+export default function QuestPage() {
+  return (
+    <Suspense fallback={<div />}>
+      <QuestPageInner />
+    </Suspense>
   );
 }

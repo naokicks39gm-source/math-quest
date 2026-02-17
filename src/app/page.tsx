@@ -1,55 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import data from "@/content/mvp_e3_e6_types.json";
-import { isSupportedType } from "@/lib/questSupport";
-
-type AnswerFormat = {
-  kind: "int" | "dec" | "frac" | "pair" | "expr";
-};
-
-type TypeDef = {
-  type_id: string;
-  type_name: string;
-  answer_format: AnswerFormat;
-  example_items: Array<{ prompt: string; answer: string }>;
-};
-
-type CategoryDef = {
-  category_id: string;
-  category_name: string;
-  types: TypeDef[];
-};
-
-type GradeDef = {
-  grade_id: string;
-  grade_name: string;
-  categories: CategoryDef[];
-};
+import { GradeDef } from "@/lib/elementaryContent";
+import { getCatalogGrades } from "@/lib/gradeCatalog";
 
 export default function Home() {
   const router = useRouter();
-  const allGrades = data.grades as GradeDef[];
-  const grades = useMemo(() => {
-    return allGrades
-      .map((grade) => ({
-        ...grade,
-        categories: grade.categories
-          .map((cat) => ({
-            ...cat,
-            types: cat.types.filter(isSupportedType)
-          }))
-          .filter((cat) => cat.types.length > 0)
-      }))
-      .filter((grade) => grade.categories.length > 0);
-  }, [allGrades]);
+  const grades = useMemo(() => getCatalogGrades() as GradeDef[], []);
   const LS_KEY = "mq:last_type_id";
+  const restoredFromStorageRef = useRef(false);
   const [gradeId, setGradeId] = useState(grades[0]?.grade_id ?? "");
   const [categoryId, setCategoryId] = useState("");
   const [typeId, setTypeId] = useState("");
 
   useEffect(() => {
+    if (restoredFromStorageRef.current) return;
+    restoredFromStorageRef.current = true;
     const saved = typeof window !== "undefined" ? localStorage.getItem(LS_KEY) : null;
     if (saved) {
       const foundGrade = grades.find((g) =>
@@ -99,6 +66,11 @@ export default function Home() {
     router.push(url);
   };
 
+  const handleStartAll = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    router.push("/quest");
+  };
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-6">
       <div className="w-full max-w-xl bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
@@ -110,6 +82,9 @@ export default function Home() {
               className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
               value={gradeId}
               onChange={(e) => {
+                if (typeof window !== "undefined") {
+                  localStorage.removeItem(LS_KEY);
+                }
                 setGradeId(e.target.value);
                 setCategoryId("");
                 setTypeId("");
@@ -128,6 +103,9 @@ export default function Home() {
               className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
               value={categoryId}
               onChange={(e) => {
+                if (typeof window !== "undefined") {
+                  localStorage.removeItem(LS_KEY);
+                }
                 setCategoryId(e.target.value);
                 setTypeId("");
               }}
@@ -148,7 +126,7 @@ export default function Home() {
             >
               {types.map((t) => (
                 <option key={t.type_id} value={t.type_id}>
-                  {t.type_name}
+                  {t.display_name ?? t.type_name}
                 </option>
               ))}
             </select>
@@ -161,6 +139,13 @@ export default function Home() {
           className="w-full py-3 rounded-lg font-bold text-white bg-indigo-600 disabled:bg-slate-300"
         >
           はじめる
+        </button>
+        <button
+          type="button"
+          onClick={handleStartAll}
+          className="w-full py-3 rounded-lg font-bold text-indigo-700 bg-indigo-50 border border-indigo-200"
+        >
+          全学年まとめてはじめる
         </button>
       </div>
     </main>

@@ -1,40 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import data from "@/content/mvp_e3_e6_types.json";
-
-type AnswerFormat = {
-  kind: "int" | "dec" | "frac" | "pair" | "expr";
-  precision?: number;
-  suffix?: string;
-  pair_kind?: "quotient_remainder" | "ratio";
-  separator?: string;
-  form?: string;
-};
-
-type ExampleItem = {
-  prompt: string;
-  answer: string;
-};
-
-type TypeDef = {
-  type_id: string;
-  type_name: string;
-  answer_format: AnswerFormat;
-  example_items: ExampleItem[];
-};
-
-type CategoryDef = {
-  category_id: string;
-  category_name: string;
-  types: TypeDef[];
-};
-
-type GradeDef = {
-  grade_id: string;
-  grade_name: string;
-  categories: CategoryDef[];
-};
+import { InlineMath } from "react-katex";
+import "katex/dist/katex.min.css";
+import {
+  AnswerFormat,
+  ExampleItem,
+  GradeDef,
+  TypeDef
+} from "@/lib/elementaryContent";
+import { getCatalogGrades } from "@/lib/gradeCatalog";
 
 const gcd = (a: number, b: number) => {
   let x = Math.abs(a);
@@ -89,6 +64,14 @@ const normalizeExpr = (input: string) => {
   return input.replace(/\s+/g, "").replace(/×/g, "*");
 };
 
+const renderPrompt = (item: ExampleItem) => {
+  const tex = item.prompt_tex?.trim();
+  if (tex) {
+    return <InlineMath math={tex} renderError={() => <span>{item.prompt}</span>} />;
+  }
+  return <span>{item.prompt}</span>;
+};
+
 const judgeAnswer = (userInput: string, answer: string, format: AnswerFormat) => {
   const inputRaw = userInput.trim();
   if (inputRaw === "") return { ok: false, normalized: "" };
@@ -131,7 +114,7 @@ const judgeAnswer = (userInput: string, answer: string, format: AnswerFormat) =>
 };
 
 export default function PracticePage() {
-  const grades = data.grades as GradeDef[];
+  const grades = getCatalogGrades() as GradeDef[];
   const [selectedType, setSelectedType] = useState<TypeDef | null>(grades[0]?.categories[0]?.types[0] ?? null);
   const [itemIndex, setItemIndex] = useState(0);
   const [input, setInput] = useState("");
@@ -185,7 +168,7 @@ export default function PracticePage() {
                                 : "hover:bg-slate-100 text-slate-700"
                             }`}
                           >
-                            {type.type_name}
+                            {type.display_name ?? type.type_name}
                           </button>
                         ))}
                       </div>
@@ -200,14 +183,14 @@ export default function PracticePage() {
         <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <div className="mb-4">
             <div className="text-sm text-slate-500">選択タイプ</div>
-            <div className="text-lg font-bold">{selectedType?.type_name ?? "未選択"}</div>
+            <div className="text-lg font-bold">{selectedType?.display_name ?? selectedType?.type_name ?? "未選択"}</div>
           </div>
 
           {currentItem ? (
             <>
               <div className="mb-6">
                 <div className="text-sm text-slate-500 mb-1">問題</div>
-                <div className="text-xl font-bold">{currentItem.prompt}</div>
+                <div className="text-xl font-bold">{renderPrompt(currentItem)}</div>
               </div>
 
               <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">

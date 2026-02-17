@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "test": "node -e \"console.log('no tests')\"",
+    "test": "node --test tests/*.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -19,10 +19,12 @@
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-node": "^4.22.0",
     "framer-motion": "^12.29.2",
+    "katex": "^0.16.28",
     "next": "16.1.5",
     "react": "19.2.3",
     "react-canvas-draw": "^1.2.1",
     "react-dom": "19.2.3",
+    "react-katex": "^3.1.0",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
