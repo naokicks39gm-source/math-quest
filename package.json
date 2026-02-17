@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "test": "node -e \"console.log('no tests')\"",
+    "test": "node --test tests/*.test.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint src/lib src/app/api tests",
+    "typecheck": "tsc --noEmit",
     "generate-model": "node scripts/generate-model.js",
     "generate-model-2digit": "node scripts/generate-model-2digit.js",
     "backtest-mnist": "node scripts/mnist-backtest.js",

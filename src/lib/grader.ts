@@ -1,5 +1,5 @@
 export type AnswerFormat = {
-  kind: "int";
+  kind: "int" | "dec" | "frac" | "pair" | "expr";
 };
 
 export const gradeAnswer = (userInput: string, correctAnswer: string, format: AnswerFormat) => {

@@ -7,8 +7,13 @@ import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
-import data from '@/content/mathquest_all_grades_from_split_v1';
-import { gradeAnswer, AnswerFormat } from '@/lib/grader';
+import { gradeAnswer } from '@/lib/grader';
+import {
+  ExampleItem,
+  GradeDef,
+  TypeDef,
+  getElementaryNumberCalculationGrades
+} from '@/lib/elementaryContent';
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -27,31 +32,8 @@ interface Question {
   answer: number;
 }
 
-type ExampleItem = {
-  prompt: string;
-  prompt_tex?: string;
-  answer: string;
-};
-
-type TypeDef = {
-  type_id: string;
-  type_name: string;
-  answer_format: AnswerFormat;
-  example_items: ExampleItem[];
-};
-
-
-type CategoryDef = {
-  category_id: string;
-  category_name: string;
-  types: TypeDef[];
-};
-
-type GradeDef = {
-  grade_id: string;
-  grade_name: string;
-  categories: CategoryDef[];
-};
+type FractionDigits = { num: number; den: number };
+const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
 
 const formatPrompt = (prompt: string) => {
   return prompt.replace(/を計算しなさい。$/g, "");
@@ -339,6 +321,79 @@ const detectDecimalDots = (components: Component[], maxArea: number, h: number) 
   });
 };
 
+const getFractionDigitCounts = (answer: string): FractionDigits => {
+  const cleaned = String(answer ?? "");
+  const parts = cleaned.split("/");
+  if (parts.length !== 2) {
+    const n = cleaned.replace(/\D/g, "").length || 1;
+    return { num: Math.min(4, n), den: Math.min(4, n) };
+  }
+  const num = parts[0].replace(/\D/g, "").length || 1;
+  const den = parts[1].replace(/\D/g, "").length || 1;
+  return { num: Math.min(4, num), den: Math.min(4, den) };
+};
+
+const pickFractionLine = (components: Component[], overall: BBox) => {
+  if (components.length === 0) return null;
+  const overallW = overall.maxX - overall.minX + 1;
+  const overallH = overall.maxY - overall.minY + 1;
+  let best: Component | null = null;
+  for (const c of components) {
+    const w = c.bbox.maxX - c.bbox.minX + 1;
+    const h = c.bbox.maxY - c.bbox.minY + 1;
+    const ratio = w / Math.max(1, h);
+    if (w < overallW * 0.55) continue;
+    if (h > overallH * 0.18) continue;
+    if (ratio < 4) continue;
+    if (!best || w > (best.bbox.maxX - best.bbox.minX + 1)) {
+      best = c;
+    }
+  }
+  return best;
+};
+
+const preprocessFraction = (
+  canvas: HTMLCanvasElement,
+  expected: FractionDigits
+): { numerator: DigitSample[]; denominator: DigitSample[] } => {
+  const binData = binarizeCanvas(canvas);
+  if (!binData) return { numerator: [], denominator: [] };
+  const { bin, w, h } = binData;
+  const components = findComponents(bin, w, h);
+  if (components.length === 0) return { numerator: [], denominator: [] };
+  const overall = computeBBox(bin, w, h);
+  if (!overall) return { numerator: [], denominator: [] };
+
+  const line = pickFractionLine(components, overall);
+  if (!line) return { numerator: [], denominator: [] };
+  const lineMidY = (line.bbox.minY + line.bbox.maxY) / 2;
+
+  const top = components.filter(
+    (c) => c !== line && (c.bbox.minY + c.bbox.maxY) / 2 < lineMidY
+  );
+  const bottom = components.filter(
+    (c) => c !== line && (c.bbox.minY + c.bbox.maxY) / 2 > lineMidY
+  );
+  if (top.length === 0 || bottom.length === 0) return { numerator: [], denominator: [] };
+
+  top.sort((a, b) => a.bbox.minX - b.bbox.minX);
+  bottom.sort((a, b) => a.bbox.minX - b.bbox.minX);
+
+  const numerator: DigitSample[] = [];
+  for (const c of top.slice(0, Math.max(1, expected.num))) {
+    const sample = componentToTensor(c, w, h);
+    if (sample) numerator.push(sample);
+  }
+
+  const denominator: DigitSample[] = [];
+  for (const c of bottom.slice(0, Math.max(1, expected.den))) {
+    const sample = componentToTensor(c, w, h);
+    if (sample) denominator.push(sample);
+  }
+
+  return { numerator, denominator };
+};
+
 const splitByProjection = (bin: Uint8Array, w: number, h: number, bbox: BBox) => {
   const width = bbox.maxX - bbox.minX + 1;
   const height = bbox.maxY - bbox.minY + 1;
@@ -558,10 +613,104 @@ const quadrantInk = (data: Float32Array, x0: number, y0: number, x1: number, y1:
   return count === 0 ? 0 : sum / count;
 };
 
-const getDrawingCanvas = (ref: any): HTMLCanvasElement | null => {
+const getDrawingCanvas = (ref: { canvas?: unknown } | null): HTMLCanvasElement | null => {
+  const base = ref?.canvas as
+    | {
+        drawing?: { canvas?: unknown; ctx?: { canvas?: unknown } } | unknown;
+        canvas?: unknown;
+        canvasContainer?: ParentNode;
+        container?: ParentNode;
+      }
+    | undefined;
+  const candidate =
+    (base?.drawing as { canvas?: unknown } | undefined)?.canvas ??
+    (base?.drawing as { ctx?: { canvas?: unknown } } | undefined)?.ctx?.canvas ??
+    base?.drawing ??
+    base?.canvas ??
+    null;
+  if (candidate instanceof HTMLCanvasElement) return candidate;
+  const container = base?.canvasContainer ??
+    base?.container ??
+    null;
+  if (container && "querySelectorAll" in container) {
+    const canvases = Array.from(container.querySelectorAll("canvas"));
+    const found = canvases.find((c) => c.width > 0 && c.height > 0) ?? null;
+    if (found instanceof HTMLCanvasElement) return found;
+  }
+  return null;
+};
+
+const getDrawingCanvases = (ref: { canvas?: unknown } | null): HTMLCanvasElement[] => {
   const base = ref?.canvas;
-  const candidate = base?.drawing?.canvas ?? base?.drawing ?? null;
-  return candidate instanceof HTMLCanvasElement ? candidate : null;
+  const list: HTMLCanvasElement[] = [];
+  const pushIf = (c: unknown) => {
+    if (c instanceof HTMLCanvasElement && !list.includes(c)) list.push(c);
+  };
+  const baseObj = base as
+    | {
+        drawing?: { canvas?: unknown; ctx?: { canvas?: unknown } } | unknown;
+        canvas?: unknown;
+        canvasContainer?: ParentNode;
+        container?: ParentNode;
+      }
+    | undefined;
+  pushIf((baseObj?.drawing as { canvas?: unknown } | undefined)?.canvas);
+  pushIf((baseObj?.drawing as { ctx?: { canvas?: unknown } } | undefined)?.ctx?.canvas);
+  pushIf(baseObj?.drawing);
+  pushIf(baseObj?.canvas);
+  const container = baseObj?.canvasContainer ?? baseObj?.container ?? null;
+  if (container && "querySelectorAll" in container) {
+    container.querySelectorAll("canvas").forEach((c: Element) => pushIf(c));
+  }
+  return list;
+};
+
+const waitForNextFrame = () =>
+  new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+const ensureDrawingCanvases = async (params: {
+  inputMode: "numpad" | "handwriting";
+  setInputMode: (mode: "numpad" | "handwriting") => void;
+  canvasRef: { current: { canvas?: unknown } | null };
+}): Promise<HTMLCanvasElement[]> => {
+  if (params.inputMode !== 'handwriting') {
+    params.setInputMode('handwriting');
+  }
+  for (let i = 0; i < 12; i++) {
+    const canvases = getDrawingCanvases(params.canvasRef.current);
+    if (canvases.length > 0) return canvases;
+    await waitForNextFrame();
+  }
+  return getDrawingCanvases(params.canvasRef.current);
+};
+
+const estimateInk = (canvas: HTMLCanvasElement) => {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return 0;
+  const { width, height } = canvas;
+  if (width <= 0 || height <= 0) return 0;
+  const data = ctx.getImageData(0, 0, width, height).data;
+  let ink = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const a = data[i + 3];
+    if (a < 10) continue;
+    const gray = (data[i] + data[i + 1] + data[i + 2]) / 3;
+    if (255 - gray > 10) ink++;
+  }
+  return ink;
+};
+
+const pickBestCanvas = (canvases: HTMLCanvasElement[]) => {
+  let best = canvases[0] ?? null;
+  let bestInk = -1;
+  for (const c of canvases) {
+    const ink = estimateInk(c);
+    if (ink > bestInk) {
+      bestInk = ink;
+      best = c;
+    }
+  }
+  return best;
 };
 
 const countHoles = (data: Float32Array, width = 28, height = 28, minArea = 18) => {
@@ -790,13 +939,15 @@ function QuestPageInner() {
   const inFlightRef = useRef(false);
   const pendingRecognizeRef = useRef(false);
   const forcedDigitsRef = useRef<number | null>(null);
+  const forceRecognizeRef = useRef(false);
+  const lastAutoDrawCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const cooldownUntilRef = useRef(0);
   const AUTO_NEXT_WAIT_MS = 900;
   const autoNextTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
   const grades = useMemo(
     () =>
-      (data.grades as GradeDef[])
+      (getElementaryNumberCalculationGrades() as GradeDef[])
         .map((grade) => ({
           ...grade,
           categories: grade.categories
@@ -810,6 +961,21 @@ function QuestPageInner() {
   const [practiceResult, setPracticeResult] = useState<{ ok: boolean; correctAnswer: string } | null>(null);
   const [lastAutoDrawExpected, setLastAutoDrawExpected] = useState("");
   const [autoDrawBatchSummary, setAutoDrawBatchSummary] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+
+  const postJson = async (url: string, payload: unknown) => {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(String(json?.error ?? "request_failed"));
+    }
+    return json;
+  };
 
   // Load MNIST model on component mount
   useEffect(() => {
@@ -830,6 +996,12 @@ function QuestPageInner() {
   useEffect(() => {
     const first = createQuestion();
     setQuestion(first);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sessionId = localStorage.getItem(LS_ACTIVE_SESSION_ID);
+    setActiveSessionId(sessionId);
   }, []);
 
   useEffect(() => {
@@ -1159,20 +1331,33 @@ function QuestPageInner() {
   };
 
   const handleHandwritingJudge = async (): Promise<string> => {
-    if (!canvasRef.current || isRecognizing || !isModelReady || isStarting) {
+    if (!canvasRef.current || isRecognizing || !isModelReady || (isStarting && !forceRecognizeRef.current)) {
       return "";
     }
 
     setIsRecognizing(true);
 
-    const drawingCanvas = getDrawingCanvas(canvasRef.current);
+    const drawingCanvas = lastAutoDrawCanvasRef.current ?? getDrawingCanvas(canvasRef.current);
     if (!drawingCanvas) {
       setIsRecognizing(false);
       return "";
     }
 
+    const isFraction = currentType?.answer_format?.kind === "frac";
     const digits = getAnswerDigits();
-    const { samples, dotXs } = preprocessDigits(drawingCanvas, digits);
+    let samples: DigitSample[] = [];
+    let dotXs: number[] = [];
+    let fractionSamples: { numerator: DigitSample[]; denominator: DigitSample[] } | null = null;
+
+    if (isFraction && currentItem) {
+      const expected = getFractionDigitCounts(currentItem.answer);
+      fractionSamples = preprocessFraction(drawingCanvas, expected);
+      samples = [...fractionSamples.numerator, ...fractionSamples.denominator];
+    } else {
+      const pre = preprocessDigits(drawingCanvas, digits);
+      samples = pre.samples;
+      dotXs = pre.dotXs;
+    }
 
     if (samples.length === 0) {
       canvasRef.current?.clear();
@@ -1188,7 +1373,7 @@ function QuestPageInner() {
     let perDigitString = refined.some((d) => d === null) ? '' : refined.join('');
 
     let predictedText = perDigitString;
-    if (samples.length === 2 && is2DigitModelReady && dotXs.length === 0) {
+    if (!isFraction && samples.length === 2 && is2DigitModelReady && dotXs.length === 0) {
       const gap = 6;
       const width = 28 * 2 + gap;
       const composite = new Float32Array(28 * width);
@@ -1210,7 +1395,7 @@ function QuestPageInner() {
       }
     }
 
-    if (predictedText && dotXs.length > 0) {
+    if (!isFraction && predictedText && dotXs.length > 0) {
       const centers = samples.map((s) => s.centerX);
       let chosenDot = dotXs[0];
       if (centers.length >= 2) {
@@ -1228,6 +1413,18 @@ function QuestPageInner() {
       }
     }
 
+    if (isFraction && fractionSamples) {
+      const nCount = fractionSamples.numerator.length;
+      const dCount = fractionSamples.denominator.length;
+      if (nCount > 0 && dCount > 0 && refined.length === nCount + dCount) {
+        const num = refined.slice(0, nCount).some((d) => d === null) ? "" : refined.slice(0, nCount).join("");
+        const den = refined.slice(nCount, nCount + dCount).some((d) => d === null) ? "" : refined.slice(nCount, nCount + dCount).join("");
+        predictedText = num && den ? `${num}/${den}` : "";
+      } else {
+        predictedText = "";
+      }
+    }
+
     if (!predictedText) {
       setCombo(0);
     }
@@ -1242,6 +1439,19 @@ function QuestPageInner() {
     if (predictedText && currentItem && currentType) {
       const verdict = gradeAnswer(predictedText, currentItem.answer, currentType.answer_format);
       setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
+      if (activeSessionId) {
+        void postJson("/api/session/answer", {
+          sessionId: activeSessionId,
+          typeId: currentType.type_id,
+          prompt: currentItem.prompt,
+          predicted: predictedText,
+          correctAnswer: currentItem.answer,
+          isCorrect: verdict.ok
+        }).catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : "answer_log_failed";
+          setSessionError(message);
+        });
+      }
 
       if (verdict.ok) {
         setResultMark('correct');
@@ -1282,15 +1492,15 @@ function QuestPageInner() {
   };
 
   const runInference = async (): Promise<string> => {
-    if (inputMode !== 'handwriting') return "";
-    if (status !== 'playing') return "";
+    if (inputMode !== 'handwriting' && !forceRecognizeRef.current) return "";
+    if (status !== 'playing' && !forceRecognizeRef.current) return "";
     if (!isModelReady) return "";
     if (Date.now() < cooldownUntilRef.current) return "";
     if (isRecognizing || inFlightRef.current) {
       pendingRecognizeRef.current = true;
       return "";
     }
-    if (isStarting) {
+    if (isStarting && !forceRecognizeRef.current) {
       pendingRecognizeRef.current = true;
       return "";
     }
@@ -1336,18 +1546,36 @@ function QuestPageInner() {
     }, delayMs);
   };
 
+  const ensureDrawingCanvas = async (): Promise<HTMLCanvasElement | null> => {
+    if (inputMode !== 'handwriting') {
+      setInputMode('handwriting');
+    }
+    for (let i = 0; i < 12; i++) {
+      const canvas = getDrawingCanvas(canvasRef.current);
+      if (canvas) return canvas;
+      await waitForNextFrame();
+    }
+    return getDrawingCanvas(canvasRef.current);
+  };
+
   const runAutoDrawTest = async (poolOverride?: string[]) => {
-    const canvas = getDrawingCanvas(canvasRef.current);
-    if (!canvas) return { expected: "", predicted: "" };
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return { expected: "", predicted: "" };
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
-    ctx.font = "bold 84px monospace";
+    const prevMode = inputMode;
+    const canvases = await ensureDrawingCanvases({ inputMode, setInputMode, canvasRef });
+    if (canvases.length === 0) return { expected: "", predicted: "" };
+    const contexts = canvases
+      .map((c) => ({ canvas: c, ctx: c.getContext("2d") }))
+      .filter((c) => c.ctx);
+    if (contexts.length === 0) return { expected: "", predicted: "" };
+    contexts.forEach(({ canvas, ctx }) => {
+      ctx!.setTransform(1, 0, 0, 1, 0, 0);
+      ctx!.clearRect(0, 0, canvas.width, canvas.height);
+      ctx!.fillStyle = "#ffffff";
+      ctx!.fillRect(0, 0, canvas.width, canvas.height);
+      ctx!.fillStyle = "#000000";
+      ctx!.textAlign = "left";
+      ctx!.textBaseline = "alphabetic";
+      ctx!.font = "bold 84px monospace";
+    });
     const pool = poolOverride && poolOverride.length > 0
       ? poolOverride
       : ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
@@ -1358,31 +1586,42 @@ function QuestPageInner() {
     const baselineY = 200;
     const gap = 64;
     for (let i = 0; i < digits.length; i++) {
-      ctx.fillText(digits[i], startX + i * gap, baselineY);
+      contexts.forEach(({ ctx }) => ctx!.fillText(digits[i], startX + i * gap, baselineY));
     }
+    lastAutoDrawCanvasRef.current = pickBestCanvas(canvases);
     lastDrawAtRef.current = Date.now();
     setPreviewImages([]);
     forcedDigitsRef.current = 4;
     try {
+      forceRecognizeRef.current = true;
       const predicted = await runInference();
       return { expected, predicted };
     } finally {
+      forceRecognizeRef.current = false;
       forcedDigitsRef.current = null;
+      lastAutoDrawCanvasRef.current = null;
+      if (prevMode !== inputMode) setInputMode(prevMode);
     }
   };
 
   const runAutoDrawDecimalTest = async (places = 1) => {
-    const canvas = getDrawingCanvas(canvasRef.current);
-    if (!canvas) return { expected: "", predicted: "" };
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return { expected: "", predicted: "" };
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
-    ctx.font = "bold 84px monospace";
+    const prevMode = inputMode;
+    const canvases = await ensureDrawingCanvases({ inputMode, setInputMode, canvasRef });
+    if (canvases.length === 0) return { expected: "", predicted: "" };
+    const contexts = canvases
+      .map((c) => ({ canvas: c, ctx: c.getContext("2d") }))
+      .filter((c) => c.ctx);
+    if (contexts.length === 0) return { expected: "", predicted: "" };
+    contexts.forEach(({ canvas, ctx }) => {
+      ctx!.setTransform(1, 0, 0, 1, 0, 0);
+      ctx!.clearRect(0, 0, canvas.width, canvas.height);
+      ctx!.fillStyle = "#ffffff";
+      ctx!.fillRect(0, 0, canvas.width, canvas.height);
+      ctx!.fillStyle = "#000000";
+      ctx!.textAlign = "left";
+      ctx!.textBaseline = "alphabetic";
+      ctx!.font = "bold 84px monospace";
+    });
     const digits = Array.from({ length: places + 1 }, () => String(Math.floor(Math.random() * 10)));
     const expected = `${digits[0]}.${digits.slice(1).join("")}`;
     setLastAutoDrawExpected(expected);
@@ -1390,22 +1629,29 @@ function QuestPageInner() {
     const baselineY = 200;
     const gap = 64;
     for (let i = 0; i < digits.length; i++) {
-      ctx.fillText(digits[i], startX + i * gap, baselineY);
+      contexts.forEach(({ ctx }) => ctx!.fillText(digits[i], startX + i * gap, baselineY));
     }
     const dotX = startX + gap / 2 + 14;
     const dotY = baselineY + 20;
-    ctx.beginPath();
-    ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
-    ctx.fill();
+    contexts.forEach(({ ctx }) => {
+      ctx!.beginPath();
+      ctx!.arc(dotX, dotY, 3, 0, Math.PI * 2);
+      ctx!.fill();
+    });
+    lastAutoDrawCanvasRef.current = pickBestCanvas(canvases);
 
     lastDrawAtRef.current = Date.now();
     setPreviewImages([]);
     forcedDigitsRef.current = digits.length;
     try {
+      forceRecognizeRef.current = true;
       const predicted = await runInference();
       return { expected, predicted };
     } finally {
+      forceRecognizeRef.current = false;
       forcedDigitsRef.current = null;
+      lastAutoDrawCanvasRef.current = null;
+      if (prevMode !== inputMode) setInputMode(prevMode);
     }
   };
 
@@ -1419,9 +1665,13 @@ function QuestPageInner() {
     let fourEightNineExact = 0;
     let zeroEightTotal = 0;
     let zeroEightExact = 0;
-    for (let i = 0; i < runs; i++) {
-      const { expected, predicted } = await runAutoDrawTest(pool);
-      if (!expected) continue;
+    const first = await runAutoDrawTest(pool);
+    if (!first.expected) {
+      setAutoDrawBatchSummary(`${label} 失敗: 入力キャンバス未準備`);
+      return;
+    }
+    const runOne = (expected: string, predicted: string) => {
+      if (!expected) return;
       total++;
       if (predicted === expected) exact++;
       for (let j = 0; j < Math.min(expected.length, predicted.length); j++) {
@@ -1440,9 +1690,18 @@ function QuestPageInner() {
           if (p === e) fourEightNineExact++;
         }
       }
+    };
+    runOne(first.expected, first.predicted);
+    for (let i = 1; i < runs; i++) {
+      const { expected, predicted } = await runAutoDrawTest(pool);
+      runOne(expected, predicted);
       await new Promise((resolve) => window.setTimeout(resolve, 40));
     }
-    const overall = total ? ((exact / total) * 100).toFixed(1) : "0.0";
+    if (total === 0) {
+      setAutoDrawBatchSummary(`${label} 失敗: 描画キャンバスが見つかりません`);
+      return;
+    }
+    const overall = ((exact / total) * 100).toFixed(1);
     const fiveSix = fiveSixTotal ? ((fiveSixExact / fiveSixTotal) * 100).toFixed(1) : "0.0";
     const fourEightNine = fourEightNineTotal ? ((fourEightNineExact / fourEightNineTotal) * 100).toFixed(1) : "0.0";
     const zeroEight = zeroEightTotal ? ((zeroEightExact / zeroEightTotal) * 100).toFixed(1) : "0.0";
@@ -1456,16 +1715,29 @@ function QuestPageInner() {
     let total = 0;
     let exact = 0;
     let dotOk = 0;
-    for (let i = 0; i < runs; i++) {
-      const { expected, predicted } = await runAutoDrawDecimalTest(1);
-      if (!expected) continue;
+    const first = await runAutoDrawDecimalTest(1);
+    if (!first.expected) {
+      setAutoDrawBatchSummary(`${label} 失敗: 入力キャンバス未準備`);
+      return;
+    }
+    const runOne = (expected: string, predicted: string) => {
+      if (!expected) return;
       total++;
       if (predicted === expected) exact++;
       if (predicted.includes(".")) dotOk++;
+    };
+    runOne(first.expected, first.predicted);
+    for (let i = 1; i < runs; i++) {
+      const { expected, predicted } = await runAutoDrawDecimalTest(1);
+      runOne(expected, predicted);
       await new Promise((resolve) => window.setTimeout(resolve, 40));
     }
-    const overall = total ? ((exact / total) * 100).toFixed(1) : "0.0";
-    const dotRate = total ? ((dotOk / total) * 100).toFixed(1) : "0.0";
+    if (total === 0) {
+      setAutoDrawBatchSummary(`${label} 失敗: 描画キャンバスが見つかりません`);
+      return;
+    }
+    const overall = ((exact / total) * 100).toFixed(1);
+    const dotRate = ((dotOk / total) * 100).toFixed(1);
     setAutoDrawBatchSummary(
       `${label} 完了: 全体一致 ${exact}/${total} (${overall}%) / 小数点検出 ${dotOk}/${total} (${dotRate}%)`
     );
@@ -1486,6 +1758,11 @@ function QuestPageInner() {
         >
           {selectedPath.gradeName} / {selectedPath.categoryName} / {selectedPath.typeName}
         </button>
+      )}
+      {sessionError && (
+        <section className="w-full bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
+          {sessionError}
+        </section>
       )}
 
       {/* Center: Character & Message */} 
@@ -1709,6 +1986,12 @@ function QuestPageInner() {
                 className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
               >
                 Batch08
+              </button>
+              <button
+                onClick={() => runAutoDrawBatchTest(200, ["0", "2", "4", "6", "8"], "BatchEven")}
+                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+              >
+                BatchEven
               </button>
               <button
                 onClick={() => runAutoDrawBatchTest(200, ["4", "8", "9"], "Batch489")}

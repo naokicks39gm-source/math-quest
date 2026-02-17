@@ -38,3 +38,34 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ## 開発ルール
 
 完成条件は `make check` が成功すること。
+
+## 保護者レポート運用
+
+1. トップページで児童名と保護者メールを入力し、`保存` を押す。
+2. `学習開始` を押してから問題を解く。
+3. 学習後にトップページへ戻って `学習終了` を押す。
+4. 学習終了時に保護者メールへレポートを送信する。
+
+レポートには以下を含みます。
+
+- 学習時間（開始〜終了、合計分）
+- 解いたカテゴリ（問題数と正答率）
+- カテゴリごとの代表誤答（問題/入力/正解）
+- 直近3回平均との差分
+- 次にやるとよい内容
+
+## 環境変数（メール送信用）
+
+- `MQ_EMAIL_ENC_KEY` (base64エンコード済み32byte鍵)
+- `MQ_SMTP_HOST`
+- `MQ_SMTP_PORT`
+- `MQ_SMTP_USER`
+- `MQ_SMTP_PASS`
+- `MQ_SMTP_FROM`
+- `MQ_SMTP_SECURE` (`true` / `false`)
+- `MQ_MAIL_PROVIDER` (`smtp` or `brevo`, 省略時は `smtp`)
+
+## 運用ログ
+
+- 送信ログは `mail_deliveries` に保存（provider / provider_message_id / failure_reason / bounce_class を含む）
+- レポートJSONは `session_reports` に保存（再送・監査・分析用）
