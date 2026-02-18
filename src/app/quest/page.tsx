@@ -94,8 +94,10 @@ export const getAutoJudgeDelayMs = (digits: number) => {
 
 const typeSignature = (typeId: string) => typeId.replace(/^[A-Z]\d\./, "");
 
+const trimTrailingEquationEquals = (text: string) => text.replace(/\s*[=＝]\s*$/u, "");
+
 const formatPrompt = (prompt: string) => {
-  return prompt.replace(/を計算しなさい。$/g, "");
+  return trimTrailingEquationEquals(prompt.replace(/を計算しなさい。$/g, ""));
 };
 
 const MIXED_FRACTION_TYPE_IDS = new Set<string>([
@@ -227,9 +229,10 @@ const renderMaybeMath = (text: string): ReactNode => {
 const renderPrompt = (item: ExampleItem) => {
   const tex = item.prompt_tex?.trim();
   if (tex) {
+    const displayTex = trimTrailingEquationEquals(tex);
     return (
       <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
-        <InlineMath math={toEquationTex(tex)} renderError={() => <span>{formatPrompt(item.prompt)}</span>} />
+        <InlineMath math={toEquationTex(displayTex)} renderError={() => <span>{formatPrompt(item.prompt)}</span>} />
       </span>
     );
   }
@@ -2703,7 +2706,7 @@ function QuestPageInner() {
                       {r.promptTex?.trim()
                         ? (
                           <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
-                            <InlineMath math={toEquationTex(r.promptTex.trim())} renderError={() => <span>{formatPrompt(r.prompt)}</span>} />
+                            <InlineMath math={toEquationTex(trimTrailingEquationEquals(r.promptTex.trim()))} renderError={() => <span>{formatPrompt(r.prompt)}</span>} />
                           </span>
                         )
                         : renderMaybeMath(formatPrompt(r.prompt))}
@@ -2779,24 +2782,18 @@ function QuestPageInner() {
                     ref={currentCardRef}
                     className="rounded-2xl border-4 border-indigo-200 bg-white px-6 py-5 text-indigo-900 text-2xl font-black shadow-md"
                   >
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="text-[32px] leading-tight font-extrabold">{renderPrompt(currentItem)}</div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-[30px] font-bold text-slate-500">=</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                      <div className="min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold">
+                        {renderPrompt(currentItem)}
+                      </div>
+                      <div className="w-full sm:w-auto flex items-center gap-2">
+                        <span className="text-[26px] sm:text-[30px] font-bold text-slate-500">=</span>
                         <div
                           aria-label="recognized-answer"
-                          style={{
-                            minWidth: 150,
-                            padding: "10px 14px",
-                            borderRadius: 12,
-                            border: "2px solid #111",
-                            fontSize: 30,
-                            fontWeight: 800,
-                            textAlign: "right",
-                            opacity: displayedAnswer ? 1 : 0.35
-                          }}
+                          className="w-full sm:w-auto sm:min-w-[170px] max-w-full h-[56px] sm:h-[64px] px-3 sm:px-4 rounded-xl border-2 border-[#111] text-[26px] sm:text-[30px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end"
+                          style={{ opacity: displayedAnswer ? 1 : 0.35 }}
                         >
-                          {displayedAnswer}
+                          {displayedAnswer || "\u2007"}
                         </div>
                       </div>
                     </div>
