@@ -128,6 +128,29 @@ const formatPrompt = (prompt: string) => {
   return prompt.replace(/を計算しなさい。$/g, "");
 };
 
+const MIXED_FRACTION_TYPE_IDS = new Set<string>([
+  "E4.NA.FRAC.FRAC_IMPROPER_TO_MIXED",
+  "E4.NA.FRAC.FRAC_MIXED_TO_IMPROPER"
+]);
+
+type ExpectedForm = "mixed" | "improper" | "auto";
+
+const resolveExpectedFormFromPrompt = (prompt: string): ExpectedForm => {
+  if (prompt.includes("帯分数に")) return "mixed";
+  if (prompt.includes("仮分数に")) return "improper";
+  return "auto";
+};
+
+const isMixedFractionQuestion = (
+  typeId: string | undefined,
+  prompt: string,
+  promptTex?: string
+) => {
+  if (typeId && MIXED_FRACTION_TYPE_IDS.has(typeId)) return true;
+  const merged = `${prompt} ${promptTex ?? ""}`;
+  return merged.includes("帯分数") || merged.includes("仮分数");
+};
+
 const renderPrompt = (item: ExampleItem) => {
   const tex = item.prompt_tex?.trim();
   if (tex) {
@@ -478,6 +501,61 @@ const normalizeFractionFromDigitString = (rawDigits: string, expectedAnswer: str
   return `${numerator}/${denominator}`;
 };
 
+const parseImproperFromText = (input: string) => {
+  const cleaned = input.replace(/\s+/g, "");
+  const match = cleaned.match(/^([+-]?\d+)\/([+-]?\d+)$/);
+  if (!match) return null;
+  const num = Number(match[1]);
+  const den = Number(match[2]);
+  if (!Number.isInteger(num) || !Number.isInteger(den) || den === 0) return null;
+  return { num, den };
+};
+
+const parseMixedFromText = (input: string) => {
+  const normalized = input.trim().replace(/\s+/g, " ");
+  const match = normalized.match(/^([+-]?\d+)\s+(\d+)\/(\d+)$/);
+  if (!match) return null;
+  const whole = Number(match[1]);
+  const num = Number(match[2]);
+  const den = Number(match[3]);
+  if (!Number.isInteger(whole) || !Number.isInteger(num) || !Number.isInteger(den) || den <= 0) return null;
+  if (num < 0 || num >= den) return null;
+  return { whole, num, den };
+};
+
+const improperToMixedLocal = (num: number, den: number) => {
+  const sign = num < 0 ? -1 : 1;
+  const absNum = Math.abs(num);
+  const whole = Math.floor(absNum / den);
+  const rem = absNum % den;
+  return { whole: sign * whole, num: rem, den };
+};
+
+const normalizeMixedFractionFromDigitString = (
+  rawDigits: string,
+  expectedAnswer: string,
+  expectedForm: ExpectedForm
+) => {
+  if (expectedForm === "improper") {
+    return normalizeFractionFromDigitString(rawDigits, expectedAnswer);
+  }
+  const mixedExpected = parseMixedFromText(expectedAnswer);
+  const improperExpected = parseImproperFromText(expectedAnswer);
+  const mixedCanonical =
+    mixedExpected ??
+    (improperExpected ? improperToMixedLocal(improperExpected.num, improperExpected.den) : null);
+  if (!mixedCanonical) return null;
+  const wholeLen = String(Math.abs(mixedCanonical.whole)).length;
+  const numLen = String(Math.abs(mixedCanonical.num)).length;
+  const denLen = String(Math.abs(mixedCanonical.den)).length;
+  if (rawDigits.length !== wholeLen + numLen + denLen) return null;
+  const wholeRaw = rawDigits.slice(0, wholeLen);
+  const numerator = rawDigits.slice(wholeLen, wholeLen + numLen);
+  const denominator = rawDigits.slice(wholeLen + numLen);
+  if (!wholeRaw || !numerator || !denominator) return null;
+  return `${wholeRaw} ${numerator}/${denominator}`;
+};
+
 const maybeSplitFractionComponent = (bin: Uint8Array, w: number, h: number, component: Component) => {
   const bw = component.bbox.maxX - component.bbox.minX + 1;
   const bh = component.bbox.maxY - component.bbox.minY + 1;
@@ -572,6 +650,71 @@ const recognizeFractionFromCanvas = (canvas: HTMLCanvasElement): FractionRecogni
     return null;
   }
   return { predictedText: `${numerator}/${denominator}`, samples };
+};
+
+const recognizeMixedFractionFromCanvas = (
+  canvas: HTMLCanvasElement,
+  expectedForm: ExpectedForm
+): FractionRecognition | null => {
+  const base = recognizeFractionFromCanvas(canvas);
+  if (!base) return null;
+  if (expectedForm === "improper") return base;
+
+  const binData = binarizeCanvas(canvas);
+  if (!binData) return base;
+  const { w, h, bin } = binData;
+  const allComponents = findComponents(bin, w, h);
+  if (allComponents.length === 0) return base;
+
+  let maxArea = 0;
+  for (const c of allComponents) {
+    if (c.area > maxArea) maxArea = c.area;
+  }
+  const slashCandidates = allComponents
+    .filter((c) => c.area >= 6 && isSlashComponent(c, w, maxArea, h))
+    .sort((a, b) => b.area - a.area);
+  if (slashCandidates.length === 0) return base;
+  const slash = slashCandidates[0];
+  const slashCenterY = (slash.bbox.minY + slash.bbox.maxY) / 2;
+  const wholeBoundary = slash.bbox.minX - Math.max(8, Math.floor((slash.bbox.maxX - slash.bbox.minX + 1) * 0.5));
+
+  const wholeParts = allComponents
+    .filter((c) => c !== slash && (c.bbox.minX + c.bbox.maxX) / 2 < wholeBoundary)
+    .sort((a, b) => a.bbox.minX - b.bbox.minX);
+  if (wholeParts.length === 0) return base;
+
+  const wholeSamples: DigitSample[] = [];
+  let wholeDigits = "";
+  for (const part of wholeParts) {
+    const sample = componentToTensor(part, w, h);
+    if (!sample) continue;
+    const digit = predictSampleDigit(sample);
+    if (!digit) {
+      sample.tensor.dispose();
+      continue;
+    }
+    wholeDigits += digit;
+    wholeSamples.push(sample);
+  }
+  if (!wholeDigits) {
+    wholeSamples.forEach((s) => s.tensor.dispose());
+    return base;
+  }
+
+  const fracMatch = base.predictedText.match(/^([+-]?\d+)\/([+-]?\d+)$/);
+  if (!fracMatch) {
+    wholeSamples.forEach((s) => s.tensor.dispose());
+    return base;
+  }
+
+  const numeratorCenterY = wholeParts.length > 0
+    ? slashCenterY - 1
+    : slashCenterY;
+  const predictedText = `${wholeDigits} ${fracMatch[1]}/${fracMatch[2]}`;
+  const combined = [...wholeSamples, ...base.samples];
+  // numeratorCenterY uses slash position to avoid TS unused var warning in shape tuning stage
+  void numeratorCenterY;
+  return { predictedText, samples: combined };
 };
 
 const splitByProjection = (bin: Uint8Array, w: number, h: number, bbox: BBox, force = false) => {
@@ -1062,7 +1205,9 @@ function QuestPageInner() {
   const [hasStarted, setHasStarted] = useState(false);
   const [startPopup, setStartPopup] = useState<'ready' | 'go' | null>(null);
   const startTimersRef = useRef<number[]>([]);
-  const [autoJudgeEnabled, setAutoJudgeEnabled] = useState(true);
+  const [inkFirstMode, setInkFirstMode] = useState(true);
+  const [showRecognitionGuides, setShowRecognitionGuides] = useState(false);
+  const [autoJudgeEnabled, setAutoJudgeEnabled] = useState(false);
   const [autoNextEnabled, setAutoNextEnabled] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const inFlightRef = useRef(false);
@@ -1089,7 +1234,9 @@ function QuestPageInner() {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const sessionStartInFlightRef = useRef<Promise<string | null> | null>(null);
   const forceFractionRecognitionRef = useRef(false);
+  const forceMixedRecognitionRef = useRef(false);
   const forcedFractionAnswerRef = useRef<string | null>(null);
+  const forcedExpectedFormRef = useRef<ExpectedForm | null>(null);
   const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
   const [retryNonce, setRetryNonce] = useState(0);
   const clearResults = useMemo(
@@ -1253,9 +1400,16 @@ function QuestPageInner() {
   };
 
   useEffect(() => {
+    if (inkFirstMode) {
+      setAutoJudgeEnabled(false);
+    }
+  }, [inkFirstMode]);
+
+  useEffect(() => {
     if (idleCheckTimerRef.current) {
       window.clearInterval(idleCheckTimerRef.current);
     }
+    if (inkFirstMode) return;
     idleCheckTimerRef.current = window.setInterval(() => {
       if (!autoJudgeEnabled) return;
       if (isStarting) return;
@@ -1274,7 +1428,7 @@ function QuestPageInner() {
         window.clearInterval(idleCheckTimerRef.current);
       }
     };
-  }, [autoJudgeEnabled, isStarting, status, isRecognizing, itemIndex]);
+  }, [inkFirstMode, autoJudgeEnabled, isStarting, status, isRecognizing, itemIndex]);
 
 
   useEffect(() => {
@@ -1669,19 +1823,30 @@ function QuestPageInner() {
     }
 
     const digits = getAnswerDigits();
+    const promptText = currentItem?.prompt ?? "";
+    const promptTex = currentItem?.prompt_tex;
     const forcedFractionAnswer = forcedFractionAnswerRef.current;
     const expectedFractionAnswer =
       forcedFractionAnswer ?? (currentItem?.answer.includes("/") ? currentItem.answer : null);
-    const isFractionQuestion =
+    const expectedForm =
+      forcedExpectedFormRef.current ?? resolveExpectedFormFromPrompt(`${promptText} ${promptTex ?? ""}`);
+    const mixedQuestion =
+      forceMixedRecognitionRef.current ||
+      isMixedFractionQuestion(currentType?.type_id, promptText, promptTex);
+    const plainFractionQuestion =
       forceFractionRecognitionRef.current ||
       (currentType?.answer_format.kind === "frac" && Boolean(currentItem?.answer.includes("/")));
+    let mixedResult: FractionRecognition | null = null;
+    if (mixedQuestion) {
+      mixedResult = recognizeMixedFractionFromCanvas(drawingCanvas, expectedForm);
+    }
     let fractionResult: FractionRecognition | null = null;
-    if (isFractionQuestion) {
+    if (!mixedResult && (plainFractionQuestion || mixedQuestion)) {
       fractionResult = recognizeFractionFromCanvas(drawingCanvas);
     }
     const fallback = preprocessDigits(drawingCanvas, digits);
-    const samples = fractionResult?.samples ?? fallback.samples;
-    const dotXs = fractionResult ? [] : fallback.dotXs;
+    const samples = mixedResult?.samples ?? fractionResult?.samples ?? fallback.samples;
+    const dotXs = mixedResult || fractionResult ? [] : fallback.dotXs;
 
     if (samples.length === 0) {
       canvasRef.current?.clear();
@@ -1690,7 +1855,7 @@ function QuestPageInner() {
       return "";
     }
 
-    let predictedText = fractionResult?.predictedText ?? "";
+    let predictedText = mixedResult?.predictedText ?? fractionResult?.predictedText ?? "";
     if (!predictedText) {
       const perDigitPreds = samples.map((s) => predictDigitEnsemble(s.tensor));
       const refined = perDigitPreds.map((pred, i) =>
@@ -1720,10 +1885,21 @@ function QuestPageInner() {
           }
         }
       }
-      if (isFractionQuestion && perDigitString && expectedFractionAnswer) {
-        const normalizedFraction = normalizeFractionFromDigitString(perDigitString, expectedFractionAnswer);
-        if (normalizedFraction) {
-          predictedText = normalizedFraction;
+      if ((plainFractionQuestion || mixedQuestion) && perDigitString && expectedFractionAnswer) {
+        if (mixedQuestion) {
+          const normalizedMixed = normalizeMixedFractionFromDigitString(
+            perDigitString,
+            expectedFractionAnswer,
+            expectedForm
+          );
+          if (normalizedMixed) {
+            predictedText = normalizedMixed;
+          }
+        } else {
+          const normalizedFraction = normalizeFractionFromDigitString(perDigitString, expectedFractionAnswer);
+          if (normalizedFraction) {
+            predictedText = normalizedFraction;
+          }
         }
       }
     }
@@ -1759,7 +1935,8 @@ function QuestPageInner() {
 
     if (predictedText && currentItem && currentType) {
       const verdict = gradeAnswer(predictedText, currentItem.answer, currentType.answer_format, {
-        typeId: currentType.type_id
+        typeId: currentType.type_id,
+        expectedForm
       });
       setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
       const resultText = currentItem.prompt_tex ?? currentItem.prompt;
@@ -1885,7 +2062,7 @@ function QuestPageInner() {
     if (autoRecognizeTimerRef.current) {
       window.clearTimeout(autoRecognizeTimerRef.current);
     }
-    const nextDelay = getAutoJudgeDelayMs(getAnswerDigits());
+    const nextDelay = getAutoJudgeDelayMs(getAnswerDigits()) + (inkFirstMode ? 300 : 0);
     autoRecognizeTimerRef.current = window.setTimeout(() => {
       runInference();
     }, nextDelay);
@@ -2078,6 +2255,90 @@ function QuestPageInner() {
     const slashRate = total ? ((slashDetected / total) * 100).toFixed(1) : "0.0";
     setAutoDrawBatchSummary(
       `${label} 完了: 全体一致 ${exact}/${total} (${overall}%) / スラッシュ検出 ${slashDetected}/${total} (${slashRate}%)`
+    );
+  };
+
+  const runAutoDrawMixedTest = async () => {
+    const canvas = getDrawingCanvas(canvasRef.current);
+    if (!canvas) return { expected: "", predicted: "", expectedForm: "auto" as ExpectedForm };
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { expected: "", predicted: "", expectedForm: "auto" as ExpectedForm };
+
+    const scenarios: Array<{ prompt: string; answer: string; expectedForm: ExpectedForm }> = [
+      { prompt: "7/3 を帯分数に", answer: "2 1/3", expectedForm: "mixed" },
+      { prompt: "9/4 を帯分数に", answer: "2 1/4", expectedForm: "mixed" },
+      { prompt: "11/5 を帯分数に", answer: "2 1/5", expectedForm: "mixed" },
+      { prompt: "2 1/4 を仮分数に", answer: "9/4", expectedForm: "improper" },
+      { prompt: "3 2/5 を仮分数に", answer: "17/5", expectedForm: "improper" },
+      { prompt: "1 3/4 を仮分数に", answer: "7/4", expectedForm: "improper" }
+    ];
+    const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+    const expected = scenario.answer;
+    setLastAutoDrawExpected(`${scenario.prompt} => ${expected}`);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#000000";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold 80px monospace";
+    ctx.fillText(expected, 18, 198);
+
+    lastDrawAtRef.current = Date.now();
+    setPreviewImages([]);
+    forcedDigitsRef.current = expected.replace(/\D/g, "").length;
+    forceMixedRecognitionRef.current = true;
+    forcedFractionAnswerRef.current = expected;
+    forcedExpectedFormRef.current = scenario.expectedForm;
+    try {
+      const predicted = await runInference();
+      return { expected, predicted, expectedForm: scenario.expectedForm };
+    } finally {
+      forcedDigitsRef.current = null;
+      forceMixedRecognitionRef.current = false;
+      forcedFractionAnswerRef.current = null;
+      forcedExpectedFormRef.current = null;
+    }
+  };
+
+  const runAutoDrawMixedBatchTest = async (runs: number, label: string) => {
+    setAutoDrawBatchSummary(`${label} 実行中...`);
+    let total = 0;
+    let exact = 0;
+    let formOk = 0;
+    let slashDetected = 0;
+    let mixedExpected = 0;
+    let mixedWholeDetected = 0;
+    const isMixedFormat = (v: string) => /^-?\d+\s+\d+\/\d+$/.test(v.trim());
+    const isImproperFormat = (v: string) => /^-?\d+\/-?\d+$/.test(v.replace(/\s+/g, ""));
+
+    for (let i = 0; i < runs; i++) {
+      const { expected, predicted, expectedForm } = await runAutoDrawMixedTest();
+      if (!expected) continue;
+      total++;
+      if (predicted === expected) exact++;
+      if (predicted.includes("/")) slashDetected++;
+      if (expectedForm === "mixed") {
+        mixedExpected++;
+        if (isMixedFormat(predicted)) mixedWholeDetected++;
+      }
+      const matchesForm =
+        expectedForm === "mixed"
+          ? isMixedFormat(predicted)
+          : expectedForm === "improper"
+            ? isImproperFormat(predicted)
+            : predicted.includes("/");
+      if (matchesForm) formOk++;
+      await new Promise((resolve) => window.setTimeout(resolve, 40));
+    }
+
+    const overall = total ? ((exact / total) * 100).toFixed(1) : "0.0";
+    const formRate = total ? ((formOk / total) * 100).toFixed(1) : "0.0";
+    const slashRate = total ? ((slashDetected / total) * 100).toFixed(1) : "0.0";
+    const wholeRate = mixedExpected ? ((mixedWholeDetected / mixedExpected) * 100).toFixed(1) : "0.0";
+    setAutoDrawBatchSummary(
+      `${label} 完了: 全体一致 ${exact}/${total} (${overall}%) / 形式一致 ${formOk}/${total} (${formRate}%) / スラッシュ検出 ${slashDetected}/${total} (${slashRate}%) / 整数部検出 ${mixedWholeDetected}/${mixedExpected} (${wholeRate}%)`
     );
   };
 
@@ -2286,28 +2547,6 @@ function QuestPageInner() {
         <div className="w-full flex flex-col items-center gap-4 pb-4">
           <div className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2">
             <div className="flex items-center gap-2 flex-wrap overflow-x-auto text-xs font-bold text-slate-700">
-              <div className="flex items-center gap-1">
-                <span>AUTO</span>
-                <button
-                  onClick={() => setAutoJudgeEnabled((prev) => !prev)}
-                  className={`px-2 py-0.5 rounded-full ${
-                    autoJudgeEnabled ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
-                  }`}
-                >
-                  {autoJudgeEnabled ? "ON" : "OFF"}
-                </button>
-              </div>
-              <div className="flex items-center gap-1">
-                <span>NEXT</span>
-                <button
-                  onClick={() => setAutoNextEnabled((prev) => !prev)}
-                  className={`px-2 py-0.5 rounded-full ${
-                    autoNextEnabled ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
-                  }`}
-                >
-                  {autoNextEnabled ? "ON" : "OFF"}
-                </button>
-              </div>
               <button
                 onClick={() => runInference()}
                 disabled={isRecognizing || isStarting}
@@ -2316,63 +2555,18 @@ function QuestPageInner() {
                 {uiText.judge}
               </button>
               <button
-                data-testid="auto-draw-test"
-                onClick={() => {
-                  void runAutoDrawTest();
-                }}
+                onClick={nextQuestion}
+                disabled={status !== 'playing' || isStarting}
                 className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
               >
-                AutoDraw Test
+                {uiText.nextQuestion}
               </button>
               <button
-                data-testid="auto-draw-batch"
-                onClick={() =>
-                  runAutoDrawBatchTest(
-                    100,
-                    ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
-                    "Batch100"
-                  )
-                }
+                onClick={() => canvasRef.current?.clear()}
+                disabled={status !== 'playing' || isRecognizing}
                 className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
               >
-                Batch100
-              </button>
-              <button
-                onClick={() => runAutoDrawDecimalBatchTest(100, "BatchDec100")}
-                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
-              >
-                BatchDec100
-              </button>
-              <button
-                data-testid="auto-draw-frac-batch"
-                onClick={() => runAutoDrawFractionBatchTest(100, "BatchFrac100")}
-                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
-              >
-                BatchFrac100
-              </button>
-              <button
-                onClick={() =>
-                  runAutoDrawBatchTest(
-                    500,
-                    ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
-                    "Batch500"
-                  )
-                }
-                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
-              >
-                Batch500
-              </button>
-              <button
-                onClick={() => runAutoDrawBatchTest(200, ["0", "8"], "Batch08")}
-                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
-              >
-                Batch08
-              </button>
-              <button
-                onClick={() => runAutoDrawBatchTest(200, ["4", "8", "9"], "Batch489")}
-                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
-              >
-                Batch489
+                {uiText.reset}
               </button>
               <button
                 onClick={() => setSettingsOpen((v) => !v)}
@@ -2383,10 +2577,110 @@ function QuestPageInner() {
             </div>
             {settingsOpen && (
               <div className="mt-2 text-[11px] text-slate-600 space-y-1">
-                <div>AUTO: 自動判定のON/OFF</div>
-                <div>NEXT: 正解で自動的に次の問題へ</div>
-                {lastAutoDrawExpected && <div>AutoDraw正解: {lastAutoDrawExpected}</div>}
-                {autoDrawBatchSummary && <div>{autoDrawBatchSummary}</div>}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => setInkFirstMode((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-full ${
+                      inkFirstMode ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    Ink-first: {inkFirstMode ? "ON" : "OFF"}
+                  </button>
+                  <button
+                    onClick={() => setAutoJudgeEnabled((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-full ${
+                      autoJudgeEnabled ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    AUTO: {autoJudgeEnabled ? "ON" : "OFF"}
+                  </button>
+                  <button
+                    onClick={() => setAutoNextEnabled((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-full ${
+                      autoNextEnabled ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    NEXT: {autoNextEnabled ? "ON" : "OFF"}
+                  </button>
+                  <button
+                    onClick={() => setShowRecognitionGuides((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-full ${
+                      showRecognitionGuides ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    ガイド: {showRecognitionGuides ? "ON" : "OFF"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    data-testid="auto-draw-test"
+                    onClick={() => {
+                      void runAutoDrawTest();
+                    }}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    AutoDraw Test
+                  </button>
+                  <button
+                    data-testid="auto-draw-batch"
+                    onClick={() =>
+                      runAutoDrawBatchTest(
+                        100,
+                        ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+                        "Batch100"
+                      )
+                    }
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    Batch100
+                  </button>
+                  <button
+                    onClick={() => runAutoDrawDecimalBatchTest(100, "BatchDec100")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    BatchDec100
+                  </button>
+                  <button
+                    data-testid="auto-draw-frac-batch"
+                    onClick={() => runAutoDrawFractionBatchTest(100, "BatchFrac100")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    BatchFrac100
+                  </button>
+                  <button
+                    data-testid="auto-draw-mixed-batch"
+                    onClick={() => runAutoDrawMixedBatchTest(100, "BatchMixed100")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    BatchMixed100
+                  </button>
+                  <button
+                    onClick={() =>
+                      runAutoDrawBatchTest(
+                        500,
+                        ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+                        "Batch500"
+                      )
+                    }
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    Batch500
+                  </button>
+                  <button
+                    onClick={() => runAutoDrawBatchTest(200, ["0", "8"], "Batch08")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    Batch08
+                  </button>
+                  <button
+                    onClick={() => runAutoDrawBatchTest(200, ["4", "8", "9"], "Batch489")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    Batch489
+                  </button>
+                </div>
+                {showRecognitionGuides && lastAutoDrawExpected && <div>AutoDraw正解: {lastAutoDrawExpected}</div>}
+                {showRecognitionGuides && autoDrawBatchSummary && <div>{autoDrawBatchSummary}</div>}
               </div>
             )}
           </div>
@@ -2404,7 +2698,9 @@ function QuestPageInner() {
             <CanvasDraw
               ref={canvasRef}
               hideGrid={true}
-              brushRadius={2.5}
+              brushRadius={3.2}
+              lazyRadius={0}
+              immediateLoading
               brushColor="#000000"
               backgroundColor="#ffffff"
               canvasWidth={300}
@@ -2421,7 +2717,7 @@ function QuestPageInner() {
               </div>
             )}
           </div>
-          {previewImages.length > 0 && (
+          {showRecognitionGuides && previewImages.length > 0 && (
             <div className="w-full flex justify-end">
               <div className="text-xs text-slate-500 text-right">
                 入力(28x28)
@@ -2448,25 +2744,6 @@ function QuestPageInner() {
               </div>
             </div>
           )}
-          <div className="w-full flex justify-center">
-            <div className="w-full max-w-sm bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
-              <button
-                onClick={nextQuestion}
-                disabled={status !== 'playing' || isStarting}
-                className="w-full py-2 rounded-lg bg-indigo-600 text-white font-bold shadow-md active:translate-y-1 disabled:opacity-50"
-              >
-                {uiText.nextQuestion}
-              </button>
-            </div>
-          </div>
-          <div className="flex gap-3 w-full justify-center">
-            <button
-              onClick={() => canvasRef.current?.clear()}              disabled={status !== 'playing' || isRecognizing}
-              className="px-6 py-2 bg-red-100 text-red-600 rounded-lg font-bold shadow-md active:translate-y-1"
-            >
-              {uiText.reset}
-            </button>
-          </div>
         </div>
       ))}
 
