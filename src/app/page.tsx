@@ -12,16 +12,21 @@ export default function Home() {
   const grades = useMemo(() => getCatalogGrades() as GradeDef[], []);
 
   const [gradeId, setGradeId] = useState(grades[0]?.grade_id ?? "");
-  const [categoryId, setCategoryId] = useState("");
   const [typeId, setTypeId] = useState("");
 
-  const categories = useMemo(() => {
-    return grades.find((g) => g.grade_id === gradeId)?.categories ?? [];
+  const grade = useMemo(() => {
+    return grades.find((g) => g.grade_id === gradeId) ?? null;
   }, [grades, gradeId]);
 
-  const types = useMemo(() => {
-    return categories.find((c) => c.category_id === categoryId)?.types ?? [];
-  }, [categories, categoryId]);
+  const problems = useMemo(() => {
+    if (!grade) return [];
+    return grade.categories.flatMap((category) =>
+      category.types.map((type) => ({
+        ...type,
+        category_id: category.category_id
+      }))
+    );
+  }, [grade]);
 
   useEffect(() => {
     const savedTypeId = typeof window !== "undefined" ? localStorage.getItem(LS_LAST_TYPE_ID) : null;
@@ -33,36 +38,22 @@ export default function Home() {
     if (!foundGrade) return;
 
     setGradeId(foundGrade.grade_id);
-    const foundCat = foundGrade.categories.find((c) =>
-      c.types.some((t) => t.type_id === savedTypeId)
-    );
-    if (!foundCat) return;
-
-    setCategoryId(foundCat.category_id);
     setTypeId(savedTypeId);
   }, [grades]);
 
   useEffect(() => {
-    if (categories.length > 0 && !categoryId) {
-      setCategoryId(categories[0].category_id);
+    if (problems.length > 0 && !typeId) {
+      setTypeId(problems[0].type_id);
     }
-  }, [categories, categoryId]);
-
-  useEffect(() => {
-    if (types.length > 0 && !typeId) {
-      setTypeId(types[0].type_id);
-    }
-  }, [types, typeId]);
+  }, [problems, typeId]);
 
   const handleStart = () => {
     if (!typeId) return;
+    const selected = problems.find((problem) => problem.type_id === typeId);
+    if (!selected) return;
     localStorage.setItem(LS_LAST_TYPE_ID, typeId);
-    const url = `/quest?type=${encodeURIComponent(typeId)}&category=${encodeURIComponent(categoryId)}`;
+    const url = `/quest?type=${encodeURIComponent(typeId)}&category=${encodeURIComponent(selected.category_id)}`;
     router.push(url);
-  };
-
-  const handleStartAll = () => {
-    router.push("/quest");
   };
 
   return (
@@ -79,7 +70,6 @@ export default function Home() {
               value={gradeId}
               onChange={(e) => {
                 setGradeId(e.target.value);
-                setCategoryId("");
                 setTypeId("");
               }}
             >
@@ -92,31 +82,13 @@ export default function Home() {
           </label>
 
           <label className="block text-sm font-bold text-slate-700">
-            カテゴリ
-            <select
-              className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
-              value={categoryId}
-              onChange={(e) => {
-                setCategoryId(e.target.value);
-                setTypeId("");
-              }}
-            >
-              {categories.map((c) => (
-                <option key={c.category_id} value={c.category_id}>
-                  {c.category_name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block text-sm font-bold text-slate-700">
-            タイプ
+            問題
             <select
               className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
               value={typeId}
               onChange={(e) => setTypeId(e.target.value)}
             >
-              {types.map((t) => (
+              {problems.map((t) => (
                 <option key={t.type_id} value={t.type_id}>
                   {t.display_name ?? t.type_name}
                 </option>
@@ -131,14 +103,7 @@ export default function Home() {
               disabled={!typeId}
               className="px-4 py-2 rounded-lg font-bold text-white bg-indigo-600 disabled:bg-slate-300"
             >
-              選択した学習ではじめる
-            </button>
-            <button
-              type="button"
-              onClick={handleStartAll}
-              className="px-4 py-2 rounded-lg font-bold text-indigo-700 bg-indigo-50 border border-indigo-200"
-            >
-              全学年まとめてはじめる
+              スタート！
             </button>
           </div>
 

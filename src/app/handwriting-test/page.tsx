@@ -525,7 +525,7 @@ export default function HandwritingTestPage() {
         <CanvasDraw
           ref={canvasRef}
           hideGrid={true}
-          brushRadius={7}
+          brushRadius={2.5}
           brushColor="#000000"
           backgroundColor="#ffffff"
           canvasWidth={320}
