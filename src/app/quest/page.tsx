@@ -221,9 +221,26 @@ const toFractionTexInText = (text: string) => {
   return out;
 };
 
+const EQUATION_OPERATOR_PATTERN = /[=+\-*/×÷]/;
+
+const toEquationTex = (text: string) =>
+  toFractionTexInText(text)
+    .replace(/×/g, "\\times ")
+    .replace(/÷/g, "\\div ");
+
 const renderMaybeMath = (text: string): ReactNode => {
+  const isEquationText = EQUATION_OPERATOR_PATTERN.test(text);
+  if (isEquationText) {
+    const tex = toEquationTex(text);
+    return (
+      <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
+        <InlineMath math={tex} renderError={() => <span>{text}</span>} />
+      </span>
+    );
+  }
+
   const matches = findDisplayFractionMatches(text);
-  if (matches.length === 0) return <span>{text}</span>;
+  if (matches.length === 0) return <span className="whitespace-nowrap">{text}</span>;
   const nodes: ReactNode[] = [];
   let cursor = 0;
   for (const match of matches) {
@@ -242,12 +259,20 @@ const renderMaybeMath = (text: string): ReactNode => {
   if (cursor < text.length) {
     nodes.push(<span key={`text-${cursor}`}>{text.slice(cursor)}</span>);
   }
-  return <span>{nodes}</span>;
+  return (
+    <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
+      {nodes}
+    </span>
+  );
 };
 const renderPrompt = (item: ExampleItem) => {
   const tex = item.prompt_tex?.trim();
   if (tex) {
-    return <InlineMath math={toFractionTexInText(tex)} renderError={() => <span>{formatPrompt(item.prompt)}</span>} />;
+    return (
+      <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
+        <InlineMath math={toEquationTex(tex)} renderError={() => <span>{formatPrompt(item.prompt)}</span>} />
+      </span>
+    );
   }
   return renderMaybeMath(formatPrompt(item.prompt));
 };
@@ -2444,13 +2469,13 @@ function QuestPageInner() {
         <button
           type="button"
           onClick={() => router.push("/")}
-          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 text-left hover:bg-slate-50"
+          className="w-full bg-white border-2 border-slate-200 rounded-2xl px-4 py-3 text-base font-extrabold text-slate-700 text-left hover:bg-slate-50"
         >
-          {selectedPath.gradeName} / {selectedPath.typeName}
+          {selectedPath.gradeName} / {selectedPath.categoryName} / {selectedPath.typeName}
         </button>
       )}
       {/* Center: Character & Message */} 
-      <div className="flex flex-col items-center space-y-4 my-4 flex-1 justify-center w-full">
+      <div className="flex flex-col items-center space-y-3 my-2 flex-1 justify-start w-full">
         {status === 'cleared' ? (
           <div className="w-full text-center rounded-3xl border-4 border-yellow-300 bg-gradient-to-br from-fuchsia-500 via-indigo-500 to-cyan-400 px-4 py-8 shadow-[0_0_60px_rgba(99,102,241,0.55)] animate-pulse">
             <div className="text-5xl md:text-6xl font-black text-white drop-shadow-[0_6px_0_rgba(0,0,0,0.2)] tracking-wide animate-bounce">
@@ -2476,7 +2501,11 @@ function QuestPageInner() {
                     <div className="font-bold text-slate-700">
                       {Number(index) + 1}.{" "}
                       {r.promptTex?.trim()
-                        ? <InlineMath math={toFractionTexInText(r.promptTex.trim())} renderError={() => <span>{formatPrompt(r.prompt)}</span>} />
+                        ? (
+                          <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
+                            <InlineMath math={toEquationTex(r.promptTex.trim())} renderError={() => <span>{formatPrompt(r.prompt)}</span>} />
+                          </span>
+                        )
                         : renderMaybeMath(formatPrompt(r.prompt))}
                       {finalWrong && (
                         <span className="ml-2 font-semibold text-slate-600">
@@ -2539,7 +2568,7 @@ function QuestPageInner() {
           </div>
         ) : (
           <>
-            <div className="w-full bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[40vh] overflow-y-auto">
+            <div className="w-full bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[48vh] overflow-y-auto">
               {quizItems.length === 0 ? (
                 <div className="text-slate-500 text-center">
                   {emptyMessage}
@@ -2548,20 +2577,20 @@ function QuestPageInner() {
                 <div className="flex flex-col gap-3">
                   <div
                     ref={currentCardRef}
-                    className="rounded-2xl border-4 border-indigo-200 bg-white px-5 py-4 text-indigo-900 text-xl font-black shadow-md"
+                    className="rounded-2xl border-4 border-indigo-200 bg-white px-6 py-5 text-indigo-900 text-2xl font-black shadow-md"
                   >
                     <div className="flex items-center justify-between gap-4">
-                      <div className="text-[22px] font-extrabold">{renderPrompt(currentItem)}</div>
+                      <div className="text-[32px] leading-tight font-extrabold">{renderPrompt(currentItem)}</div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-[22px] font-bold text-slate-500">=</span>
+                        <span className="text-[30px] font-bold text-slate-500">=</span>
                         <div
                           aria-label="recognized-answer"
                           style={{
-                            minWidth: 120,
-                            padding: "6px 10px",
-                            borderRadius: 10,
+                            minWidth: 150,
+                            padding: "10px 14px",
+                            borderRadius: 12,
                             border: "2px solid #111",
-                            fontSize: 22,
+                            fontSize: 30,
                             fontWeight: 800,
                             textAlign: "right",
                             opacity: displayedAnswer ? 1 : 0.35
@@ -2584,7 +2613,7 @@ function QuestPageInner() {
                     )}
                   </div>
                   {nextItem && (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-500 opacity-35">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-[28px] leading-tight text-slate-500 opacity-35">
                       {renderPrompt(nextItem)}
                     </div>
                   )}
@@ -2643,31 +2672,31 @@ function QuestPageInner() {
       ) : (
         <div className="w-full flex flex-col items-center gap-4 pb-4">
           <div className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2">
-            <div className="flex items-center gap-2 flex-wrap overflow-x-auto text-xs font-bold text-slate-700">
+            <div className="flex items-center gap-2 flex-wrap overflow-x-auto text-sm font-bold text-slate-700">
               <button
                 onClick={() => runInference()}
                 disabled={isRecognizing || isStarting}
-                className="px-3 py-0.5 rounded-md bg-indigo-600 text-white"
+                className="h-14 px-6 rounded-xl bg-indigo-600 text-white text-lg font-black shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] disabled:opacity-60"
               >
                 {uiText.judge}
               </button>
               <button
                 onClick={nextQuestion}
                 disabled={status !== 'playing' || isStarting}
-                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                className="h-10 px-4 rounded-lg bg-slate-700 text-white"
               >
                 {uiText.nextQuestion}
               </button>
               <button
                 onClick={() => canvasRef.current?.clear()}
                 disabled={status !== 'playing' || isRecognizing}
-                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                className="h-10 px-4 rounded-lg bg-slate-700 text-white"
               >
                 {uiText.reset}
               </button>
               <button
                 onClick={() => setSettingsOpen((v) => !v)}
-                className="ml-auto px-2 py-0.5 rounded-md bg-slate-200 text-slate-700"
+                className="ml-auto h-10 px-3 rounded-lg bg-slate-200 text-slate-700"
               >
                 ⚙︎
               </button>
