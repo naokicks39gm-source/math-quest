@@ -148,31 +148,24 @@ export default function PracticePage() {
     <main className="min-h-screen bg-slate-50 text-slate-900 p-6">
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-[320px_1fr] gap-6">
         <aside className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <h1 className="text-lg font-bold mb-4">学年 → カテゴリ → タイプ</h1>
+          <h1 className="text-lg font-bold mb-4">学年 → 問題</h1>
           <div className="space-y-4 max-h-[70vh] overflow-y-auto">
             {grades.map((grade) => (
               <div key={grade.grade_id}>
                 <div className="font-bold text-slate-700">{grade.grade_name}</div>
-                <div className="mt-2 space-y-2">
-                  {grade.categories.map((cat) => (
-                    <div key={cat.category_id} className="pl-2">
-                      <div className="text-sm font-semibold text-slate-600">{cat.category_name}</div>
-                      <div className="mt-1 space-y-1">
-                        {cat.types.map((type) => (
-                          <button
-                            key={type.type_id}
-                            onClick={() => handleSelectType(type)}
-                            className={`block w-full text-left text-sm rounded-md px-2 py-1 transition ${
-                              selectedType?.type_id === type.type_id
-                                ? "bg-indigo-100 text-indigo-700"
-                                : "hover:bg-slate-100 text-slate-700"
-                            }`}
-                          >
-                            {type.display_name ?? type.type_name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                <div className="mt-2 pl-2 space-y-1">
+                  {grade.categories.flatMap((cat) => cat.types).map((type) => (
+                    <button
+                      key={type.type_id}
+                      onClick={() => handleSelectType(type)}
+                      className={`block w-full text-left text-sm rounded-md px-2 py-1 transition ${
+                        selectedType?.type_id === type.type_id
+                          ? "bg-indigo-100 text-indigo-700"
+                          : "hover:bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {type.display_name ?? type.type_name}
+                    </button>
                   ))}
                 </div>
               </div>

@@ -11,7 +11,9 @@ const rawGrades = gradeFiles.flatMap((file) => readJson(file).grades ?? []);
 
 const excludedTypeIds = new Set([
   "E1.ME.TIME.TIME_MIN",
-  "E1.RE.CMP.CMP_SIGN"
+  "E1.RE.CMP.CMP_SIGN",
+  "E2.ME.TIME.TIME_MIN",
+  "E2.RE.CMP.CMP_SIGN"
 ]);
 
 const gradeOrder = ["E1", "E2", "E3", "E4", "E5", "E6"];
@@ -26,7 +28,7 @@ const keepByGrade = {
     p.startsWith("ADD_2D_2D") ||
     p.startsWith("SUB_2D_1D") ||
     p.startsWith("SUB_2D_2D") ||
-    p === "MUL_1D_1D" ||
+    p.startsWith("MUL_1D_1D_") ||
     p === "DIV_EQUAL_SHARE_BASIC",
   E3: (p) =>
     p.startsWith("ADD_3D_3D") ||
@@ -73,7 +75,25 @@ const keepByGrade = {
 };
 
 const syntheticPatternByGrade = {
-  E2: ["SUB_2D_2D_NO", "SUB_2D_2D_YES", "SUB_2D_2D_ANY", "MUL_1D_1D", "DIV_EQUAL_SHARE_BASIC"],
+  E2: [
+    "SUB_2D_2D_NO",
+    "SUB_2D_2D_YES",
+    "SUB_2D_2D_ANY",
+    "MUL_1D_1D_DAN_1",
+    "MUL_1D_1D_DAN_2",
+    "MUL_1D_1D_DAN_3",
+    "MUL_1D_1D_DAN_4",
+    "MUL_1D_1D_DAN_5",
+    "MUL_1D_1D_DAN_6",
+    "MUL_1D_1D_DAN_7",
+    "MUL_1D_1D_DAN_8",
+    "MUL_1D_1D_DAN_9",
+    "MUL_1D_1D_MIX_1_3",
+    "MUL_1D_1D_MIX_4_6",
+    "MUL_1D_1D_MIX_7_9",
+    "MUL_1D_1D_MIX_1_9",
+    "DIV_EQUAL_SHARE_BASIC"
+  ],
   E3: ["MUL_2D_1D_NO", "MUL_2D_1D_YES", "DEC_ADD_1DP", "UNIT_FRAC_BASIC"],
   E4: ["DIV_3D_2D", "DEC_MUL_INT", "DEC_DIV_INT", "FRAC_IMPROPER_MIXED"],
   E5: ["MUL_3D_2D", "DEC_SUB_2DP", "DEC_DIV_2DP", "FRAC_MUL_INT", "FRAC_DIV_INT"],
@@ -110,7 +130,9 @@ const firstGradeByPattern = () => {
 test("difficulty audit keeps multiplication and division progression", () => {
   const first = firstGradeByPattern();
 
-  assert.equal(first["MUL_1D_1D"], "E2");
+  assert.equal(first["MUL_1D_1D_DAN_1"], "E2");
+  assert.equal(first["MUL_1D_1D_DAN_9"], "E2");
+  assert.equal(first["MUL_1D_1D_MIX_1_9"], "E2");
   assert.equal(first["MUL_2D_1D_NO"], "E3");
   assert.equal(first["MUL_2D_1D_YES"], "E3");
   assert.equal(first["MUL_2D_2D"], "E3");

@@ -1336,30 +1336,28 @@ function QuestPageInner() {
     if (!hasTypeQuery && !hasCategoryQuery) {
       return {
         gradeName: "全学年",
-        categoryName: "全カテゴリ",
         typeName: "総合クエスト"
       };
     }
-    if (categoryContext) {
-      const typeName = selectedType?.display_name ?? selectedType?.type_name ?? "カテゴリ内";
-      return {
-        gradeName: categoryContext.grade.grade_name,
-        categoryName: categoryContext.category.category_name,
-        typeName
-      };
-    }
-    if (!selectedType) return null;
-    for (const g of grades) {
-      for (const c of g.categories) {
-        const hit = c.types.find((t) => t.type_id === selectedType.type_id);
-        if (hit) {
-          return {
-            gradeName: g.grade_name,
-            categoryName: c.category_name,
-            typeName: hit.display_name ?? hit.type_name
-          };
+    if (selectedType) {
+      for (const g of grades) {
+        for (const c of g.categories) {
+          const hit = c.types.find((t) => t.type_id === selectedType.type_id);
+          if (hit) {
+            return {
+              gradeName: g.grade_name,
+              typeName: hit.display_name ?? hit.type_name
+            };
+          }
         }
       }
+    }
+    if (categoryContext) {
+      const fallbackType = categoryContext.category.types[0];
+      return {
+        gradeName: categoryContext.grade.grade_name,
+        typeName: fallbackType?.display_name ?? fallbackType?.type_name ?? "クエスト"
+      };
     }
     return null;
   })();
@@ -2094,7 +2092,7 @@ function QuestPageInner() {
           onClick={() => router.push("/")}
           className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 text-left hover:bg-slate-50"
         >
-          {selectedPath.gradeName} / {selectedPath.categoryName} / {selectedPath.typeName}
+          {selectedPath.gradeName} / {selectedPath.typeName}
         </button>
       )}
       {/* Center: Character & Message */} 

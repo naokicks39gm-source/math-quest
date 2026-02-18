@@ -33,10 +33,11 @@ test("elementary NA data has core type IDs needed for grade profiles", () => {
   assert.equal(e2Ids.has("E2.NA.ADD.ADD_1D_1D_NO"), false);
   assert.equal(e2Ids.has("E2.NA.ADD.ADD_1D_1D_YES"), false);
   assert.equal(e2Ids.has("E2.NA.ADD.ADD_1D_1D_ANY"), false);
+  assert.equal(e2Ids.has("E2.NA.MUL.MUL_1D_1D"), false);
 
   const e3Ids = getNaIds("E3");
-  assert.ok(e3Ids.has("E3.NA.MUL.MUL_2D_1D"));
   assert.ok(e3Ids.has("E3.NA.MUL.MUL_2D_2D"));
+  assert.equal(e3Ids.has("E3.NA.MUL.MUL_1D_1D"), true);
   assert.ok(e3Ids.has("E3.NA.DIV.DIV_Q2D_EXACT"));
   assert.ok(e3Ids.has("E3.NA.DIV.DIV_Q2D_REM"));
 });

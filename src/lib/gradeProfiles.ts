@@ -68,7 +68,7 @@ const profiles: Record<string, GradeProfile> = {
     conceptTags: ["place_value", "memorization"],
     keep: (type) => {
       const p = getPatternId(type);
-      return hasPrefix(p, "ADD_2D_2D") || hasPrefix(p, "SUB_2D_1D") || hasPrefix(p, "SUB_2D_2D") || p === "MUL_1D_1D" || p === "DIV_EQUAL_SHARE_BASIC";
+      return hasPrefix(p, "ADD_2D_2D") || hasPrefix(p, "SUB_2D_1D") || hasPrefix(p, "SUB_2D_2D") || hasPrefix(p, "MUL_1D_1D_") || p === "DIV_EQUAL_SHARE_BASIC";
     },
     synthetic: [
       intType("E2.NA.SUB.SUB_2D_2D_NO", "ひき算（2けた-2けた）", "SUB_2D_2D_NO", [
@@ -86,10 +86,70 @@ const profiles: Record<string, GradeProfile> = {
         { prompt: "65 - 28 =", answer: "37" },
         { prompt: "90 - 36 =", answer: "54" }
       ]),
-      intType("E2.NA.MUL.MUL_1D_1D", "かけ算（1けた×1けた）", "MUL_1D_1D", [
-        { prompt: "6 × 7 =", answer: "42" },
+      intType("E2.NA.MUL.MUL_1D_1D_DAN_1", "かけ算（1けた×1けた・1の段）", "MUL_1D_1D_DAN_1", [
+        { prompt: "1 × 2 =", answer: "2" },
+        { prompt: "1 × 6 =", answer: "6" },
+        { prompt: "1 × 9 =", answer: "9" }
+      ]),
+      intType("E2.NA.MUL.MUL_1D_1D_DAN_2", "かけ算（1けた×1けた・2の段）", "MUL_1D_1D_DAN_2", [
+        { prompt: "2 × 3 =", answer: "6" },
+        { prompt: "2 × 5 =", answer: "10" },
+        { prompt: "2 × 9 =", answer: "18" }
+      ]),
+      intType("E2.NA.MUL.MUL_1D_1D_DAN_3", "かけ算（1けた×1けた・3の段）", "MUL_1D_1D_DAN_3", [
+        { prompt: "3 × 2 =", answer: "6" },
+        { prompt: "3 × 6 =", answer: "18" },
+        { prompt: "3 × 9 =", answer: "27" }
+      ]),
+      intType("E2.NA.MUL.MUL_1D_1D_DAN_4", "かけ算（1けた×1けた・4の段）", "MUL_1D_1D_DAN_4", [
+        { prompt: "4 × 2 =", answer: "8" },
+        { prompt: "4 × 5 =", answer: "20" },
+        { prompt: "4 × 8 =", answer: "32" }
+      ]),
+      intType("E2.NA.MUL.MUL_1D_1D_DAN_5", "かけ算（1けた×1けた・5の段）", "MUL_1D_1D_DAN_5", [
+        { prompt: "5 × 2 =", answer: "10" },
+        { prompt: "5 × 6 =", answer: "30" },
+        { prompt: "5 × 9 =", answer: "45" }
+      ]),
+      intType("E2.NA.MUL.MUL_1D_1D_DAN_6", "かけ算（1けた×1けた・6の段）", "MUL_1D_1D_DAN_6", [
+        { prompt: "6 × 2 =", answer: "12" },
+        { prompt: "6 × 4 =", answer: "24" },
+        { prompt: "6 × 7 =", answer: "42" }
+      ]),
+      intType("E2.NA.MUL.MUL_1D_1D_DAN_7", "かけ算（1けた×1けた・7の段）", "MUL_1D_1D_DAN_7", [
+        { prompt: "7 × 2 =", answer: "14" },
+        { prompt: "7 × 5 =", answer: "35" },
+        { prompt: "7 × 8 =", answer: "56" }
+      ]),
+      intType("E2.NA.MUL.MUL_1D_1D_DAN_8", "かけ算（1けた×1けた・8の段）", "MUL_1D_1D_DAN_8", [
+        { prompt: "8 × 2 =", answer: "16" },
         { prompt: "8 × 4 =", answer: "32" },
-        { prompt: "9 × 3 =", answer: "27" }
+        { prompt: "8 × 9 =", answer: "72" }
+      ]),
+      intType("E2.NA.MUL.MUL_1D_1D_DAN_9", "かけ算（1けた×1けた・9の段）", "MUL_1D_1D_DAN_9", [
+        { prompt: "9 × 2 =", answer: "18" },
+        { prompt: "9 × 5 =", answer: "45" },
+        { prompt: "9 × 8 =", answer: "72" }
+      ]),
+      intType("E2.NA.MUL.MUL_1D_1D_MIX_1_3", "かけ算（1けた×1けた・1〜3の段混合）", "MUL_1D_1D_MIX_1_3", [
+        { prompt: "2 × 4 =", answer: "8" },
+        { prompt: "3 × 7 =", answer: "21" },
+        { prompt: "1 × 9 =", answer: "9" }
+      ]),
+      intType("E2.NA.MUL.MUL_1D_1D_MIX_4_6", "かけ算（1けた×1けた・4〜6の段混合）", "MUL_1D_1D_MIX_4_6", [
+        { prompt: "4 × 7 =", answer: "28" },
+        { prompt: "5 × 8 =", answer: "40" },
+        { prompt: "6 × 6 =", answer: "36" }
+      ]),
+      intType("E2.NA.MUL.MUL_1D_1D_MIX_7_9", "かけ算（1けた×1けた・7〜9の段混合）", "MUL_1D_1D_MIX_7_9", [
+        { prompt: "7 × 7 =", answer: "49" },
+        { prompt: "8 × 6 =", answer: "48" },
+        { prompt: "9 × 4 =", answer: "36" }
+      ]),
+      intType("E2.NA.MUL.MUL_1D_1D_MIX_1_9", "かけ算（1けた×1けた・1〜9の段混合）", "MUL_1D_1D_MIX_1_9", [
+        { prompt: "3 × 9 =", answer: "27" },
+        { prompt: "6 × 7 =", answer: "42" },
+        { prompt: "8 × 5 =", answer: "40" }
       ]),
       intType("E2.NA.DIV.DIV_EQUAL_SHARE_BASIC", "わり算（等分の概念）", "DIV_EQUAL_SHARE_BASIC", [
         { prompt: "12こを 3人で 同じ数に分けると 1人何こ？", answer: "4" },
