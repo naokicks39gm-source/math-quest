@@ -63,6 +63,12 @@ const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
 const LS_STUDENT_ID = "mq:studentId";
 const QUESTION_POOL_SIZE = 30;
 
+export const getAutoJudgeDelayMs = (digits: number) => {
+  if (digits <= 1) return 700;
+  if (digits === 2) return 1000;
+  return 1300;
+};
+
 const shuffle = <T,>(list: T[]) => {
   const copied = [...list];
   for (let i = copied.length - 1; i > 0; i -= 1) {
@@ -850,7 +856,6 @@ function QuestPageInner() {
   const [startPopup, setStartPopup] = useState<'ready' | 'go' | null>(null);
   const startTimersRef = useRef<number[]>([]);
   const [autoJudgeEnabled, setAutoJudgeEnabled] = useState(true);
-  const delayMs = 1500;
   const [autoNextEnabled, setAutoNextEnabled] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const inFlightRef = useRef(false);
@@ -1028,9 +1033,10 @@ function QuestPageInner() {
         if (autoRecognizeTimerRef.current) {
           window.clearTimeout(autoRecognizeTimerRef.current);
         }
+        const nextDelay = getAutoJudgeDelayMs(getAnswerDigits());
         autoRecognizeTimerRef.current = window.setTimeout(() => {
           runInference();
-        }, delayMs);
+        }, nextDelay);
       }
     }, 2000);
     startTimersRef.current = [t1, t2];
@@ -1048,7 +1054,8 @@ function QuestPageInner() {
       if (Date.now() < cooldownUntilRef.current) return;
       if (isRecognizing || inFlightRef.current) return;
       const idleFor = Date.now() - lastDrawAtRef.current;
-      if (idleFor >= delayMs && lastDrawAtRef.current > 0) {
+      const nextDelay = getAutoJudgeDelayMs(getAnswerDigits());
+      if (idleFor >= nextDelay && lastDrawAtRef.current > 0) {
         runInference();
       }
     }, 200);
@@ -1057,7 +1064,7 @@ function QuestPageInner() {
         window.clearInterval(idleCheckTimerRef.current);
       }
     };
-  }, [autoJudgeEnabled, delayMs, isStarting, status, isRecognizing]);
+  }, [autoJudgeEnabled, isStarting, status, isRecognizing, itemIndex]);
 
 
   useEffect(() => {
@@ -1641,9 +1648,10 @@ function QuestPageInner() {
     if (autoRecognizeTimerRef.current) {
       window.clearTimeout(autoRecognizeTimerRef.current);
     }
+    const nextDelay = getAutoJudgeDelayMs(getAnswerDigits());
     autoRecognizeTimerRef.current = window.setTimeout(() => {
       runInference();
-    }, delayMs);
+    }, nextDelay);
   };
 
   const runAutoDrawTest = async (poolOverride?: string[]) => {
