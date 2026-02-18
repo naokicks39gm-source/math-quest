@@ -22,6 +22,8 @@ test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("r.firstWrongAnswer ?? r.userAnswer"), true);
   assert.equal(source.includes("correct: !everWrong"), true);
   assert.equal(source.includes("if (isDrawingRef.current) return \"\";"), true);
+  assert.equal(source.includes("splitComponentGreedyByProjection"), true);
+  assert.equal(source.includes("splitByProjection(bin, w, h, pivot.bbox, true)"), true);
   assert.equal(source.includes("学習終了"), true);
   assert.equal(source.includes("次のレベルに進む"), true);
   assert.equal(source.includes("同じ問題を練習する"), true);

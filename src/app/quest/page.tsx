@@ -159,6 +159,7 @@ const CHARACTERS = {
 type BBox = { minX: number; minY: number; maxX: number; maxY: number };
 type DigitSample = { tensor: tf.Tensor2D; preview: ImageData; width: number; height: number; centerX: number };
 type Component = { mask: Uint8Array; bbox: BBox; area: number };
+type FractionRecognition = { predictedText: string; samples: DigitSample[] };
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
@@ -410,9 +411,173 @@ const detectDecimalDots = (components: Component[], maxArea: number, h: number) 
   });
 };
 
-const splitByProjection = (bin: Uint8Array, w: number, h: number, bbox: BBox) => {
+const isSlashComponent = (component: Component, w: number, maxArea: number, h: number) => {
+  const bw = component.bbox.maxX - component.bbox.minX + 1;
+  const bh = component.bbox.maxY - component.bbox.minY + 1;
+  if (bw < Math.max(8, Math.floor(h * 0.05))) return false;
+  if (bh < 6) return false;
+  if (Math.hypot(bw, bh) < 14) return false;
+  const aspect = bw / Math.max(1, bh);
+  if (aspect < 0.45 || aspect > 12) return false;
+  if (component.area > Math.max(56, Math.floor(maxArea * 0.8))) return false;
+  const fillRatio = component.area / (bw * bh);
+  if (fillRatio > 0.8) return false;
+
+  let n = 0;
+  let sumX = 0;
+  let sumY = 0;
+  for (let y = component.bbox.minY; y <= component.bbox.maxY; y++) {
+    for (let x = component.bbox.minX; x <= component.bbox.maxX; x++) {
+      if (!component.mask[y * w + x]) continue;
+      n++;
+      sumX += x;
+      sumY += y;
+    }
+  }
+  if (n < 6) return false;
+  const cx = sumX / n;
+  const cy = sumY / n;
+
+  let sxx = 0;
+  let syy = 0;
+  let sxy = 0;
+  for (let y = component.bbox.minY; y <= component.bbox.maxY; y++) {
+    for (let x = component.bbox.minX; x <= component.bbox.maxX; x++) {
+      if (!component.mask[y * w + x]) continue;
+      const dx = x - cx;
+      const dy = y - cy;
+      sxx += dx * dx;
+      syy += dy * dy;
+      sxy += dx * dy;
+    }
+  }
+
+  if (sxy >= 0) return false;
+  const angle = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+  const angleDeg = Math.abs((angle * 180) / Math.PI);
+  if (Math.abs(angleDeg - 45) > 30) return false;
+
+  const tmp = Math.sqrt((sxx - syy) * (sxx - syy) + 4 * sxy * sxy);
+  const lambda1 = (sxx + syy + tmp) / 2;
+  const lambda2 = (sxx + syy - tmp) / 2;
+  const linearity = lambda1 / Math.max(1, lambda2);
+  return linearity >= 3;
+};
+
+const normalizeFractionFromDigitString = (rawDigits: string, expectedAnswer: string) => {
+  const expected = expectedAnswer.replace(/\s+/g, "");
+  const expectedMatch = expected.match(/^([+-]?\d+)\/([+-]?\d+)$/);
+  if (!expectedMatch) return null;
+  const expectedNumLen = expectedMatch[1].replace(/[+-]/g, "").length;
+  const expectedDenLen = expectedMatch[2].replace(/[+-]/g, "").length;
+  if (expectedNumLen <= 0 || expectedDenLen <= 0) return null;
+  if (rawDigits.length !== expectedNumLen + expectedDenLen) return null;
+  const numerator = rawDigits.slice(0, expectedNumLen);
+  const denominator = rawDigits.slice(expectedNumLen);
+  if (!numerator || !denominator) return null;
+  return `${numerator}/${denominator}`;
+};
+
+const maybeSplitFractionComponent = (bin: Uint8Array, w: number, h: number, component: Component) => {
+  const bw = component.bbox.maxX - component.bbox.minX + 1;
+  const bh = component.bbox.maxY - component.bbox.minY + 1;
+  if (bw < 10 || bh < 8) return [component];
+  if (bw / Math.max(1, bh) < 0.8) return [component];
+  const split = splitBySpans(bin, w, h, component.bbox, 2) || splitByProjection(bin, w, h, component.bbox, true);
+  return split && split.length > 1 ? split : [component];
+};
+
+const predictSampleDigit = (sample: DigitSample): string | null => {
+  const pred = predictDigitEnsemble(sample.tensor);
+  if (!pred) return null;
+  return refineDigitPrediction(pred.predictedDigit, sample.tensor, pred.probabilities);
+};
+
+const recognizeFractionFromCanvas = (canvas: HTMLCanvasElement): FractionRecognition | null => {
+  const binData = binarizeCanvas(canvas);
+  if (!binData) return null;
+  const { bin, w, h, ink, threshold } = binData;
+  const allComponents = findComponents(bin, w, h);
+  if (allComponents.length === 0) return null;
+
+  let maxArea = 0;
+  for (const c of allComponents) {
+    if (c.area > maxArea) maxArea = c.area;
+  }
+
+  const slashCandidates = allComponents
+    .filter((c) => c.area >= 6 && isSlashComponent(c, w, maxArea, h))
+    .sort((a, b) => b.area - a.area);
+  if (slashCandidates.length === 0) return null;
+  const slash = slashCandidates[0];
+  const slashCenterX = (slash.bbox.minX + slash.bbox.maxX) / 2;
+
+  const dotThreshold = Math.max(5, Math.floor(threshold * 0.4));
+  const dotBin = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    dotBin[i] = ink[i] >= dotThreshold ? 1 : 0;
+  }
+  const dotComponents = findComponents(dotBin, w, h);
+  const dotCandidates = detectDecimalDots(dotComponents, maxArea, h);
+  const dotBoxes = dotCandidates.map((c) => c.bbox);
+  const isDotLike = (component: Component) =>
+    dotBoxes.some((box) =>
+      component.bbox.minX >= box.minX - 1 &&
+      component.bbox.maxX <= box.maxX + 1 &&
+      component.bbox.minY >= box.minY - 1 &&
+      component.bbox.maxY <= box.maxY + 1
+    );
+  const minKeep = Math.max(8, Math.floor(maxArea * 0.015));
+  const components = allComponents.filter((c) => c !== slash && c.area >= minKeep && !isDotLike(c));
+  if (components.length < 2) return null;
+
+  const valueComponents: Component[] = [];
+  for (const component of components) {
+    valueComponents.push(...maybeSplitFractionComponent(bin, w, h, component));
+  }
+
+  const left = valueComponents
+    .filter((c) => (c.bbox.minX + c.bbox.maxX) / 2 < slashCenterX)
+    .sort((a, b) => a.bbox.minX - b.bbox.minX);
+  const right = valueComponents
+    .filter((c) => (c.bbox.minX + c.bbox.maxX) / 2 > slashCenterX)
+    .sort((a, b) => a.bbox.minX - b.bbox.minX);
+  if (left.length === 0 || right.length === 0) return null;
+
+  const samples: DigitSample[] = [];
+  const readSide = (parts: Component[]) => {
+    let out = "";
+    for (const part of parts) {
+      const sample = componentToTensor(part, w, h);
+      if (!sample) return null;
+      const digit = predictSampleDigit(sample);
+      if (!digit) {
+        sample.tensor.dispose();
+        return null;
+      }
+      out += digit;
+      samples.push(sample);
+    }
+    return out;
+  };
+
+  const numerator = readSide(left);
+  if (!numerator) {
+    samples.forEach((s) => s.tensor.dispose());
+    return null;
+  }
+  const denominator = readSide(right);
+  if (!denominator) {
+    samples.forEach((s) => s.tensor.dispose());
+    return null;
+  }
+  return { predictedText: `${numerator}/${denominator}`, samples };
+};
+
+const splitByProjection = (bin: Uint8Array, w: number, h: number, bbox: BBox, force = false) => {
   const width = bbox.maxX - bbox.minX + 1;
   const height = bbox.maxY - bbox.minY + 1;
+  if (width < 6 || height < 6) return null;
   const colSum = new Uint32Array(width);
   for (let y = bbox.minY; y <= bbox.maxY; y++) {
     const row = y * w;
@@ -433,7 +598,11 @@ const splitByProjection = (bin: Uint8Array, w: number, h: number, bbox: BBox) =>
   }
 
   const splitThreshold = Math.max(2, Math.floor(height * 0.08));
-  if (minX === -1 || minVal > splitThreshold) return null;
+  if (minX === -1) return null;
+  if (!force && minVal > splitThreshold) return null;
+  if (force && (minX <= 1 || minX >= width - 2)) {
+    minX = Math.floor(width / 2);
+  }
 
   const splitAt = bbox.minX + minX;
   const leftMask = new Uint8Array(w * h);
@@ -450,10 +619,41 @@ const splitByProjection = (bin: Uint8Array, w: number, h: number, bbox: BBox) =>
   const leftBox = computeBBox(leftMask, w, h);
   const rightBox = computeBBox(rightMask, w, h);
   if (!leftBox || !rightBox) return null;
+  const leftArea = (leftBox.maxX - leftBox.minX + 1) * (leftBox.maxY - leftBox.minY + 1);
+  const rightArea = (rightBox.maxX - rightBox.minX + 1) * (rightBox.maxY - rightBox.minY + 1);
   return [
-    { mask: leftMask, bbox: leftBox, area: leftBox ? 1 : 0 },
-    { mask: rightMask, bbox: rightBox, area: rightBox ? 1 : 0 }
+    { mask: leftMask, bbox: leftBox, area: leftArea },
+    { mask: rightMask, bbox: rightBox, area: rightArea }
   ] as Component[];
+};
+
+const splitComponentGreedyByProjection = (
+  bin: Uint8Array,
+  w: number,
+  h: number,
+  root: Component,
+  targetDigits: number
+) => {
+  if (targetDigits <= 1) return [root];
+  const parts: Component[] = [root];
+  while (parts.length < targetDigits) {
+    let widestIndex = -1;
+    let widest = 0;
+    for (let i = 0; i < parts.length; i++) {
+      const box = parts[i].bbox;
+      const width = box.maxX - box.minX + 1;
+      if (width > widest) {
+        widest = width;
+        widestIndex = i;
+      }
+    }
+    if (widestIndex === -1 || widest < 6) break;
+    const pivot = parts[widestIndex];
+    const split = splitByProjection(bin, w, h, pivot.bbox, true);
+    if (!split || split.length < 2) break;
+    parts.splice(widestIndex, 1, ...split);
+  }
+  return parts;
 };
 
 const splitBySpans = (bin: Uint8Array, w: number, h: number, bbox: BBox, expectedDigits: number) => {
@@ -556,9 +756,16 @@ const preprocessDigits = (
   if (components.length === 0) return { samples: [], dotXs };
 
   if (components.length === 1 && expectedDigits > 1) {
-    const split = splitBySpans(bin, w, h, components[0].bbox, expectedDigits) || splitByProjection(bin, w, h, components[0].bbox);
+    const split =
+      splitBySpans(bin, w, h, components[0].bbox, expectedDigits) ||
+      splitByProjection(bin, w, h, components[0].bbox);
     if (split && split.length >= expectedDigits) {
       components = split;
+    } else {
+      const greedySplit = splitComponentGreedyByProjection(bin, w, h, components[0], expectedDigits);
+      if (greedySplit.length > 1) {
+        components = greedySplit;
+      }
     }
   }
 
@@ -881,6 +1088,8 @@ function QuestPageInner() {
   const [sessionActionLoading, setSessionActionLoading] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const sessionStartInFlightRef = useRef<Promise<string | null> | null>(null);
+  const forceFractionRecognitionRef = useRef(false);
+  const forcedFractionAnswerRef = useRef<string | null>(null);
   const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
   const [retryNonce, setRetryNonce] = useState(0);
   const clearResults = useMemo(
@@ -1460,7 +1669,19 @@ function QuestPageInner() {
     }
 
     const digits = getAnswerDigits();
-    const { samples, dotXs } = preprocessDigits(drawingCanvas, digits);
+    const forcedFractionAnswer = forcedFractionAnswerRef.current;
+    const expectedFractionAnswer =
+      forcedFractionAnswer ?? (currentItem?.answer.includes("/") ? currentItem.answer : null);
+    const isFractionQuestion =
+      forceFractionRecognitionRef.current ||
+      (currentType?.answer_format.kind === "frac" && Boolean(currentItem?.answer.includes("/")));
+    let fractionResult: FractionRecognition | null = null;
+    if (isFractionQuestion) {
+      fractionResult = recognizeFractionFromCanvas(drawingCanvas);
+    }
+    const fallback = preprocessDigits(drawingCanvas, digits);
+    const samples = fractionResult?.samples ?? fallback.samples;
+    const dotXs = fractionResult ? [] : fallback.dotXs;
 
     if (samples.length === 0) {
       canvasRef.current?.clear();
@@ -1469,31 +1690,40 @@ function QuestPageInner() {
       return "";
     }
 
-    const perDigitPreds = samples.map((s) => predictDigitEnsemble(s.tensor));
-    const refined = perDigitPreds.map((pred, i) =>
-      !pred ? null : refineDigitPrediction(pred.predictedDigit, samples[i].tensor, pred.probabilities)
-    );
-    let perDigitString = refined.some((d) => d === null) ? '' : refined.join('');
+    let predictedText = fractionResult?.predictedText ?? "";
+    if (!predictedText) {
+      const perDigitPreds = samples.map((s) => predictDigitEnsemble(s.tensor));
+      const refined = perDigitPreds.map((pred, i) =>
+        !pred ? null : refineDigitPrediction(pred.predictedDigit, samples[i].tensor, pred.probabilities)
+      );
+      let perDigitString = refined.some((d) => d === null) ? '' : refined.join('');
 
-    let predictedText = perDigitString;
-    if (samples.length === 2 && is2DigitModelReady && dotXs.length === 0) {
-      const gap = 6;
-      const width = 28 * 2 + gap;
-      const composite = new Float32Array(28 * width);
-      const leftData = Array.from(samples[0].tensor.dataSync());
-      const rightData = Array.from(samples[1].tensor.dataSync());
-      for (let y = 0; y < 28; y++) {
-        for (let x = 0; x < 28; x++) {
-          composite[y * width + x] = leftData[y * 28 + x];
-          composite[y * width + (x + 28 + gap)] = rightData[y * 28 + x];
+      predictedText = perDigitString;
+      if (samples.length === 2 && is2DigitModelReady && dotXs.length === 0) {
+        const gap = 6;
+        const width = 28 * 2 + gap;
+        const composite = new Float32Array(28 * width);
+        const leftData = Array.from(samples[0].tensor.dataSync());
+        const rightData = Array.from(samples[1].tensor.dataSync());
+        for (let y = 0; y < 28; y++) {
+          for (let x = 0; x < 28; x++) {
+            composite[y * width + x] = leftData[y * 28 + x];
+            composite[y * width + (x + 28 + gap)] = rightData[y * 28 + x];
+          }
+        }
+        const compositeTensor = tf.tensor2d(composite, [28, width]);
+        const multi = predictMnist2DigitWithProbs(compositeTensor);
+        if (multi) {
+          const maxProb = Math.max(...multi.probabilities);
+          if (maxProb >= 0.6) {
+            predictedText = multi.predictedValue;
+          }
         }
       }
-      const compositeTensor = tf.tensor2d(composite, [28, width]);
-      const multi = predictMnist2DigitWithProbs(compositeTensor);
-      if (multi) {
-        const maxProb = Math.max(...multi.probabilities);
-        if (maxProb >= 0.6) {
-          predictedText = multi.predictedValue;
+      if (isFractionQuestion && perDigitString && expectedFractionAnswer) {
+        const normalizedFraction = normalizeFractionFromDigitString(perDigitString, expectedFractionAnswer);
+        if (normalizedFraction) {
+          predictedText = normalizedFraction;
         }
       }
     }
@@ -1528,7 +1758,9 @@ function QuestPageInner() {
     }
 
     if (predictedText && currentItem && currentType) {
-      const verdict = gradeAnswer(predictedText, currentItem.answer, currentType.answer_format);
+      const verdict = gradeAnswer(predictedText, currentItem.answer, currentType.answer_format, {
+        typeId: currentType.type_id
+      });
       setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
       const resultText = currentItem.prompt_tex ?? currentItem.prompt;
       const resolvedSessionId = await ensureActiveSession();
@@ -1794,6 +2026,61 @@ function QuestPageInner() {
     );
   };
 
+  const runAutoDrawFractionTest = async (expectedInput?: string) => {
+    const canvas = getDrawingCanvas(canvasRef.current);
+    if (!canvas) return { expected: "", predicted: "" };
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { expected: "", predicted: "" };
+    const pool = expectedInput
+      ? [expectedInput]
+      : ["1/2", "2/3", "3/4", "5/6", "7/8", "9/10", "11/12"];
+    const expected = pool[Math.floor(Math.random() * pool.length)];
+    setLastAutoDrawExpected(expected);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#000000";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold 80px monospace";
+    ctx.fillText(expected, 18, 198);
+
+    lastDrawAtRef.current = Date.now();
+    setPreviewImages([]);
+    forcedDigitsRef.current = expected.replace(/\D/g, "").length;
+    forceFractionRecognitionRef.current = true;
+    forcedFractionAnswerRef.current = expected;
+    try {
+      const predicted = await runInference();
+      return { expected, predicted };
+    } finally {
+      forcedDigitsRef.current = null;
+      forceFractionRecognitionRef.current = false;
+      forcedFractionAnswerRef.current = null;
+    }
+  };
+
+  const runAutoDrawFractionBatchTest = async (runs: number, label: string) => {
+    setAutoDrawBatchSummary(`${label} 実行中...`);
+    let total = 0;
+    let exact = 0;
+    let slashDetected = 0;
+    for (let i = 0; i < runs; i++) {
+      const { expected, predicted } = await runAutoDrawFractionTest();
+      if (!expected) continue;
+      total++;
+      if (predicted === expected) exact++;
+      if (predicted.includes("/")) slashDetected++;
+      await new Promise((resolve) => window.setTimeout(resolve, 40));
+    }
+    const overall = total ? ((exact / total) * 100).toFixed(1) : "0.0";
+    const slashRate = total ? ((slashDetected / total) * 100).toFixed(1) : "0.0";
+    setAutoDrawBatchSummary(
+      `${label} 完了: 全体一致 ${exact}/${total} (${overall}%) / スラッシュ検出 ${slashDetected}/${total} (${slashRate}%)`
+    );
+  };
+
   const displayedAnswer = inputMode === 'numpad' ? input : (recognizedNumber ?? "");
 
   return (
@@ -2055,6 +2342,13 @@ function QuestPageInner() {
                 className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
               >
                 BatchDec100
+              </button>
+              <button
+                data-testid="auto-draw-frac-batch"
+                onClick={() => runAutoDrawFractionBatchTest(100, "BatchFrac100")}
+                className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+              >
+                BatchFrac100
               </button>
               <button
                 onClick={() =>
