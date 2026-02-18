@@ -6,7 +6,9 @@ const GEOMETRY_CATEGORY_ID = "GE";
 const NUMBER_AND_CALCULATION_CATEGORY_ID = "NA";
 const EXCLUDED_TYPE_IDS = new Set([
   "E1.ME.TIME.TIME_MIN",
-  "E1.RE.CMP.CMP_SIGN"
+  "E1.RE.CMP.CMP_SIGN",
+  "E2.ME.TIME.TIME_MIN",
+  "E2.RE.CMP.CMP_SIGN"
 ]);
 
 const getGradeIdFromTypeId = (typeId: string) => {
@@ -76,6 +78,25 @@ const addDisambiguatedNames = (types: TypeDef[]) => {
   });
 };
 
+const removeAnyWhenNoAndYesExist = (types: TypeDef[]) => {
+  const suffixMap = new Map<string, Set<"NO" | "YES" | "ANY">>();
+  for (const type of types) {
+    const suffix = getConditionSuffix(type.type_id);
+    if (!suffix) continue;
+    const base = type.type_id.replace(/_(NO|YES|ANY)$/, "");
+    if (!suffixMap.has(base)) suffixMap.set(base, new Set());
+    suffixMap.get(base)?.add(suffix);
+  }
+  return types.filter((type) => {
+    const suffix = getConditionSuffix(type.type_id);
+    if (suffix !== "ANY") return true;
+    const base = type.type_id.replace(/_(NO|YES|ANY)$/, "");
+    const group = suffixMap.get(base);
+    if (!group) return true;
+    return !(group.has("NO") && group.has("YES"));
+  });
+};
+
 type GenerationParams = {
   pattern_id?: string;
   a_digits?: number;
@@ -127,9 +148,10 @@ export const getCatalogGrades = (): GradeDef[] => {
             category.category_id === NUMBER_AND_CALCULATION_CATEGORY_ID
               ? applyGradeProfileToNaTypes(grade.grade_id, nonEmptyTypes)
               : nonEmptyTypes;
+          const normalizedTypes = removeAnyWhenNoAndYesExist(profiledTypes);
           return {
             ...category,
-            types: addDisambiguatedNames(profiledTypes)
+            types: addDisambiguatedNames(normalizedTypes)
           };
         })
         .filter((category) => category.types.length > 0);

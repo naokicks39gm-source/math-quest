@@ -23,7 +23,9 @@ const raw = {
 };
 const excludedTypeIds = new Set([
   "E1.ME.TIME.TIME_MIN",
-  "E1.RE.CMP.CMP_SIGN"
+  "E1.RE.CMP.CMP_SIGN",
+  "E2.ME.TIME.TIME_MIN",
+  "E2.RE.CMP.CMP_SIGN"
 ]);
 
 const getConditionSuffix = (typeId) => {
@@ -70,6 +72,25 @@ const buildDisplayName = (type) => {
   return `${type.type_name}（${parts.join("・")}）`;
 };
 
+const removeAnyWhenNoAndYesExist = (types) => {
+  const suffixMap = new Map();
+  for (const type of types) {
+    const suffix = getConditionSuffix(type.type_id);
+    if (!suffix) continue;
+    const base = type.type_id.replace(/_(NO|YES|ANY)$/, "");
+    if (!suffixMap.has(base)) suffixMap.set(base, new Set());
+    suffixMap.get(base).add(suffix);
+  }
+  return types.filter((type) => {
+    const suffix = getConditionSuffix(type.type_id);
+    if (suffix !== "ANY") return true;
+    const base = type.type_id.replace(/_(NO|YES|ANY)$/, "");
+    const group = suffixMap.get(base);
+    if (!group) return true;
+    return !(group.has("NO") && group.has("YES"));
+  });
+};
+
 const getGradeIdFromTypeId = (typeId) => {
   const [gradeId] = typeId.split(".");
   return gradeId || "UNK";
@@ -107,11 +128,12 @@ const deriveCatalog = () => {
               (type.example_items ?? []).length > 0 &&
               !excludedTypeIds.has(type.type_id)
           );
+          const normalizedTypes = removeAnyWhenNoAndYesExist(nonEmptyTypes);
           const counts = new Map();
-          for (const type of nonEmptyTypes) {
+          for (const type of normalizedTypes) {
             counts.set(type.type_name, (counts.get(type.type_name) ?? 0) + 1);
           }
-          const disambiguatedTypes = nonEmptyTypes.map((type) => {
+          const disambiguatedTypes = normalizedTypes.map((type) => {
             if ((counts.get(type.type_name) ?? 0) <= 1) return type;
             return {
               ...type,
@@ -210,7 +232,7 @@ test("1-digit + 1-digit labels include carry and answer-digit information", () =
   const byId = Object.fromEntries(na.types.map((type) => [type.type_id, type]));
   assert.match(byId["E1.NA.ADD.ADD_1D_1D_NO"].display_name, /^Lv:E1-\d+ たし算（1けた\+1けた）（繰り上がりなし・答え1桁）$/);
   assert.match(byId["E1.NA.ADD.ADD_1D_1D_YES"].display_name, /^Lv:E1-\d+ たし算（1けた\+1けた）（繰り上がりあり・答え2桁）$/);
-  assert.match(byId["E1.NA.ADD.ADD_1D_1D_ANY"].display_name, /^Lv:E1-\d+ たし算（1けた\+1けた）（繰り上がり・答え1〜2桁）$/);
+  assert.equal(Boolean(byId["E1.NA.ADD.ADD_1D_1D_ANY"]), false);
 });
 
 test("1-digit - 1-digit has a single type label", () => {
@@ -236,7 +258,7 @@ test("E1 2-digit - 2-digit labels include borrow condition information", () => {
   const byId = Object.fromEntries(na.types.map((type) => [type.type_id, type]));
   assert.match(byId["E1.NA.SUB.SUB_2D_2D_NO"].display_name, /^Lv:E1-\d+ ひき算（2けた-2けた）（繰り下がりなし）$/);
   assert.match(byId["E1.NA.SUB.SUB_2D_2D_YES"].display_name, /^Lv:E1-\d+ ひき算（2けた-2けた）（繰り下がりあり）$/);
-  assert.match(byId["E1.NA.SUB.SUB_2D_2D_ANY"].display_name, /^Lv:E1-\d+ ひき算（2けた-2けた）（繰り下がり）$/);
+  assert.equal(Boolean(byId["E1.NA.SUB.SUB_2D_2D_ANY"]), false);
 });
 
 test("E2 2-digit + 2-digit labels include carry condition information", () => {
@@ -248,7 +270,7 @@ test("E2 2-digit + 2-digit labels include carry condition information", () => {
   const byId = Object.fromEntries(na.types.map((type) => [type.type_id, type]));
   assert.match(byId["E2.NA.ADD.ADD_2D_2D_NO"].display_name, /^Lv:E2-\d+ たし算（2けた\+2けた）（繰り上がりなし）$/);
   assert.match(byId["E2.NA.ADD.ADD_2D_2D_YES"].display_name, /^Lv:E2-\d+ たし算（2けた\+2けた）（繰り上がりあり）$/);
-  assert.match(byId["E2.NA.ADD.ADD_2D_2D_ANY"].display_name, /^Lv:E2-\d+ たし算（2けた\+2けた）（繰り上がり）$/);
+  assert.equal(Boolean(byId["E2.NA.ADD.ADD_2D_2D_ANY"]), false);
 });
 
 test("display names include Lv prefix and grade-local sequence numbers", () => {
@@ -276,6 +298,8 @@ test("catalog excludes E1 time conversion and comparison types", () => {
   );
   assert.equal(allTypeIds.includes("E1.ME.TIME.TIME_MIN"), false);
   assert.equal(allTypeIds.includes("E1.RE.CMP.CMP_SIGN"), false);
+  assert.equal(allTypeIds.includes("E2.ME.TIME.TIME_MIN"), false);
+  assert.equal(allTypeIds.includes("E2.RE.CMP.CMP_SIGN"), false);
 });
 
 test("cross-grade identical NA types are removed from upper grades", () => {
