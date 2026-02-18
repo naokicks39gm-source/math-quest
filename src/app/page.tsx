@@ -13,6 +13,7 @@ export default function Home() {
 
   const [gradeId, setGradeId] = useState(grades[0]?.grade_id ?? "");
   const [typeId, setTypeId] = useState("");
+  const [mounted, setMounted] = useState(false);
 
   const grade = useMemo(() => {
     return grades.find((g) => g.grade_id === gradeId) ?? null;
@@ -27,6 +28,10 @@ export default function Home() {
       }))
     );
   }, [grade]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const savedTypeId = typeof window !== "undefined" ? localStorage.getItem(LS_LAST_TYPE_ID) : null;
@@ -65,35 +70,43 @@ export default function Home() {
 
           <label className="block text-sm font-bold text-slate-700">
             学年
-            <select
-              className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
-              value={gradeId}
-              onChange={(e) => {
-                setGradeId(e.target.value);
-                setTypeId("");
-              }}
-            >
-              {grades.map((g) => (
-                <option key={g.grade_id} value={g.grade_id}>
-                  {g.grade_name}
-                </option>
-              ))}
-            </select>
+            {mounted ? (
+              <select
+                className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
+                value={gradeId}
+                onChange={(e) => {
+                  setGradeId(e.target.value);
+                  setTypeId("");
+                }}
+              >
+                {grades.map((g) => (
+                  <option key={g.grade_id} value={g.grade_id}>
+                    {g.grade_name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="mt-1 h-10 w-full border border-slate-300 rounded-md bg-slate-100" />
+            )}
           </label>
 
           <label className="block text-sm font-bold text-slate-700">
             問題
-            <select
-              className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
-              value={typeId}
-              onChange={(e) => setTypeId(e.target.value)}
-            >
-              {problems.map((t) => (
-                <option key={t.type_id} value={t.type_id}>
-                  {t.display_name ?? t.type_name}
-                </option>
-              ))}
-            </select>
+            {mounted ? (
+              <select
+                className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
+                value={typeId}
+                onChange={(e) => setTypeId(e.target.value)}
+              >
+                {problems.map((t) => (
+                  <option key={t.type_id} value={t.type_id}>
+                    {t.display_name ?? t.type_name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="mt-1 h-10 w-full border border-slate-300 rounded-md bg-slate-100" />
+            )}
           </label>
 
           <div className="flex flex-wrap gap-2">

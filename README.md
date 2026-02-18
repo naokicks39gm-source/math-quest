@@ -22,17 +22,17 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## 実機スマホ接続（同一Wi-Fi）
 
-`npm run dev` は `0.0.0.0:3000` で待ち受けるため、同一Wi-Fi内のスマホからアクセスできます。
+`npm run dev` は `0.0.0.0:3001` で待ち受けるため、同一Wi-Fi内のスマホからアクセスできます。
 
 1. Mac とスマホを同じWi-Fiに接続する。
 2. スマホのSafariで次のどちらかを開く。
-- `http://<Macのlocal名>.local:3000`（推奨）
-- `http://<固定IP>:3000`（DHCP予約を使う場合）
+- `http://<Macのlocal名>.local:3001`（推奨）
+- `http://<固定IP>:3001`（DHCP予約を使う場合）
 3. 開けたら、Safariの共有メニューから「ホーム画面に追加」で擬似アプリ化する。
 
 ### 固定URL運用
 
-- 優先: `.local` 名アクセス（例: `macbook-pro.local:3000`）
+- 優先: `.local` 名アクセス（例: `macbook-pro.local:3001`）
 - 代替: ルーターでDHCP予約し、Macに固定IPを割り当てる
 
 どちらも、毎回URLを探し直す手間を減らせます。
@@ -90,6 +90,13 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
   `.env.local` の `MQ_SMTP_*` と `MQ_MAIL_PROVIDER` を確認。
 - iPhoneで古い画面が出る:
   Safariで再読み込み、必要なら履歴とWebサイトデータを削除。
+
+## 分数の手書き入力
+
+- `frac` 問題は `a/b` の形で書いてください（例: `3/4`）。
+- スラッシュ `/` をはっきり斜め線で書くと認識が安定します。
+- 既習学年（`E5` 以上、`J`、`H`）では、未約分の回答は不正解になります。
+  例: 正答 `1/2` に対して `2/4` は不正解。
 
 ## 環境変数（メール送信用）
 
