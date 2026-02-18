@@ -19,5 +19,7 @@ test("quest has mixed batch scenarios and metrics", () => {
   assert.match(source, /2 1\/4 を仮分数に/);
   assert.match(source, /形式一致/);
   assert.match(source, /整数部検出/);
+  assert.match(source, /整数部構造失敗/);
+  assert.match(source, /構造失敗/);
   assert.match(source, /BatchMixed100/);
 });
