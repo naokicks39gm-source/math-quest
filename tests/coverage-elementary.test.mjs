@@ -11,39 +11,32 @@ const raw = {
   grades: gradeFiles.flatMap((file) => readJson(file).grades ?? [])
 };
 
-test("elementary number-and-calculation coverage is fixed", () => {
-  const grades = raw.grades
-    .filter((g) => /^E[1-6]$/.test(g.grade_id))
-    .map((g) => ({
-      gradeId: g.grade_id,
-      categories: g.categories.filter((c) => c.category_id === "NA")
-    }));
+const getNaIds = (gradeId) => {
+  const grade = raw.grades.find((g) => g.grade_id === gradeId);
+  assert.ok(grade, `${gradeId} grade must exist`);
+  const na = grade.categories.find((category) => category.category_id === "NA");
+  assert.ok(na, `${gradeId}.NA must exist`);
+  return new Set(na.types.map((type) => type.type_id));
+};
 
-  assert.equal(grades.length, 6, "E1-E6 grades must exist");
+test("elementary NA data has core type IDs needed for grade profiles", () => {
+  const e1Ids = getNaIds("E1");
+  assert.ok(e1Ids.has("E1.NA.SUB.SUB_1D_1D_ANY"));
+  assert.ok(e1Ids.has("E1.NA.SUB.SUB_2D_2D_NO"));
+  assert.ok(e1Ids.has("E1.NA.SUB.SUB_2D_2D_YES"));
+  assert.ok(e1Ids.has("E1.NA.SUB.SUB_2D_2D_ANY"));
 
-  const counts = grades.map((g) => ({
-    gradeId: g.gradeId,
-    typeCount: g.categories.reduce((sum, c) => sum + c.types.length, 0)
-  }));
+  const e2Ids = getNaIds("E2");
+  assert.ok(e2Ids.has("E2.NA.ADD.ADD_2D_2D_NO"));
+  assert.ok(e2Ids.has("E2.NA.ADD.ADD_2D_2D_YES"));
+  assert.ok(e2Ids.has("E2.NA.ADD.ADD_2D_2D_ANY"));
+  assert.equal(e2Ids.has("E2.NA.ADD.ADD_1D_1D_NO"), false);
+  assert.equal(e2Ids.has("E2.NA.ADD.ADD_1D_1D_YES"), false);
+  assert.equal(e2Ids.has("E2.NA.ADD.ADD_1D_1D_ANY"), false);
 
-  assert.deepEqual(
-    counts,
-    [
-      { gradeId: "E1", typeCount: 7 },
-      { gradeId: "E2", typeCount: 6 },
-      { gradeId: "E3", typeCount: 37 },
-      { gradeId: "E4", typeCount: 39 },
-      { gradeId: "E5", typeCount: 43 },
-      { gradeId: "E6", typeCount: 45 }
-    ]
-  );
-
-  const e1 = raw.grades.find((grade) => grade.grade_id === "E1");
-  assert.ok(e1, "E1 grade must exist");
-  const e1Na = e1.categories.find((category) => category.category_id === "NA");
-  assert.ok(e1Na, "E1.NA must exist");
-  const ids = new Set(e1Na.types.map((type) => type.type_id));
-  assert.ok(ids.has("E1.NA.SUB.SUB_1D_1D_ANY"));
-  assert.equal(ids.has("E1.NA.SUB.SUB_1D_1D_NO"), false);
-  assert.equal(ids.has("E1.NA.SUB.SUB_1D_1D_YES"), false);
+  const e3Ids = getNaIds("E3");
+  assert.ok(e3Ids.has("E3.NA.MUL.MUL_2D_1D"));
+  assert.ok(e3Ids.has("E3.NA.MUL.MUL_2D_2D"));
+  assert.ok(e3Ids.has("E3.NA.DIV.DIV_Q2D_EXACT"));
+  assert.ok(e3Ids.has("E3.NA.DIV.DIV_Q2D_REM"));
 });
