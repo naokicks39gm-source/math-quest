@@ -20,6 +20,7 @@ export type TypeDef = {
   type_id: string;
   type_name: string;
   display_name?: string;
+  concept_tags?: string[];
   answer_format: AnswerFormat;
   example_items: ExampleItem[];
 };

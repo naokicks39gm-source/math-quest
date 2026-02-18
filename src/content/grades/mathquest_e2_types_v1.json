@@ -16,8 +16,8 @@
           "curriculum_domain": "A 数と計算",
           "types": [
             {
-              "type_id": "E2.NA.ADD.ADD_1D_1D_NO",
-              "type_name": "たし算（1けた+1けた）",
+              "type_id": "E2.NA.ADD.ADD_2D_2D_NO",
+              "type_name": "たし算（2けた+2けた）",
               "school": "E2",
               "curriculum_label": "整数の加法",
               "display_mapping": {
@@ -34,32 +34,32 @@
                 }
               },
               "generation_params": {
-                "pattern_id": "ADD_1D_1D_NO",
-                "a_digits": 1,
-                "b_digits": 1,
+                "pattern_id": "ADD_2D_2D_NO",
+                "a_digits": 2,
+                "b_digits": 2,
                 "carry": false
               },
               "example_items": [
                 {
-                  "prompt": "5 + 2 =",
-                  "answer": "7",
-                  "prompt_tex": "5 + 2 ="
+                  "prompt": "23 + 14 =",
+                  "answer": "37",
+                  "prompt_tex": "23 + 14 ="
                 },
                 {
-                  "prompt": "6 + 3 =",
-                  "answer": "9",
-                  "prompt_tex": "6 + 3 ="
+                  "prompt": "41 + 27 =",
+                  "answer": "68",
+                  "prompt_tex": "41 + 27 ="
                 },
                 {
-                  "prompt": "1 + 2 =",
-                  "answer": "3",
-                  "prompt_tex": "1 + 2 ="
+                  "prompt": "52 + 36 =",
+                  "answer": "88",
+                  "prompt_tex": "52 + 36 ="
                 }
               ]
             },
             {
-              "type_id": "E2.NA.ADD.ADD_1D_1D_YES",
-              "type_name": "たし算（1けた+1けた）",
+              "type_id": "E2.NA.ADD.ADD_2D_2D_YES",
+              "type_name": "たし算（2けた+2けた）",
               "school": "E2",
               "curriculum_label": "整数の加法",
               "display_mapping": {
@@ -76,32 +76,32 @@
                 }
               },
               "generation_params": {
-                "pattern_id": "ADD_1D_1D_YES",
-                "a_digits": 1,
-                "b_digits": 1,
+                "pattern_id": "ADD_2D_2D_YES",
+                "a_digits": 2,
+                "b_digits": 2,
                 "carry": true
               },
               "example_items": [
                 {
-                  "prompt": "9 + 6 =",
-                  "answer": "15",
-                  "prompt_tex": "9 + 6 ="
+                  "prompt": "27 + 15 =",
+                  "answer": "42",
+                  "prompt_tex": "27 + 15 ="
                 },
                 {
-                  "prompt": "6 + 6 =",
-                  "answer": "12",
-                  "prompt_tex": "6 + 6 ="
+                  "prompt": "48 + 37 =",
+                  "answer": "85",
+                  "prompt_tex": "48 + 37 ="
                 },
                 {
-                  "prompt": "8 + 8 =",
-                  "answer": "16",
-                  "prompt_tex": "8 + 8 ="
+                  "prompt": "59 + 26 =",
+                  "answer": "85",
+                  "prompt_tex": "59 + 26 ="
                 }
               ]
             },
             {
-              "type_id": "E2.NA.ADD.ADD_1D_1D_ANY",
-              "type_name": "たし算（1けた+1けた）",
+              "type_id": "E2.NA.ADD.ADD_2D_2D_ANY",
+              "type_name": "たし算（2けた+2けた）",
               "school": "E2",
               "curriculum_label": "整数の加法",
               "display_mapping": {
@@ -118,26 +118,26 @@
                 }
               },
               "generation_params": {
-                "pattern_id": "ADD_1D_1D_ANY",
-                "a_digits": 1,
-                "b_digits": 1,
+                "pattern_id": "ADD_2D_2D_ANY",
+                "a_digits": 2,
+                "b_digits": 2,
                 "carry": null
               },
               "example_items": [
                 {
-                  "prompt": "2 + 2 =",
-                  "answer": "4",
-                  "prompt_tex": "2 + 2 ="
+                  "prompt": "24 + 13 =",
+                  "answer": "37",
+                  "prompt_tex": "24 + 13 ="
                 },
                 {
-                  "prompt": "5 + 8 =",
-                  "answer": "13",
-                  "prompt_tex": "5 + 8 ="
+                  "prompt": "35 + 27 =",
+                  "answer": "62",
+                  "prompt_tex": "35 + 27 ="
                 },
                 {
-                  "prompt": "2 + 1 =",
-                  "answer": "3",
-                  "prompt_tex": "2 + 1 ="
+                  "prompt": "66 + 19 =",
+                  "answer": "85",
+                  "prompt_tex": "66 + 19 ="
                 }
               ]
             },
