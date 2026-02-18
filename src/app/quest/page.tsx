@@ -2,6 +2,7 @@
 'use client';
 
 import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { useRouter, useSearchParams } from "next/navigation";
 import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
@@ -57,6 +58,16 @@ type GradeDef = {
 type QuestEntry = {
   item: ExampleItem;
   type: TypeDef;
+};
+
+type QuestionResultEntry = {
+  prompt: string;
+  promptTex?: string;
+  userAnswer: string;
+  correct: boolean;
+  correctAnswer?: string;
+  everWrong: boolean;
+  firstWrongAnswer?: string;
 };
 
 const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
@@ -128,12 +139,95 @@ const formatPrompt = (prompt: string) => {
   return prompt.replace(/を計算しなさい。$/g, "");
 };
 
+const INTEGER_FRACTION_PATTERN = /([+-]?\d+)\/([+-]?\d+)/g;
+const EXPONENT_FRACTION_PATTERN = /([A-Za-z0-9(){}+\-^]+)\s*\/\s*([A-Za-z0-9(){}+\-^]+)/g;
+
+const isAsciiLetter = (ch: string) => /[A-Za-z]/.test(ch);
+
+type FractionMatch = { start: number; end: number; raw: string; num: string; den: string };
+
+const findDisplayFractionMatches = (text: string) => {
+  const candidates: FractionMatch[] = [];
+  INTEGER_FRACTION_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = INTEGER_FRACTION_PATTERN.exec(text))) {
+    const start = match.index;
+    const end = start + match[0].length;
+    const prev = start > 0 ? text[start - 1] : "";
+    const next = end < text.length ? text[end] : "";
+    if (isAsciiLetter(prev) || isAsciiLetter(next)) continue;
+    candidates.push({ start, end, raw: match[0], num: match[1], den: match[2] });
+  }
+  EXPONENT_FRACTION_PATTERN.lastIndex = 0;
+  while ((match = EXPONENT_FRACTION_PATTERN.exec(text))) {
+    const raw = match[0];
+    if (!raw.includes("^")) continue;
+    const start = match.index;
+    const end = start + raw.length;
+    const prev = start > 0 ? text[start - 1] : "";
+    const next = end < text.length ? text[end] : "";
+    if (isAsciiLetter(prev) || isAsciiLetter(next)) continue;
+    candidates.push({
+      start,
+      end,
+      raw,
+      num: match[1].trim(),
+      den: match[2].trim()
+    });
+  }
+  candidates.sort((a, b) => a.start - b.start || b.end - a.end);
+  const deduped: FractionMatch[] = [];
+  for (const candidate of candidates) {
+    const overlapped = deduped.some((m) => candidate.start < m.end && m.start < candidate.end);
+    if (!overlapped) deduped.push(candidate);
+  }
+  return deduped;
+};
+
+const toFractionTexInText = (text: string) => {
+  const matches = findDisplayFractionMatches(text);
+  if (matches.length === 0) return text;
+  let cursor = 0;
+  let out = "";
+  for (const match of matches) {
+    out += text.slice(cursor, match.start);
+    out += `\\frac{${match.num}}{${match.den}}`;
+    cursor = match.end;
+  }
+  out += text.slice(cursor);
+  return out;
+};
+
+const renderMaybeMath = (text: string): ReactNode => {
+  const matches = findDisplayFractionMatches(text);
+  if (matches.length === 0) return <span>{text}</span>;
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  for (const match of matches) {
+    if (cursor < match.start) {
+      nodes.push(<span key={`text-${cursor}`}>{text.slice(cursor, match.start)}</span>);
+    }
+    nodes.push(
+      <InlineMath
+        key={`frac-${match.start}-${match.end}`}
+        math={toFractionTexInText(match.raw)}
+        renderError={() => <span>{match.raw}</span>}
+      />
+    );
+    cursor = match.end;
+  }
+  if (cursor < text.length) {
+    nodes.push(<span key={`text-${cursor}`}>{text.slice(cursor)}</span>);
+  }
+  return <span>{nodes}</span>;
+};
+
 const renderPrompt = (item: ExampleItem) => {
   const tex = item.prompt_tex?.trim();
   if (tex) {
-    return <InlineMath math={tex} renderError={() => <span>{formatPrompt(item.prompt)}</span>} />;
+    return <InlineMath math={toFractionTexInText(tex)} renderError={() => <span>{formatPrompt(item.prompt)}</span>} />;
   }
-  return <span>{formatPrompt(item.prompt)}</span>;
+  return renderMaybeMath(formatPrompt(item.prompt));
 };
 
 
@@ -1041,7 +1135,7 @@ function QuestPageInner() {
   const [history, setHistory] = useState<Array<{ id: number; text: string }>>([]);
   const [questionIndex, setQuestionIndex] = useState(1);
   const [results, setResults] = useState<Array<{ id: number; text: string; userAnswer: string; correct: boolean }>>([]);
-  const [questionResults, setQuestionResults] = useState<Record<number, { text: string; userAnswer: string; correct: boolean; correctAnswer?: string; everWrong: boolean; firstWrongAnswer?: string }>>({});
+  const [questionResults, setQuestionResults] = useState<Record<number, QuestionResultEntry>>({});
   const [input, setInput] = useState('');
   const [message, setMessage] = useState('Battle Start!');
   const [character, setCharacter] = useState<CharacterType>('warrior');
@@ -1762,7 +1856,6 @@ function QuestPageInner() {
         typeId: currentType.type_id
       });
       setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
-      const resultText = currentItem.prompt_tex ?? currentItem.prompt;
       const resolvedSessionId = await ensureActiveSession();
       if (resolvedSessionId) {
         void postJson("/api/session/answer", {
@@ -1786,7 +1879,8 @@ function QuestPageInner() {
             prevEntry?.firstWrongAnswer ??
             (!verdict.ok ? predictedText : undefined);
           return {
-            text: resultText,
+            prompt: currentItem.prompt,
+            promptTex: currentItem.prompt_tex,
             userAnswer: predictedText,
             correct: !everWrong,
             correctAnswer: currentItem.answer,
@@ -2122,15 +2216,21 @@ function QuestPageInner() {
                     }`}
                   >
                     <div className="font-bold text-slate-700">
-                      {Number(index) + 1}. {r.text}
+                      {Number(index) + 1}.{" "}
+                      {r.promptTex?.trim()
+                        ? <InlineMath math={toFractionTexInText(r.promptTex.trim())} renderError={() => <span>{formatPrompt(r.prompt)}</span>} />
+                        : renderMaybeMath(formatPrompt(r.prompt))}
                       {finalWrong && (
                         <span className="ml-2 font-semibold text-slate-600">
-                          / {uiText.answerLabel}: {r.correctAnswer ?? "-"}
+                          / {uiText.answerLabel}: {r.correctAnswer ? renderMaybeMath(r.correctAnswer) : "-"}
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 font-bold text-right">
-                      <span className="text-slate-600">{uiText.yourAnswer}: {displayedUserAnswer || '?'}</span>
+                      <span className="text-slate-600">{uiText.yourAnswer}:</span>
+                      <span className="text-slate-600">
+                        {displayedUserAnswer ? renderMaybeMath(displayedUserAnswer) : "?"}
+                      </span>
                       <span className={finalWrong ? 'text-red-600' : 'text-green-600'}>
                         {finalWrong ? '✕' : '◯'}
                       </span>
