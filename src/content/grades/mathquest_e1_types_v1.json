@@ -142,6 +142,48 @@
               ]
             },
             {
+              "type_id": "E1.NA.SUB.SUB_1D_1D_ANY",
+              "type_name": "ひき算（1けた-1けた）",
+              "school": "E1",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_1D_1D_ANY",
+                "a_digits": 1,
+                "b_digits": 1,
+                "borrow": null
+              },
+              "example_items": [
+                {
+                  "prompt": "8 - 6 =",
+                  "answer": "2",
+                  "prompt_tex": "8 - 6 ="
+                },
+                {
+                  "prompt": "9 - 4 =",
+                  "answer": "5",
+                  "prompt_tex": "9 - 4 ="
+                },
+                {
+                  "prompt": "6 - 2 =",
+                  "answer": "4",
+                  "prompt_tex": "6 - 2 ="
+                }
+              ]
+            },
+            {
               "type_id": "E1.NA.SUB.SUB_2D_1D_NO",
               "type_name": "ひき算（2けた-1けた）",
               "school": "E1",

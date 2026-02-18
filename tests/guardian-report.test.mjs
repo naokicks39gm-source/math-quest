@@ -8,8 +8,12 @@ const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 test("top page has learning start controls and guardian link", () => {
   const source = read("src/app/page.tsx");
   assert.match(source, /学習の選択と開始/);
-  assert.match(source, /選択した学習ではじめる/);
-  assert.match(source, /全学年まとめてはじめる/);
+  assert.match(source, /問題/);
+  assert.match(source, /スタート！/);
+  assert.doesNotMatch(source, /カテゴリ/);
+  assert.doesNotMatch(source, /タイプ/);
+  assert.doesNotMatch(source, /選択した学習ではじめる/);
+  assert.doesNotMatch(source, /全学年まとめてはじめる/);
   assert.match(source, /保護者レポート設定ページへ/);
   assert.match(source, /router\.push\("\/guardian"\)/);
 });

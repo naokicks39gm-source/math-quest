@@ -3,6 +3,11 @@ import { GradeDef, TypeDef } from "@/lib/elementaryContent";
 
 const GEOMETRY_CATEGORY_ID = "GE";
 
+const getGradeIdFromTypeId = (typeId: string) => {
+  const [gradeId] = typeId.split(".");
+  return gradeId || "UNK";
+};
+
 const getConditionSuffix = (typeId: string): "NO" | "YES" | "ANY" | null => {
   const match = typeId.match(/_(NO|YES|ANY)$/);
   return match ? (match[1] as "NO" | "YES" | "ANY") : null;
@@ -63,13 +68,26 @@ const addDisambiguatedNames = (types: TypeDef[]) => {
 export const getCatalogGrades = (): GradeDef[] => {
   const grades = ((data as { grades?: GradeDef[] }).grades ?? [])
     .map((grade) => {
+      const gradeLevelCounters = new Map<string, number>();
       const categories = (grade.categories ?? [])
         .filter((category) => category.category_id !== GEOMETRY_CATEGORY_ID)
         .map((category) => {
           const nonEmptyTypes = (category.types ?? []).filter((type) => (type.example_items?.length ?? 0) > 0);
+          const disambiguated = addDisambiguatedNames(nonEmptyTypes);
+          const leveledTypes = disambiguated.map((type) => {
+            const gradeIdFromType = getGradeIdFromTypeId(type.type_id) || grade.grade_id;
+            const next = (gradeLevelCounters.get(gradeIdFromType) ?? 0) + 1;
+            gradeLevelCounters.set(gradeIdFromType, next);
+            const level = `Lv:${gradeIdFromType}-${next}`;
+            const baseName = type.display_name ?? type.type_name;
+            return {
+              ...type,
+              display_name: `${level} ${baseName}`
+            };
+          });
           return {
             ...category,
-            types: addDisambiguatedNames(nonEmptyTypes)
+            types: leveledTypes
           };
         })
         .filter((category) => category.types.length > 0);

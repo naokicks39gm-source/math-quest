@@ -1788,7 +1788,7 @@ function QuestPageInner() {
       
       {/* Input Mode Toggle removed */}
 
-      {selectedPath && (
+      {status === 'playing' && selectedPath && (
         <button
           type="button"
           onClick={() => router.push("/")}
@@ -1797,6 +1797,7 @@ function QuestPageInner() {
           {selectedPath.gradeName} / {selectedPath.categoryName} / {selectedPath.typeName}
         </button>
       )}
+      {status === 'playing' && (
       <section className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs space-y-2">
         <div className="font-bold text-slate-700">学習終了（レポート配信）</div>
         <button
@@ -1814,7 +1815,8 @@ function QuestPageInner() {
         )}
         {sessionMailStatus && <div className="text-emerald-700 font-semibold">{sessionMailStatus}</div>}
       </section>
-      {sessionError && (
+      )}
+      {status === 'playing' && sessionError && (
         <section className="w-full bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
           {sessionError}
         </section>
@@ -1862,18 +1864,12 @@ function QuestPageInner() {
                 );
               })}
             </div>
-            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="mt-5">
               <button
-                onClick={goToNextLevel}
+                onClick={() => router.push("/")}
                 className="px-8 py-3 rounded-xl bg-yellow-400 text-slate-900 font-black text-lg shadow-[0_6px_0_rgba(0,0,0,0.2)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.2)]"
               >
-                {uiText.nextLevel}
-              </button>
-              <button
-                onClick={restartSameLevel}
-                className="px-8 py-3 rounded-xl bg-white text-indigo-700 border-2 border-indigo-300 font-black text-lg shadow-[0_6px_0_rgba(0,0,0,0.15)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.15)]"
-              >
-                {uiText.retryLevel}
+                学習終了
               </button>
             </div>
           </div>
@@ -1945,7 +1941,7 @@ function QuestPageInner() {
       </div>
 
       {/* Bottom: Input Area */}
-      {inputMode === 'numpad' ? (
+      {status === 'playing' && (inputMode === 'numpad' ? (
         <div className="w-full grid grid-cols-3 gap-3 pb-4">
           {[7, 8, 9, 4, 5, 6, 1, 2, 3, 0].map((num) => (
             <button
@@ -2095,7 +2091,7 @@ function QuestPageInner() {
             <CanvasDraw
               ref={canvasRef}
               hideGrid={true}
-              brushRadius={4}
+              brushRadius={2.5}
               brushColor="#000000"
               backgroundColor="#ffffff"
               canvasWidth={300}
@@ -2159,7 +2155,7 @@ function QuestPageInner() {
             </button>
           </div>
         </div>
-      )}
+      ))}
 
     </main>
   );
