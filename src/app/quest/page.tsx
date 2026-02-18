@@ -827,8 +827,7 @@ function QuestPageInner() {
   const [history, setHistory] = useState<Array<{ id: number; text: string }>>([]);
   const [questionIndex, setQuestionIndex] = useState(1);
   const [results, setResults] = useState<Array<{ id: number; text: string; userAnswer: string; correct: boolean }>>([]);
-  const [questionResults, setQuestionResults] = useState<Record<number, { text: string; userAnswer: string; correct: boolean }>>({});
-  const [mistakeLog, setMistakeLog] = useState<Array<{ index: number; text: string; userAnswer: string; correctAnswer: string }>>([]);
+  const [questionResults, setQuestionResults] = useState<Record<number, { text: string; userAnswer: string; correct: boolean; correctAnswer?: string; everWrong: boolean; firstWrongAnswer?: string }>>({});
   const [input, setInput] = useState('');
   const [message, setMessage] = useState('Battle Start!');
   const [character, setCharacter] = useState<CharacterType>('warrior');
@@ -873,12 +872,13 @@ function QuestPageInner() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
+  const [retryNonce, setRetryNonce] = useState(0);
   const clearResults = useMemo(
     () => Object.entries(questionResults).sort((a, b) => Number(a[0]) - Number(b[0])),
     [questionResults]
   );
   const correctCount = useMemo(
-    () => clearResults.filter(([, result]) => result.correct).length,
+    () => clearResults.filter(([, result]) => result.everWrong !== true).length,
     [clearResults]
   );
 
@@ -1173,13 +1173,12 @@ function QuestPageInner() {
     setQuizItems(nextSet);
     setItemIndex(0);
     setQuestionResults({});
-    setMistakeLog([]);
     setStatus("playing");
     setMessage("Battle Start!");
     setPracticeResult(null);
     setResultMark(null);
     setRecognizedNumber(null);
-  }, [poolCandidates, quizSize]);
+  }, [poolCandidates, quizSize, retryNonce]);
 
   const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
   const currentEntry = quizItems[safeIndex] ?? null;
@@ -1196,11 +1195,13 @@ function QuestPageInner() {
         correct: "⭕ せいかい",
         incorrect: "❌ ざんねん",
         nextLevel: "つぎのレベルにすすむ",
+        retryLevel: "もういちど べんきょうする",
         noItems: "このカテゴリ/タイプには もんだいが ありません。",
         selectType: "タイプを えらんでください。",
         judge: "はんてい",
         nextQuestion: "つぎの もんだいへ",
-        reset: "けす"
+        reset: "けす",
+        answerLabel: "こたえ"
       }
     : {
         summary: `${TOTAL_QUESTIONS}題完了 / 正解 ${correctCount}題`,
@@ -1208,11 +1209,13 @@ function QuestPageInner() {
         correct: "⭕ 正解",
         incorrect: "❌ 不正解",
         nextLevel: "次のレベルに進む",
+        retryLevel: "もう一度勉強する",
         noItems: "このカテゴリ/タイプには表示できる問題がありません。",
         selectType: "タイプを選択してください。",
         judge: "判定",
         nextQuestion: "次の問題へ",
-        reset: "リセット"
+        reset: "リセット",
+        answerLabel: "答え"
       };
   const emptyMessage = uiText.noItems;
   const totalQuizQuestions = Math.min(TOTAL_QUESTIONS, quizItems.length);
@@ -1236,6 +1239,19 @@ function QuestPageInner() {
     router.push(
       `/quest?type=${encodeURIComponent(next.typeId)}&category=${encodeURIComponent(next.categoryId)}`
     );
+  };
+  const restartSameLevel = () => {
+    setItemIndex(0);
+    setQuestionResults({});
+    setPracticeResult(null);
+    setResultMark(null);
+    setRecognizedNumber(null);
+    setPreviewImages([]);
+    setCombo(0);
+    setStatus("playing");
+    setMessage("Battle Start!");
+    canvasRef.current?.clear();
+    setRetryNonce((prev) => prev + 1);
   };
 
   useEffect(() => {
@@ -1462,23 +1478,22 @@ function QuestPageInner() {
       }
       setQuestionResults((prev) => ({
         ...prev,
-        [itemIndex]: {
-          text: resultText,
-          userAnswer: predictedText,
-          correct: verdict.ok
-        }
-      }));
-      if (!verdict.ok) {
-        setMistakeLog((prev) => [
-          ...prev,
-          {
-            index: itemIndex,
+        [itemIndex]: (() => {
+          const prevEntry = prev[itemIndex];
+          const everWrong = (prevEntry?.everWrong ?? false) || !verdict.ok;
+          const firstWrongAnswer =
+            prevEntry?.firstWrongAnswer ??
+            (!verdict.ok ? predictedText : undefined);
+          return {
             text: resultText,
             userAnswer: predictedText,
-            correctAnswer: currentItem.answer
-          }
-        ]);
-      }
+            correct: !everWrong,
+            correctAnswer: currentItem.answer,
+            everWrong,
+            firstWrongAnswer
+          };
+        })()
+      }));
 
       if (verdict.ok) {
         setResultMark('correct');
@@ -1743,41 +1758,50 @@ function QuestPageInner() {
               {uiText.summary}
             </div>
             <div className="mt-5 space-y-2 max-h-[28vh] overflow-y-auto rounded-2xl bg-white/90 p-3 text-left">
-              {clearResults.map(([index, r]) => (
-                <div
-                  key={index}
-                  className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
-                    r.correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
-                  }`}
-                >
-                  <div className="font-bold text-slate-700">{Number(index) + 1}. {r.text}</div>
-                  <div className="flex items-center gap-2 font-bold">
-                    <span className="text-slate-600">{uiText.yourAnswer}: {r.userAnswer || '?'}</span>
-                    <span className={r.correct ? 'text-green-600' : 'text-red-600'}>
-                      {r.correct ? '◯' : '✕'}
-                    </span>
+              {clearResults.map(([index, r]) => {
+                const finalWrong = r.everWrong === true;
+                const displayedUserAnswer = finalWrong
+                  ? (r.firstWrongAnswer ?? r.userAnswer)
+                  : r.userAnswer;
+                return (
+                  <div
+                    key={index}
+                    className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
+                      finalWrong ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'
+                    }`}
+                  >
+                    <div className="font-bold text-slate-700">
+                      {Number(index) + 1}. {r.text}
+                      {finalWrong && (
+                        <span className="ml-2 font-semibold text-slate-600">
+                          / {uiText.answerLabel}: {r.correctAnswer ?? "-"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 font-bold text-right">
+                      <span className="text-slate-600">{uiText.yourAnswer}: {displayedUserAnswer || '?'}</span>
+                      <span className={finalWrong ? 'text-red-600' : 'text-green-600'}>
+                        {finalWrong ? '✕' : '◯'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            {mistakeLog.length > 0 && (
-              <div className="mt-4 space-y-2 max-h-[24vh] overflow-y-auto rounded-2xl bg-rose-50/95 border border-rose-200 p-3 text-left">
-                <div className="text-sm font-black text-rose-700">まちがえた もんだい</div>
-                {mistakeLog.map((row, idx) => (
-                  <div key={`${row.index}-${idx}`} className="rounded-md border border-rose-100 bg-white px-2 py-2 text-xs text-slate-700">
-                    <div className="font-bold">{row.index + 1}. {row.text}</div>
-                    <div>あなた: {row.userAnswer}</div>
-                    <div>こたえ: {row.correctAnswer}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <button
-              onClick={goToNextLevel}
-              className="mt-5 px-8 py-3 rounded-xl bg-yellow-400 text-slate-900 font-black text-lg shadow-[0_6px_0_rgba(0,0,0,0.2)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.2)]"
-            >
-              {uiText.nextLevel}
-            </button>
+            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <button
+                onClick={goToNextLevel}
+                className="px-8 py-3 rounded-xl bg-yellow-400 text-slate-900 font-black text-lg shadow-[0_6px_0_rgba(0,0,0,0.2)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.2)]"
+              >
+                {uiText.nextLevel}
+              </button>
+              <button
+                onClick={restartSameLevel}
+                className="px-8 py-3 rounded-xl bg-white text-indigo-700 border-2 border-indigo-300 font-black text-lg shadow-[0_6px_0_rgba(0,0,0,0.15)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.15)]"
+              >
+                {uiText.retryLevel}
+              </button>
+            </div>
           </div>
         ) : (
           <>
