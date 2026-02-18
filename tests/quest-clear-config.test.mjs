@@ -23,6 +23,13 @@ test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("correct: !everWrong"), true);
   assert.equal(source.includes("if (isDrawingRef.current) return \"\";"), true);
   assert.equal(source.includes("学習終了"), true);
+  assert.equal(source.includes("次のレベルに進む"), true);
+  assert.equal(source.includes("同じ問題を練習する"), true);
+  assert.equal(source.includes("学習終了（レポート配信）"), true);
+  assert.equal(source.includes("onClick={goToNextLevel}"), true);
+  assert.equal(source.includes("onClick={restartSameLevel}"), true);
+  assert.equal(source.includes("onClick={endLearningSession}"), true);
+  assert.equal(source.includes("router.push(\"/\");"), true);
   assert.equal(source.includes("status === 'playing' && (inputMode === 'numpad' ? ("), true);
   assert.equal(source.includes("status === 'playing' && selectedPath"), true);
   assert.equal(source.includes("まちがえた もんだい"), false);

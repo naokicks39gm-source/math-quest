@@ -975,6 +975,7 @@ function QuestPageInner() {
       if (typeof window !== "undefined") {
         localStorage.removeItem(LS_ACTIVE_SESSION_ID);
       }
+      router.push("/");
     } catch (error) {
       const message = error instanceof Error ? error.message : "session_end_failed";
       setSessionError(message);
@@ -1259,6 +1260,8 @@ function QuestPageInner() {
         incorrect: "❌ ざんねん",
         nextLevel: "つぎのレベルにすすむ",
         retryLevel: "もういちど べんきょうする",
+        retrySame: "もういちど おなじ もんだいを れんしゅうする",
+        endWithReport: "おわりにする（レポート配信）",
         noItems: "このカテゴリ/タイプには もんだいが ありません。",
         selectType: "タイプを えらんでください。",
         judge: "はんてい",
@@ -1273,6 +1276,8 @@ function QuestPageInner() {
         incorrect: "❌ 不正解",
         nextLevel: "次のレベルに進む",
         retryLevel: "もう一度勉強する",
+        retrySame: "同じ問題を練習する",
+        endWithReport: "学習終了（レポート配信）",
         noItems: "このカテゴリ/タイプには表示できる問題がありません。",
         selectType: "タイプを選択してください。",
         judge: "判定",
@@ -1805,31 +1810,6 @@ function QuestPageInner() {
           {selectedPath.gradeName} / {selectedPath.categoryName} / {selectedPath.typeName}
         </button>
       )}
-      {status === 'playing' && (
-      <section className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs space-y-2">
-        <div className="font-bold text-slate-700">学習終了（レポート配信）</div>
-        <button
-          type="button"
-          onClick={endLearningSession}
-          disabled={sessionActionLoading}
-          className="px-3 py-1 rounded bg-emerald-600 text-white font-bold disabled:bg-slate-300"
-        >
-          学習終了（レポート配信）
-        </button>
-        {!studentId && (
-          <div className="text-slate-500">
-            保護者設定が未保存のためレポート配信はできません。必要な場合は設定ページで保存してください。
-          </div>
-        )}
-        {sessionMailStatus && <div className="text-emerald-700 font-semibold">{sessionMailStatus}</div>}
-      </section>
-      )}
-      {status === 'playing' && sessionError && (
-        <section className="w-full bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
-          {sessionError}
-        </section>
-      )}
-
       {/* Center: Character & Message */} 
       <div className="flex flex-col items-center space-y-4 my-4 flex-1 justify-center w-full">
         {status === 'cleared' ? (
@@ -1872,13 +1852,44 @@ function QuestPageInner() {
                 );
               })}
             </div>
-            <div className="mt-5">
+            <div className="mt-5 w-full max-w-md mx-auto space-y-2">
               <button
-                onClick={() => router.push("/")}
-                className="px-8 py-3 rounded-xl bg-yellow-400 text-slate-900 font-black text-lg shadow-[0_6px_0_rgba(0,0,0,0.2)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.2)]"
+                type="button"
+                onClick={goToNextLevel}
+                className="w-full px-6 py-3 rounded-xl bg-indigo-500 text-white font-black text-lg shadow-[0_6px_0_rgba(0,0,0,0.2)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.2)]"
               >
-                学習終了
+                {uiText.nextLevel}
               </button>
+              <button
+                type="button"
+                onClick={restartSameLevel}
+                className="w-full px-6 py-3 rounded-xl bg-white text-indigo-700 border-2 border-indigo-300 font-black text-base shadow"
+              >
+                {uiText.retrySame}
+              </button>
+              <button
+                type="button"
+                onClick={endLearningSession}
+                disabled={sessionActionLoading}
+                className="w-full px-6 py-3 rounded-xl bg-emerald-600 text-white font-black text-base shadow disabled:bg-slate-300"
+              >
+                {uiText.endWithReport}
+              </button>
+              {!studentId && (
+                <div className="text-xs text-slate-700 bg-white/80 rounded-lg px-3 py-2 border border-slate-200 text-left">
+                  保護者設定が未保存のためレポート配信はできません。必要な場合は設定ページで保存してください。
+                </div>
+              )}
+              {sessionMailStatus && (
+                <div className="text-xs text-emerald-800 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-200 text-left">
+                  {sessionMailStatus}
+                </div>
+              )}
+              {sessionError && (
+                <div className="text-xs text-red-700 bg-red-50 rounded-lg px-3 py-2 border border-red-200 text-left">
+                  {sessionError}
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -2164,6 +2175,30 @@ function QuestPageInner() {
           </div>
         </div>
       ))}
+
+      {status === 'playing' && (
+        <section className="w-full pb-4 space-y-2">
+          <button
+            type="button"
+            onClick={endLearningSession}
+            disabled={sessionActionLoading}
+            className="w-full px-4 py-3 rounded-xl bg-emerald-600 text-white font-black text-base shadow disabled:bg-slate-300"
+          >
+            {uiText.endWithReport}
+          </button>
+          {!studentId && (
+            <div className="text-xs text-slate-600">
+              保護者設定が未保存のためレポート配信はできません。
+            </div>
+          )}
+          {sessionMailStatus && (
+            <div className="text-xs text-emerald-700 font-semibold">{sessionMailStatus}</div>
+          )}
+          {sessionError && (
+            <div className="text-xs text-red-700">{sessionError}</div>
+          )}
+        </section>
+      )}
 
     </main>
   );
