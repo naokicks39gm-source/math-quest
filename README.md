@@ -108,6 +108,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - 既定では `AUTO` が OFF で、描画中に自動判定を走らせません。
 - ガイド表示（28x28プレビュー、AutoDraw補助表示）は設定内の `ガイド` を ON にしたときだけ表示されます。
 - 認識テスト（`Batch*`）は設定（⚙）を開いたときだけ使えます。
+- 書き枠は入力エリアの横幅いっぱいに広がります（正方形）。
+- 枠の外側は最小 8px まで判定対象です。
 
 ## 環境変数（メール送信用）
 

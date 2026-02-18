@@ -73,6 +73,8 @@ type QuestionResultEntry = {
 const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
 const LS_STUDENT_ID = "mq:studentId";
 const QUESTION_POOL_SIZE = 30;
+const OUTER_MARGIN = 8;
+const DEFAULT_VISIBLE_CANVAS_SIZE = 300;
 
 export const getAutoJudgeDelayMs = (digits: number) => {
   if (digits <= 1) return 700;
@@ -1287,6 +1289,7 @@ function QuestPageInner() {
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
   const [resultMark, setResultMark] = useState<'correct' | 'wrong' | null>(null);
   const canvasRef = useRef<any>(null); // Ref for CanvasDraw component
+  const drawAreaRef = useRef<HTMLDivElement | null>(null);
   const [isModelReady, setIsModelReady] = useState(false); // New state for model readiness
   const [is2DigitModelReady, setIs2DigitModelReady] = useState(false);
   const autoRecognizeTimerRef = useRef<number | null>(null);
@@ -1332,6 +1335,7 @@ function QuestPageInner() {
   const forcedExpectedFormRef = useRef<ExpectedForm | null>(null);
   const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
   const [retryNonce, setRetryNonce] = useState(0);
+  const [visibleCanvasSize, setVisibleCanvasSize] = useState(DEFAULT_VISIBLE_CANVAS_SIZE);
   const clearResults = useMemo(
     () => Object.entries(questionResults).sort((a, b) => Number(a[0]) - Number(b[0])),
     [questionResults]
@@ -1491,6 +1495,19 @@ function QuestPageInner() {
     }, 2000);
     startTimersRef.current = [t1, t2];
   };
+
+  useEffect(() => {
+    const el = drawAreaRef.current;
+    if (!el) return;
+    const updateSize = () => {
+      const w = Math.floor(el.clientWidth);
+      if (w > 0) setVisibleCanvasSize(w);
+    };
+    updateSize();
+    const observer = new ResizeObserver(() => updateSize());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (inkFirstMode) {
@@ -2158,6 +2175,7 @@ function QuestPageInner() {
       runInference();
     }, nextDelay);
   };
+  const drawCanvasSize = visibleCanvasSize + OUTER_MARGIN * 2;
 
   const runAutoDrawTest = async (poolOverride?: string[]) => {
     const canvas = getDrawingCanvas(canvasRef.current);
@@ -2781,38 +2799,43 @@ function QuestPageInner() {
               </div>
             )}
           </div>
-          <div
-            onPointerDown={handleDrawStart}
-            onPointerUp={handleDrawEnd}
-            onPointerLeave={handleDrawEnd}
-            onPointerCancel={handleDrawEnd}
-            onTouchStart={handleDrawStart}
-            onTouchEnd={handleDrawEnd}
-            onMouseDown={handleDrawStart}
-            onMouseUp={handleDrawEnd}
-            className="rounded-xl relative"
-          >
-            <CanvasDraw
-              ref={canvasRef}
-              hideGrid={true}
-              brushRadius={3.2}
-              lazyRadius={0}
-              immediateLoading
-              brushColor="#000000"
-              backgroundColor="#ffffff"
-              canvasWidth={300}
-              canvasHeight={300}
-              className="rounded-xl border-2 border-slate-300 shadow-lg"
-              disabled={status !== 'playing'}
-              onChange={handleCanvasChange}
-            />
-            {startPopup && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
-                <div className="px-6 py-3 rounded-full bg-white text-indigo-700 font-black text-2xl shadow-lg">
-                  {startPopup === 'ready' ? 'Ready!' : 'Go!'}
+          <div ref={drawAreaRef} className="w-full">
+            <div
+              onPointerDown={handleDrawStart}
+              onPointerUp={handleDrawEnd}
+              onPointerLeave={handleDrawEnd}
+              onPointerCancel={handleDrawEnd}
+              onTouchStart={handleDrawStart}
+              onTouchEnd={handleDrawEnd}
+              onMouseDown={handleDrawStart}
+              onMouseUp={handleDrawEnd}
+              className="relative mx-auto overflow-visible"
+              style={{ width: visibleCanvasSize, height: visibleCanvasSize }}
+            >
+              <CanvasDraw
+                ref={canvasRef}
+                hideGrid={true}
+                brushRadius={3.2}
+                lazyRadius={0}
+                immediateLoading
+                brushColor="#000000"
+                backgroundColor="#ffffff"
+                canvasWidth={drawCanvasSize}
+                canvasHeight={drawCanvasSize}
+                className="absolute shadow-lg"
+                style={{ left: -OUTER_MARGIN, top: -OUTER_MARGIN }}
+                disabled={status !== 'playing'}
+                onChange={handleCanvasChange}
+              />
+              <div className="pointer-events-none absolute inset-0 rounded-xl border-2 border-slate-300" />
+              {startPopup && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
+                  <div className="px-6 py-3 rounded-full bg-white text-indigo-700 font-black text-2xl shadow-lg">
+                    {startPopup === 'ready' ? 'Ready!' : 'Go!'}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           {showRecognitionGuides && previewImages.length > 0 && (
             <div className="w-full flex justify-end">

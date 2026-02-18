@@ -14,9 +14,16 @@ test("ink-first mode defaults and guide toggles exist", () => {
 });
 
 test("canvas draw is tuned for direct handwriting and guides are conditional", () => {
+  assert.match(source, /const OUTER_MARGIN = 8;/);
+  assert.match(source, /const \[visibleCanvasSize, setVisibleCanvasSize\] = useState\(DEFAULT_VISIBLE_CANVAS_SIZE\)/);
+  assert.match(source, /const drawCanvasSize = visibleCanvasSize \+ OUTER_MARGIN \* 2;/);
+  assert.match(source, /new ResizeObserver/);
   assert.match(source, /brushRadius=\{3\.2\}/);
   assert.match(source, /lazyRadius=\{0\}/);
   assert.match(source, /immediateLoading/);
+  assert.match(source, /canvasWidth=\{drawCanvasSize\}/);
+  assert.match(source, /canvasHeight=\{drawCanvasSize\}/);
+  assert.match(source, /style=\{\{ left: -OUTER_MARGIN, top: -OUTER_MARGIN \}\}/);
   assert.match(source, /showRecognitionGuides && previewImages\.length > 0/);
 });
 
