@@ -20,6 +20,23 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## 実機スマホ接続（同一Wi-Fi）
+
+`npm run dev` は `0.0.0.0:3000` で待ち受けるため、同一Wi-Fi内のスマホからアクセスできます。
+
+1. Mac とスマホを同じWi-Fiに接続する。
+2. スマホのSafariで次のどちらかを開く。
+- `http://<Macのlocal名>.local:3000`（推奨）
+- `http://<固定IP>:3000`（DHCP予約を使う場合）
+3. 開けたら、Safariの共有メニューから「ホーム画面に追加」で擬似アプリ化する。
+
+### 固定URL運用
+
+- 優先: `.local` 名アクセス（例: `macbook-pro.local:3000`）
+- 代替: ルーターでDHCP予約し、Macに固定IPを割り当てる
+
+どちらも、毎回URLを探し直す手間を減らせます。
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
@@ -55,6 +72,24 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - カテゴリごとの代表誤答（問題/入力/正解）
 - 直近3回平均との差分
 - 次にやるとよい内容
+
+## 実機確認チェックシート
+
+1. `/` が表示される
+2. `/guardian` で保存できる
+3. `/quest` の手書き入力が動く
+4. `学習終了（レポート配信）` 押下後、送信結果が確認できる
+
+## トラブルシュート（スマホ接続）
+
+- 接続不可:
+  Macとスマホが同一Wi-Fiか確認。
+- タイムアウト:
+  開発サーバーが起動中か確認。
+- メール送信不可:
+  `.env.local` の `MQ_SMTP_*` と `MQ_MAIL_PROVIDER` を確認。
+- iPhoneで古い画面が出る:
+  Safariで再読み込み、必要なら履歴とWebサイトデータを削除。
 
 ## 環境変数（メール送信用）
 

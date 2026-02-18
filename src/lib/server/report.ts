@@ -4,7 +4,7 @@ import {
   getRecentCompletedSessions,
   getSessionAnswers
 } from "@/lib/server/db";
-import data from "@/content/mathquest_all_grades_from_split_v1";
+import { getCatalogGrades } from "@/lib/gradeCatalog";
 
 export type GuardianReport = {
   total: number;
@@ -18,6 +18,9 @@ export type GuardianReport = {
   categoryStats: Array<{
     categoryId: string;
     categoryName: string;
+    typeId: string;
+    typeName: string;
+    fullPathName: string;
     total: number;
     correct: number;
     accuracy: number;
@@ -37,23 +40,19 @@ export type GuardianReport = {
 type TypeMeta = {
   categoryId: string;
   categoryName: string;
+  typeName: string;
 };
 
 const typeMetaMap = (() => {
   const map = new Map<string, TypeMeta>();
-  const grades = (data.grades ?? []) as Array<{
-    categories?: Array<{
-      category_id: string;
-      category_name: string;
-      types?: Array<{ type_id: string }>;
-    }>;
-  }>;
+  const grades = getCatalogGrades();
   for (const grade of grades) {
     for (const category of grade.categories ?? []) {
       for (const type of category.types ?? []) {
         map.set(type.type_id, {
           categoryId: category.category_id,
-          categoryName: category.category_name
+          categoryName: category.category_name,
+          typeName: type.display_name ?? type.type_name
         });
       }
     }
@@ -66,7 +65,8 @@ const getTypeMeta = (typeId: string): TypeMeta => {
   if (hit) return hit;
   return {
     categoryId: "unknown",
-    categoryName: "未分類"
+    categoryName: "未分類",
+    typeName: typeId
   };
 };
 
@@ -108,6 +108,10 @@ export const buildGuardianReport = (params: {
     string,
     { categoryId: string; categoryName: string; total: number; correct: number; wrong: number }
   >();
+  const byType = new Map<
+    string,
+    { categoryId: string; categoryName: string; typeId: string; typeName: string; total: number; correct: number }
+  >();
 
   for (const answer of answers) {
     const meta = getTypeMeta(answer.typeId);
@@ -126,17 +130,34 @@ export const buildGuardianReport = (params: {
       row.wrong += 1;
     }
     byCategory.set(key, row);
+
+    const typeRow = byType.get(answer.typeId) ?? {
+      categoryId: meta.categoryId,
+      categoryName: meta.categoryName,
+      typeId: answer.typeId,
+      typeName: meta.typeName,
+      total: 0,
+      correct: 0
+    };
+    typeRow.total += 1;
+    if (answer.isCorrect) {
+      typeRow.correct += 1;
+    }
+    byType.set(answer.typeId, typeRow);
   }
 
-  const categoryStats = Array.from(byCategory.values())
+  const categoryStats = Array.from(byType.values())
     .map((row) => ({
       categoryId: row.categoryId,
       categoryName: row.categoryName,
+      typeId: row.typeId,
+      typeName: row.typeName,
+      fullPathName: `${row.categoryName}　${row.typeName}`,
       total: row.total,
       correct: row.correct,
       accuracy: row.total > 0 ? row.correct / row.total : 0
     }))
-    .sort((a, b) => b.total - a.total || a.categoryId.localeCompare(b.categoryId));
+    .sort((a, b) => b.total - a.total || a.fullPathName.localeCompare(b.fullPathName));
 
   const wrongHighlights: GuardianReport["wrongHighlights"] = [];
   const seenWrongCategory = new Set<string>();
@@ -160,8 +181,8 @@ export const buildGuardianReport = (params: {
   const nextActions: string[] = [];
 
   const currentWrongRate = new Map<string, number>();
-  for (const stat of categoryStats) {
-    currentWrongRate.set(stat.categoryId, stat.total > 0 ? (stat.total - stat.correct) / stat.total : 0);
+  for (const stat of byCategory.values()) {
+    currentWrongRate.set(stat.categoryId, stat.total > 0 ? stat.wrong / stat.total : 0);
   }
 
   if (previousSessions.length === 0) {
@@ -197,7 +218,7 @@ export const buildGuardianReport = (params: {
         const prevRate = prev && prev.total > 0 ? prev.wrong / prev.total : 0;
         return {
           categoryId,
-          categoryName: categoryStats.find((c) => c.categoryId === categoryId)?.categoryName ?? categoryId,
+          categoryName: byCategory.get(categoryId)?.categoryName ?? categoryId,
           delta: rate - prevRate
         };
       })
@@ -212,12 +233,14 @@ export const buildGuardianReport = (params: {
     }
   }
 
-  const byWrongRate = [...categoryStats]
+  const byWrongRate = Array.from(byCategory.values())
     .map((c) => ({ ...c, wrongRate: c.total > 0 ? (c.total - c.correct) / c.total : 0 }))
     .sort((a, b) => b.wrongRate - a.wrongRate || b.total - a.total);
 
   if (wrongHighlights.length === 0) {
-    const best = [...categoryStats].sort((a, b) => b.accuracy - a.accuracy || b.total - a.total)[0];
+    const best = [...byCategory.values()]
+      .map((c) => ({ ...c, accuracy: c.total > 0 ? c.correct / c.total : 0 }))
+      .sort((a, b) => b.accuracy - a.accuracy || b.total - a.total)[0];
     if (best) {
       nextActions.push(
         `${best.categoryName}: 正答率が高いので難易度を1段上げた問題に進みましょう。`
@@ -267,7 +290,7 @@ export const renderGuardianReportMail = (studentName: string, report: GuardianRe
     report.categoryStats.length === 0
       ? "・実績データなし"
       : report.categoryStats
-          .map((c) => `・${c.categoryName}: ${c.total}問 / 正答率 ${(c.accuracy * 100).toFixed(1)}%`)
+          .map((c) => `・${c.fullPathName}: ${c.total}問 / 正答率 ${(c.accuracy * 100).toFixed(1)}%`)
           .join("\n");
   const wrongLines =
     report.wrongHighlights.length === 0
@@ -316,7 +339,7 @@ export const renderGuardianReportMail = (studentName: string, report: GuardianRe
           ? "<li>実績データなし</li>"
           : htmlList(
               report.categoryStats.map(
-                (c) => `${c.categoryName}: ${c.total}問 / 正答率 ${(c.accuracy * 100).toFixed(1)}%`
+                (c) => `${c.fullPathName}: ${c.total}問 / 正答率 ${(c.accuracy * 100).toFixed(1)}%`
               )
             )
       }
