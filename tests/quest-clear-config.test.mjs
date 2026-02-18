@@ -15,8 +15,16 @@ test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("クリアー！"), true);
   assert.equal(source.includes("if (v + 1 >= totalQuizQuestions)"), true);
   assert.equal(source.includes("setQuestionResults((prev) => ({"), true);
-  assert.equal(source.includes("setMistakeLog((prev) => ["), true);
+  assert.equal(source.includes("correctAnswer?: string"), true);
+  assert.equal(source.includes("everWrong: boolean"), true);
+  assert.equal(source.includes("firstWrongAnswer?: string"), true);
+  assert.equal(source.includes("const finalWrong = r.everWrong === true;"), true);
+  assert.equal(source.includes("r.firstWrongAnswer ?? r.userAnswer"), true);
+  assert.equal(source.includes("correct: !everWrong"), true);
   assert.equal(source.includes("if (isDrawingRef.current) return \"\";"), true);
   assert.equal(source.includes("次のレベルに進む"), true);
+  assert.equal(source.includes("もう一度勉強する"), true);
+  assert.equal(source.includes("restartSameLevel"), true);
+  assert.equal(source.includes("まちがえた もんだい"), false);
   assert.equal(source.includes("`/quest?type=${encodeURIComponent(next.typeId)}&category=${encodeURIComponent(next.categoryId)}`"), true);
 });
