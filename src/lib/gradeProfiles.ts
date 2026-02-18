@@ -220,7 +220,7 @@ const profiles: Record<string, GradeProfile> = {
     conceptTags: ["rational_number"],
     keep: (type) => {
       const p = getPatternId(type);
-      return hasPrefix(p, "ADD_") || hasPrefix(p, "SUB_") || (hasPrefix(p, "MUL_") && p !== "MUL_2D_1D" && p !== "MUL_3D_1D") || (hasPrefix(p, "DIV_") && p !== "DIV_Q1D_EXACT" && p !== "DIV_Q1D_REM" && p !== "DIV_Q2D_EXACT" && p !== "DIV_Q2D_REM" && p !== "DIV_Q3D_EXACT" && p !== "DIV_Q3D_REM") || hasPrefix(p, "DEC_") || hasPrefix(p, "FRAC_");
+      return hasPrefix(p, "ADD_") || hasPrefix(p, "SUB_") || (hasPrefix(p, "MUL_") && p !== "MUL_1D_1D" && p !== "MUL_2D_1D" && p !== "MUL_3D_1D") || (hasPrefix(p, "DIV_") && p !== "DIV_Q1D_EXACT" && p !== "DIV_Q1D_REM" && p !== "DIV_Q2D_EXACT" && p !== "DIV_Q2D_REM" && p !== "DIV_Q3D_EXACT" && p !== "DIV_Q3D_REM") || hasPrefix(p, "DEC_") || hasPrefix(p, "FRAC_");
     },
     synthetic: [
       intType("E5.NA.MUL.MUL_3D_2D", "かけ算（3けた×2けた）", "MUL_3D_2D", [
