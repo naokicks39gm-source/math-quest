@@ -10,6 +10,7 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getCatalogGrades } from '@/lib/gradeCatalog';
+import { buildUniqueQuestSet } from '@/lib/questItemFactory';
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -38,6 +39,15 @@ type TypeDef = {
   type_id: string;
   type_name: string;
   display_name?: string;
+  generation_params?: {
+    pattern_id?: string;
+    a_digits?: number;
+    b_digits?: number;
+    carry?: boolean | null;
+    borrow?: boolean | null;
+    decimal_places?: number;
+    quotient_digits?: number;
+  };
   answer_format: AnswerFormat;
   example_items: ExampleItem[];
 };
@@ -72,7 +82,7 @@ type QuestionResultEntry = {
 
 const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
 const LS_STUDENT_ID = "mq:studentId";
-const QUESTION_POOL_SIZE = 30;
+const QUESTION_POOL_SIZE = 50;
 const OUTER_MARGIN = 8;
 const DEFAULT_VISIBLE_CANVAS_SIZE = 300;
 
@@ -80,59 +90,6 @@ export const getAutoJudgeDelayMs = (digits: number) => {
   if (digits <= 1) return 700;
   if (digits === 2) return 1000;
   return 1300;
-};
-
-const shuffle = <T,>(list: T[]) => {
-  const copied = [...list];
-  for (let i = copied.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copied[i], copied[j]] = [copied[j], copied[i]];
-  }
-  return copied;
-};
-
-const buildRandomQuestionSet = (source: QuestEntry[], poolSize: number, quizSize: number) => {
-  if (source.length === 0) return [];
-  const entryKey = (entry: QuestEntry) =>
-    `${entry.type.type_id}::${entry.item.prompt_tex ?? entry.item.prompt}::${entry.item.answer}`;
-  const uniqueMap = new Map<string, QuestEntry>();
-  for (const entry of source) {
-    uniqueMap.set(entryKey(entry), entry);
-  }
-  const uniqueSource = [...uniqueMap.values()];
-
-  if (uniqueSource.length >= quizSize) {
-    return shuffle(uniqueSource).slice(0, quizSize);
-  }
-
-  const pool: QuestEntry[] = [];
-  if (uniqueSource.length >= poolSize) {
-    pool.push(...shuffle(uniqueSource).slice(0, poolSize));
-  } else {
-    const shuffledBase = shuffle(uniqueSource);
-    while (pool.length < poolSize) {
-      const remaining = poolSize - pool.length;
-      pool.push(...shuffle(shuffledBase).slice(0, Math.min(shuffledBase.length, remaining)));
-    }
-  }
-  const shuffledPool = shuffle(pool);
-  const picked: QuestEntry[] = [];
-  for (const candidate of shuffledPool) {
-    if (picked.length >= quizSize) break;
-    const prev = picked[picked.length - 1];
-    if (prev && entryKey(prev) === entryKey(candidate)) continue;
-    picked.push(candidate);
-  }
-
-  // Fill shortfall while preventing immediate duplicates.
-  while (picked.length < quizSize && uniqueSource.length > 0) {
-    const prev = picked[picked.length - 1];
-    const options = uniqueSource.filter((entry) => !prev || entryKey(prev) !== entryKey(entry));
-    const bag = options.length > 0 ? options : uniqueSource;
-    picked.push(bag[Math.floor(Math.random() * bag.length)]);
-  }
-
-  return picked;
 };
 
 const typeSignature = (typeId: string) => typeId.replace(/^[A-Z]\d\./, "");
@@ -1729,7 +1686,11 @@ function QuestPageInner() {
   }, [hasTypeQuery, selectedTypeSignature, activeItems, allCategoryItems]);
   const quizSize = Math.min(TOTAL_QUESTIONS, QUESTION_POOL_SIZE);
   useEffect(() => {
-    const nextSet = buildRandomQuestionSet(poolCandidates, QUESTION_POOL_SIZE, quizSize);
+    const nextSet = buildUniqueQuestSet({
+      source: poolCandidates,
+      poolSize: QUESTION_POOL_SIZE,
+      quizSize
+    });
     setQuizItems(nextSet);
     setItemIndex(0);
     setQuestionResults({});

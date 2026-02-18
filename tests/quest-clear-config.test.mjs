@@ -8,8 +8,8 @@ const source = fs.readFileSync(questPath, "utf8");
 
 test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("const TOTAL_QUESTIONS = 5;"), true);
-  assert.equal(source.includes("const QUESTION_POOL_SIZE = 30;"), true);
-  assert.equal(source.includes("buildRandomQuestionSet(poolCandidates, QUESTION_POOL_SIZE, quizSize)"), true);
+  assert.equal(source.includes("const QUESTION_POOL_SIZE = 50;"), true);
+  assert.equal(source.includes("buildUniqueQuestSet({"), true);
   assert.equal(source.includes("const sameTypeAcrossGrades = allCategoryItems.filter("), true);
   assert.equal(source.includes("setStatus('cleared');"), true);
   assert.equal(source.includes("クリアー！"), true);
