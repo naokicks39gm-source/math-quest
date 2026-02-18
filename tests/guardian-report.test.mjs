@@ -39,6 +39,7 @@ test("guardian report mail includes required sections", () => {
   const source = read("src/lib/server/report.ts");
   assert.match(source, /1\. 学習時間/);
   assert.match(source, /2\. 解いたカテゴリ/);
+  assert.match(source, /fullPathName/);
   assert.match(source, /3\. カテゴリごとの代表誤答/);
   assert.match(source, /4\. 直近3回平均との差分/);
   assert.match(source, /5\. 次にやるとよい内容/);

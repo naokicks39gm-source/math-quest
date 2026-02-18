@@ -10,10 +10,13 @@ const LS_LAST_TYPE_ID = "mq:last_type_id";
 export default function Home() {
   const router = useRouter();
   const grades = useMemo(() => getCatalogGrades() as GradeDef[], []);
+  const initialGrade = grades[0];
+  const initialCategory = initialGrade?.categories[0];
+  const initialType = initialCategory?.types[0];
 
-  const [gradeId, setGradeId] = useState(grades[0]?.grade_id ?? "");
-  const [categoryId, setCategoryId] = useState("");
-  const [typeId, setTypeId] = useState("");
+  const [gradeId, setGradeId] = useState(initialGrade?.grade_id ?? "");
+  const [categoryId, setCategoryId] = useState(initialCategory?.category_id ?? "");
+  const [typeId, setTypeId] = useState(initialType?.type_id ?? "");
 
   const categories = useMemo(() => {
     return grades.find((g) => g.grade_id === gradeId)?.categories ?? [];
@@ -42,18 +45,6 @@ export default function Home() {
     setTypeId(savedTypeId);
   }, [grades]);
 
-  useEffect(() => {
-    if (categories.length > 0 && !categoryId) {
-      setCategoryId(categories[0].category_id);
-    }
-  }, [categories, categoryId]);
-
-  useEffect(() => {
-    if (types.length > 0 && !typeId) {
-      setTypeId(types[0].type_id);
-    }
-  }, [types, typeId]);
-
   const handleStart = () => {
     if (!typeId) return;
     localStorage.setItem(LS_LAST_TYPE_ID, typeId);
@@ -78,9 +69,12 @@ export default function Home() {
               className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
               value={gradeId}
               onChange={(e) => {
-                setGradeId(e.target.value);
-                setCategoryId("");
-                setTypeId("");
+                const nextGradeId = e.target.value;
+                setGradeId(nextGradeId);
+                const nextGrade = grades.find((g) => g.grade_id === nextGradeId);
+                const nextCategory = nextGrade?.categories[0];
+                setCategoryId(nextCategory?.category_id ?? "");
+                setTypeId(nextCategory?.types[0]?.type_id ?? "");
               }}
             >
               {grades.map((g) => (
@@ -97,8 +91,10 @@ export default function Home() {
               className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
               value={categoryId}
               onChange={(e) => {
-                setCategoryId(e.target.value);
-                setTypeId("");
+                const nextCategoryId = e.target.value;
+                setCategoryId(nextCategoryId);
+                const nextCategory = categories.find((c) => c.category_id === nextCategoryId);
+                setTypeId(nextCategory?.types[0]?.type_id ?? "");
               }}
             >
               {categories.map((c) => (
@@ -147,8 +143,7 @@ export default function Home() {
           </p>
         </section>
 
-        <section className="w-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
-          <div className="font-semibold text-slate-800">保護者レポート設定</div>
+        <section className="w-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <button
             type="button"
             onClick={() => router.push("/guardian")}

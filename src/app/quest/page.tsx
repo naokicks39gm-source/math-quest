@@ -872,9 +872,9 @@ function QuestPageInner() {
   const [autoDrawBatchSummary, setAutoDrawBatchSummary] = useState<string | null>(null);
   const [studentId, setStudentId] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [sessionMailStatus, setSessionMailStatus] = useState<string | null>(null);
+  const [, setSessionMailStatus] = useState<string | null>(null);
   const [sessionActionLoading, setSessionActionLoading] = useState(false);
-  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [, setSessionError] = useState<string | null>(null);
   const sessionStartInFlightRef = useRef<Promise<string | null> | null>(null);
   const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
   const [retryNonce, setRetryNonce] = useState(0);
@@ -1784,7 +1784,7 @@ function QuestPageInner() {
   const displayedAnswer = inputMode === 'numpad' ? input : (recognizedNumber ?? "");
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-between p-4 max-w-md mx-auto border-x border-slate-200 shadow-sm relative">
+    <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center p-4 max-w-md mx-auto border-x border-slate-200 shadow-sm relative">
       
       {/* Input Mode Toggle removed */}
 
@@ -1797,29 +1797,6 @@ function QuestPageInner() {
           {selectedPath.gradeName} / {selectedPath.categoryName} / {selectedPath.typeName}
         </button>
       )}
-      <section className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs space-y-2">
-        <div className="font-bold text-slate-700">学習終了（レポート配信）</div>
-        <button
-          type="button"
-          onClick={endLearningSession}
-          disabled={sessionActionLoading}
-          className="px-3 py-1 rounded bg-emerald-600 text-white font-bold disabled:bg-slate-300"
-        >
-          学習終了（レポート配信）
-        </button>
-        {!studentId && (
-          <div className="text-slate-500">
-            保護者設定が未保存のためレポート配信はできません。必要な場合は設定ページで保存してください。
-          </div>
-        )}
-        {sessionMailStatus && <div className="text-emerald-700 font-semibold">{sessionMailStatus}</div>}
-      </section>
-      {sessionError && (
-        <section className="w-full bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
-          {sessionError}
-        </section>
-      )}
-
       {/* Center: Character & Message */} 
       <div className="flex flex-col items-center space-y-4 my-4 flex-1 justify-center w-full">
         {status === 'cleared' ? (
@@ -2160,6 +2137,17 @@ function QuestPageInner() {
           </div>
         </div>
       )}
+
+      <div className="w-full mt-auto pb-2">
+        <button
+          type="button"
+          onClick={endLearningSession}
+          disabled={sessionActionLoading}
+          className="w-full px-3 py-2 rounded bg-emerald-600 text-white font-bold disabled:bg-slate-300"
+        >
+          学習終了（レポート配信）
+        </button>
+      </div>
 
     </main>
   );
