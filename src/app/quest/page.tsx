@@ -60,6 +60,7 @@ type QuestEntry = {
 };
 
 const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
+const LS_STUDENT_ID = "mq:studentId";
 const QUESTION_POOL_SIZE = 30;
 
 const shuffle = <T,>(list: T[]) => {
@@ -870,8 +871,12 @@ function QuestPageInner() {
   const [practiceResult, setPracticeResult] = useState<{ ok: boolean; correctAnswer: string } | null>(null);
   const [lastAutoDrawExpected, setLastAutoDrawExpected] = useState("");
   const [autoDrawBatchSummary, setAutoDrawBatchSummary] = useState<string | null>(null);
+  const [studentId, setStudentId] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionMailStatus, setSessionMailStatus] = useState<string | null>(null);
+  const [sessionActionLoading, setSessionActionLoading] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const sessionStartInFlightRef = useRef<Promise<string | null> | null>(null);
   const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
   const clearResults = useMemo(
     () => Object.entries(questionResults).sort((a, b) => Number(a[0]) - Number(b[0])),
@@ -918,9 +923,60 @@ function QuestPageInner() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const sid = localStorage.getItem(LS_STUDENT_ID);
     const sessionId = localStorage.getItem(LS_ACTIVE_SESSION_ID);
+    setStudentId(sid);
     setActiveSessionId(sessionId);
   }, []);
+
+  const ensureActiveSession = async (): Promise<string | null> => {
+    if (activeSessionId) return activeSessionId;
+    if (!studentId) return null;
+    if (sessionStartInFlightRef.current) {
+      return sessionStartInFlightRef.current;
+    }
+    const promise = (async () => {
+      try {
+        const json = await postJson("/api/session/start", { studentId });
+        const id = String(json.sessionId);
+        setActiveSessionId(id);
+        if (typeof window !== "undefined") {
+          localStorage.setItem(LS_ACTIVE_SESSION_ID, id);
+        }
+        return id;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "session_start_failed";
+        setSessionError(message);
+        return null;
+      } finally {
+        sessionStartInFlightRef.current = null;
+      }
+    })();
+    sessionStartInFlightRef.current = promise;
+    return promise;
+  };
+
+  const endLearningSession = async () => {
+    if (!activeSessionId) {
+      setSessionError("セッションが開始されていません。保護者設定を保存した状態で回答すると自動開始されます。");
+      return;
+    }
+    try {
+      setSessionActionLoading(true);
+      setSessionError(null);
+      const json = await postJson("/api/session/end", { sessionId: activeSessionId });
+      setSessionMailStatus(`メール: ${json.mail.status} (${json.mail.toMasked})`);
+      setActiveSessionId(null);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(LS_ACTIVE_SESSION_ID);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "session_end_failed";
+      setSessionError(message);
+    } finally {
+      setSessionActionLoading(false);
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -1447,9 +1503,10 @@ function QuestPageInner() {
       const verdict = gradeAnswer(predictedText, currentItem.answer, currentType.answer_format);
       setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
       const resultText = currentItem.prompt_tex ?? currentItem.prompt;
-      if (activeSessionId) {
+      const resolvedSessionId = await ensureActiveSession();
+      if (resolvedSessionId) {
         void postJson("/api/session/answer", {
-          sessionId: activeSessionId,
+          sessionId: resolvedSessionId,
           typeId: currentType.type_id,
           prompt: currentItem.prompt,
           predicted: predictedText,
@@ -1725,6 +1782,23 @@ function QuestPageInner() {
           {selectedPath.gradeName} / {selectedPath.categoryName} / {selectedPath.typeName}
         </button>
       )}
+      <section className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs space-y-2">
+        <div className="font-bold text-slate-700">学習終了（レポート配信）</div>
+        <button
+          type="button"
+          onClick={endLearningSession}
+          disabled={sessionActionLoading}
+          className="px-3 py-1 rounded bg-emerald-600 text-white font-bold disabled:bg-slate-300"
+        >
+          学習終了（レポート配信）
+        </button>
+        {!studentId && (
+          <div className="text-slate-500">
+            保護者設定が未保存のためレポート配信はできません。必要な場合は設定ページで保存してください。
+          </div>
+        )}
+        {sessionMailStatus && <div className="text-emerald-700 font-semibold">{sessionMailStatus}</div>}
+      </section>
       {sessionError && (
         <section className="w-full bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700">
           {sessionError}
