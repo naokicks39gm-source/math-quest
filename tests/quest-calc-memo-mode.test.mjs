@@ -8,6 +8,8 @@ const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 test("quest is keypad-only and memo canvas does not trigger handwriting judge", () => {
   const source = read("src/app/quest/page.tsx");
   assert.match(source, /const \[inputMode\] = useState<'numpad' \| 'handwriting'>\('numpad'\)/);
+  assert.match(source, /isMemoOpen/);
+  assert.match(source, /計算メモ/);
   assert.match(source, /onClick=\{handleAttack\}/);
   assert.doesNotMatch(source, /onClick=\{\(\) => runInference\(\)\}/);
 });

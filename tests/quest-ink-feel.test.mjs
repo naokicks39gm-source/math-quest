@@ -8,10 +8,13 @@ const legacySource = fs.readFileSync(path.join(process.cwd(), "src/app/quest-han
 
 test("quest uses keypad answer flow and calc memo canvas", () => {
   assert.match(questSource, /const \[inputMode\] = useState<'numpad' \| 'handwriting'>\('numpad'\)/);
+  assert.match(questSource, /const \[isMemoOpen, setIsMemoOpen\] = useState\(false\)/);
+  assert.match(questSource, /計算メモを閉じる/);
   assert.match(questSource, /data-testid="calc-memo-area"/);
   assert.match(questSource, /計算メモ/);
   assert.match(questSource, /onClick=\{handleAttack\}/);
   assert.match(questSource, /onClick=\{clearMemo\}/);
+  assert.match(questSource, /onClick=\{\(\) => setIsMemoOpen\(\(prev\) => !prev\)\}/);
 });
 
 test("calc memo is stabilized without pinch handlers", () => {
