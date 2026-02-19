@@ -18,6 +18,8 @@ type MixedFraction = {
   den: number;
 };
 
+type IntPair = [number, number];
+
 const gcd = (a: number, b: number): number => {
   let x = Math.abs(a);
   let y = Math.abs(b);
@@ -91,6 +93,20 @@ const isSimplificationRequired = (typeId?: string) => {
   return /^(E[5-9]|E[1-9]\d|J\d|H\d)\./.test(typeId);
 };
 
+const parseIntPair = (input: string): IntPair | null => {
+  const normalized = input.trim().replace(/\s+/g, "");
+  const parts = normalized.split(/[,，]/);
+  if (parts.length !== 2) return null;
+  const a = Number(parts[0]);
+  const b = Number(parts[1]);
+  if (!Number.isInteger(a) || !Number.isInteger(b)) return null;
+  return [a, b];
+};
+
+const sortIntPairAsc = (pair: IntPair): IntPair => (pair[0] <= pair[1] ? pair : [pair[1], pair[0]]);
+
+const isQuadraticRootsPairType = (typeId?: string) => Boolean(typeId && /^H\d\.AL\.EQ\.QUAD_ROOTS$/.test(typeId));
+
 export const gradeAnswer = (
   userInput: string,
   correctAnswer: string,
@@ -155,6 +171,26 @@ export const gradeAnswer = (
     return {
       ok: sameValue,
       normalized: `${userReduced.num}/${userReduced.den}`
+    };
+  }
+  if (format.kind === "pair") {
+    const userPair = parseIntPair(inputRaw);
+    const correctPair = parseIntPair(correctAnswer.trim());
+    if (!userPair || !correctPair) {
+      return { ok: false, normalized: "" };
+    }
+    const unordered = isQuadraticRootsPairType(opts?.typeId);
+    if (unordered) {
+      const userSorted = sortIntPairAsc(userPair);
+      const correctSorted = sortIntPairAsc(correctPair);
+      return {
+        ok: userSorted[0] === correctSorted[0] && userSorted[1] === correctSorted[1],
+        normalized: `${userSorted[0]},${userSorted[1]}`
+      };
+    }
+    return {
+      ok: userPair[0] === correctPair[0] && userPair[1] === correctPair[1],
+      normalized: `${userPair[0]},${userPair[1]}`
     };
   }
   return { ok: false, normalized: "" };

@@ -123,6 +123,8 @@ const isMixedFractionQuestion = (
   return merged.includes("帯分数") || merged.includes("仮分数");
 };
 
+const isQuadraticRootsType = (typeId?: string) => Boolean(typeId && /^H\d\.AL\.EQ\.QUAD_ROOTS$/.test(typeId));
+
 const INTEGER_FRACTION_PATTERN = /([+-]?\d+)\/([+-]?\d+)/g;
 const EXPONENT_FRACTION_PATTERN = /([A-Za-z0-9(){}+\-^]+)\s*\/\s*([A-Za-z0-9(){}+\-^]+)/g;
 
@@ -1417,6 +1419,8 @@ function QuestPageInner() {
   const [inputMode, setInputMode] = useState<'numpad' | 'handwriting'>('handwriting'); // New state for input mode
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
+  const [quadraticAnswers, setQuadraticAnswers] = useState<[string, string]>(["", ""]);
+  const [quadraticActiveIndex, setQuadraticActiveIndex] = useState<0 | 1>(0);
   const [resultMark, setResultMark] = useState<'correct' | 'wrong' | null>(null);
   const canvasRef = useRef<any>(null); // Ref for CanvasDraw component
   const drawAreaRef = useRef<HTMLDivElement | null>(null);
@@ -1850,6 +1854,8 @@ function QuestPageInner() {
     setPracticeResult(null);
     setResultMark(null);
     setRecognizedNumber(null);
+    setQuadraticAnswers(["", ""]);
+    setQuadraticActiveIndex(0);
   }, [poolCandidates, quizSize, retryNonce]);
 
   const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
@@ -1858,6 +1864,7 @@ function QuestPageInner() {
   const currentItem = currentEntry?.item ?? null;
   const currentType = currentEntry?.type ?? selectedType;
   const nextItem = nextEntry?.item ?? null;
+  const isQuadraticRootsQuestion = isQuadraticRootsType(currentType?.type_id);
   const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
   const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
   const uiText = isEarlyElementary
@@ -1922,6 +1929,8 @@ function QuestPageInner() {
     setPracticeResult(null);
     setResultMark(null);
     setRecognizedNumber(null);
+    setQuadraticAnswers(["", ""]);
+    setQuadraticActiveIndex(0);
     setPreviewImages([]);
     setCombo(0);
     setStatus("playing");
@@ -1934,6 +1943,8 @@ function QuestPageInner() {
     setPracticeResult(null);
     setResultMark(null);
     setRecognizedNumber(null);
+    setQuadraticAnswers(["", ""]);
+    setQuadraticActiveIndex(0);
     setPreviewImages([]);
     canvasRef.current?.clear();
   }, [itemIndex]);
@@ -2211,7 +2222,29 @@ function QuestPageInner() {
     }
 
     if (predictedText && currentItem && currentType) {
-      const verdict = gradeAnswer(predictedText, currentItem.answer, currentType.answer_format, {
+      let userInputForJudge = predictedText;
+      if (isQuadraticRootsType(currentType.type_id)) {
+        const nextPair: [string, string] = [...quadraticAnswers] as [string, string];
+        nextPair[quadraticActiveIndex] = predictedText;
+        const normalizedPair: [string, string] = [nextPair[0].trim(), nextPair[1].trim()];
+        setQuadraticAnswers(normalizedPair);
+        const nextActive: 0 | 1 =
+          normalizedPair[0] && !normalizedPair[1]
+            ? 1
+            : !normalizedPair[0] && normalizedPair[1]
+              ? 0
+              : quadraticActiveIndex;
+        setQuadraticActiveIndex(nextActive);
+        setRecognizedNumber(normalizedPair.filter(Boolean).join(","));
+        if (!normalizedPair[0] || !normalizedPair[1]) {
+          canvasRef.current?.clear();
+          setIsRecognizing(false);
+          return predictedText;
+        }
+        userInputForJudge = `${normalizedPair[0]},${normalizedPair[1]}`;
+      }
+
+      const verdict = gradeAnswer(userInputForJudge, currentItem.answer, currentType.answer_format, {
         typeId: currentType.type_id,
         expectedForm
       });
@@ -2222,7 +2255,7 @@ function QuestPageInner() {
           sessionId: resolvedSessionId,
           typeId: currentType.type_id,
           prompt: currentItem.prompt,
-          predicted: predictedText,
+          predicted: userInputForJudge,
           correctAnswer: currentItem.answer,
           isCorrect: verdict.ok
         }).catch((error: unknown) => {
@@ -2237,11 +2270,11 @@ function QuestPageInner() {
           const everWrong = (prevEntry?.everWrong ?? false) || !verdict.ok;
           const firstWrongAnswer =
             prevEntry?.firstWrongAnswer ??
-            (!verdict.ok ? predictedText : undefined);
+            (!verdict.ok ? userInputForJudge : undefined);
           return {
             prompt: currentItem.prompt,
             promptTex: currentItem.prompt_tex,
-            userAnswer: predictedText,
+            userAnswer: userInputForJudge,
             correct: !everWrong,
             correctAnswer: currentItem.answer,
             everWrong,
@@ -2315,6 +2348,20 @@ function QuestPageInner() {
         }
       }
     }
+  };
+
+  const handleResetAnswer = () => {
+    canvasRef.current?.clear();
+    if (!isQuadraticRootsQuestion) {
+      setRecognizedNumber(null);
+      return;
+    }
+    setQuadraticAnswers((prev) => {
+      const next: [string, string] = [...prev] as [string, string];
+      next[quadraticActiveIndex] = "";
+      setRecognizedNumber(next.filter(Boolean).join(","));
+      return next;
+    });
   };
 
   const handleCanvasChange = () => {
@@ -2674,7 +2721,7 @@ function QuestPageInner() {
           onClick={() => router.push("/")}
           className="w-full bg-white border-2 border-slate-200 rounded-2xl px-4 py-3 text-base font-extrabold text-slate-700 text-left hover:bg-slate-50"
         >
-          {selectedPath.gradeName} / {selectedPath.categoryName} / {selectedPath.typeName}
+          {selectedPath.gradeName} / {selectedPath.typeName}
         </button>
       )}
       {/* Center: Character & Message */} 
@@ -2786,16 +2833,45 @@ function QuestPageInner() {
                       <div className="min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold">
                         {renderPrompt(currentItem)}
                       </div>
-                      <div className="w-full sm:w-auto flex items-center gap-2">
-                        <span className="text-[26px] sm:text-[30px] font-bold text-slate-500">=</span>
-                        <div
-                          aria-label="recognized-answer"
-                          className="w-full sm:w-auto sm:min-w-[170px] max-w-full h-[56px] sm:h-[64px] px-3 sm:px-4 rounded-xl border-2 border-[#111] text-[26px] sm:text-[30px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end"
-                          style={{ opacity: displayedAnswer ? 1 : 0.35 }}
-                        >
-                          {displayedAnswer || "\u2007"}
+                      {isQuadraticRootsQuestion ? (
+                        <div className="w-full sm:w-auto flex items-center gap-2 flex-wrap">
+                          <span className="text-[20px] sm:text-[24px] font-bold text-slate-500">x1 =</span>
+                          <button
+                            type="button"
+                            onClick={() => setQuadraticActiveIndex(0)}
+                            aria-label="recognized-answer-1"
+                            className={`w-[130px] sm:w-[150px] h-[48px] sm:h-[56px] px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end ${
+                              quadraticActiveIndex === 0 ? "border-indigo-500 bg-indigo-50" : "border-[#111]"
+                            }`}
+                            style={{ opacity: quadraticAnswers[0] ? 1 : 0.35 }}
+                          >
+                            {quadraticAnswers[0] || "\u2007"}
+                          </button>
+                          <span className="text-[20px] sm:text-[24px] font-bold text-slate-500">x2 =</span>
+                          <button
+                            type="button"
+                            onClick={() => setQuadraticActiveIndex(1)}
+                            aria-label="recognized-answer-2"
+                            className={`w-[130px] sm:w-[150px] h-[48px] sm:h-[56px] px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end ${
+                              quadraticActiveIndex === 1 ? "border-indigo-500 bg-indigo-50" : "border-[#111]"
+                            }`}
+                            style={{ opacity: quadraticAnswers[1] ? 1 : 0.35 }}
+                          >
+                            {quadraticAnswers[1] || "\u2007"}
+                          </button>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="w-full sm:w-auto flex items-center gap-2">
+                          <span className="text-[26px] sm:text-[30px] font-bold text-slate-500">=</span>
+                          <div
+                            aria-label="recognized-answer"
+                            className="w-full sm:w-auto sm:min-w-[170px] max-w-full h-[56px] sm:h-[64px] px-3 sm:px-4 rounded-xl border-2 border-[#111] text-[26px] sm:text-[30px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end"
+                            style={{ opacity: displayedAnswer ? 1 : 0.35 }}
+                          >
+                            {displayedAnswer || "\u2007"}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     {practiceResult && (
                       <div className="mt-2 flex justify-end">
@@ -2885,7 +2961,7 @@ function QuestPageInner() {
                 {uiText.nextQuestion}
               </button>
               <button
-                onClick={() => canvasRef.current?.clear()}
+                onClick={handleResetAnswer}
                 disabled={status !== 'playing' || isRecognizing}
                 className="h-10 px-4 rounded-lg bg-slate-700 text-white"
               >
