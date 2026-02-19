@@ -41,7 +41,7 @@ test("calc memo keeps pinch handlers for zoom interactions", () => {
   assert.equal(questSource.includes('WebkitTouchCallout: "none"'), true);
   assert.equal(questSource.includes('WebkitTapHighlightColor: "transparent"'), true);
   assert.equal(questSource.includes("onContextMenu={(e) => e.preventDefault()}"), true);
-  assert.equal(questSource.includes("onSelectStart={(e) => e.preventDefault()}"), true);
+  assert.equal(questSource.includes("onSelectStart={(e) => e.preventDefault()}"), false);
   assert.equal(questSource.includes("onDragStart={(e) => e.preventDefault()}"), true);
   assert.equal(questSource.includes("draggable={false}"), true);
   assert.equal(questSource.includes("zoomRatio >= 1"), false);

@@ -82,8 +82,46 @@ const asMixed = (num: number, den: number) => {
   return rem === 0 ? `${whole}` : `${whole} ${rem}/${d}`;
 };
 
-export const entryKey = (entry: QuestEntry) =>
-  `${entry.type.type_id}::${entry.item.prompt_tex ?? entry.item.prompt}::${entry.item.answer}`;
+const stripTrailingEquals = (text: string) => text.replace(/\s*[=＝]\s*$/u, "");
+
+export const normalizePromptForUniqueness = (prompt: string) =>
+  stripTrailingEquals(prompt)
+    .replace(/\\times/g, "×")
+    .replace(/\\div/g, "÷")
+    .replace(/[(){}]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const COMMUTATIVE_OPS = new Set(["+", "×"]);
+
+const parseBinaryExpression = (normalizedPrompt: string) => {
+  const m = normalizedPrompt.match(/^(.+?)\s*([+\-×÷])\s*(.+)$/u);
+  if (!m) return null;
+  const left = m[1].trim();
+  const op = m[2];
+  const right = m[3].trim();
+  if (!left || !right) return null;
+  return { left, op, right };
+};
+
+export const toEquivalentExpressionKey = (prompt: string) => {
+  const normalized = normalizePromptForUniqueness(prompt);
+  const parsed = parseBinaryExpression(normalized);
+  if (!parsed) return normalized;
+  if (!COMMUTATIVE_OPS.has(parsed.op)) return `${parsed.left}${parsed.op}${parsed.right}`;
+  const [a, b] = [parsed.left, parsed.right].sort();
+  return `${a}${parsed.op}${b}`;
+};
+
+export const toAnswerKey = (answer: string) => answer.trim().replace(/\s+/g, " ");
+
+export const entryPromptKey = (entry: QuestEntry) =>
+  normalizePromptForUniqueness(entry.item.prompt_tex ?? entry.item.prompt);
+
+export const entryEquivalentKey = (entry: QuestEntry) =>
+  toEquivalentExpressionKey(entry.item.prompt_tex ?? entry.item.prompt);
+
+export const entryKey = (entry: QuestEntry) => `${entryPromptKey(entry)}::${toAnswerKey(entry.item.answer)}`;
 
 const pushEntry = (out: QuestEntry[], used: Set<string>, entry: QuestEntry) => {
   const key = entryKey(entry);
@@ -522,26 +560,92 @@ export const scoreCandidateSet = (entries: QuestEntry[]) => {
   return scoreEntriesWithCache(entries, cache);
 };
 
+const countConstraintViolations = (entries: QuestEntry[]) => {
+  const promptKeys = countMap(entries.map((e) => entryPromptKey(e)));
+  const equivalentKeys = countMap(entries.map((e) => entryEquivalentKey(e)));
+  const answerKeys = countMap(entries.map((e) => toAnswerKey(e.item.answer)));
+  let violations = 0;
+  for (const count of promptKeys.values()) {
+    if (count > 1) violations += count - 1;
+  }
+  for (const count of equivalentKeys.values()) {
+    if (count > 1) violations += count - 1;
+  }
+  for (const count of answerKeys.values()) {
+    if (count > 1) violations += count - 1;
+  }
+  return violations;
+};
+
+const pickStrictUniqueEntries = (stock: QuestEntry[], quizSize: number) => {
+  if (quizSize <= 0) return [];
+  const shuffled = shuffle(stock);
+  const picked: QuestEntry[] = [];
+  const promptKeys = new Set<string>();
+  const equivalentKeys = new Set<string>();
+  const answerKeys = new Set<string>();
+  for (const entry of shuffled) {
+    const promptKey = entryPromptKey(entry);
+    const equivalentKey = entryEquivalentKey(entry);
+    const answerKey = toAnswerKey(entry.item.answer);
+    if (promptKeys.has(promptKey)) continue;
+    if (equivalentKeys.has(equivalentKey)) continue;
+    if (answerKeys.has(answerKey)) continue;
+    picked.push(entry);
+    promptKeys.add(promptKey);
+    equivalentKeys.add(equivalentKey);
+    answerKeys.add(answerKey);
+    if (picked.length >= quizSize) return picked;
+  }
+  return null;
+};
+
 const pickDiverseQuizEntries = (stock: QuestEntry[], quizSize: number) => {
   if (quizSize <= 0) return [];
-  if (stock.length <= quizSize) return reorderAvoidAdjacentSameFamily(stock);
+  if (stock.length <= quizSize) {
+    return reorderAvoidAdjacentSameFamily(stock.slice(0, quizSize));
+  }
 
-  const attempts = 180;
+  const strictAttempts = 600;
+  let bestStrict: QuestEntry[] | null = null;
+  let bestStrictViolations = Number.POSITIVE_INFINITY;
+  for (let attempt = 0; attempt < strictAttempts; attempt += 1) {
+    const strictPicked = pickStrictUniqueEntries(stock, quizSize);
+    if (strictPicked && strictPicked.length === quizSize) {
+      return reorderAvoidAdjacentSameFamily(strictPicked);
+    }
+    if (strictPicked && strictPicked.length > 0) {
+      const violations = countConstraintViolations(strictPicked);
+      if (
+        violations < bestStrictViolations ||
+        (violations === bestStrictViolations && strictPicked.length > (bestStrict?.length ?? 0))
+      ) {
+        bestStrict = strictPicked;
+        bestStrictViolations = violations;
+      }
+    }
+  }
+
+  const attempts = 240;
   const cache = new Map<string, QuestionFeatures>();
   let best: QuestEntry[] = [];
   let bestScore = -Infinity;
+  let bestViolations = Number.POSITIVE_INFINITY;
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const sampled = shuffle(stock).slice(0, quizSize);
+    const violations = countConstraintViolations(sampled);
     const ordered = reorderAvoidAdjacentSameFamily(sampled);
     const score = scoreEntriesWithCache(ordered, cache);
-    if (score > bestScore) {
+    if (violations < bestViolations || (violations === bestViolations && score > bestScore)) {
+      bestViolations = violations;
       bestScore = score;
       best = ordered;
     }
   }
 
   if (best.length === quizSize) return best;
+  if (bestStrict && bestStrict.length > 0) return reorderAvoidAdjacentSameFamily(bestStrict);
   return reorderAvoidAdjacentSameFamily(shuffle(stock).slice(0, quizSize));
 };
 
@@ -559,41 +663,41 @@ export const expandEntriesToAtLeast = (entries: QuestEntry[], minCount: number) 
   }
   const types = [...typeMap.values()];
   let guard = 0;
-  while (unique.length < minCount && guard < 30) {
+  while (unique.length < minCount && guard < 60) {
     guard += 1;
     for (const type of types) {
       const needed = minCount - unique.length;
       if (needed <= 0) break;
-      const generated = generateByPattern(type, used, Math.min(needed, 12));
+      const generated = generateByPattern(type, used, Math.min(needed, 18));
       for (const item of generated) {
         pushEntry(unique, used, item);
       }
     }
     if (types.length === 0) break;
-    if (guard > 5 && unique.length < minCount) {
-      // Last fallback: reuse known examples with minor safe variation.
-      for (const type of types) {
-        for (const sample of type.example_items) {
-          if (unique.length >= minCount) break;
-          const entry: QuestEntry = {
-            type,
-            item: {
-              prompt: `${sample.prompt} `,
-              prompt_tex: sample.prompt_tex ? `${sample.prompt_tex} ` : undefined,
-              answer: sample.answer
-            }
-          };
-          pushEntry(unique, used, entry);
-        }
-      }
-    }
   }
   return unique;
 };
 
 export const buildUniqueQuestSet = ({ source, poolSize, quizSize }: BuildParams): QuestEntry[] => {
   if (source.length === 0 || quizSize <= 0) return [];
-  const deduped = expandEntriesToAtLeast(source, Math.max(poolSize, quizSize));
-  const stock = deduped.length > poolSize ? shuffle(deduped).slice(0, poolSize) : deduped;
-  return pickDiverseQuizEntries(stock, quizSize);
+  const baselineMin = Math.max(poolSize, quizSize);
+  const attempts = 6;
+  let best: QuestEntry[] = [];
+  let bestViolations = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < attempts; i += 1) {
+    const growTarget = baselineMin + i * quizSize * 3;
+    const deduped = expandEntriesToAtLeast(source, growTarget);
+    const stock = deduped.length > poolSize ? shuffle(deduped).slice(0, poolSize) : deduped;
+    const picked = pickDiverseQuizEntries(stock, quizSize);
+    const violations = countConstraintViolations(picked);
+    if (picked.length === quizSize && violations === 0) return picked;
+    if (
+      violations < bestViolations ||
+      (violations === bestViolations && picked.length > best.length)
+    ) {
+      best = picked;
+      bestViolations = violations;
+    }
+  }
+  return best;
 };

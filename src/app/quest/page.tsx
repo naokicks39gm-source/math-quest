@@ -9,7 +9,7 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getCatalogGrades } from '@/lib/gradeCatalog';
-import { buildUniqueQuestSet } from '@/lib/questItemFactory';
+import { buildUniqueQuestSet, entryEquivalentKey } from '@/lib/questItemFactory';
 import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
 import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
 import {
@@ -1513,6 +1513,8 @@ function QuestPageInner() {
   const [calcPan, setCalcPan] = useState({ x: 0, y: 0 });
   const [useSingleLineQa, setUseSingleLineQa] = useState(false);
   const [qaAnswerOffsetPx, setQaAnswerOffsetPx] = useState(0);
+  const [showGradeTypePicker, setShowGradeTypePicker] = useState(false);
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(new Set());
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
   const [memoStrokes, setMemoStrokes] = useState<MemoStroke[]>([]);
   const [memoRedoStack, setMemoRedoStack] = useState<MemoStroke[]>([]);
@@ -1957,7 +1959,7 @@ function QuestPageInner() {
     const picked: QuestEntry[] = [];
     const pushUnique = (entries: QuestEntry[]) => {
       for (const entry of entries) {
-        const key = `${entry.type.type_id}::${entry.item.prompt_tex ?? entry.item.prompt}::${entry.item.answer}`;
+        const key = `${entryEquivalentKey(entry)}::${entry.item.answer.trim()}`;
         if (seen.has(key)) continue;
         seen.add(key);
         picked.push(entry);
@@ -2009,6 +2011,51 @@ function QuestPageInner() {
   );
   const isQuadraticRootsQuestion = isQuadraticRootsType(currentType?.type_id);
   const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
+  const sameGradeTypeOptions = useMemo(() => {
+    if (!currentGradeId) return [];
+    const grade = grades.find((g) => g.grade_id === currentGradeId);
+    if (!grade) return [];
+    return grade.categories.flatMap((category) =>
+      category.types.map((type) => ({
+        typeId: type.type_id,
+        typeName: type.display_name ?? type.type_name ?? type.type_id,
+        categoryId: category.category_id,
+        categoryName: category.category_name
+      }))
+    );
+  }, [grades, currentGradeId]);
+  const sameGradeCategoryOptions = useMemo(() => {
+    const map = new Map<string, { categoryId: string; categoryName: string; types: typeof sameGradeTypeOptions }>();
+    for (const option of sameGradeTypeOptions) {
+      const existing = map.get(option.categoryId);
+      if (existing) {
+        existing.types.push(option);
+      } else {
+        map.set(option.categoryId, {
+          categoryId: option.categoryId,
+          categoryName: option.categoryName,
+          types: [option]
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [sameGradeTypeOptions]);
+  const currentSameGradeCategoryId = useMemo(() => {
+    for (const category of sameGradeCategoryOptions) {
+      if (category.types.some((type) => type.typeId === currentType?.type_id)) {
+        return category.categoryId;
+      }
+    }
+    return "";
+  }, [sameGradeCategoryOptions, currentType?.type_id]);
+  useEffect(() => {
+    setShowGradeTypePicker(false);
+  }, [currentType?.type_id, status]);
+  useEffect(() => {
+    if (!showGradeTypePicker) return;
+    if (!currentSameGradeCategoryId) return;
+    setExpandedCategoryIds(new Set([currentSameGradeCategoryId]));
+  }, [showGradeTypePicker, currentSameGradeCategoryId]);
   const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
   const uiText = isEarlyElementary
     ? {
@@ -3423,13 +3470,84 @@ function QuestPageInner() {
       {/* Input Mode Toggle removed */}
 
       {status === 'playing' && selectedPath && (
-        <button
-          type="button"
-          onClick={() => router.push("/")}
-          className="w-full bg-white border-2 border-slate-200 rounded-2xl px-3 py-2 text-[11px] font-bold text-slate-700 text-left hover:bg-slate-50 whitespace-nowrap overflow-hidden text-ellipsis"
-        >
-          {selectedPath.gradeName} / {selectedPath.typeName}
-        </button>
+        <div className="w-full relative">
+          <button
+            type="button"
+            onClick={() => {
+              setShowGradeTypePicker((prev) => !prev);
+              if (!showGradeTypePicker && currentSameGradeCategoryId) {
+                setExpandedCategoryIds(new Set([currentSameGradeCategoryId]));
+              }
+            }}
+            className="w-full bg-white border-2 border-slate-200 rounded-2xl px-3 py-2 text-[11px] font-bold text-slate-700 text-left hover:bg-slate-50"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate">{selectedPath.gradeName} / {selectedPath.typeName}</span>
+              <span className="flex items-center gap-2 shrink-0">
+                <span className="text-[10px] text-slate-500">同じ学年の問題を選ぶ</span>
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-300 bg-slate-100 text-slate-600 shadow-sm">
+                  {showGradeTypePicker ? "▲" : "▼"}
+                </span>
+              </span>
+            </div>
+          </button>
+          {showGradeTypePicker && sameGradeCategoryOptions.length > 0 && (
+            <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg p-1">
+              {sameGradeCategoryOptions.map((category) => {
+                const isExpanded = expandedCategoryIds.has(category.categoryId);
+                return (
+                  <div key={category.categoryId} className="mb-1 last:mb-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExpandedCategoryIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(category.categoryId)) {
+                            next.delete(category.categoryId);
+                          } else {
+                            next.add(category.categoryId);
+                          }
+                          return next;
+                        });
+                      }}
+                      className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
+                    >
+                      <span className="truncate">{category.categoryName}</span>
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
+                        {isExpanded ? "▲" : "▼"}
+                      </span>
+                    </button>
+                    {isExpanded && (
+                      <div className="mt-1 space-y-1 pl-2">
+                        {category.types.map((option) => {
+                          const isCurrent = option.typeId === currentType?.type_id;
+                          return (
+                            <button
+                              key={option.typeId}
+                              type="button"
+                              onClick={() => {
+                                setShowGradeTypePicker(false);
+                                if (isCurrent) return;
+                                router.push(`/quest?type=${encodeURIComponent(option.typeId)}&category=${encodeURIComponent(option.categoryId)}`);
+                              }}
+                              className={`w-full text-left rounded-lg px-2 py-2 text-[11px] ${
+                                isCurrent
+                                  ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                            >
+                              <div className="font-bold truncate">{option.typeName}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
       {/* Center: Character & Message */} 
       <div className="flex flex-col items-center space-y-3 my-2 flex-1 justify-start w-full">
@@ -3679,7 +3797,6 @@ function QuestPageInner() {
                     WebkitTapHighlightColor: "transparent"
                   }}
                   onContextMenu={(e) => e.preventDefault()}
-                  onSelectStart={(e) => e.preventDefault()}
                   onDragStart={(e) => e.preventDefault()}
                   onPointerDown={handleMemoPointerDown}
                   onPointerMove={handleMemoPointerMove}
