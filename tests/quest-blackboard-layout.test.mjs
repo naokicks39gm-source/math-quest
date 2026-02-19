@@ -15,11 +15,21 @@ test("quest current card uses blackboard-themed classes", () => {
   const source = read("src/app/quest/page.tsx");
   assert.match(source, /from-emerald-950 via-emerald-900 to-emerald-950/);
   assert.match(source, /border-x-amber-700 border-t-amber-700 border-b-slate-300/);
-  assert.match(source, /rounded-none/);
+  assert.match(source, /rounded-2xl/);
   assert.match(source, /text-emerald-50/);
+  assert.doesNotMatch(source, /aria-label="board-silver-ledge"/);
   assert.match(source, /aria-label="board-eraser"/);
   assert.match(source, /aria-label="board-chalk-white"/);
   assert.match(source, /aria-label="board-chalk-pink"/);
   assert.match(source, /aria-label="board-chalk-blue"/);
   assert.match(source, /renderPrompt\(currentItem\)/);
+});
+
+test("quest answer layout keeps right offset and quadratic row", () => {
+  const source = read("src/app/quest/page.tsx");
+  assert.match(source, /w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2 overflow-x-auto whitespace-nowrap/);
+  assert.match(source, /w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2/);
+  assert.doesNotMatch(source, /recognized-answer-1"[\s\S]*flex-wrap/);
+  assert.match(source, /aria-label="recognized-answer-1"/);
+  assert.match(source, /aria-label="recognized-answer-2"/);
 });

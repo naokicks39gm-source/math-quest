@@ -30,7 +30,7 @@ test("quest prompt and clear list use shared math rendering path", () => {
 test("quest card uses responsive layout to avoid answer overflow", () => {
   const source = read("src/app/quest/page.tsx");
   assert.match(source, /flex flex-col sm:flex-row sm:items-center justify-between/);
-  assert.match(source, /w-full sm:w-auto flex items-center gap-2/);
+  assert.match(source, /w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2/);
   assert.match(source, /aria-label=\"recognized-answer\"/);
   assert.match(source, /w-full sm:w-auto sm:min-w-\[170px\]/);
 });
