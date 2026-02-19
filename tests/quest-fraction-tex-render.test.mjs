@@ -35,7 +35,8 @@ test("quest card uses responsive layout to avoid answer overflow", () => {
   assert.match(source, /useSingleLineQa[\s\S]*\? "flex items-center justify-between gap-3 sm:gap-4"/);
   assert.match(source, /w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2/);
   assert.match(source, /aria-label=\"recognized-answer\"/);
-  assert.match(source, /w-\[150px\] sm:w-\[180px\] shrink-0/);
+  assert.match(source, /fractionInput\.enabled \? "w-\[190px\] sm:w-\[220px\] h-\[74px\] sm:h-\[84px\]/);
+  assert.match(source, /: "w-\[150px\] sm:w-\[180px\] h-\[56px\] sm:h-\[64px\]/);
 });
 
 test("fraction handwriting path remains available", () => {
