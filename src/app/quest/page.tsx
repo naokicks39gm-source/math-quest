@@ -2063,7 +2063,6 @@ function QuestPageInner() {
         return true;
       }
       if (token === "/") {
-        if (activeKind !== "frac") return false;
         if (text.includes("/")) return false;
         if (text === "" || text === "-") return false;
         return true;
@@ -2187,7 +2186,7 @@ function QuestPageInner() {
     if (/^\d$/.test(token)) return true;
     if (token === "-") return true;
     if (token === ".") return keypadAnswerKind === "dec";
-    if (token === "/") return keypadAnswerKind === "frac";
+    if (token === "/") return true;
     return false;
   };
   const isValidAnswerText = (text: string, kind: AnswerFormat["kind"]) => {
@@ -2199,8 +2198,15 @@ function QuestPageInner() {
     return true;
   };
   const canSubmitCurrentAnswer = isQuadraticRootsQuestion
-    ? isValidAnswerText(quadraticAnswers[0], "pair") && isValidAnswerText(quadraticAnswers[1], "pair")
-    : isValidAnswerText(input, keypadAnswerKind);
+    ? (
+      (isValidAnswerText(quadraticAnswers[0], "pair") && isValidAnswerText(quadraticAnswers[1], "pair")) ||
+      (quadraticAnswers[0].trim().length > 0 && quadraticAnswers[1].trim().length > 0 &&
+        (quadraticAnswers[0].includes("/") || quadraticAnswers[1].includes("/")))
+    )
+    : (
+      isValidAnswerText(input, keypadAnswerKind) ||
+      (keypadAnswerKind !== "frac" && input.trim().length > 0 && input.includes("/"))
+    );
 
 
   const toggleCharacter = () => {
@@ -3046,7 +3052,7 @@ function QuestPageInner() {
                             type="button"
                             onClick={() => setQuadraticActiveIndex(0)}
                             aria-label="recognized-answer-1"
-                            className={`w-[130px] sm:w-[150px] shrink-0 h-[48px] sm:h-[56px] px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
+                            className={`w-[72px] sm:w-[84px] shrink-0 h-[48px] sm:h-[56px] px-2 sm:px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
                               quadraticActiveIndex === 0 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
                             }`}
                             style={{ opacity: quadraticAnswers[0] ? 1 : 0.35 }}
@@ -3058,7 +3064,7 @@ function QuestPageInner() {
                             type="button"
                             onClick={() => setQuadraticActiveIndex(1)}
                             aria-label="recognized-answer-2"
-                            className={`w-[130px] sm:w-[150px] shrink-0 h-[48px] sm:h-[56px] px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
+                            className={`w-[72px] sm:w-[84px] shrink-0 h-[48px] sm:h-[56px] px-2 sm:px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
                               quadraticActiveIndex === 1 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
                             }`}
                             style={{ opacity: quadraticAnswers[1] ? 1 : 0.35 }}
@@ -3071,7 +3077,7 @@ function QuestPageInner() {
                           <span className="text-[26px] sm:text-[30px] font-bold text-emerald-100">=</span>
                           <div
                             aria-label="recognized-answer"
-                            className="w-full sm:w-auto sm:min-w-[170px] max-w-full h-[56px] sm:h-[64px] px-3 sm:px-4 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 text-[26px] sm:text-[30px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center"
+                            className="w-[150px] sm:w-[180px] shrink-0 max-w-full h-[56px] sm:h-[64px] px-2 sm:px-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 text-[26px] sm:text-[30px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center"
                             style={{ opacity: displayedAnswer ? 1 : 0.35 }}
                           >
                             {displayedAnswer || "\u2007"}
@@ -3123,7 +3129,7 @@ function QuestPageInner() {
                   ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
                 `}
               >
-                {token}
+                {token === "/" ? "分数" : token === "." ? "小数点" : token}
               </button>
             ))}
             <button

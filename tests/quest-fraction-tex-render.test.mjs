@@ -32,7 +32,7 @@ test("quest card uses responsive layout to avoid answer overflow", () => {
   assert.match(source, /flex flex-col sm:flex-row sm:items-center justify-between/);
   assert.match(source, /w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2/);
   assert.match(source, /aria-label=\"recognized-answer\"/);
-  assert.match(source, /w-full sm:w-auto sm:min-w-\[170px\]/);
+  assert.match(source, /w-\[150px\] sm:w-\[180px\] shrink-0/);
 });
 
 test("fraction handwriting path remains available", () => {
