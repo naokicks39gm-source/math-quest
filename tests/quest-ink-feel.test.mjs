@@ -9,20 +9,20 @@ const legacySource = fs.readFileSync(path.join(process.cwd(), "src/app/quest-han
 test("quest uses keypad answer flow and calc memo canvas", () => {
   assert.match(questSource, /const \[inputMode\] = useState<'numpad' \| 'handwriting'>\('numpad'\)/);
   assert.match(questSource, /data-testid="calc-memo-area"/);
-  assert.match(questSource, /計算メモ（2本指ピンチで拡大縮小）/);
+  assert.match(questSource, /計算メモ/);
   assert.match(questSource, /onClick=\{handleAttack\}/);
   assert.match(questSource, /onClick=\{clearMemo\}/);
 });
 
-test("calc memo supports pinch zoom state and reset", () => {
-  assert.match(questSource, /const \[calcZoom, setCalcZoom\] = useState\(1\)/);
-  assert.match(questSource, /const \[calcPan, setCalcPan\] = useState\(\{ x: 0, y: 0 \}\)/);
-  assert.match(questSource, /const \[isPinchingMemo, setIsPinchingMemo\] = useState\(false\)/);
-  assert.match(questSource, /handleMemoPointerDown/);
-  assert.match(questSource, /handleMemoPointerMove/);
-  assert.match(questSource, /handleMemoPointerEnd/);
-  assert.match(questSource, /resetMemoViewport/);
-  assert.match(questSource, /touchAction: "none"/);
+test("calc memo is stabilized without pinch handlers", () => {
+  assert.equal(questSource.includes("calcZoom"), false);
+  assert.equal(questSource.includes("calcPan"), false);
+  assert.equal(questSource.includes("isPinchingMemo"), false);
+  assert.equal(questSource.includes("handleMemoPointerDown"), false);
+  assert.equal(questSource.includes("handleMemoPointerMove"), false);
+  assert.equal(questSource.includes("handleMemoPointerEnd"), false);
+  assert.equal(questSource.includes("resetMemoViewport"), false);
+  assert.equal(questSource.includes('touchAction: "none"'), false);
 });
 
 test("legacy handwriting route is preserved", () => {
