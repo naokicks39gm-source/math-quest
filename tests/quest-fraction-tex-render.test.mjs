@@ -30,10 +30,13 @@ test("quest prompt and clear list use shared math rendering path", () => {
 test("quest card uses responsive layout to avoid answer overflow", () => {
   const source = read("src/app/quest/page.tsx");
   assert.match(source, /const \[useSingleLineQa, setUseSingleLineQa\] = useState\(false\)/);
+  assert.match(source, /const \[qaAnswerOffsetPx, setQaAnswerOffsetPx\] = useState\(0\)/);
   assert.match(source, /const promptWidth = promptContent\?\.scrollWidth \?\? prompt\.scrollWidth;/);
-  assert.match(source, /setUseSingleLineQa\(promptWidth \+ answerWidth \+ gap \+ buffer <= available\)/);
-  assert.match(source, /useSingleLineQa[\s\S]*\? "flex items-center justify-between gap-3 sm:gap-4"/);
-  assert.match(source, /w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2/);
+  assert.match(source, /const singleLine = promptWidth \+ answerWidth \+ gap \+ buffer <= available;/);
+  assert.match(source, /setUseSingleLineQa\(singleLine\)/);
+  assert.match(source, /setQaAnswerOffsetPx\(0\)/);
+  assert.match(source, /useSingleLineQa[\s\S]*\? "relative z-10 w-full flex items-center justify-start gap-2 sm:gap-3"/);
+  assert.match(source, /useSingleLineQa[\s\S]*: "relative z-10 w-full flex flex-col justify-center gap-1 sm:gap-2"/);
   assert.match(source, /aria-label=\"recognized-answer\"/);
   assert.match(source, /w-\[150px\] sm:w-\[180px\] shrink-0/);
 });

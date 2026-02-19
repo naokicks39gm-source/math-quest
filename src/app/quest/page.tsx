@@ -1512,6 +1512,7 @@ function QuestPageInner() {
   const [calcZoom, setCalcZoom] = useState(1);
   const [calcPan, setCalcPan] = useState({ x: 0, y: 0 });
   const [useSingleLineQa, setUseSingleLineQa] = useState(false);
+  const [qaAnswerOffsetPx, setQaAnswerOffsetPx] = useState(0);
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
   const [memoStrokes, setMemoStrokes] = useState<MemoStroke[]>([]);
   const [memoRedoStack, setMemoRedoStack] = useState<MemoStroke[]>([]);
@@ -1718,9 +1719,15 @@ function QuestPageInner() {
       if (available <= 0) return;
       const promptWidth = promptContent?.scrollWidth ?? prompt.scrollWidth;
       const answerWidth = answerContent.scrollWidth;
-      const gap = 18;
+      const gap = 10;
       const buffer = 10;
-      setUseSingleLineQa(promptWidth + answerWidth + gap + buffer <= available);
+      const singleLine = promptWidth + answerWidth + gap + buffer <= available;
+      setUseSingleLineQa(singleLine);
+      if (singleLine) {
+        setQaAnswerOffsetPx(0);
+      } else {
+        setQaAnswerOffsetPx(0);
+      }
     };
 
     updateLayout();
@@ -3524,7 +3531,7 @@ function QuestPageInner() {
                 <div className="flex flex-col gap-3">
                   <div
                     ref={currentCardRef}
-                    className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 pt-4 pb-8 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] h-[200px] sm:h-[185px] flex flex-col justify-between"
+                    className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 py-4 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] h-[200px] sm:h-[185px] flex items-center justify-center"
                   >
                     <div className="pointer-events-none absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_12%_20%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_70%,rgba(255,255,255,0.10),transparent_34%),repeating-linear-gradient(12deg,rgba(255,255,255,0.05)_0px,rgba(255,255,255,0.05)_2px,transparent_2px,transparent_8px)]" />
                     {combo >= 2 && (
@@ -3544,15 +3551,15 @@ function QuestPageInner() {
                       ref={qaRowRef}
                       className={
                         useSingleLineQa
-                          ? "flex items-center justify-between gap-3 sm:gap-4"
-                          : "flex flex-col justify-between gap-3 sm:gap-4"
+                          ? "relative z-10 w-full flex items-center justify-start gap-2 sm:gap-3"
+                          : "relative z-10 w-full flex flex-col justify-center gap-1 sm:gap-2"
                       }
                     >
                       <div
                         ref={qaPromptRef}
                         className={
                           useSingleLineQa
-                            ? "min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
+                            ? "min-w-0 w-auto max-w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
                             : "min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
                         }
                       >
@@ -3566,8 +3573,9 @@ function QuestPageInner() {
                           className={
                             useSingleLineQa
                               ? "w-auto shrink-0 flex items-center gap-2 overflow-x-auto whitespace-nowrap"
-                              : "w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2 overflow-x-auto whitespace-nowrap"
+                              : "w-full sm:w-auto flex items-center gap-2 overflow-x-auto whitespace-nowrap"
                           }
+                          style={useSingleLineQa ? undefined : { marginLeft: `${qaAnswerOffsetPx}px` }}
                         >
                           <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
                             <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x1 =</span>
@@ -3607,8 +3615,9 @@ function QuestPageInner() {
                           className={
                             useSingleLineQa
                               ? "relative w-auto shrink-0 flex items-center gap-2 overflow-visible"
-                              : "relative w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2 overflow-visible"
+                              : "relative w-full sm:w-auto flex items-center gap-2 overflow-visible"
                           }
+                          style={useSingleLineQa ? undefined : { marginLeft: `${qaAnswerOffsetPx}px` }}
                         >
                           <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
                             <span className="text-[26px] sm:text-[30px] font-bold text-emerald-100">=</span>
@@ -3628,7 +3637,6 @@ function QuestPageInner() {
                         </div>
                       )}
                     </div>
-                    <div className="mt-2 h-5" />
                   </div>
                 </div>
               ) : (
