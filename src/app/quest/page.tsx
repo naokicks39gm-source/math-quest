@@ -1427,6 +1427,7 @@ function QuestPageInner() {
   const [resultMark, setResultMark] = useState<'correct' | 'wrong' | null>(null);
   const canvasRef = useRef<any>(null); // Ref for CanvasDraw component
   const drawAreaRef = useRef<HTMLDivElement | null>(null);
+  const memoFrameRef = useRef<HTMLDivElement | null>(null);
   const [isModelReady, setIsModelReady] = useState(false); // New state for model readiness
   const [is2DigitModelReady, setIs2DigitModelReady] = useState(false);
   const autoRecognizeTimerRef = useRef<number | null>(null);
@@ -1645,7 +1646,7 @@ function QuestPageInner() {
   };
 
   useEffect(() => {
-    const el = drawAreaRef.current;
+    const el = memoFrameRef.current;
     if (!el) return;
     const updateSize = () => {
       const w = Math.floor(el.clientWidth);
@@ -2536,8 +2537,57 @@ function QuestPageInner() {
     }, nextDelay);
   };
   const drawCanvasSize = visibleCanvasSize + OUTER_MARGIN * 2;
+  const memoDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+    Math.hypot(a.x - b.x, a.y - b.y);
+  const memoMidpoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2
+  });
+  const resetMemoViewport = () => {
+    setCalcZoom(1);
+    setCalcPan({ x: 0, y: 0 });
+  };
   const clearMemo = () => {
     canvasRef.current?.clear();
+  };
+  const handleMemoPointerDown = (e: any) => {
+    if (e.pointerType !== "touch") return;
+    memoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (memoPointersRef.current.size === 2) {
+      const [p1, p2] = [...memoPointersRef.current.values()];
+      memoPinchStartRef.current = {
+        distance: Math.max(1, memoDistance(p1, p2)),
+        zoom: calcZoom,
+        pan: calcPan,
+        mid: memoMidpoint(p1, p2)
+      };
+      setIsPinchingMemo(true);
+    }
+  };
+  const handleMemoPointerMove = (e: any) => {
+    if (e.pointerType !== "touch") return;
+    if (!memoPointersRef.current.has(e.pointerId)) return;
+    memoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (memoPointersRef.current.size < 2 || !memoPinchStartRef.current) return;
+    e.preventDefault();
+    const [p1, p2] = [...memoPointersRef.current.values()];
+    const dist = Math.max(1, memoDistance(p1, p2));
+    const mid = memoMidpoint(p1, p2);
+    const start = memoPinchStartRef.current;
+    const nextZoom = clamp(start.zoom * (dist / start.distance), 0.8, 2.5);
+    setCalcZoom(nextZoom);
+    setCalcPan({
+      x: start.pan.x + (mid.x - start.mid.x),
+      y: start.pan.y + (mid.y - start.mid.y)
+    });
+  };
+  const handleMemoPointerEnd = (e: any) => {
+    if (e.pointerType !== "touch") return;
+    memoPointersRef.current.delete(e.pointerId);
+    if (memoPointersRef.current.size < 2) {
+      memoPinchStartRef.current = null;
+      setIsPinchingMemo(false);
+    }
   };
 
   const runAutoDrawTest = async (poolOverride?: string[]) => {
@@ -3138,10 +3188,14 @@ function QuestPageInner() {
               </div>
             </div>
             <div
+              ref={memoFrameRef}
+              className="w-full flex justify-center"
+            >
+              <div
               ref={drawAreaRef}
               data-testid="calc-memo-area"
               className="relative mx-auto overflow-hidden rounded-xl border-2 border-slate-300 bg-white"
-              style={{ width: "100%", maxWidth: 520, aspectRatio: "1 / 1", touchAction: "none" }}
+              style={{ width: visibleCanvasSize, height: visibleCanvasSize, touchAction: "none" }}
               onPointerDown={handleMemoPointerDown}
               onPointerMove={handleMemoPointerMove}
               onPointerUp={handleMemoPointerEnd}
@@ -3153,7 +3207,7 @@ function QuestPageInner() {
                 style={{
                   left: -OUTER_MARGIN,
                   top: -OUTER_MARGIN,
-                  transform: "translate(0px, 0px) scale(1)",
+                  transform: `translate(${calcPan.x}px, ${calcPan.y}px) scale(${calcZoom})`,
                   transformOrigin: "center center"
                 }}
               >
@@ -3168,9 +3222,10 @@ function QuestPageInner() {
                   canvasWidth={drawCanvasSize}
                   canvasHeight={drawCanvasSize}
                   className="shadow-lg"
-                  disabled={status !== 'playing'}
+                  disabled={status !== 'playing' || isPinchingMemo}
                 />
               </div>
+            </div>
             </div>
           </div>
         </section>
