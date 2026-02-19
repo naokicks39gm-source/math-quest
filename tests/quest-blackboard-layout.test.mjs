@@ -27,8 +27,10 @@ test("quest current card uses blackboard-themed classes", () => {
 
 test("quest answer layout keeps right offset and quadratic row", () => {
   const source = read("src/app/quest/page.tsx");
-  assert.match(source, /w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2 overflow-x-auto whitespace-nowrap/);
-  assert.match(source, /w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2/);
+  assert.match(source, /const \[qaAnswerOffsetPx, setQaAnswerOffsetPx\] = useState\(0\)/);
+  assert.match(source, /style=\{useSingleLineQa \? undefined : \{ marginLeft: `\$\{qaAnswerOffsetPx\}px` \}\}/);
+  assert.match(source, /w-full sm:w-auto flex items-center gap-2 overflow-x-auto whitespace-nowrap/);
+  assert.match(source, /w-full sm:w-auto flex items-center gap-2 overflow-visible/);
   assert.doesNotMatch(source, /recognized-answer-1"[\s\S]*flex-wrap/);
   assert.match(source, /aria-label="recognized-answer-1"/);
   assert.match(source, /aria-label="recognized-answer-2"/);
