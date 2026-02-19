@@ -1475,6 +1475,7 @@ function QuestPageInner() {
   const [visibleCanvasSize, setVisibleCanvasSize] = useState(DEFAULT_VISIBLE_CANVAS_SIZE);
   const [calcZoom, setCalcZoom] = useState(1);
   const [calcPan, setCalcPan] = useState({ x: 0, y: 0 });
+  const [isMemoOpen, setIsMemoOpen] = useState(false);
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
   const memoPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const memoPinchStartRef = useRef<{
@@ -1648,13 +1649,23 @@ function QuestPageInner() {
     if (!el) return;
     const updateSize = () => {
       const w = Math.floor(el.clientWidth);
-      if (w > 0) setVisibleCanvasSize(w);
+      const maxByViewport = typeof window !== "undefined"
+        ? Math.floor(window.innerHeight * 0.28)
+        : w;
+      const next = Math.max(180, Math.min(w, maxByViewport));
+      if (next > 0) setVisibleCanvasSize(next);
     };
     updateSize();
     const observer = new ResizeObserver(() => updateSize());
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [isMemoOpen, status]);
+
+  useEffect(() => {
+    if (status !== "playing") {
+      setIsMemoOpen(false);
+    }
+  }, [status]);
 
   useEffect(() => {
     if (inkFirstMode) {
@@ -3136,9 +3147,20 @@ function QuestPageInner() {
               {uiText.judge}
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsMemoOpen((prev) => !prev)}
+            className="w-full h-10 rounded-lg text-sm font-bold shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all bg-slate-700 text-white border-2 border-slate-800"
+          >
+            {isMemoOpen ? "計算メモを閉じる" : "計算メモ"}
+          </button>
+        </div>
+      )}
 
-          <div className="w-full rounded-xl border border-slate-200 bg-white p-3 space-y-2">
-            <div className="flex items-center justify-between text-sm font-bold text-slate-700">
+      {status === 'playing' && isMemoOpen && (
+        <section className="fixed inset-x-2 bottom-2 z-40 pointer-events-none">
+          <div className="pointer-events-auto mx-auto w-full max-w-xl max-h-[42vh] rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-md p-3 shadow-2xl space-y-2">
+            <div className="flex items-center justify-between text-sm font-bold text-slate-800">
               <span>計算メモ（2本指ピンチで拡大縮小）</span>
               <div className="flex items-center gap-2">
                 <button
@@ -3155,13 +3177,20 @@ function QuestPageInner() {
                 >
                   メモ消去
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMemoOpen(false)}
+                  className="px-2 py-1 rounded-md bg-slate-200 text-slate-800"
+                >
+                  閉じる
+                </button>
               </div>
             </div>
             <div
               ref={drawAreaRef}
               data-testid="calc-memo-area"
               className="relative mx-auto overflow-hidden rounded-xl border-2 border-slate-300 bg-white"
-              style={{ width: visibleCanvasSize, height: visibleCanvasSize, touchAction: "none" }}
+              style={{ width: "100%", maxWidth: 520, aspectRatio: "1 / 1", touchAction: "none" }}
               onPointerDown={handleMemoPointerDown}
               onPointerMove={handleMemoPointerMove}
               onPointerUp={handleMemoPointerEnd}
@@ -3193,7 +3222,7 @@ function QuestPageInner() {
               </div>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
       {status === 'playing' && (
