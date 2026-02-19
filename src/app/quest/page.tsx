@@ -2148,51 +2148,57 @@ function QuestPageInner() {
   );
   const isQuadraticRootsQuestion = isQuadraticRootsType(currentType?.type_id);
   const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
-  const sameGradeTypeOptions = useMemo(() => {
-    if (!currentGradeId) return [];
-    const grade = grades.find((g) => g.grade_id === currentGradeId);
-    if (!grade) return [];
-    return grade.categories.flatMap((category) =>
-      category.types.map((type) => ({
-        typeId: type.type_id,
-        typeName: type.display_name ?? type.type_name ?? type.type_id,
+  const gradeOptions = useMemo(
+    () =>
+      grades.map((grade) => ({
+        gradeId: grade.grade_id,
+        gradeName: grade.grade_name
+      })),
+    [grades]
+  );
+  const currentGrade = useMemo(
+    () => grades.find((grade) => grade.grade_id === currentGradeId) ?? null,
+    [grades, currentGradeId]
+  );
+  const currentGradeCategories = useMemo(
+    () =>
+      (currentGrade?.categories ?? []).map((category) => ({
         categoryId: category.category_id,
-        categoryName: category.category_name
-      }))
-    );
-  }, [grades, currentGradeId]);
-  const sameGradeCategoryOptions = useMemo(() => {
-    const map = new Map<string, { categoryId: string; categoryName: string; types: typeof sameGradeTypeOptions }>();
-    for (const option of sameGradeTypeOptions) {
-      const existing = map.get(option.categoryId);
-      if (existing) {
-        existing.types.push(option);
-      } else {
-        map.set(option.categoryId, {
-          categoryId: option.categoryId,
-          categoryName: option.categoryName,
-          types: [option]
-        });
-      }
-    }
-    return Array.from(map.values());
-  }, [sameGradeTypeOptions]);
-  const currentSameGradeCategoryId = useMemo(() => {
-    for (const category of sameGradeCategoryOptions) {
+        categoryName: category.category_name,
+        types: category.types.map((type) => ({
+          typeId: type.type_id,
+          typeName: type.display_name ?? type.type_name ?? type.type_id,
+          categoryId: category.category_id
+        }))
+      })),
+    [currentGrade]
+  );
+  const currentGradeCategoryId = useMemo(() => {
+    for (const category of currentGradeCategories) {
       if (category.types.some((type) => type.typeId === currentType?.type_id)) {
         return category.categoryId;
       }
     }
     return "";
-  }, [sameGradeCategoryOptions, currentType?.type_id]);
+  }, [currentGradeCategories, currentType?.type_id]);
   useEffect(() => {
     setShowGradeTypePicker(false);
   }, [currentType?.type_id, status]);
   useEffect(() => {
     if (!showGradeTypePicker) return;
-    if (!currentSameGradeCategoryId) return;
-    setExpandedCategoryIds(new Set([currentSameGradeCategoryId]));
-  }, [showGradeTypePicker, currentSameGradeCategoryId]);
+    if (!currentGradeCategoryId) return;
+    setExpandedCategoryIds(new Set([currentGradeCategoryId]));
+  }, [showGradeTypePicker, currentGradeCategoryId]);
+  const selectFirstTypeInGrade = (gradeId: string) => {
+    const grade = grades.find((row) => row.grade_id === gradeId);
+    if (!grade) return;
+    const category = grade.categories.find((row) => row.types.length > 0);
+    const type = category?.types[0];
+    if (!category || !type) return;
+    const isCurrent = type.type_id === currentType?.type_id && category.category_id === categoryFromQuery;
+    if (isCurrent) return;
+    router.push(`/quest?type=${encodeURIComponent(type.type_id)}&category=${encodeURIComponent(category.category_id)}`);
+  };
   const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
   const shouldShowElementaryExplanation =
     status === "playing" &&
@@ -3619,8 +3625,8 @@ function QuestPageInner() {
             type="button"
             onClick={() => {
               setShowGradeTypePicker((prev) => !prev);
-              if (!showGradeTypePicker && currentSameGradeCategoryId) {
-                setExpandedCategoryIds(new Set([currentSameGradeCategoryId]));
+              if (!showGradeTypePicker && currentGradeCategoryId) {
+                setExpandedCategoryIds(new Set([currentGradeCategoryId]));
               }
             }}
             className="w-full bg-white border-2 border-slate-200 rounded-2xl px-3 py-2 text-[11px] font-bold text-slate-700 text-left hover:bg-slate-50"
@@ -3628,67 +3634,92 @@ function QuestPageInner() {
             <div className="flex items-center justify-between gap-2">
               <span className="truncate">{selectedPath.gradeName} / {selectedPath.typeName}</span>
               <span className="flex items-center gap-2 shrink-0">
-                <span className="text-[10px] text-slate-500">同じ学年の問題を選ぶ</span>
+                <span className="text-[10px] text-slate-500">問題を選ぶ</span>
                 <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-300 bg-slate-100 text-slate-600 shadow-sm">
                   {showGradeTypePicker ? "▲" : "▼"}
                 </span>
               </span>
             </div>
           </button>
-          {showGradeTypePicker && sameGradeCategoryOptions.length > 0 && (
+          {showGradeTypePicker && currentGradeCategories.length > 0 && (
             <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg p-1">
-              {sameGradeCategoryOptions.map((category) => {
-                const isExpanded = expandedCategoryIds.has(category.categoryId);
-                return (
-                  <div key={category.categoryId} className="mb-1 last:mb-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setExpandedCategoryIds((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(category.categoryId)) {
-                            next.delete(category.categoryId);
-                          } else {
-                            next.add(category.categoryId);
-                          }
-                          return next;
-                        });
-                      }}
-                      className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
-                    >
-                      <span className="truncate">{category.categoryName}</span>
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
-                        {isExpanded ? "▲" : "▼"}
-                      </span>
-                    </button>
-                    {isExpanded && (
-                      <div className="mt-1 space-y-1 pl-2">
-                        {category.types.map((option) => {
-                          const isCurrent = option.typeId === currentType?.type_id;
-                          return (
-                            <button
-                              key={option.typeId}
-                              type="button"
-                              onClick={() => {
-                                setShowGradeTypePicker(false);
-                                if (isCurrent) return;
-                                router.push(`/quest?type=${encodeURIComponent(option.typeId)}&category=${encodeURIComponent(option.categoryId)}`);
-                              }}
-                              className={`w-full text-left rounded-lg px-2 py-2 text-[11px] ${
-                                isCurrent
-                                  ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                                  : "text-slate-700 hover:bg-slate-50"
-                              }`}
-                            >
-                              <div className="font-bold truncate">{option.typeName}</div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              <div className="space-y-1">
+                <div className="px-2 py-1 text-[10px] font-bold text-slate-500">学年</div>
+                <div className="grid grid-cols-3 gap-1 px-1">
+                  {gradeOptions.map((grade) => {
+                    const isCurrentGrade = grade.gradeId === currentGradeId;
+                    return (
+                      <button
+                        key={grade.gradeId}
+                        type="button"
+                        onClick={() => selectFirstTypeInGrade(grade.gradeId)}
+                        className={`rounded-md px-2 py-1.5 text-[10px] font-bold border ${
+                          isCurrentGrade
+                            ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        {grade.gradeName}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="mt-2 border-t border-slate-200 pt-2">
+                <div className="px-2 py-1 text-[10px] font-bold text-slate-500">問題</div>
+                {currentGradeCategories.map((category) => {
+                  const isExpanded = expandedCategoryIds.has(category.categoryId);
+                  return (
+                    <div key={category.categoryId} className="mb-1 last:mb-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExpandedCategoryIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(category.categoryId)) {
+                              next.delete(category.categoryId);
+                            } else {
+                              next.add(category.categoryId);
+                            }
+                            return next;
+                          });
+                        }}
+                        className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
+                      >
+                        <span className="truncate">{category.categoryName}</span>
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
+                          {isExpanded ? "▲" : "▼"}
+                        </span>
+                      </button>
+                      {isExpanded && (
+                        <div className="mt-1 space-y-1 pl-2">
+                          {category.types.map((option) => {
+                            const isCurrent = option.typeId === currentType?.type_id;
+                            return (
+                              <button
+                                key={option.typeId}
+                                type="button"
+                                onClick={() => {
+                                  setShowGradeTypePicker(false);
+                                  if (isCurrent) return;
+                                  router.push(`/quest?type=${encodeURIComponent(option.typeId)}&category=${encodeURIComponent(option.categoryId)}`);
+                                }}
+                                className={`w-full text-left rounded-lg px-2 py-2 text-[11px] ${
+                                  isCurrent
+                                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                    : "text-slate-700 hover:bg-slate-50"
+                                }`}
+                              >
+                                <div className="font-bold truncate">{option.typeName}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
