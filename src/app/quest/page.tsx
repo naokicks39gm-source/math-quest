@@ -1473,16 +1473,6 @@ function QuestPageInner() {
   const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
   const [retryNonce, setRetryNonce] = useState(0);
   const [visibleCanvasSize, setVisibleCanvasSize] = useState(DEFAULT_VISIBLE_CANVAS_SIZE);
-  const [calcZoom, setCalcZoom] = useState(1);
-  const [calcPan, setCalcPan] = useState({ x: 0, y: 0 });
-  const [isPinchingMemo, setIsPinchingMemo] = useState(false);
-  const memoPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
-  const memoPinchStartRef = useRef<{
-    distance: number;
-    zoom: number;
-    pan: { x: number; y: number };
-    mid: { x: number; y: number };
-  } | null>(null);
   const clearResults = useMemo(
     () => Object.entries(questionResults).sort((a, b) => Number(a[0]) - Number(b[0])),
     [questionResults]
@@ -2525,57 +2515,8 @@ function QuestPageInner() {
     }, nextDelay);
   };
   const drawCanvasSize = visibleCanvasSize + OUTER_MARGIN * 2;
-  const memoDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-    Math.hypot(a.x - b.x, a.y - b.y);
-  const memoMidpoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
-    x: (a.x + b.x) / 2,
-    y: (a.y + b.y) / 2
-  });
-  const resetMemoViewport = () => {
-    setCalcZoom(1);
-    setCalcPan({ x: 0, y: 0 });
-  };
   const clearMemo = () => {
     canvasRef.current?.clear();
-  };
-  const handleMemoPointerDown = (e: any) => {
-    if (e.pointerType !== "touch") return;
-    memoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (memoPointersRef.current.size === 2) {
-      const [p1, p2] = [...memoPointersRef.current.values()];
-      memoPinchStartRef.current = {
-        distance: Math.max(1, memoDistance(p1, p2)),
-        zoom: calcZoom,
-        pan: calcPan,
-        mid: memoMidpoint(p1, p2)
-      };
-      setIsPinchingMemo(true);
-    }
-  };
-  const handleMemoPointerMove = (e: any) => {
-    if (e.pointerType !== "touch") return;
-    if (!memoPointersRef.current.has(e.pointerId)) return;
-    memoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (memoPointersRef.current.size < 2 || !memoPinchStartRef.current) return;
-    e.preventDefault();
-    const [p1, p2] = [...memoPointersRef.current.values()];
-    const dist = Math.max(1, memoDistance(p1, p2));
-    const mid = memoMidpoint(p1, p2);
-    const start = memoPinchStartRef.current;
-    const nextZoom = clamp(start.zoom * (dist / start.distance), 0.8, 2.5);
-    setCalcZoom(nextZoom);
-    setCalcPan({
-      x: start.pan.x + (mid.x - start.mid.x),
-      y: start.pan.y + (mid.y - start.mid.y)
-    });
-  };
-  const handleMemoPointerEnd = (e: any) => {
-    if (e.pointerType !== "touch") return;
-    memoPointersRef.current.delete(e.pointerId);
-    if (memoPointersRef.current.size < 2) {
-      memoPinchStartRef.current = null;
-      setIsPinchingMemo(false);
-    }
   };
 
   const runAutoDrawTest = async (poolOverride?: string[]) => {
@@ -3137,21 +3078,14 @@ function QuestPageInner() {
             </button>
           </div>
 
-          <div className="w-full rounded-xl border border-slate-200 bg-white p-3 space-y-2">
-            <div className="flex items-center justify-between text-sm font-bold text-slate-700">
-              <span>計算メモ（2本指ピンチで拡大縮小）</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={resetMemoViewport}
-                  className="px-2 py-1 rounded-md bg-slate-100 text-slate-700"
-                >
-                  100%
-                </button>
-                <button
-                  type="button"
-                  onClick={clearMemo}
-                  className="px-2 py-1 rounded-md bg-slate-700 text-white"
+            <div className="w-full rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+              <div className="flex items-center justify-between text-sm font-bold text-slate-700">
+                <span>計算メモ</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={clearMemo}
+                    className="px-2 py-1 rounded-md bg-slate-700 text-white"
                 >
                   メモ消去
                 </button>
@@ -3161,19 +3095,14 @@ function QuestPageInner() {
               ref={drawAreaRef}
               data-testid="calc-memo-area"
               className="relative mx-auto overflow-hidden rounded-xl border-2 border-slate-300 bg-white"
-              style={{ width: visibleCanvasSize, height: visibleCanvasSize, touchAction: "none" }}
-              onPointerDown={handleMemoPointerDown}
-              onPointerMove={handleMemoPointerMove}
-              onPointerUp={handleMemoPointerEnd}
-              onPointerCancel={handleMemoPointerEnd}
-              onPointerLeave={handleMemoPointerEnd}
+              style={{ width: visibleCanvasSize, height: visibleCanvasSize }}
             >
               <div
                 className="absolute"
                 style={{
                   left: -OUTER_MARGIN,
                   top: -OUTER_MARGIN,
-                  transform: `translate(${calcPan.x}px, ${calcPan.y}px) scale(${calcZoom})`,
+                  transform: "translate(0px, 0px) scale(1)",
                   transformOrigin: "center center"
                 }}
               >
@@ -3188,7 +3117,7 @@ function QuestPageInner() {
                   canvasWidth={drawCanvasSize}
                   canvasHeight={drawCanvasSize}
                   className="shadow-lg"
-                  disabled={status !== 'playing' || isPinchingMemo}
+                  disabled={status !== 'playing'}
                 />
               </div>
             </div>
