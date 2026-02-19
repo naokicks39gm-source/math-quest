@@ -3583,10 +3583,10 @@ function QuestPageInner() {
                               type="button"
                               onClick={() => setQuadraticActiveIndex(0)}
                               aria-label="recognized-answer-1"
-                              className={`w-[72px] sm:w-[84px] shrink-0 h-[48px] sm:h-[56px] px-2 sm:px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
+                              className={`${quadraticFractionInputs[0].enabled ? "w-[98px] sm:w-[116px] h-[64px] sm:h-[76px] text-[18px] sm:text-[22px]" : "w-[72px] sm:w-[84px] h-[48px] sm:h-[56px] text-[22px] sm:text-[26px]"} shrink-0 px-2 sm:px-3 rounded-xl border-2 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
                                 quadraticActiveIndex === 0 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
                               }`}
-                              style={{ opacity: quadraticAnswers[0] ? 1 : 0.35 }}
+                              style={{ opacity: quadraticFractionInputs[0].enabled ? 1 : (quadraticAnswers[0] ? 1 : 0.35) }}
                             >
                               {quadraticFractionInputs[0].enabled
                                 ? renderFractionEditorValue(quadraticFractionInputs[0])
@@ -3597,10 +3597,10 @@ function QuestPageInner() {
                               type="button"
                               onClick={() => setQuadraticActiveIndex(1)}
                               aria-label="recognized-answer-2"
-                              className={`w-[72px] sm:w-[84px] shrink-0 h-[48px] sm:h-[56px] px-2 sm:px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
+                              className={`${quadraticFractionInputs[1].enabled ? "w-[98px] sm:w-[116px] h-[64px] sm:h-[76px] text-[18px] sm:text-[22px]" : "w-[72px] sm:w-[84px] h-[48px] sm:h-[56px] text-[22px] sm:text-[26px]"} shrink-0 px-2 sm:px-3 rounded-xl border-2 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
                                 quadraticActiveIndex === 1 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
                               }`}
-                              style={{ opacity: quadraticAnswers[1] ? 1 : 0.35 }}
+                              style={{ opacity: quadraticFractionInputs[1].enabled ? 1 : (quadraticAnswers[1] ? 1 : 0.35) }}
                             >
                               {quadraticFractionInputs[1].enabled
                                 ? renderFractionEditorValue(quadraticFractionInputs[1])
@@ -3621,10 +3621,10 @@ function QuestPageInner() {
                         >
                           <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
                             <span className="text-[26px] sm:text-[30px] font-bold text-emerald-100">=</span>
-                            <div className="relative w-[150px] sm:w-[180px] overflow-visible">
+                            <div className={`relative overflow-visible ${fractionInput.enabled ? "w-[190px] sm:w-[220px]" : "w-[150px] sm:w-[180px]"}`}>
                               <div
                                 aria-label="recognized-answer"
-                                className="w-[150px] sm:w-[180px] shrink-0 max-w-full h-[56px] sm:h-[64px] px-2 sm:px-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 text-[26px] sm:text-[30px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center"
+                                className={`${fractionInput.enabled ? "w-[190px] sm:w-[220px] h-[74px] sm:h-[84px] text-[20px] sm:text-[24px]" : "w-[150px] sm:w-[180px] h-[56px] sm:h-[64px] text-[26px] sm:text-[30px]"} shrink-0 max-w-full px-2 sm:px-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center`}
                                 style={{ opacity: fractionInput.enabled ? 1 : (displayedAnswer ? 1 : 0.35) }}
                               >
                                 {fractionInput.enabled
@@ -3704,14 +3704,14 @@ function QuestPageInner() {
       {status === 'playing' && (
         <div className="w-full pt-2 pb-3 sticky bottom-0 bg-slate-50/95 backdrop-blur-sm z-20 space-y-2">
           <div className="w-full space-y-1 pb-1">
-            <div className="w-full grid grid-cols-10 gap-1">
+            <div className="w-full grid grid-cols-5 gap-2">
               {DIGIT_KEYPAD_TOKENS.map((token) => (
                 <button
                   key={token}
                   onClick={() => handleInput(token)}
                   disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
                   className={`
-                    h-9 w-full rounded-md text-sm font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                    h-10 w-full rounded-lg text-lg font-bold shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all border-2
                     ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
                   `}
                 >

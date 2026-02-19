@@ -8,9 +8,9 @@ const source = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"
 test("quest keypad includes symbol keys and compact sizing", () => {
   assert.match(source, /const DIGIT_KEYPAD_TOKENS = \["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"\] as const;/);
   assert.match(source, /const SYMBOL_KEYPAD_TOKENS = \["\/", "\.", "-"\] as const;/);
-  assert.match(source, /w-full grid grid-cols-10 gap-1/);
+  assert.match(source, /w-full grid grid-cols-5 gap-2/);
   assert.match(source, /w-full grid grid-cols-12 gap-1/);
-  assert.match(source, /h-9 w-full rounded-md text-sm/);
+  assert.match(source, /h-10 w-full rounded-lg text-lg/);
   assert.match(source, /col-span-2 h-9 w-full rounded-md text-xs/);
   assert.match(source, /uiText\.judge/);
   assert.match(source, />\s*おわり\s*</);
