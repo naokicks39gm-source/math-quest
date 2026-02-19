@@ -37,6 +37,9 @@ test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("計算メモ（2本指ピンチで縮小）"), true);
   assert.equal(source.includes("h-[40vh] min-h-[260px]"), true);
   assert.equal(source.includes("bg-white/90"), true);
+  assert.equal(source.includes("w-full bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[48vh] overflow-y-auto"), false);
+  assert.equal(source.includes("h-[120%] w-[120%]"), true);
+  assert.equal(source.includes("overflow-visible"), true);
   assert.equal(source.includes("fixed inset-x-2 bottom-2"), false);
   assert.equal(source.includes("status === 'playing' && selectedPath"), true);
   assert.equal(source.includes("まちがえた もんだい"), false);
