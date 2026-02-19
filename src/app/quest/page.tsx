@@ -1450,7 +1450,7 @@ function QuestPageInner() {
   const pendingRecognizeRef = useRef(false);
   const forcedDigitsRef = useRef<number | null>(null);
   const cooldownUntilRef = useRef(0);
-  const AUTO_NEXT_WAIT_MS = 900;
+  const AUTO_NEXT_WAIT_MS = 600;
   const autoNextTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
   const grades = useMemo(
@@ -2200,6 +2200,55 @@ function QuestPageInner() {
       isValidAnswerText(input, keypadAnswerKind) ||
       (keypadAnswerKind !== "frac" && input.trim().length > 0 && input.includes("/"))
     );
+
+  const resultOverlay = resultMark ? (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      {resultMark === "correct" ? (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 120 120"
+          className="h-24 w-24 sm:h-28 sm:w-28 text-green-300/95 drop-shadow-[0_3px_0_rgba(0,0,0,0.28)]"
+        >
+          <path
+            d="M18 62 C20 28, 52 10, 84 20 C108 30, 112 72, 88 92 C62 112, 24 98, 18 62"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="9"
+            strokeLinecap="round"
+          />
+          <path
+            d="M24 60 C27 32, 53 18, 80 25"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="4.5"
+            strokeLinecap="round"
+            opacity="0.7"
+          />
+        </svg>
+      ) : (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 120 120"
+          className="h-24 w-24 sm:h-28 sm:w-28 text-red-300/95 drop-shadow-[0_3px_0_rgba(0,0,0,0.28)]"
+        >
+          <path
+            d="M22 22 L98 98"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="10"
+            strokeLinecap="round"
+          />
+          <path
+            d="M98 24 L26 96"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="10"
+            strokeLinecap="round"
+          />
+        </svg>
+      )}
+    </div>
+  ) : null;
 
 
   const toggleCharacter = () => {
@@ -3045,7 +3094,7 @@ function QuestPageInner() {
                         {renderPrompt(currentItem)}
                       </div>
                       {isQuadraticRootsQuestion ? (
-                        <div className="w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2 overflow-x-auto whitespace-nowrap">
+                        <div className="relative w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2 overflow-x-auto whitespace-nowrap">
                           <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x1 =</span>
                           <button
                             type="button"
@@ -3070,9 +3119,10 @@ function QuestPageInner() {
                           >
                             {quadraticAnswers[1] || "\u2007"}
                           </button>
+                          {resultOverlay}
                         </div>
                       ) : (
-                        <div className="w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2">
+                        <div className="relative w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2">
                           <span className="text-[26px] sm:text-[30px] font-bold text-emerald-100">=</span>
                           <div
                             aria-label="recognized-answer"
@@ -3081,20 +3131,11 @@ function QuestPageInner() {
                           >
                             {displayedAnswer || "\u2007"}
                           </div>
+                          {resultOverlay}
                         </div>
                       )}
                     </div>
-                    <div className="mt-2 h-5 flex justify-end">
-                      {practiceResult && (
-                        <div
-                          className={`text-xs font-bold ${
-                            practiceResult.ok ? "text-green-600" : "text-red-600"
-                          }`}
-                        >
-                          {practiceResult.ok ? uiText.correct : uiText.incorrect}
-                        </div>
-                      )}
-                    </div>
+                    <div className="mt-2 h-5" />
                   </div>
                 </div>
               ) : (
