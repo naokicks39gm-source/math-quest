@@ -349,6 +349,202 @@ const generateByPattern = (type: TypeDef, used: Set<string>, targetCount: number
   return [];
 };
 
+type ValueBucket = "small" | "medium" | "large";
+
+type QuestionFeatures = {
+  key: string;
+  digits: Set<number>;
+  numbers: number[];
+  valueBucket: ValueBucket;
+  patternId: string;
+  dan: number | null;
+  family: string;
+};
+
+const DIGIT_RE = /\d/g;
+const NUMBER_RE = /-?\d+(?:\.\d+)?/g;
+
+const toValueBucket = (values: number[]): ValueBucket => {
+  const maxAbs = values.reduce((max, v) => Math.max(max, Math.abs(v)), 0);
+  if (maxAbs < 20) return "small";
+  if (maxAbs < 100) return "medium";
+  return "large";
+};
+
+const getPatternId = (entry: QuestEntry) => entry.type.generation_params?.pattern_id ?? "";
+
+const getDanFromPatternId = (patternId: string): number | null => {
+  const match = patternId.match(/MUL_1D_1D_DAN_(\d)$/);
+  return match ? Number(match[1]) : null;
+};
+
+const featureFromEntry = (entry: QuestEntry): QuestionFeatures => {
+  const key = entryKey(entry);
+  const raw = `${entry.item.prompt} ${entry.item.answer}`;
+  const digits = new Set<number>();
+  for (const ch of raw.match(DIGIT_RE) ?? []) digits.add(Number(ch));
+  const numbers = (raw.match(NUMBER_RE) ?? []).map((n) => Number(n)).filter((n) => Number.isFinite(n));
+  const patternId = getPatternId(entry);
+  const dan = getDanFromPatternId(patternId);
+  const valueBucket = toValueBucket(numbers);
+  const family = dan !== null ? `${patternId}:DAN_${dan}` : `${patternId}:${valueBucket}`;
+  return { key, digits, numbers, valueBucket, patternId, dan, family };
+};
+
+export const extractQuestionFeatures = (entry: QuestEntry) => featureFromEntry(entry);
+
+const getFeatures = (entry: QuestEntry, cache: Map<string, QuestionFeatures>) => {
+  const key = entryKey(entry);
+  const cached = cache.get(key);
+  if (cached) return cached;
+  const next = featureFromEntry(entry);
+  cache.set(key, next);
+  return next;
+};
+
+const countMap = <T,>(values: T[]) => {
+  const map = new Map<T, number>();
+  for (const v of values) map.set(v, (map.get(v) ?? 0) + 1);
+  return map;
+};
+
+const scoreByFeatures = (features: QuestionFeatures[]) => {
+  if (features.length === 0) return 0;
+
+  const digitFreq = new Map<number, number>();
+  for (const f of features) {
+    for (const d of f.digits) digitFreq.set(d, (digitFreq.get(d) ?? 0) + 1);
+  }
+  const uniqueDigits = digitFreq.size;
+  let repeatedDigitPenalty = 0;
+  for (const count of digitFreq.values()) {
+    if (count > 2) repeatedDigitPenalty += (count - 2) * 3;
+  }
+
+  const buckets = new Set(features.map((f) => f.valueBucket)).size;
+  const patternFreq = countMap(features.map((f) => f.patternId || "UNKNOWN"));
+  let duplicatePatternPenalty = 0;
+  for (const count of patternFreq.values()) {
+    if (count > 1) duplicatePatternPenalty += (count - 1) * 5;
+  }
+
+  const danOnly = features.filter((f) => f.dan !== null).map((f) => f.dan as number);
+  const danFreq = countMap(danOnly);
+  let duplicateDanPenalty = 0;
+  for (const count of danFreq.values()) {
+    if (count > 1) duplicateDanPenalty += (count - 1) * 9;
+  }
+
+  const primaryValues = features.map((f) => f.numbers[0] ?? 0).sort((a, b) => a - b);
+  let proximityPenalty = 0;
+  for (let i = 1; i < primaryValues.length; i += 1) {
+    const diff = Math.abs(primaryValues[i] - primaryValues[i - 1]);
+    if (diff <= 5) proximityPenalty += 4;
+    else if (diff <= 10) proximityPenalty += 2;
+  }
+
+  return (
+    uniqueDigits * 8 +
+    buckets * 4 -
+    repeatedDigitPenalty -
+    duplicatePatternPenalty -
+    duplicateDanPenalty -
+    proximityPenalty
+  );
+};
+
+const adjacentPenaltyByFeatures = (features: QuestionFeatures[]) => {
+  let penalty = 0;
+  for (let i = 1; i < features.length; i += 1) {
+    const prev = features[i - 1];
+    const curr = features[i];
+    if (prev.patternId && prev.patternId === curr.patternId) penalty += 40;
+    if (prev.dan !== null && curr.dan !== null && prev.dan === curr.dan) penalty += 50;
+    if (prev.family === curr.family) penalty += 35;
+  }
+  return penalty;
+};
+
+const pairContrastScore = (a: QuestionFeatures, b: QuestionFeatures) => {
+  let score = 0;
+  if (a.patternId !== b.patternId) score += 5;
+  if (a.valueBucket !== b.valueBucket) score += 3;
+  if (a.dan !== b.dan) score += 4;
+  const av = a.numbers[0] ?? 0;
+  const bv = b.numbers[0] ?? 0;
+  score += Math.min(6, Math.abs(av - bv) / 8);
+  return score;
+};
+
+export const reorderAvoidAdjacentSameFamily = (entries: QuestEntry[]) => {
+  if (entries.length <= 2) return entries;
+  const cache = new Map<string, QuestionFeatures>();
+  const remaining = [...entries];
+  const ordered: QuestEntry[] = [];
+
+  const seed = shuffle(remaining).shift();
+  if (!seed) return entries;
+  ordered.push(seed);
+  remaining.splice(remaining.indexOf(seed), 1);
+
+  while (remaining.length > 0) {
+    const prevFeature = getFeatures(ordered[ordered.length - 1], cache);
+    let bestIndex = -1;
+    let bestScore = -Infinity;
+    for (let i = 0; i < remaining.length; i += 1) {
+      const candidateFeature = getFeatures(remaining[i], cache);
+      let score = pairContrastScore(prevFeature, candidateFeature);
+      if (prevFeature.patternId === candidateFeature.patternId) score -= 100;
+      if (prevFeature.dan !== null && candidateFeature.dan !== null && prevFeature.dan === candidateFeature.dan) {
+        score -= 120;
+      }
+      if (prevFeature.family === candidateFeature.family) score -= 80;
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = i;
+      }
+    }
+    if (bestIndex < 0) break;
+    ordered.push(remaining[bestIndex]);
+    remaining.splice(bestIndex, 1);
+  }
+  for (const leftover of remaining) ordered.push(leftover);
+  return ordered;
+};
+
+const scoreEntriesWithCache = (entries: QuestEntry[], cache: Map<string, QuestionFeatures>) => {
+  const features = entries.map((e) => getFeatures(e, cache));
+  return scoreByFeatures(features) - adjacentPenaltyByFeatures(features);
+};
+
+export const scoreCandidateSet = (entries: QuestEntry[]) => {
+  const cache = new Map<string, QuestionFeatures>();
+  return scoreEntriesWithCache(entries, cache);
+};
+
+const pickDiverseQuizEntries = (stock: QuestEntry[], quizSize: number) => {
+  if (quizSize <= 0) return [];
+  if (stock.length <= quizSize) return reorderAvoidAdjacentSameFamily(stock);
+
+  const attempts = 180;
+  const cache = new Map<string, QuestionFeatures>();
+  let best: QuestEntry[] = [];
+  let bestScore = -Infinity;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const sampled = shuffle(stock).slice(0, quizSize);
+    const ordered = reorderAvoidAdjacentSameFamily(sampled);
+    const score = scoreEntriesWithCache(ordered, cache);
+    if (score > bestScore) {
+      bestScore = score;
+      best = ordered;
+    }
+  }
+
+  if (best.length === quizSize) return best;
+  return reorderAvoidAdjacentSameFamily(shuffle(stock).slice(0, quizSize));
+};
+
 export const expandEntriesToAtLeast = (entries: QuestEntry[], minCount: number) => {
   const unique: QuestEntry[] = [];
   const used = new Set<string>();
@@ -399,5 +595,5 @@ export const buildUniqueQuestSet = ({ source, poolSize, quizSize }: BuildParams)
   if (source.length === 0 || quizSize <= 0) return [];
   const deduped = expandEntriesToAtLeast(source, Math.max(poolSize, quizSize));
   const stock = deduped.length > poolSize ? shuffle(deduped).slice(0, poolSize) : deduped;
-  return shuffle(stock).slice(0, quizSize);
+  return pickDiverseQuizEntries(stock, quizSize);
 };
