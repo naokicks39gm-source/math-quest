@@ -14,6 +14,8 @@ test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("setStatus('cleared');"), true);
   assert.equal(source.includes("クリアー！"), true);
   assert.equal(source.includes("if (v + 1 >= totalQuizQuestions)"), true);
+  assert.equal(source.includes("const totalQuizQuestions = TOTAL_QUESTIONS;"), true);
+  assert.equal(source.includes("const totalQuizQuestions = Math.min(TOTAL_QUESTIONS, quizItems.length);"), false);
   assert.equal(source.includes("setQuestionResults((prev) => ({"), true);
   assert.equal(source.includes("correctAnswer?: string"), true);
   assert.equal(source.includes("everWrong: boolean"), true);

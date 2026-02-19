@@ -8,10 +8,15 @@ const source = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"
 test("quest keypad includes symbol keys and compact sizing", () => {
   assert.match(source, /const DIGIT_KEYPAD_TOKENS = \["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"\] as const;/);
   assert.match(source, /const SYMBOL_KEYPAD_TOKENS = \["\/", "\.", "-"\] as const;/);
-  assert.match(source, /w-full grid grid-cols-5 gap-2/);
-  assert.match(source, /w-full grid grid-cols-12 gap-1/);
-  assert.match(source, /h-10 w-full rounded-lg text-lg/);
-  assert.match(source, /col-span-2 h-9 w-full rounded-md text-xs/);
+  assert.match(source, /const keypadDigitTopTokens = DIGIT_KEYPAD_TOKENS\.filter\(\(token\) => token !== "0"\);/);
+  assert.match(source, /const smallSymbolTokens: Array<\(typeof SYMBOL_KEYPAD_TOKENS\)\[number\]> = \["\.", "-", "\/"\];/);
+  assert.match(source, /w-full flex items-stretch gap-2/);
+  assert.match(source, /flex-1 grid grid-cols-3 grid-rows-4 gap-1\.5/);
+  assert.match(source, /col-span-2 h-11 grid grid-cols-3 gap-1/);
+  assert.match(source, /w-\[92px\] grid grid-cols-1 grid-rows-\[44px_88px_36px\] gap-1\.5/);
+  assert.match(source, /h-11 w-full rounded-lg text-base/);
+  assert.match(source, /h-full w-full rounded-lg text-base font-black/);
+  assert.match(source, /h-full w-full rounded-md text-xs font-bold/);
   assert.match(source, /uiText\.judge/);
   assert.match(source, />\s*おわり\s*</);
   assert.match(source, /onClick=\{endLearningSession\}/);
