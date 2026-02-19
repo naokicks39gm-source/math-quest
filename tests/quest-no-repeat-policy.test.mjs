@@ -12,12 +12,13 @@ const questSource = fs.readFileSync(
   "utf8"
 );
 
-test("factory enforces no-repeat policy for prompt/equivalent/answer keys", () => {
+test("factory enforces no-repeat policy for prompt/equivalent keys", () => {
   assert.equal(factorySource.includes("if (promptKeys.has(promptKey)) continue;"), true);
   assert.equal(factorySource.includes("if (equivalentKeys.has(equivalentKey)) continue;"), true);
-  assert.equal(factorySource.includes("if (answerKeys.has(answerKey)) continue;"), true);
-  assert.equal(factorySource.includes("const strictAttempts = 600"), true);
-  assert.equal(factorySource.includes("const attempts = 6"), true);
+  assert.equal(factorySource.includes("if (answerKeys.has(answerKey)) continue;"), false);
+  assert.equal(factorySource.includes("const strictAttempts = 1200"), true);
+  assert.equal(factorySource.includes("const attempts = 12"), true);
+  assert.equal(factorySource.includes("return [];"), true);
 });
 
 test("equivalent expression normalization treats commutative ops as same", () => {
