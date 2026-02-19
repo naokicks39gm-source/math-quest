@@ -2116,7 +2116,7 @@ function QuestPageInner() {
         answerLabel: "答え"
       };
   const emptyMessage = uiText.noItems;
-  const totalQuizQuestions = Math.min(TOTAL_QUESTIONS, quizItems.length);
+  const totalQuizQuestions = TOTAL_QUESTIONS;
   const nextQuestion = () => {
     setItemIndex((v) => {
       if (v + 1 >= totalQuizQuestions) {
@@ -2591,6 +2591,8 @@ function QuestPageInner() {
       (fractionInput.enabled ? isFractionEditorReady(fractionInput) : isValidAnswerText(input, keypadAnswerKind)) ||
       (keypadAnswerKind !== "frac" && input.trim().length > 0 && input.includes("/"))
     );
+  const keypadDigitTopTokens = DIGIT_KEYPAD_TOKENS.filter((token) => token !== "0");
+  const smallSymbolTokens: Array<(typeof SYMBOL_KEYPAD_TOKENS)[number]> = [".", "-", "/"];
 
   const resultOverlay = resultMark ? (
     <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
@@ -3854,57 +3856,71 @@ function QuestPageInner() {
       {status === 'playing' && (
         <div className="w-full pt-2 pb-3 sticky bottom-0 bg-slate-50/95 backdrop-blur-sm z-20 space-y-2">
           <div className="w-full space-y-1 pb-1">
-            <div className="w-full grid grid-cols-5 gap-2">
-              {DIGIT_KEYPAD_TOKENS.map((token) => (
+            <div className="w-full flex items-stretch gap-2">
+              <div className="flex-1 grid grid-cols-3 grid-rows-4 gap-1.5">
+                {keypadDigitTopTokens.map((token) => (
+                  <button
+                    key={token}
+                    onClick={() => handleInput(token)}
+                    disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
+                    className={`
+                      h-11 w-full rounded-lg text-base font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                      ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
+                    `}
+                  >
+                    {renderKeyLabel(token)}
+                  </button>
+                ))}
                 <button
-                  key={token}
-                  onClick={() => handleInput(token)}
-                  disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
+                  onClick={() => handleInput("0")}
+                  disabled={status !== 'playing' || isStarting || !canUseKeyToken("0")}
                   className={`
-                    h-10 w-full rounded-lg text-lg font-bold shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all border-2
-                    ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
+                    h-11 w-full rounded-lg text-base font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                    ${canUseKeyToken("0") ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
                   `}
                 >
-                  {renderKeyLabel(token)}
+                  {renderKeyLabel("0")}
                 </button>
-              ))}
-            </div>
-            <div className="w-full grid grid-cols-12 gap-1">
-              {SYMBOL_KEYPAD_TOKENS.map((token) => (
+                <div className="col-span-2 h-11 grid grid-cols-3 gap-1">
+                  {smallSymbolTokens.map((token) => (
+                    <button
+                      key={token}
+                      onClick={() => handleInput(token)}
+                      disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
+                      className={`
+                        h-full w-full rounded-md text-[11px] font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                        ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
+                      `}
+                    >
+                      {renderKeyLabel(token)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="w-[92px] grid grid-cols-1 grid-rows-[44px_88px_36px] gap-1.5">
                 <button
-                  key={token}
-                  onClick={() => handleInput(token)}
-                  disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
-                  className={`
-                    col-span-2 h-9 w-full rounded-md text-xs font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
-                    ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                  `}
+                  onClick={handleDelete}
+                  disabled={status !== 'playing' || isStarting}
+                  className="h-full w-full rounded-lg text-sm font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-red-100 text-red-600 border border-red-200 hover:bg-red-200 flex items-center justify-center"
                 >
-                  {renderKeyLabel(token)}
+                  ⌫
                 </button>
-              ))}
-              <button
-                onClick={handleDelete}
-                disabled={status !== 'playing' || isStarting}
-                className="col-span-2 h-9 w-full rounded-md text-xs font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-red-100 text-red-600 border border-red-200 hover:bg-red-200 flex items-center justify-center"
-              >
-                ⌫
-              </button>
-              <button
-                onClick={handleAttack}
-                disabled={status !== 'playing' || isStarting || !canSubmitCurrentAnswer}
-                className="col-span-2 h-9 w-full rounded-md text-xs font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-indigo-600 text-white border border-indigo-700 hover:bg-indigo-700 flex items-center justify-center"
-              >
-                {uiText.judge}
-              </button>
-              <button
-                type="button"
-                onClick={endLearningSession}
-                disabled={sessionActionLoading}
-                className="col-span-2 h-9 w-full rounded-md text-xs font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-emerald-600 text-white border border-emerald-700 hover:bg-emerald-700 disabled:bg-slate-300 flex items-center justify-center"
-              >
-                おわり
-              </button>
+                <button
+                  onClick={handleAttack}
+                  disabled={status !== 'playing' || isStarting || !canSubmitCurrentAnswer}
+                  className="h-full w-full rounded-lg text-base font-black shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all bg-indigo-600 text-white border border-indigo-700 hover:bg-indigo-700 flex items-center justify-center"
+                >
+                  {uiText.judge}
+                </button>
+                <button
+                  type="button"
+                  onClick={endLearningSession}
+                  disabled={sessionActionLoading}
+                  className="h-full w-full rounded-md text-xs font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-emerald-600 text-white border border-emerald-700 hover:bg-emerald-700 disabled:bg-slate-300 flex items-center justify-center"
+                >
+                  おわり
+                </button>
+              </div>
             </div>
           </div>
         </div>
