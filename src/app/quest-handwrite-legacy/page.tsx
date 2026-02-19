@@ -10,7 +10,7 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getCatalogGrades } from '@/lib/gradeCatalog';
-import { buildUniqueQuestSet } from '@/lib/questItemFactory';
+import { buildStocksForTypes, pickUniqueQuizFromStock, type TypeStockResult } from "@/lib/questStockFactory";
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -91,8 +91,6 @@ export const getAutoJudgeDelayMs = (digits: number) => {
   if (digits === 2) return 1000;
   return 1300;
 };
-
-const typeSignature = (typeId: string) => typeId.replace(/^[A-Z]\d\./, "");
 
 const trimTrailingEquationEquals = (text: string) => text.replace(/\s*[=＝]\s*$/u, "");
 
@@ -1469,6 +1467,8 @@ function QuestPageInner() {
   const forcedFractionAnswerRef = useRef<string | null>(null);
   const forcedExpectedFormRef = useRef<ExpectedForm | null>(null);
   const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
+  const [typeStocks, setTypeStocks] = useState<Map<string, TypeStockResult>>(new Map());
+  const [stockReady, setStockReady] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const [visibleCanvasSize, setVisibleCanvasSize] = useState(DEFAULT_VISIBLE_CANVAS_SIZE);
   const clearResults = useMemo(
@@ -1764,28 +1764,14 @@ function QuestPageInner() {
     return null;
   })();
 
-  const categoryItems = useMemo(
+  const typeCatalog = useMemo(
     () =>
-      categoryContext
-        ? categoryContext.category.types.flatMap((t) =>
-            t.example_items.map((item) => ({ item, type: t }))
-          )
-        : [],
-    [categoryContext]
-  );
-
-  const typeItems = useMemo(
-    () => (selectedType ? selectedType.example_items.map((item) => ({ item, type: selectedType })) : []),
-    [selectedType]
-  );
-
-  const allCategoryItems = useMemo(
-    () =>
-      grades.flatMap((g) =>
-        g.categories.flatMap((c) =>
-          c.types.flatMap((t) =>
-            t.example_items.map((item) => ({ item, type: t }))
-          )
+      grades.flatMap((grade) =>
+        grade.categories.flatMap((category) =>
+          category.types.map((type) => ({
+            type,
+            typeId: type.type_id
+          }))
         )
       ),
     [grades]
@@ -1803,50 +1789,45 @@ function QuestPageInner() {
     [grades]
   );
 
-  const activeItems = useMemo(
-    () =>
-      hasTypeQuery
-        ? typeItems
-        : hasCategoryQuery
-          ? categoryItems
-          : allCategoryItems,
-    [hasTypeQuery, hasCategoryQuery, typeItems, categoryItems, allCategoryItems]
-  );
-  const selectedTypeSignature = useMemo(() => {
-    if (typeFromQuery) return typeSignature(typeFromQuery);
-    if (selectedType) return typeSignature(selectedType.type_id);
-    return "";
-  }, [typeFromQuery, selectedType]);
-
-  const poolCandidates = useMemo(() => {
-    if (!hasTypeQuery) return activeItems;
-    if (!selectedTypeSignature) return activeItems;
-
-    const seen = new Set<string>();
-    const picked: QuestEntry[] = [];
-    const pushUnique = (entries: QuestEntry[]) => {
-      for (const entry of entries) {
-        const key = `${entry.type.type_id}::${entry.item.prompt_tex ?? entry.item.prompt}::${entry.item.answer}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        picked.push(entry);
-        if (picked.length >= QUESTION_POOL_SIZE) return;
+  const targetStockTypes = useMemo(() => {
+    if (hasTypeQuery) {
+      const byQuery = typeCatalog.find((entry) => entry.typeId === typeFromQuery);
+      if (byQuery) return [byQuery];
+      if (selectedType) {
+        const bySelected = typeCatalog.find((entry) => entry.typeId === selectedType.type_id);
+        if (bySelected) return [bySelected];
       }
-    };
+      return [];
+    }
+    if (hasCategoryQuery && categoryContext) {
+      return categoryContext.category.types.map((type) => ({ type, typeId: type.type_id }));
+    }
+    return typeCatalog;
+  }, [hasTypeQuery, hasCategoryQuery, typeFromQuery, selectedType, categoryContext, typeCatalog]);
 
-    const sameTypeAcrossGrades = allCategoryItems.filter(
-      (entry) => typeSignature(entry.type.type_id) === selectedTypeSignature
+  useEffect(() => {
+    setStockReady(false);
+    const stocks = buildStocksForTypes(
+      targetStockTypes.map((entry) => entry.type),
+      QUESTION_POOL_SIZE
     );
-    pushUnique(sameTypeAcrossGrades);
-    return picked.length > 0 ? picked : activeItems;
-  }, [hasTypeQuery, selectedTypeSignature, activeItems, allCategoryItems]);
+    setTypeStocks(stocks);
+    setStockReady(true);
+  }, [targetStockTypes, retryNonce]);
+
+  const activeTypeId = useMemo(() => {
+    if (hasTypeQuery && typeFromQuery) return typeFromQuery;
+    if (selectedType?.type_id) return selectedType.type_id;
+    return targetStockTypes[0]?.typeId ?? "";
+  }, [hasTypeQuery, typeFromQuery, selectedType, targetStockTypes]);
   const quizSize = Math.min(TOTAL_QUESTIONS, QUESTION_POOL_SIZE);
   useEffect(() => {
-    const nextSet = buildUniqueQuestSet({
-      source: poolCandidates,
-      poolSize: QUESTION_POOL_SIZE,
-      quizSize
-    });
+    if (!stockReady) {
+      setQuizItems([]);
+      return;
+    }
+    const stock = activeTypeId ? typeStocks.get(activeTypeId) : undefined;
+    const nextSet = stock ? pickUniqueQuizFromStock(stock.entries, quizSize).entries : [];
     setQuizItems(nextSet);
     setItemIndex(0);
     setQuestionResults({});
@@ -1857,7 +1838,7 @@ function QuestPageInner() {
     setRecognizedNumber(null);
     setQuadraticAnswers(["", ""]);
     setQuadraticActiveIndex(0);
-  }, [poolCandidates, quizSize, retryNonce]);
+  }, [stockReady, typeStocks, activeTypeId, quizSize, retryNonce]);
 
   const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
   const currentEntry = quizItems[safeIndex] ?? null;

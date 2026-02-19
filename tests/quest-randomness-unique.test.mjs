@@ -32,6 +32,6 @@ test("quest item factory exposes diversity helper functions", () => {
   assert.equal(source.includes("export const extractQuestionFeatures"), true);
   assert.equal(source.includes("export const scoreCandidateSet"), true);
   assert.equal(source.includes("export const reorderAvoidAdjacentSameFamily"), true);
-  assert.equal(source.includes("pickDiverseQuizEntries"), true);
+  assert.equal(source.includes("uniqueByPromptAndEquivalent"), true);
   assert.equal(source.includes("adjacentPenaltyByFeatures"), true);
 });

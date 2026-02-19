@@ -23,17 +23,13 @@ test("adjacent same family is strongly penalized", () => {
   assert.equal(source.includes("if (prev.family === curr.family) penalty += 35"), true);
 });
 
-test("final quest set is chosen through diversity-aware picker", () => {
-  assert.equal(source.includes("const strictAttempts = 1200"), true);
-  assert.equal(source.includes("const fallbackAttempts = 360"), true);
-  assert.equal(source.includes("pickStrictUniqueEntries"), true);
-  assert.equal(source.includes("countConstraintViolations"), true);
-  assert.equal(source.includes("const sampled = shuffle(stock).slice(0, quizSize)"), true);
-  assert.equal(source.includes("const ordered = reorderAvoidAdjacentSameFamily(sampled)"), true);
-  assert.equal(source.includes("const picked = pickDiverseQuizEntries(stock, quizSize);"), true);
-  assert.equal(source.includes("if (picked.length === quizSize && countConstraintViolations(picked) === 0) {"), true);
-  assert.equal(source.includes("return picked;"), true);
-  assert.equal(source.includes("return [];"), true);
+test("final quest set uses single-pass unique pool selection", () => {
+  assert.equal(source.includes("const strictAttempts = 1200"), false);
+  assert.equal(source.includes("const fallbackAttempts = 360"), false);
+  assert.equal(source.includes("const uniquePool = uniqueByPromptAndEquivalent(expanded);"), true);
+  assert.equal(source.includes("if (uniquePool.length < quizSize) {"), true);
+  assert.equal(source.includes("const ordered = reorderAvoidAdjacentSameFamily(shuffle(uniquePool)).slice(0, quizSize);"), true);
+  assert.equal(source.includes("return { entries: reason ? [] : final, reason, stats };"), true);
 });
 
 test("multiplication dan family is explicitly tracked", () => {

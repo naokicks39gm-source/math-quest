@@ -36,6 +36,24 @@ type BuildParams = {
   quizSize: number;
 };
 
+type BuildFailureReason =
+  | "EMPTY_SOURCE"
+  | "INSUFFICIENT_TYPE_SOURCE"
+  | "INSUFFICIENT_UNIQUE_PROMPTS";
+
+export type BuildUniqueQuestSetResult = {
+  entries: QuestEntry[];
+  reason?: BuildFailureReason;
+  stats: {
+    buildMs: number;
+    candidateCount: number;
+    uniquePromptCount: number;
+    uniqueEquivalentCount: number;
+    finalSetSize: number;
+    selectedTypeId: string;
+  };
+};
+
 const gcd = (a: number, b: number): number => {
   let x = Math.abs(a);
   let y = Math.abs(b);
@@ -58,7 +76,7 @@ const shuffle = <T,>(list: T[]) => {
 
 const randInt = (min: number, max: number) => min + Math.floor(Math.random() * (max - min + 1));
 
-const pow10 = (d: number) => 10 ** Math.max(1, d - 1);
+const pow10 = (d: number) => 10 ** Math.max(0, d - 1);
 const minByDigits = (d: number) => pow10(d);
 const maxByDigits = (d: number) => 10 ** d - 1;
 
@@ -88,6 +106,9 @@ export const normalizePromptForUniqueness = (prompt: string) =>
   stripTrailingEquals(prompt)
     .replace(/\\times/g, "×")
     .replace(/\\div/g, "÷")
+    .replace(/＋/g, "+")
+    .replace(/－/g, "-")
+    .replace(/ー/g, "-")
     .replace(/[(){}]/g, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -149,6 +170,21 @@ const makeIntEntry = (type: TypeDef, a: number, op: string, b: number, answer: n
 
 const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, used: Set<string>) => {
   const out: QuestEntry[] = [];
+  if (patternId === "ADD_1D_1D_NO") {
+    const all: QuestEntry[] = [];
+    for (let a = 1; a <= 9; a += 1) {
+      for (let b = a; b <= 9; b += 1) {
+        if (a + b >= 10) continue;
+        all.push(makeIntEntry(type, a, "+", b, a + b));
+      }
+    }
+    for (const entry of shuffle(all)) {
+      pushEntry(out, used, entry);
+      if (out.length >= needed) break;
+    }
+    return out;
+  }
+
   const { a: aDigits, b: bDigits } = parseDigitsFromPattern(patternId, type.generation_params);
   const isAdd = patternId.startsWith("ADD_");
   const isSub = patternId.startsWith("SUB_");
@@ -557,15 +593,11 @@ const scoreEntriesWithCache = (entries: QuestEntry[], cache: Map<string, Questio
 
 const isDev = process.env.NODE_ENV !== "production";
 
-const logBuildStats = (label: string, entries: QuestEntry[]) => {
+const logBuildStats = (label: string, stats: BuildUniqueQuestSetResult["stats"], reason?: BuildFailureReason) => {
   if (!isDev) return;
-  const promptCount = new Set(entries.map((e) => entryPromptKey(e))).size;
-  const equivalentCount = new Set(entries.map((e) => entryEquivalentKey(e))).size;
   console.debug(`[quest-set] ${label}`, {
-    finalSetSize: entries.length,
-    uniquePromptCount: promptCount,
-    uniqueEquivalentCount: equivalentCount,
-    violations: countConstraintViolations(entries)
+    ...stats,
+    reason
   });
 };
 
@@ -574,67 +606,20 @@ export const scoreCandidateSet = (entries: QuestEntry[]) => {
   return scoreEntriesWithCache(entries, cache);
 };
 
-const countConstraintViolations = (entries: QuestEntry[]) => {
-  const promptKeys = countMap(entries.map((e) => entryPromptKey(e)));
-  const equivalentKeys = countMap(entries.map((e) => entryEquivalentKey(e)));
-  let violations = 0;
-  for (const count of promptKeys.values()) {
-    if (count > 1) violations += count - 1;
-  }
-  for (const count of equivalentKeys.values()) {
-    if (count > 1) violations += count - 1;
-  }
-  return violations;
-};
-
-const pickStrictUniqueEntries = (stock: QuestEntry[], quizSize: number) => {
-  if (quizSize <= 0) return [];
-  const shuffled = shuffle(stock);
-  const picked: QuestEntry[] = [];
+const uniqueByPromptAndEquivalent = (entries: QuestEntry[]) => {
+  const unique: QuestEntry[] = [];
   const promptKeys = new Set<string>();
   const equivalentKeys = new Set<string>();
-  for (const entry of shuffled) {
+  for (const entry of entries) {
     const promptKey = entryPromptKey(entry);
     const equivalentKey = entryEquivalentKey(entry);
     if (promptKeys.has(promptKey)) continue;
     if (equivalentKeys.has(equivalentKey)) continue;
-    picked.push(entry);
+    unique.push(entry);
     promptKeys.add(promptKey);
     equivalentKeys.add(equivalentKey);
-    if (picked.length >= quizSize) return picked;
   }
-  return null;
-};
-
-const pickDiverseQuizEntries = (stock: QuestEntry[], quizSize: number) => {
-  if (quizSize <= 0) return [];
-  if (stock.length < quizSize) return [];
-  const strictAttempts = 1200;
-  const fallbackAttempts = 360;
-  const cache = new Map<string, QuestionFeatures>();
-
-  let strictBest: QuestEntry[] = [];
-  let strictBestScore = -Infinity;
-  for (let attempt = 0; attempt < strictAttempts; attempt += 1) {
-    const strictPicked = pickStrictUniqueEntries(stock, quizSize);
-    if (!strictPicked || strictPicked.length !== quizSize) continue;
-    if (countConstraintViolations(strictPicked) !== 0) continue;
-    const ordered = reorderAvoidAdjacentSameFamily(strictPicked);
-    const score = scoreEntriesWithCache(ordered, cache);
-    if (score > strictBestScore) {
-      strictBest = ordered;
-      strictBestScore = score;
-    }
-  }
-  if (strictBest.length === quizSize) return strictBest;
-
-  for (let attempt = 0; attempt < fallbackAttempts; attempt += 1) {
-    const sampled = shuffle(stock).slice(0, quizSize);
-    if (countConstraintViolations(sampled) !== 0) continue;
-    const ordered = reorderAvoidAdjacentSameFamily(sampled);
-    if (countConstraintViolations(ordered) === 0) return ordered;
-  }
-  return [];
+  return unique;
 };
 
 export const expandEntriesToAtLeast = (entries: QuestEntry[], minCount: number) => {
@@ -666,36 +651,60 @@ export const expandEntriesToAtLeast = (entries: QuestEntry[], minCount: number) 
   return unique;
 };
 
-export const buildUniqueQuestSet = ({ source, poolSize, quizSize }: BuildParams): QuestEntry[] => {
-  if (source.length === 0 || quizSize <= 0) return [];
-  const baselineMin = Math.max(poolSize, quizSize);
-  const attempts = 12;
-  for (let i = 0; i < attempts; i += 1) {
-    const growTarget = baselineMin + i * quizSize * 3;
-    const deduped = expandEntriesToAtLeast(source, growTarget);
-    const stock = deduped.length > poolSize ? shuffle(deduped).slice(0, poolSize) : deduped;
-    const picked = pickDiverseQuizEntries(stock, quizSize);
-    if (picked.length === quizSize && countConstraintViolations(picked) === 0) {
-      logBuildStats(`attempt=${i + 1}`, picked);
-      return picked;
-    }
-  }
-  logBuildStats("failed", []);
-  return [];
-};
+export const buildUniqueQuestSet = ({ source, poolSize, quizSize }: BuildParams): BuildUniqueQuestSetResult => {
+  const startedAt = Date.now();
+  const selectedTypeId = source[0]?.type.type_id ?? "";
+  const emptyStats: BuildUniqueQuestSetResult["stats"] = {
+    buildMs: 0,
+    candidateCount: 0,
+    uniquePromptCount: 0,
+    uniqueEquivalentCount: 0,
+    finalSetSize: 0,
+    selectedTypeId
+  };
 
-export const buildQuestSetWithFallback = ({ source, poolSize, quizSize }: BuildParams): QuestEntry[] => {
-  const strict = buildUniqueQuestSet({ source, poolSize, quizSize });
-  if (strict.length === quizSize) return strict;
-  if (source.length === 0 || quizSize <= 0) return [];
-  const relaxedPool = expandEntriesToAtLeast(source, Math.max(poolSize, quizSize));
-  if (relaxedPool.length === 0) return [];
-  if (relaxedPool.length >= quizSize) return shuffle(relaxedPool).slice(0, quizSize);
-
-  const base = shuffle(relaxedPool);
-  const picked = [...base];
-  while (picked.length < quizSize) {
-    picked.push(base[Math.floor(Math.random() * base.length)]);
+  if (source.length === 0 || quizSize <= 0 || !selectedTypeId) {
+    const stats = { ...emptyStats, buildMs: Date.now() - startedAt };
+    logBuildStats("failed", stats, "EMPTY_SOURCE");
+    return { entries: [], reason: "EMPTY_SOURCE", stats };
   }
-  return shuffle(picked).slice(0, quizSize);
+
+  const typedSource = source.filter((entry) => entry.type.type_id === selectedTypeId);
+  if (typedSource.length === 0) {
+    const stats = { ...emptyStats, buildMs: Date.now() - startedAt };
+    logBuildStats("failed", stats, "INSUFFICIENT_TYPE_SOURCE");
+    return { entries: [], reason: "INSUFFICIENT_TYPE_SOURCE", stats };
+  }
+
+  const expanded = expandEntriesToAtLeast(typedSource, Math.max(poolSize, quizSize * 4));
+  const uniquePool = uniqueByPromptAndEquivalent(expanded);
+  const uniquePromptCount = new Set(uniquePool.map((e) => entryPromptKey(e))).size;
+  const uniqueEquivalentCount = new Set(uniquePool.map((e) => entryEquivalentKey(e))).size;
+
+  if (uniquePool.length < quizSize) {
+    const stats = {
+      buildMs: Date.now() - startedAt,
+      candidateCount: expanded.length,
+      uniquePromptCount,
+      uniqueEquivalentCount,
+      finalSetSize: uniquePool.length,
+      selectedTypeId
+    };
+    logBuildStats("failed", stats, "INSUFFICIENT_UNIQUE_PROMPTS");
+    return { entries: [], reason: "INSUFFICIENT_UNIQUE_PROMPTS", stats };
+  }
+
+  const ordered = reorderAvoidAdjacentSameFamily(shuffle(uniquePool)).slice(0, quizSize);
+  const final = uniqueByPromptAndEquivalent(ordered).slice(0, quizSize);
+  const reason = final.length === quizSize ? undefined : "INSUFFICIENT_UNIQUE_PROMPTS";
+  const stats = {
+    buildMs: Date.now() - startedAt,
+    candidateCount: expanded.length,
+    uniquePromptCount,
+    uniqueEquivalentCount,
+    finalSetSize: final.length,
+    selectedTypeId
+  };
+  logBuildStats(reason ? "failed" : "success", stats, reason);
+  return { entries: reason ? [] : final, reason, stats };
 };

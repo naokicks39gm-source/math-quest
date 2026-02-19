@@ -15,10 +15,9 @@ const questSource = fs.readFileSync(
 test("factory enforces no-repeat policy for prompt/equivalent keys", () => {
   assert.equal(factorySource.includes("if (promptKeys.has(promptKey)) continue;"), true);
   assert.equal(factorySource.includes("if (equivalentKeys.has(equivalentKey)) continue;"), true);
-  assert.equal(factorySource.includes("if (answerKeys.has(answerKey)) continue;"), false);
-  assert.equal(factorySource.includes("const strictAttempts = 1200"), true);
-  assert.equal(factorySource.includes("const attempts = 12"), true);
-  assert.equal(factorySource.includes("return [];"), true);
+  assert.equal(factorySource.includes("const strictAttempts = 1200"), false);
+  assert.equal(factorySource.includes("INSUFFICIENT_UNIQUE_PROMPTS"), true);
+  assert.equal(factorySource.includes("return { entries: reason ? [] : final, reason, stats };"), true);
 });
 
 test("equivalent expression normalization treats commutative ops as same", () => {
