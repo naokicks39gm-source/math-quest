@@ -12,6 +12,8 @@ import { getCatalogGrades } from '@/lib/gradeCatalog';
 import { buildUniqueQuestSet } from '@/lib/questItemFactory';
 import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
 import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
+import ElementaryExplanationPanel from "@/components/ElementaryExplanationPanel";
+import { getElementaryLearningAid, isElementaryGrade } from "@/lib/elementaryExplanations";
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -2007,9 +2009,32 @@ function QuestPageInner() {
       }),
     [currentType?.type_id, currentType?.generation_params?.pattern_id]
   );
+  const currentElementaryAid = useMemo(
+    () =>
+      getElementaryLearningAid({
+        gradeId: currentType?.type_id.split(".")[0] ?? "",
+        typeId: currentType?.type_id,
+        patternId: currentType?.generation_params?.pattern_id,
+        prompt: currentItem?.prompt,
+        aDigits: currentType?.generation_params?.a_digits,
+        bDigits: currentType?.generation_params?.b_digits
+      }),
+    [
+      currentType?.type_id,
+      currentType?.generation_params?.pattern_id,
+      currentType?.generation_params?.a_digits,
+      currentType?.generation_params?.b_digits,
+      currentItem?.prompt
+    ]
+  );
   const isQuadraticRootsQuestion = isQuadraticRootsType(currentType?.type_id);
   const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
   const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
+  const shouldShowElementaryExplanation =
+    status === "playing" &&
+    isElementaryGrade(currentGradeId) &&
+    practiceResult?.ok === false &&
+    Boolean(currentElementaryAid);
   const uiText = isEarlyElementary
     ? {
         summary: `${TOTAL_QUESTIONS}もん かんりょう / せいかい ${correctCount}もん`,
@@ -3666,6 +3691,14 @@ function QuestPageInner() {
                   </button>
                 </div>
               </div>
+              {shouldShowElementaryExplanation && currentElementaryAid && (
+                <ElementaryExplanationPanel
+                  aid={currentElementaryAid}
+                  onNext={nextQuestion}
+                  nextLabel={uiText.nextQuestion}
+                  disabled={status !== "playing" || isStarting}
+                />
+              )}
               <div ref={memoCanvasHostRef} className="relative h-[40vh] min-h-[260px] w-full">
                 <div
                   ref={drawAreaRef}
@@ -3679,7 +3712,6 @@ function QuestPageInner() {
                     WebkitTapHighlightColor: "transparent"
                   }}
                   onContextMenu={(e) => e.preventDefault()}
-                  onSelectStart={(e) => e.preventDefault()}
                   onDragStart={(e) => e.preventDefault()}
                   onPointerDown={handleMemoPointerDown}
                   onPointerMove={handleMemoPointerMove}
