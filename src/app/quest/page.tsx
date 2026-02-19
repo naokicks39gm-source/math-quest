@@ -82,11 +82,21 @@ type QuestionResultEntry = {
   firstWrongAnswer?: string;
 };
 
+type FractionEditorPart = "num" | "den";
+type FractionEditorState = {
+  enabled: boolean;
+  num: string;
+  den: string;
+  part: FractionEditorPart;
+};
+
 const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
 const LS_STUDENT_ID = "mq:studentId";
 const QUESTION_POOL_SIZE = 50;
 const OUTER_MARGIN = 8;
 const DEFAULT_VISIBLE_CANVAS_SIZE = 300;
+const FRACTION_AUTO_MOVE_DELAY_MS = 800;
+const EMPTY_FRACTION_EDITOR: FractionEditorState = { enabled: false, num: "", den: "", part: "num" };
 const MIN_MEMO_ZOOM = 0.2;
 
 export const getAutoJudgeDelayMs = (digits: number) => {
@@ -1420,6 +1430,7 @@ function QuestPageInner() {
   const [results, setResults] = useState<Array<{ id: number; text: string; userAnswer: string; correct: boolean }>>([]);
   const [questionResults, setQuestionResults] = useState<Record<number, QuestionResultEntry>>({});
   const [input, setInput] = useState('');
+  const [fractionInput, setFractionInput] = useState<FractionEditorState>(EMPTY_FRACTION_EDITOR);
   const [message, setMessage] = useState('Battle Start!');
   const [character, setCharacter] = useState<CharacterType>('warrior');
   const [status, setStatus] = useState<'playing' | 'cleared'>('playing');
@@ -1427,6 +1438,10 @@ function QuestPageInner() {
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
   const [quadraticAnswers, setQuadraticAnswers] = useState<[string, string]>(["", ""]);
+  const [quadraticFractionInputs, setQuadraticFractionInputs] = useState<[FractionEditorState, FractionEditorState]>([
+    { ...EMPTY_FRACTION_EDITOR },
+    { ...EMPTY_FRACTION_EDITOR }
+  ]);
   const [quadraticActiveIndex, setQuadraticActiveIndex] = useState<0 | 1>(0);
   const [resultMark, setResultMark] = useState<'correct' | 'wrong' | null>(null);
   const canvasRef = useRef<any>(null); // Ref for CanvasDraw component
@@ -1436,6 +1451,8 @@ function QuestPageInner() {
   const [isModelReady, setIsModelReady] = useState(false); // New state for model readiness
   const [is2DigitModelReady, setIs2DigitModelReady] = useState(false);
   const autoRecognizeTimerRef = useRef<number | null>(null);
+  const fractionAutoMoveTimerRef = useRef<number | null>(null);
+  const quadraticFractionAutoMoveTimerRefs = useRef<[number | null, number | null]>([null, null]);
   const lastDrawAtRef = useRef<number>(0);
   const isDrawingRef = useRef(false);
   const [previewImages, setPreviewImages] = useState<ImageData[]>([]);
@@ -1606,6 +1623,7 @@ function QuestPageInner() {
       if (idleCheckTimerRef.current) {
         window.clearInterval(idleCheckTimerRef.current);
       }
+      clearAllFractionAutoMoveTimers();
     };
   }, []);
 
@@ -1712,10 +1730,14 @@ function QuestPageInner() {
       }
     }
     if (found) {
+      clearAllFractionAutoMoveTimers();
       setSelectedType(found);
       setItemIndex(0);
       setPracticeResult(null);
       setResultMark(null);
+      setInput("");
+      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
+      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
       canvasRef.current?.clear();
       return;
     }
@@ -1724,10 +1746,14 @@ function QuestPageInner() {
         .flatMap((g) => g.categories)
         .find((c) => c.category_id === categoryFromQuery);
       if (category && category.types[0]) {
+        clearAllFractionAutoMoveTimers();
         setSelectedType(category.types[0]);
         setItemIndex(0);
         setPracticeResult(null);
         setResultMark(null);
+        setInput("");
+        setFractionInput({ ...EMPTY_FRACTION_EDITOR });
+        setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
         canvasRef.current?.clear();
         return;
       }
@@ -1863,6 +1889,7 @@ function QuestPageInner() {
   }, [hasTypeQuery, selectedTypeSignature, activeItems, allCategoryItems]);
   const quizSize = Math.min(TOTAL_QUESTIONS, QUESTION_POOL_SIZE);
   useEffect(() => {
+    clearAllFractionAutoMoveTimers();
     const nextSet = buildUniqueQuestSet({
       source: poolCandidates,
       poolSize: QUESTION_POOL_SIZE,
@@ -1876,7 +1903,10 @@ function QuestPageInner() {
     setPracticeResult(null);
     setResultMark(null);
     setRecognizedNumber(null);
+    setInput("");
+    setFractionInput({ ...EMPTY_FRACTION_EDITOR });
     setQuadraticAnswers(["", ""]);
+    setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
     setQuadraticActiveIndex(0);
   }, [poolCandidates, quizSize, retryNonce]);
 
@@ -1952,12 +1982,16 @@ function QuestPageInner() {
     );
   };
   const restartSameLevel = () => {
+    clearAllFractionAutoMoveTimers();
     setItemIndex(0);
     setQuestionResults({});
     setPracticeResult(null);
     setResultMark(null);
     setRecognizedNumber(null);
+    setInput("");
+    setFractionInput({ ...EMPTY_FRACTION_EDITOR });
     setQuadraticAnswers(["", ""]);
+    setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
     setQuadraticActiveIndex(0);
     setPreviewImages([]);
     setCombo(0);
@@ -1968,10 +2002,14 @@ function QuestPageInner() {
   };
 
   useEffect(() => {
+    clearAllFractionAutoMoveTimers();
     setPracticeResult(null);
     setResultMark(null);
     setRecognizedNumber(null);
+    setInput("");
+    setFractionInput({ ...EMPTY_FRACTION_EDITOR });
     setQuadraticAnswers(["", ""]);
+    setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
     setQuadraticActiveIndex(0);
     setPreviewImages([]);
     canvasRef.current?.clear();
@@ -2042,23 +2080,152 @@ function QuestPageInner() {
     advanceQuestionWithDelay(800);
   };
 
+  const clearFractionAutoMoveTimer = () => {
+    if (fractionAutoMoveTimerRef.current) {
+      window.clearTimeout(fractionAutoMoveTimerRef.current);
+      fractionAutoMoveTimerRef.current = null;
+    }
+  };
+
+  const clearQuadraticFractionAutoMoveTimer = (index: 0 | 1) => {
+    const timer = quadraticFractionAutoMoveTimerRefs.current[index];
+    if (timer) {
+      window.clearTimeout(timer);
+      quadraticFractionAutoMoveTimerRefs.current[index] = null;
+    }
+  };
+
+  const clearAllFractionAutoMoveTimers = () => {
+    clearFractionAutoMoveTimer();
+    clearQuadraticFractionAutoMoveTimer(0);
+    clearQuadraticFractionAutoMoveTimer(1);
+  };
+
+  const isFractionPartTokenValid = (current: string, token: string) => {
+    if (/^\d$/.test(token)) return true;
+    if (token === "-") return current.length === 0;
+    return false;
+  };
+
+  const isFractionPartReady = (value: string) => /^-?\d+$/.test(value);
+  const isFractionEditorReady = (editor: FractionEditorState) =>
+    editor.enabled && isFractionPartReady(editor.num) && isFractionPartReady(editor.den);
+  const fractionEditorToAnswerText = (editor: FractionEditorState) => `${editor.num}/${editor.den}`;
+
+  const renderFractionEditorValue = (editor: FractionEditorState) => {
+    const renderPart = (text: string, active: boolean) => (
+      <span className="inline-flex items-center justify-center min-h-[1.1em] min-w-[1.2em]">
+        <span>{text || "\u2007"}</span>
+        {active && (
+          <span className="inline-block ml-0.5 h-[0.9em] w-[2px] bg-current animate-pulse align-middle" />
+        )}
+      </span>
+    );
+    return (
+      <span className="inline-flex flex-col items-center leading-none">
+        <span>{renderPart(editor.num, editor.part === "num")}</span>
+        <span className="my-0.5 block h-[2px] w-[1.8em] rounded bg-current/80" />
+        <span>{renderPart(editor.den, editor.part === "den")}</span>
+      </span>
+    );
+  };
+
   const handleInput = (num: string) => {
     if (status !== 'playing' || isStarting) return;
-    const activeKind: AnswerFormat["kind"] = isQuadraticRootsQuestion
-      ? "pair"
-      : (currentType?.answer_format.kind ?? "int");
     const currentText = isQuadraticRootsQuestion ? quadraticAnswers[quadraticActiveIndex] : input;
     const isDigit = /^\d$/.test(num);
+
+    if (num === "/") {
+      if (isQuadraticRootsQuestion) {
+        clearQuadraticFractionAutoMoveTimer(quadraticActiveIndex);
+        setQuadraticFractionInputs((prev) => {
+          if (prev[quadraticActiveIndex].enabled) return prev;
+          const next: [FractionEditorState, FractionEditorState] = [prev[0], prev[1]];
+          next[quadraticActiveIndex] = { enabled: true, num: "", den: "", part: "num" };
+          return next;
+        });
+        setQuadraticAnswers((prev) => {
+          const next: [string, string] = [...prev] as [string, string];
+          next[quadraticActiveIndex] = "";
+          return next;
+        });
+      } else {
+        clearFractionAutoMoveTimer();
+        setFractionInput((prev) => (prev.enabled ? prev : { enabled: true, num: "", den: "", part: "num" }));
+        setInput("");
+      }
+      setResultMark(null);
+      return;
+    }
+
+    if (isQuadraticRootsQuestion && quadraticFractionInputs[quadraticActiveIndex].enabled) {
+      const currentEditor = quadraticFractionInputs[quadraticActiveIndex];
+      const currentPartValue = currentEditor.part === "num" ? currentEditor.num : currentEditor.den;
+      if (!isFractionPartTokenValid(currentPartValue, num)) return;
+      setQuadraticFractionInputs((prev) => {
+        const target = prev[quadraticActiveIndex];
+        const next: [FractionEditorState, FractionEditorState] = [prev[0], prev[1]];
+        const part = target.part;
+        const maxLen = isDigit ? 6 : 7;
+        const nextPartValue = `${part === "num" ? target.num : target.den}${num}`;
+        if (nextPartValue.length > maxLen) return prev;
+        next[quadraticActiveIndex] = {
+          ...target,
+          num: part === "num" ? nextPartValue : target.num,
+          den: part === "den" ? nextPartValue : target.den
+        };
+        return next;
+      });
+      if (currentEditor.part === "num") {
+        clearQuadraticFractionAutoMoveTimer(quadraticActiveIndex);
+        quadraticFractionAutoMoveTimerRefs.current[quadraticActiveIndex] = window.setTimeout(() => {
+          setQuadraticFractionInputs((prev) => {
+            const target = prev[quadraticActiveIndex];
+            if (!target.enabled || target.part !== "num" || target.num.length === 0 || target.den.length > 0) return prev;
+            const next: [FractionEditorState, FractionEditorState] = [prev[0], prev[1]];
+            next[quadraticActiveIndex] = { ...target, part: "den" };
+            return next;
+          });
+          quadraticFractionAutoMoveTimerRefs.current[quadraticActiveIndex] = null;
+        }, FRACTION_AUTO_MOVE_DELAY_MS);
+      }
+      setResultMark(null);
+      return;
+    }
+
+    if (!isQuadraticRootsQuestion && fractionInput.enabled) {
+      const currentPartValue = fractionInput.part === "num" ? fractionInput.num : fractionInput.den;
+      if (!isFractionPartTokenValid(currentPartValue, num)) return;
+      setFractionInput((prev) => {
+        const part = prev.part;
+        const maxLen = isDigit ? 12 : 13;
+        const nextPartValue = `${part === "num" ? prev.num : prev.den}${num}`;
+        if (nextPartValue.length > maxLen) return prev;
+        return {
+          ...prev,
+          num: part === "num" ? nextPartValue : prev.num,
+          den: part === "den" ? nextPartValue : prev.den
+        };
+      });
+      if (fractionInput.part === "num") {
+        clearFractionAutoMoveTimer();
+        fractionAutoMoveTimerRef.current = window.setTimeout(() => {
+          setFractionInput((prev) => {
+            if (!prev.enabled || prev.part !== "num" || prev.num.length === 0 || prev.den.length > 0) return prev;
+            return { ...prev, part: "den" };
+          });
+          fractionAutoMoveTimerRef.current = null;
+        }, FRACTION_AUTO_MOVE_DELAY_MS);
+      }
+      setResultMark(null);
+      return;
+    }
+
     const canAppendToken = (text: string, token: string) => {
       if (/^\d$/.test(token)) return true;
       if (token === "-") return text.length === 0;
       if (token === ".") {
         if (text.includes(".")) return false;
-        if (text === "" || text === "-") return false;
-        return true;
-      }
-      if (token === "/") {
-        if (text.includes("/")) return false;
         if (text === "" || text === "-") return false;
         return true;
       }
@@ -2084,6 +2251,42 @@ function QuestPageInner() {
 
   const handleDelete = () => {
     if (status !== 'playing' || isStarting) return;
+    if (isQuadraticRootsQuestion && quadraticFractionInputs[quadraticActiveIndex].enabled) {
+      clearQuadraticFractionAutoMoveTimer(quadraticActiveIndex);
+      setQuadraticFractionInputs((prev) => {
+        const target = prev[quadraticActiveIndex];
+        const next: [FractionEditorState, FractionEditorState] = [prev[0], prev[1]];
+        if (target.part === "den") {
+          if (target.den.length > 0) {
+            next[quadraticActiveIndex] = { ...target, den: target.den.slice(0, -1) };
+          } else {
+            next[quadraticActiveIndex] = { ...target, part: "num" };
+          }
+          return next;
+        }
+        if (target.num.length > 0) {
+          next[quadraticActiveIndex] = { ...target, num: target.num.slice(0, -1) };
+          return next;
+        }
+        next[quadraticActiveIndex] = { ...EMPTY_FRACTION_EDITOR };
+        return next;
+      });
+      setResultMark(null);
+      return;
+    }
+    if (!isQuadraticRootsQuestion && fractionInput.enabled) {
+      clearFractionAutoMoveTimer();
+      setFractionInput((prev) => {
+        if (prev.part === "den") {
+          if (prev.den.length > 0) return { ...prev, den: prev.den.slice(0, -1) };
+          return { ...prev, part: "num" };
+        }
+        if (prev.num.length > 0) return { ...prev, num: prev.num.slice(0, -1) };
+        return { ...EMPTY_FRACTION_EDITOR };
+      });
+      setResultMark(null);
+      return;
+    }
     if (isQuadraticRootsQuestion) {
       setQuadraticAnswers((prev) => {
         const next: [string, string] = [...prev] as [string, string];
@@ -2100,8 +2303,8 @@ function QuestPageInner() {
   const handleAttack = () => {
     if (status !== 'playing' || isStarting || !currentItem || !currentType) return;
     const answerText = isQuadraticRootsQuestion
-      ? `${quadraticAnswers[0]},${quadraticAnswers[1]}`
-      : input;
+      ? `${quadraticFractionInputs[0].enabled ? fractionEditorToAnswerText(quadraticFractionInputs[0]) : quadraticAnswers[0]},${quadraticFractionInputs[1].enabled ? fractionEditorToAnswerText(quadraticFractionInputs[1]) : quadraticAnswers[1]}`
+      : (fractionInput.enabled ? fractionEditorToAnswerText(fractionInput) : input);
     if (!answerText.trim()) return;
 
     const verdict = gradeAnswer(answerText, currentItem.answer, currentType.answer_format, {
@@ -2167,10 +2370,15 @@ function QuestPageInner() {
     }
 
     if (isQuadraticRootsQuestion) {
+      clearQuadraticFractionAutoMoveTimer(0);
+      clearQuadraticFractionAutoMoveTimer(1);
       setQuadraticAnswers(["", ""]);
+      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
       setQuadraticActiveIndex(0);
     } else {
+      clearFractionAutoMoveTimer();
       setInput('');
+      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
     }
   };
 
@@ -2207,12 +2415,13 @@ function QuestPageInner() {
   };
   const canSubmitCurrentAnswer = isQuadraticRootsQuestion
     ? (
-      (isValidAnswerText(quadraticAnswers[0], "pair") && isValidAnswerText(quadraticAnswers[1], "pair")) ||
+      ((quadraticFractionInputs[0].enabled ? isFractionEditorReady(quadraticFractionInputs[0]) : isValidAnswerText(quadraticAnswers[0], "pair")) &&
+        (quadraticFractionInputs[1].enabled ? isFractionEditorReady(quadraticFractionInputs[1]) : isValidAnswerText(quadraticAnswers[1], "pair"))) ||
       (quadraticAnswers[0].trim().length > 0 && quadraticAnswers[1].trim().length > 0 &&
         (quadraticAnswers[0].includes("/") || quadraticAnswers[1].includes("/")))
     )
     : (
-      isValidAnswerText(input, keypadAnswerKind) ||
+      (fractionInput.enabled ? isFractionEditorReady(fractionInput) : isValidAnswerText(input, keypadAnswerKind)) ||
       (keypadAnswerKind !== "frac" && input.trim().length > 0 && input.includes("/"))
     );
 
@@ -2985,7 +3194,7 @@ function QuestPageInner() {
         <button
           type="button"
           onClick={() => router.push("/")}
-          className="w-full bg-white border-2 border-slate-200 rounded-2xl px-4 py-3 text-base font-extrabold text-slate-700 text-left hover:bg-slate-50"
+          className="w-full bg-white border-2 border-slate-200 rounded-2xl px-3 py-2 text-[11px] font-bold text-slate-700 text-left hover:bg-slate-50 whitespace-nowrap overflow-hidden text-ellipsis"
         >
           {selectedPath.gradeName} / {selectedPath.typeName}
         </button>
@@ -3096,6 +3305,11 @@ function QuestPageInner() {
                     className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 pt-4 pb-8 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] h-[200px] sm:h-[185px] flex flex-col justify-between"
                   >
                     <div className="pointer-events-none absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_12%_20%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_70%,rgba(255,255,255,0.10),transparent_34%),repeating-linear-gradient(12deg,rgba(255,255,255,0.05)_0px,rgba(255,255,255,0.05)_2px,transparent_2px,transparent_8px)]" />
+                    {combo >= 2 && (
+                      <div className="pointer-events-none absolute top-2 right-2 -rotate-12 rounded-md border border-yellow-200/70 bg-yellow-300/90 px-2 py-0.5 text-[10px] sm:text-xs font-black tracking-wide text-emerald-950 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
+                        {combo} COMBO!
+                      </div>
+                    )}
                     <div className="pointer-events-none absolute bottom-0 left-3 flex items-end gap-2">
                       <div aria-label="board-eraser" className="h-6 w-12 rounded-md border border-amber-900 bg-gradient-to-b from-amber-200 to-amber-500 shadow-[0_2px_0_rgba(0,0,0,0.28)]" />
                       <div className="flex items-end gap-1">
@@ -3120,7 +3334,9 @@ function QuestPageInner() {
                             }`}
                             style={{ opacity: quadraticAnswers[0] ? 1 : 0.35 }}
                           >
-                            {quadraticAnswers[0] || "\u2007"}
+                            {quadraticFractionInputs[0].enabled
+                              ? renderFractionEditorValue(quadraticFractionInputs[0])
+                              : (quadraticAnswers[0] || "\u2007")}
                           </button>
                           <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x2 =</span>
                           <button
@@ -3132,7 +3348,9 @@ function QuestPageInner() {
                             }`}
                             style={{ opacity: quadraticAnswers[1] ? 1 : 0.35 }}
                           >
-                            {quadraticAnswers[1] || "\u2007"}
+                            {quadraticFractionInputs[1].enabled
+                              ? renderFractionEditorValue(quadraticFractionInputs[1])
+                              : (quadraticAnswers[1] || "\u2007")}
                           </button>
                           {resultOverlay}
                         </div>
@@ -3142,9 +3360,11 @@ function QuestPageInner() {
                           <div
                             aria-label="recognized-answer"
                             className="w-[150px] sm:w-[180px] shrink-0 max-w-full h-[56px] sm:h-[64px] px-2 sm:px-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 text-[26px] sm:text-[30px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center"
-                            style={{ opacity: displayedAnswer ? 1 : 0.35 }}
+                            style={{ opacity: fractionInput.enabled ? 1 : (displayedAnswer ? 1 : 0.35) }}
                           >
-                            {displayedAnswer || "\u2007"}
+                            {fractionInput.enabled
+                              ? renderFractionEditorValue(fractionInput)
+                              : (displayedAnswer || "\u2007")}
                           </div>
                           {resultOverlay}
                         </div>
@@ -3157,13 +3377,6 @@ function QuestPageInner() {
                 <div className="text-slate-500 text-center">{uiText.selectType}</div>
               )}
             </div>
-
-            {/* Combo Indicator */}
-            {combo >= 2 && (
-              <div className="text-yellow-500 font-black text-xl animate-pulse">
-                {combo} COMBO!
-              </div>
-            )}
 
             {currentAid && <SecondaryExplanationPanel aid={currentAid} />}
 
