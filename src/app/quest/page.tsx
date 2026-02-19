@@ -2064,9 +2064,10 @@ function QuestPageInner() {
       getSecondaryLearningAid({
         gradeId: currentType?.type_id.split(".")[0] ?? "",
         typeId: currentType?.type_id,
-        patternId: currentType?.generation_params?.pattern_id
+        patternId: currentType?.generation_params?.pattern_id,
+        answer: currentItem?.answer
       }),
-    [currentType?.type_id, currentType?.generation_params?.pattern_id]
+    [currentType?.type_id, currentType?.generation_params?.pattern_id, currentItem?.answer]
   );
   const currentElementaryAid = useMemo(
     () =>

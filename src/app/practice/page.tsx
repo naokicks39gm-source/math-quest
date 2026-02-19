@@ -131,9 +131,10 @@ export default function PracticePage() {
       getSecondaryLearningAid({
         gradeId: selectedType?.type_id.split(".")[0] ?? "",
         typeId: selectedType?.type_id,
-        patternId: selectedType?.generation_params?.pattern_id
+        patternId: selectedType?.generation_params?.pattern_id,
+        answer: currentItem?.answer
       }),
-    [selectedType?.type_id, selectedType?.generation_params?.pattern_id]
+    [selectedType?.type_id, selectedType?.generation_params?.pattern_id, currentItem?.answer]
   );
 
   const handleSelectType = (type: TypeDef) => {

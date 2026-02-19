@@ -26,6 +26,9 @@ export default function ElementaryExplanationPanel({ aid, onNext, nextLabel, dis
         <div className="mt-2 rounded-lg border border-emerald-200 bg-white p-2 text-xs font-mono">
           <div>{aid.visual.left} こ: {dotRow(aid.visual.left ?? 0)}</div>
           <div>{aid.visual.operator === "+" ? "ふやす" : "とる"} {aid.visual.right} こ: {dotRow(aid.visual.right ?? 0)}</div>
+          <div className="mt-1 border-t border-emerald-200 pt-1">
+            こたえ {aid.visual.result} こ: {dotRow(aid.visual.result ?? 0)}
+          </div>
         </div>
       )}
 
@@ -34,9 +37,13 @@ export default function ElementaryExplanationPanel({ aid, onNext, nextLabel, dis
           <div className="text-right">{aid.visual.top ?? ""}</div>
           <div className="text-right">{aid.visual.operator} {aid.visual.bottom ?? ""}</div>
           <div className="my-1 border-t border-slate-400" />
-          <div className="text-right">□</div>
+          <div className="text-right">{aid.visual.result}</div>
         </div>
       )}
+
+      <div className="mt-2 rounded-lg border border-emerald-300 bg-emerald-100 px-2 py-1 text-sm font-bold text-emerald-900">
+        こたえ: {aid.conclusion}
+      </div>
 
       <div className="mt-3 flex justify-end">
         <button

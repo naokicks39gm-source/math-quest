@@ -4,6 +4,7 @@ export type ElementaryVisual = {
   mode: "abacus" | "column" | "simple";
   left?: number;
   right?: number;
+  result?: number;
   top?: number;
   bottom?: number;
   operator?: "+" | "-";
@@ -13,6 +14,7 @@ export type ElementaryLearningAid = {
   kind: ElementaryAidKind;
   title: string;
   steps: string[];
+  conclusion: string;
   visual?: ElementaryVisual;
 };
 
@@ -58,39 +60,49 @@ const fallbackDigitCount = (value: number) => {
   return String(abs).length;
 };
 
-const buildAbacusAid = (left: number, right: number, operator: "+" | "-"): ElementaryLearningAid => ({
-  kind: "abacus",
-  title: "おはじきでかんがえよう",
-  steps: [
-    `はじめに ${left} こ ならべます。`,
-    operator === "+"
-      ? `${right} こ ふやして、ぜんぶで なんこか みます。`
-      : `${right} こ とって、のこりが なんこか みます。`,
-    "こえにだして かぞえると まちがいにくいです。"
-  ],
-  visual: {
-    mode: "abacus",
-    left,
-    right,
-    operator
-  }
-});
+const buildAbacusAid = (left: number, right: number, operator: "+" | "-"): ElementaryLearningAid => {
+  const result = operator === "+" ? left + right : left - right;
+  return {
+    kind: "abacus",
+    title: "おはじきでかんがえよう",
+    steps: [
+      `はじめに ${left} こ ならべます。`,
+      operator === "+"
+        ? `${right} こ ふやして、ぜんぶを かぞえます。`
+        : `${right} こ とって、のこりを かぞえます。`,
+      `つまり、${result} こ です。`
+    ],
+    conclusion: `つまり、${result} こ です。`,
+    visual: {
+      mode: "abacus",
+      left,
+      right,
+      result,
+      operator
+    }
+  };
+};
 
-const buildColumnAid = (left: number, right: number, operator: "+" | "-"): ElementaryLearningAid => ({
-  kind: "column",
-  title: "筆算でとこう",
-  steps: [
-    "くらいをそろえて上下にならべます。",
-    operator === "+" ? "1のくらいからたして、くり上がりをメモします。" : "1のくらいからひいて、くり下がりを確認します。",
-    "10のくらい、100のくらいも同じ順で計算します。"
-  ],
-  visual: {
-    mode: "column",
-    top: left,
-    bottom: right,
-    operator
-  }
-});
+const buildColumnAid = (left: number, right: number, operator: "+" | "-"): ElementaryLearningAid => {
+  const result = operator === "+" ? left + right : left - right;
+  return {
+    kind: "column",
+    title: "筆算でとこう",
+    steps: [
+      "くらいをそろえて上下にならべます。",
+      operator === "+" ? "1のくらいから順にたします。" : "1のくらいから順にひきます。",
+      `つまり、${result} です。`
+    ],
+    conclusion: `つまり、${result} です。`,
+    visual: {
+      mode: "column",
+      top: left,
+      bottom: right,
+      result,
+      operator
+    }
+  };
+};
 
 const buildSimpleAid = (): ElementaryLearningAid => ({
   kind: "simple",
@@ -100,6 +112,7 @@ const buildSimpleAid = (): ElementaryLearningAid => ({
     "1つずつ順番に計算して、途中の数字をメモします。",
     "最後にもう一度たしかめます。"
   ],
+  conclusion: "つまり、最後に出た値が答えです。",
   visual: {
     mode: "simple"
   }

@@ -20,6 +20,7 @@ test("quest shows elementary explanation in memo area when elementary answer is 
 test("elementary explanation resolver has abacus/column/simple branches", () => {
   assert.match(libSource, /ElementaryAidKind = "abacus" \| "column" \| "simple"/);
   assert.match(libSource, /kind: ElementaryAidKind;/);
+  assert.match(libSource, /conclusion: string;/);
   assert.match(libSource, /if \(!isAddSub\(typeId, patternId, prompt\)\)/);
   assert.match(libSource, /return buildSimpleAid\(\);/);
   assert.match(libSource, /if \(isSingleDigitPair\)/);
@@ -35,6 +36,8 @@ test("elementary panel has next button and visual rendering", () => {
   assert.match(panelSource, /nextLabel: string;/);
   assert.match(panelSource, /aid\.visual\?\.mode === "abacus"/);
   assert.match(panelSource, /aid\.visual\?\.mode === "column"/);
+  assert.match(panelSource, /こたえ \{aid\.visual\.result\} こ/);
+  assert.match(panelSource, /こたえ: \{aid\.conclusion\}/);
   assert.match(panelSource, /onClick=\{onNext\}/);
   assert.match(panelSource, /\{nextLabel\}/);
 });

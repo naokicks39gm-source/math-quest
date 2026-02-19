@@ -9,6 +9,7 @@ export type ExplanationContent = {
   steps: string[];
   table: ExplanationTable;
   diagramLines: string[];
+  conclusion: string;
 };
 
 export type SecondaryLearningAid = {
@@ -20,6 +21,7 @@ type AidParams = {
   gradeId?: string;
   typeId?: string;
   patternId?: string;
+  answer?: string;
 };
 
 const SECONDARY_GRADE_RE = /^(J[1-3]|H[1-3])$/;
@@ -50,30 +52,36 @@ const toHint = (patternId: string) => {
   return `ヒント: ${name}は「形を見分ける → 公式を選ぶ → 代入して整理」の順で解くと安定します。`;
 };
 
-const buildGenericExplanation = (patternId: string): ExplanationContent => {
+const buildConclusion = (answer?: string) => {
+  if (!answer || answer.trim() === "") {
+    return "つまり、表と手順どおりに計算した値が答えです。";
+  }
+  return `つまり、答えは ${answer} です。`;
+};
+
+const buildGenericExplanation = (patternId: string, answer?: string): ExplanationContent => {
   const name = toMathName(patternId);
   return {
     title: `${name}の解き方（${patternId}）`,
-    point: "問題の形を先に判断し、合う公式を選ぶのが最短ルートです。",
+    point: "形を見分けて、1つの公式で最後まで計算します。",
     steps: [
-      "問題文から、使う単元・公式を1つ決める。",
-      "数字・文字を公式に正しく当てはめる。",
-      "途中式を省略せず、符号と計算順序を確認する。",
-      "最後に答えを元の条件へ戻して妥当性をチェックする。"
+      "形を判定して、使う公式を1つ決める。",
+      "表の順に代入・計算して答えを出す。",
+      "条件に合うかを最後に1回確認する。"
     ],
     table: {
-      headers: ["確認項目", "見るポイント", "ミス防止"],
+      headers: ["入力", "操作", "出力（答え）"],
       rows: [
-        ["形の判定", "既知パターンと一致するか", "最初に単元名を書く"],
-        ["代入", "符号・かっこ・順序", "負号は必ずかっこで処理"],
-        ["最終確認", "条件に合う答えか", "逆計算で1回検算"]
+        ["問題の値・条件", "公式を選んで式に入れる", "途中式"],
+        ["途中式", "符号・順序を守って計算", "計算結果"],
+        ["計算結果", "条件に当てはめて確認", answer && answer.trim() !== "" ? answer : "最終答え"]
       ]
     },
     diagramLines: [
-      "[問題] -> [形を判定] -> [公式を選択] -> [計算] -> [検算]",
-      "            |                        ^",
-      "            +---- 迷ったら条件を再確認 -+"
-    ]
+      "[問題] -> [公式を選ぶ] -> [計算] -> [答え]",
+      "  条件確認 ----------------------------^"
+    ],
+    conclusion: buildConclusion(answer)
   };
 };
 
@@ -133,25 +141,30 @@ const getGradeIdFromTypeId = (typeId?: string) => {
   return typeId.split(".")[0] ?? "";
 };
 
-export const getSecondaryLearningAid = ({ gradeId, typeId, patternId }: AidParams): SecondaryLearningAid | null => {
+export const getSecondaryLearningAid = ({ gradeId, typeId, patternId, answer }: AidParams): SecondaryLearningAid | null => {
   const resolvedGrade = gradeId || getGradeIdFromTypeId(typeId);
   if (!resolvedGrade || !isSecondaryGrade(resolvedGrade)) return null;
 
   if (patternId && AID_BY_PATTERN.has(patternId)) {
-    return AID_BY_PATTERN.get(patternId) ?? null;
+    const aid = AID_BY_PATTERN.get(patternId);
+    if (!aid) return null;
+    return {
+      ...aid,
+      explanation: buildGenericExplanation(patternId, answer)
+    };
   }
 
   if (patternId) {
     return {
       hint: toHint(patternId),
-      explanation: buildGenericExplanation(patternId)
+      explanation: buildGenericExplanation(patternId, answer)
     };
   }
 
   const fallbackPatternId = typeId?.split(".").slice(-1)[0] ?? "GENERIC";
   return {
     hint: toHint(fallbackPatternId),
-    explanation: buildGenericExplanation(fallbackPatternId)
+    explanation: buildGenericExplanation(fallbackPatternId, answer)
   };
 };
 
