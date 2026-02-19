@@ -22,7 +22,7 @@ test("grader supports frac parsing and simplification rule by typeId", () => {
 });
 
 test("quest page has slash detection and passes typeId to grader", () => {
-  const source = read("src/app/quest/page.tsx");
+  const source = read("src/app/quest-handwrite-legacy/page.tsx");
   assert.match(source, /const isSlashComponent/);
   assert.match(source, /const getRecognitionRoi/);
   assert.match(source, /const binarizeCanvasInRoi/);
@@ -44,8 +44,8 @@ test("quest page has slash detection and passes typeId to grader", () => {
   assert.match(source, /inferDecimalDotFromValley/);
   assert.match(source, /typeId: currentType\.type_id/);
   assert.match(source, /expectedForm/);
-  assert.match(source, /data-testid=\"auto-draw-frac-batch\"/);
-  assert.match(source, /data-testid=\"auto-draw-mixed-batch\"/);
+  assert.match(source, /data-testid="auto-draw-frac-batch"/);
+  assert.match(source, /data-testid="auto-draw-mixed-batch"/);
   assert.match(source, /runAutoDrawFractionBatchTest/);
   assert.match(source, /runAutoDrawMixedBatchTest/);
   assert.match(source, /空判定/);

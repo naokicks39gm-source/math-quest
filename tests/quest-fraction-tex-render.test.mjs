@@ -36,7 +36,7 @@ test("quest card uses responsive layout to avoid answer overflow", () => {
 });
 
 test("fraction handwriting path remains available", () => {
-  const source = read("src/app/quest/page.tsx");
+  const source = read("src/app/quest-handwrite-legacy/page.tsx");
   assert.match(source, /const recognizeFractionFromCanvas/);
   assert.match(source, /forceFractionRecognitionRef/);
   assert.match(source, /runAutoDrawFractionBatchTest/);

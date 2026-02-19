@@ -106,6 +106,12 @@ const parseIntPair = (input: string): IntPair | null => {
 const sortIntPairAsc = (pair: IntPair): IntPair => (pair[0] <= pair[1] ? pair : [pair[1], pair[0]]);
 
 const isQuadraticRootsPairType = (typeId?: string) => Boolean(typeId && /^H\d\.AL\.EQ\.QUAD_ROOTS$/.test(typeId));
+const normalizeDecimalString = (value: number) => {
+  if (!Number.isFinite(value)) return "";
+  const safe = Number(value.toFixed(12));
+  const raw = safe.toString();
+  return raw.includes(".") ? raw.replace(/\.?0+$/, "") : raw;
+};
 
 export const gradeAnswer = (
   userInput: string,
@@ -120,6 +126,15 @@ export const gradeAnswer = (
     return {
       ok: Number.isFinite(value) && value === target,
       normalized: Number.isFinite(value) ? String(value) : ""
+    };
+  }
+  if (format.kind === "dec") {
+    const value = Number(inputRaw);
+    const target = Number(correctAnswer);
+    const ok = Number.isFinite(value) && Number.isFinite(target) && Math.abs(value - target) <= 1e-9;
+    return {
+      ok,
+      normalized: Number.isFinite(value) ? normalizeDecimalString(value) : ""
     };
   }
   if (format.kind === "frac") {
