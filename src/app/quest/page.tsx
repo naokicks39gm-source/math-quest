@@ -9,7 +9,7 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getCatalogGrades } from '@/lib/gradeCatalog';
-import { buildUniqueQuestSet, entryEquivalentKey } from '@/lib/questItemFactory';
+import { buildUniqueQuestSet, entryEquivalentKey, entryPromptKey } from '@/lib/questItemFactory';
 import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
 import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
 import ElementaryExplanationPanel from "@/components/ElementaryExplanationPanel";
@@ -1439,7 +1439,7 @@ function QuestPageInner() {
   const [fractionInput, setFractionInput] = useState<FractionEditorState>(EMPTY_FRACTION_EDITOR);
   const [message, setMessage] = useState('Battle Start!');
   const [character, setCharacter] = useState<CharacterType>('warrior');
-  const [status, setStatus] = useState<'playing' | 'cleared'>('playing');
+  const [status, setStatus] = useState<'playing' | 'cleared' | 'blocked'>('playing');
   const [inputMode] = useState<'numpad' | 'handwriting'>('numpad');
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
@@ -1502,6 +1502,7 @@ function QuestPageInner() {
   const [sessionMailStatus, setSessionMailStatus] = useState<string | null>(null);
   const [sessionActionLoading, setSessionActionLoading] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [quizBuildError, setQuizBuildError] = useState<string | null>(null);
   const sessionStartInFlightRef = useRef<Promise<string | null> | null>(null);
   const forceFractionRecognitionRef = useRef(false);
   const forceMixedRecognitionRef = useRef(false);
@@ -1611,7 +1612,8 @@ function QuestPageInner() {
 
   const endLearningSession = async () => {
     if (!activeSessionId) {
-      setSessionError("セッションが開始されていません。保護者設定を保存した状態で回答すると自動開始されます。");
+      setSessionError(null);
+      router.push("/");
       return;
     }
     try {
@@ -1627,6 +1629,7 @@ function QuestPageInner() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "session_end_failed";
       setSessionError(message);
+      router.push("/");
     } finally {
       setSessionActionLoading(false);
     }
@@ -1976,17 +1979,64 @@ function QuestPageInner() {
     return picked.length > 0 ? picked : activeItems;
   }, [hasTypeQuery, selectedTypeSignature, activeItems, allCategoryItems]);
   const quizSize = Math.min(TOTAL_QUESTIONS, QUESTION_POOL_SIZE);
+  const hasDuplicateInSet = (set: QuestEntry[]) => {
+    const promptSeen = new Set<string>();
+    const equivalentSeen = new Set<string>();
+    for (const entry of set) {
+      const promptKey = entryPromptKey(entry);
+      const equivalentKey = entryEquivalentKey(entry);
+      if (promptSeen.has(promptKey) || equivalentSeen.has(equivalentKey)) return true;
+      promptSeen.add(promptKey);
+      equivalentSeen.add(equivalentKey);
+    }
+    return false;
+  };
   useEffect(() => {
     clearAllFractionAutoMoveTimers();
-    const nextSet = buildUniqueQuestSet({
-      source: poolCandidates,
-      poolSize: QUESTION_POOL_SIZE,
-      quizSize
-    });
+    let nextSet: QuestEntry[] = [];
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const candidate = buildUniqueQuestSet({
+        source: poolCandidates,
+        poolSize: QUESTION_POOL_SIZE + attempt * 25,
+        quizSize
+      });
+      if (process.env.NODE_ENV !== "production") {
+        const promptCount = new Set(candidate.map((entry) => entryPromptKey(entry))).size;
+        const equivalentCount = new Set(candidate.map((entry) => entryEquivalentKey(entry))).size;
+        // eslint-disable-next-line no-console
+        console.debug("[quest-page] build attempt", {
+          attempt: attempt + 1,
+          setSize: candidate.length,
+          uniquePromptCount: promptCount,
+          uniqueEquivalentCount: equivalentCount
+        });
+      }
+      if (candidate.length === quizSize && !hasDuplicateInSet(candidate)) {
+        nextSet = candidate;
+        break;
+      }
+    }
+    if (nextSet.length !== quizSize || hasDuplicateInSet(nextSet)) {
+      setQuizItems([]);
+      setItemIndex(0);
+      setQuestionResults({});
+      setStatus("blocked");
+      setQuizBuildError("このタイプは一時的に出題候補不足です。別タイプを選ぶか、少し時間をおいて再試行してください。");
+      setPracticeResult(null);
+      setResultMark(null);
+      setRecognizedNumber(null);
+      setInput("");
+      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
+      setQuadraticAnswers(["", ""]);
+      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
+      setQuadraticActiveIndex(0);
+      return;
+    }
     setQuizItems(nextSet);
     setItemIndex(0);
     setQuestionResults({});
     setStatus("playing");
+    setQuizBuildError(null);
     setMessage("Battle Start!");
     setPracticeResult(null);
     setResultMark(null);
@@ -3661,6 +3711,29 @@ function QuestPageInner() {
                   {sessionError}
                 </div>
               )}
+            </div>
+          </div>
+        ) : status === 'blocked' ? (
+          <div className="w-full text-center rounded-2xl border border-red-200 bg-red-50 px-4 py-6 shadow-sm">
+            <div className="text-base font-black text-red-700">出題を準備できませんでした</div>
+            <div className="mt-2 text-sm text-red-700">
+              {quizBuildError ?? "このタイプは一時的に出題候補不足です。別タイプを選ぶか、時間をおいて再試行してください。"}
+            </div>
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={() => setRetryNonce((prev) => prev + 1)}
+                className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white font-bold"
+              >
+                もう一度ためす
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/")}
+                className="w-full px-4 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold"
+              >
+                トップへ戻る
+              </button>
             </div>
           </div>
         ) : (

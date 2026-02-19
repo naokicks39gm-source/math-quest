@@ -555,6 +555,20 @@ const scoreEntriesWithCache = (entries: QuestEntry[], cache: Map<string, Questio
   return scoreByFeatures(features) - adjacentPenaltyByFeatures(features);
 };
 
+const isDev = process.env.NODE_ENV !== "production";
+
+const logBuildStats = (label: string, entries: QuestEntry[]) => {
+  if (!isDev) return;
+  const promptCount = new Set(entries.map((e) => entryPromptKey(e))).size;
+  const equivalentCount = new Set(entries.map((e) => entryEquivalentKey(e))).size;
+  console.debug(`[quest-set] ${label}`, {
+    finalSetSize: entries.length,
+    uniquePromptCount: promptCount,
+    uniqueEquivalentCount: equivalentCount,
+    violations: countConstraintViolations(entries)
+  });
+};
+
 export const scoreCandidateSet = (entries: QuestEntry[]) => {
   const cache = new Map<string, QuestionFeatures>();
   return scoreEntriesWithCache(entries, cache);
@@ -563,15 +577,11 @@ export const scoreCandidateSet = (entries: QuestEntry[]) => {
 const countConstraintViolations = (entries: QuestEntry[]) => {
   const promptKeys = countMap(entries.map((e) => entryPromptKey(e)));
   const equivalentKeys = countMap(entries.map((e) => entryEquivalentKey(e)));
-  const answerKeys = countMap(entries.map((e) => toAnswerKey(e.item.answer)));
   let violations = 0;
   for (const count of promptKeys.values()) {
     if (count > 1) violations += count - 1;
   }
   for (const count of equivalentKeys.values()) {
-    if (count > 1) violations += count - 1;
-  }
-  for (const count of answerKeys.values()) {
     if (count > 1) violations += count - 1;
   }
   return violations;
@@ -583,18 +593,14 @@ const pickStrictUniqueEntries = (stock: QuestEntry[], quizSize: number) => {
   const picked: QuestEntry[] = [];
   const promptKeys = new Set<string>();
   const equivalentKeys = new Set<string>();
-  const answerKeys = new Set<string>();
   for (const entry of shuffled) {
     const promptKey = entryPromptKey(entry);
     const equivalentKey = entryEquivalentKey(entry);
-    const answerKey = toAnswerKey(entry.item.answer);
     if (promptKeys.has(promptKey)) continue;
     if (equivalentKeys.has(equivalentKey)) continue;
-    if (answerKeys.has(answerKey)) continue;
     picked.push(entry);
     promptKeys.add(promptKey);
     equivalentKeys.add(equivalentKey);
-    answerKeys.add(answerKey);
     if (picked.length >= quizSize) return picked;
   }
   return null;
@@ -602,51 +608,33 @@ const pickStrictUniqueEntries = (stock: QuestEntry[], quizSize: number) => {
 
 const pickDiverseQuizEntries = (stock: QuestEntry[], quizSize: number) => {
   if (quizSize <= 0) return [];
-  if (stock.length <= quizSize) {
-    return reorderAvoidAdjacentSameFamily(stock.slice(0, quizSize));
-  }
+  if (stock.length < quizSize) return [];
+  const strictAttempts = 1200;
+  const fallbackAttempts = 360;
+  const cache = new Map<string, QuestionFeatures>();
 
-  const strictAttempts = 600;
-  let bestStrict: QuestEntry[] | null = null;
-  let bestStrictViolations = Number.POSITIVE_INFINITY;
+  let strictBest: QuestEntry[] = [];
+  let strictBestScore = -Infinity;
   for (let attempt = 0; attempt < strictAttempts; attempt += 1) {
     const strictPicked = pickStrictUniqueEntries(stock, quizSize);
-    if (strictPicked && strictPicked.length === quizSize) {
-      return reorderAvoidAdjacentSameFamily(strictPicked);
-    }
-    if (strictPicked && strictPicked.length > 0) {
-      const violations = countConstraintViolations(strictPicked);
-      if (
-        violations < bestStrictViolations ||
-        (violations === bestStrictViolations && strictPicked.length > (bestStrict?.length ?? 0))
-      ) {
-        bestStrict = strictPicked;
-        bestStrictViolations = violations;
-      }
-    }
-  }
-
-  const attempts = 240;
-  const cache = new Map<string, QuestionFeatures>();
-  let best: QuestEntry[] = [];
-  let bestScore = -Infinity;
-  let bestViolations = Number.POSITIVE_INFINITY;
-
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const sampled = shuffle(stock).slice(0, quizSize);
-    const violations = countConstraintViolations(sampled);
-    const ordered = reorderAvoidAdjacentSameFamily(sampled);
+    if (!strictPicked || strictPicked.length !== quizSize) continue;
+    if (countConstraintViolations(strictPicked) !== 0) continue;
+    const ordered = reorderAvoidAdjacentSameFamily(strictPicked);
     const score = scoreEntriesWithCache(ordered, cache);
-    if (violations < bestViolations || (violations === bestViolations && score > bestScore)) {
-      bestViolations = violations;
-      bestScore = score;
-      best = ordered;
+    if (score > strictBestScore) {
+      strictBest = ordered;
+      strictBestScore = score;
     }
   }
+  if (strictBest.length === quizSize) return strictBest;
 
-  if (best.length === quizSize) return best;
-  if (bestStrict && bestStrict.length > 0) return reorderAvoidAdjacentSameFamily(bestStrict);
-  return reorderAvoidAdjacentSameFamily(shuffle(stock).slice(0, quizSize));
+  for (let attempt = 0; attempt < fallbackAttempts; attempt += 1) {
+    const sampled = shuffle(stock).slice(0, quizSize);
+    if (countConstraintViolations(sampled) !== 0) continue;
+    const ordered = reorderAvoidAdjacentSameFamily(sampled);
+    if (countConstraintViolations(ordered) === 0) return ordered;
+  }
+  return [];
 };
 
 export const expandEntriesToAtLeast = (entries: QuestEntry[], minCount: number) => {
@@ -663,12 +651,12 @@ export const expandEntriesToAtLeast = (entries: QuestEntry[], minCount: number) 
   }
   const types = [...typeMap.values()];
   let guard = 0;
-  while (unique.length < minCount && guard < 60) {
+  while (unique.length < minCount && guard < 200) {
     guard += 1;
     for (const type of types) {
       const needed = minCount - unique.length;
       if (needed <= 0) break;
-      const generated = generateByPattern(type, used, Math.min(needed, 18));
+      const generated = generateByPattern(type, used, Math.min(needed, 24));
       for (const item of generated) {
         pushEntry(unique, used, item);
       }
@@ -681,23 +669,17 @@ export const expandEntriesToAtLeast = (entries: QuestEntry[], minCount: number) 
 export const buildUniqueQuestSet = ({ source, poolSize, quizSize }: BuildParams): QuestEntry[] => {
   if (source.length === 0 || quizSize <= 0) return [];
   const baselineMin = Math.max(poolSize, quizSize);
-  const attempts = 6;
-  let best: QuestEntry[] = [];
-  let bestViolations = Number.POSITIVE_INFINITY;
+  const attempts = 12;
   for (let i = 0; i < attempts; i += 1) {
     const growTarget = baselineMin + i * quizSize * 3;
     const deduped = expandEntriesToAtLeast(source, growTarget);
     const stock = deduped.length > poolSize ? shuffle(deduped).slice(0, poolSize) : deduped;
     const picked = pickDiverseQuizEntries(stock, quizSize);
-    const violations = countConstraintViolations(picked);
-    if (picked.length === quizSize && violations === 0) return picked;
-    if (
-      violations < bestViolations ||
-      (violations === bestViolations && picked.length > best.length)
-    ) {
-      best = picked;
-      bestViolations = violations;
+    if (picked.length === quizSize && countConstraintViolations(picked) === 0) {
+      logBuildStats(`attempt=${i + 1}`, picked);
+      return picked;
     }
   }
-  return best;
+  logBuildStats("failed", []);
+  return [];
 };
