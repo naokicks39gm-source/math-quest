@@ -6,6 +6,8 @@ import path from "node:path";
 const readJson = (p) => JSON.parse(fs.readFileSync(path.join(process.cwd(), p), "utf8"));
 const sourcePath = path.join(process.cwd(), "src/lib/secondaryExplanations.ts");
 const source = fs.readFileSync(sourcePath, "utf8");
+const panelPath = path.join(process.cwd(), "src/components/SecondaryExplanationPanel.tsx");
+const panelSource = fs.readFileSync(panelPath, "utf8");
 
 const gradeFiles = ["j1", "j2", "j3", "h1", "h2", "h3"].map(
   (id) => `src/content/grades/mathquest_${id}_types_v1.json`
@@ -51,4 +53,11 @@ test("learning aid includes hint and explanation building", () => {
   assert.equal(source.includes("buildGenericExplanation(patternId)"), true);
   assert.equal(source.includes("headers"), true);
   assert.equal(source.includes("diagramLines"), true);
+  assert.equal(source.includes("conclusion"), true);
+  assert.equal(source.includes("つまり、"), true);
+});
+
+test("secondary explanation panel shows conclusion answer section", () => {
+  assert.equal(panelSource.includes("答え"), true);
+  assert.equal(panelSource.includes("explanation.conclusion"), true);
 });
