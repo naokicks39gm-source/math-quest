@@ -1873,7 +1873,6 @@ function QuestPageInner() {
 
   const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
   const currentEntry = quizItems[safeIndex] ?? null;
-  const nextEntry = quizItems.length > 0 ? quizItems[safeIndex + 1] ?? null : null;
   const currentItem = currentEntry?.item ?? null;
   const currentType = currentEntry?.type ?? selectedType;
   const currentAid = useMemo(
@@ -1885,7 +1884,6 @@ function QuestPageInner() {
       }),
     [currentType?.type_id, currentType?.generation_params?.pattern_id]
   );
-  const nextItem = nextEntry?.item ?? null;
   const isQuadraticRootsQuestion = isQuadraticRootsType(currentType?.type_id);
   const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
   const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
@@ -3014,33 +3012,42 @@ function QuestPageInner() {
                 <div className="flex flex-col gap-3">
                   <div
                     ref={currentCardRef}
-                    className="rounded-2xl border-4 border-indigo-200 bg-white px-6 py-5 text-indigo-900 text-2xl font-black shadow-md"
+                    className="relative overflow-hidden rounded-none border-x-[10px] border-t-[10px] border-b-[10px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 py-5 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)]"
                   >
+                    <div className="pointer-events-none absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_12%_20%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_70%,rgba(255,255,255,0.10),transparent_34%),repeating-linear-gradient(12deg,rgba(255,255,255,0.05)_0px,rgba(255,255,255,0.05)_2px,transparent_2px,transparent_8px)]" />
+                    <div className="pointer-events-none absolute bottom-2 left-2 flex items-end gap-2">
+                      <div aria-label="board-eraser" className="h-6 w-12 rounded-md border border-amber-900 bg-gradient-to-b from-amber-200 to-amber-500 shadow-[0_2px_0_rgba(0,0,0,0.28)]" />
+                      <div className="flex items-end gap-1">
+                        <div aria-label="board-chalk-white" className="h-2.5 w-7 rounded-full border border-slate-300 bg-white shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
+                        <div aria-label="board-chalk-pink" className="h-2.5 w-6 rounded-full border border-pink-300 bg-pink-100 shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
+                        <div aria-label="board-chalk-blue" className="h-2.5 w-6 rounded-full border border-sky-300 bg-sky-100 shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
+                      </div>
+                    </div>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                      <div className="min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold">
+                      <div className="min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50">
                         {renderPrompt(currentItem)}
                       </div>
                       {isQuadraticRootsQuestion ? (
                         <div className="w-full sm:w-auto flex items-center gap-2 flex-wrap">
-                          <span className="text-[20px] sm:text-[24px] font-bold text-slate-500">x1 =</span>
+                          <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x1 =</span>
                           <button
                             type="button"
                             onClick={() => setQuadraticActiveIndex(0)}
                             aria-label="recognized-answer-1"
                             className={`w-[130px] sm:w-[150px] h-[48px] sm:h-[56px] px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end ${
-                              quadraticActiveIndex === 0 ? "border-indigo-500 bg-indigo-50" : "border-[#111]"
+                              quadraticActiveIndex === 0 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
                             }`}
                             style={{ opacity: quadraticAnswers[0] ? 1 : 0.35 }}
                           >
                             {quadraticAnswers[0] || "\u2007"}
                           </button>
-                          <span className="text-[20px] sm:text-[24px] font-bold text-slate-500">x2 =</span>
+                          <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x2 =</span>
                           <button
                             type="button"
                             onClick={() => setQuadraticActiveIndex(1)}
                             aria-label="recognized-answer-2"
                             className={`w-[130px] sm:w-[150px] h-[48px] sm:h-[56px] px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end ${
-                              quadraticActiveIndex === 1 ? "border-indigo-500 bg-indigo-50" : "border-[#111]"
+                              quadraticActiveIndex === 1 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
                             }`}
                             style={{ opacity: quadraticAnswers[1] ? 1 : 0.35 }}
                           >
@@ -3049,10 +3056,10 @@ function QuestPageInner() {
                         </div>
                       ) : (
                         <div className="w-full sm:w-auto flex items-center gap-2">
-                          <span className="text-[26px] sm:text-[30px] font-bold text-slate-500">=</span>
+                          <span className="text-[26px] sm:text-[30px] font-bold text-emerald-100">=</span>
                           <div
                             aria-label="recognized-answer"
-                            className="w-full sm:w-auto sm:min-w-[170px] max-w-full h-[56px] sm:h-[64px] px-3 sm:px-4 rounded-xl border-2 border-[#111] text-[26px] sm:text-[30px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end"
+                            className="w-full sm:w-auto sm:min-w-[170px] max-w-full h-[56px] sm:h-[64px] px-3 sm:px-4 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 text-[26px] sm:text-[30px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end"
                             style={{ opacity: displayedAnswer ? 1 : 0.35 }}
                           >
                             {displayedAnswer || "\u2007"}
@@ -3072,11 +3079,6 @@ function QuestPageInner() {
                       </div>
                     )}
                   </div>
-                  {nextItem && (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-[28px] leading-tight text-slate-500 opacity-35">
-                      {renderPrompt(nextItem)}
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="text-slate-500 text-center">{uiText.selectType}</div>
