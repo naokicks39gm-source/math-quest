@@ -12,15 +12,19 @@ const questSource = fs.readFileSync(
   "utf8"
 );
 
-test("factory returns empty when strict non-duplicate set cannot be built", () => {
+test("factory keeps strict mode and exposes relaxed fallback builder", () => {
   assert.equal(factorySource.includes("if (stock.length < quizSize) return [];"), true);
   assert.equal(factorySource.includes("if (countConstraintViolations(ordered) === 0) return ordered;"), true);
   assert.equal(factorySource.includes("return reorderAvoidAdjacentSameFamily(shuffle(stock).slice(0, quizSize));"), false);
+  assert.equal(factorySource.includes("export const buildQuestSetWithFallback"), true);
+  assert.equal(factorySource.includes("return shuffle(relaxedPool).slice(0, quizSize);"), true);
+  assert.equal(factorySource.includes("while (picked.length < quizSize)"), true);
 });
 
-test("quest page retries and blocks when duplicate-free set is unavailable", () => {
+test("quest page retries strict mode then falls back before blocking", () => {
   assert.equal(questSource.includes("for (let attempt = 0; attempt < 6; attempt += 1)"), true);
-  assert.equal(questSource.includes("if (nextSet.length !== quizSize || hasDuplicateInSet(nextSet))"), true);
+  assert.equal(questSource.includes("nextSet = buildQuestSetWithFallback({"), true);
+  assert.equal(questSource.includes("if (nextSet.length !== quizSize) {"), true);
   assert.equal(questSource.includes("setStatus(\"blocked\");"), true);
   assert.equal(questSource.includes("このタイプは一時的に出題候補不足です。"), true);
 });

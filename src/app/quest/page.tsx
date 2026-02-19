@@ -9,7 +9,7 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getCatalogGrades } from '@/lib/gradeCatalog';
-import { buildUniqueQuestSet, entryEquivalentKey, entryPromptKey } from '@/lib/questItemFactory';
+import { buildQuestSetWithFallback, buildUniqueQuestSet, entryEquivalentKey, entryPromptKey } from '@/lib/questItemFactory';
 import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
 import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
 import ElementaryExplanationPanel from "@/components/ElementaryExplanationPanel";
@@ -2017,6 +2017,13 @@ function QuestPageInner() {
       }
     }
     if (nextSet.length !== quizSize || hasDuplicateInSet(nextSet)) {
+      nextSet = buildQuestSetWithFallback({
+        source: poolCandidates,
+        poolSize: QUESTION_POOL_SIZE + 200,
+        quizSize
+      });
+    }
+    if (nextSet.length !== quizSize) {
       setQuizItems([]);
       setItemIndex(0);
       setQuestionResults({});

@@ -683,3 +683,19 @@ export const buildUniqueQuestSet = ({ source, poolSize, quizSize }: BuildParams)
   logBuildStats("failed", []);
   return [];
 };
+
+export const buildQuestSetWithFallback = ({ source, poolSize, quizSize }: BuildParams): QuestEntry[] => {
+  const strict = buildUniqueQuestSet({ source, poolSize, quizSize });
+  if (strict.length === quizSize) return strict;
+  if (source.length === 0 || quizSize <= 0) return [];
+  const relaxedPool = expandEntriesToAtLeast(source, Math.max(poolSize, quizSize));
+  if (relaxedPool.length === 0) return [];
+  if (relaxedPool.length >= quizSize) return shuffle(relaxedPool).slice(0, quizSize);
+
+  const base = shuffle(relaxedPool);
+  const picked = [...base];
+  while (picked.length < quizSize) {
+    picked.push(base[Math.floor(Math.random() * base.length)]);
+  }
+  return shuffle(picked).slice(0, quizSize);
+};
