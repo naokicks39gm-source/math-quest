@@ -1432,6 +1432,11 @@ function QuestPageInner() {
   const canvasRef = useRef<any>(null); // Ref for CanvasDraw component
   const drawAreaRef = useRef<HTMLDivElement | null>(null);
   const currentCardRef = useRef<HTMLDivElement | null>(null);
+  const qaRowRef = useRef<HTMLDivElement | null>(null);
+  const qaPromptRef = useRef<HTMLDivElement | null>(null);
+  const qaPromptContentRef = useRef<HTMLSpanElement | null>(null);
+  const qaAnswerRef = useRef<HTMLDivElement | null>(null);
+  const qaAnswerContentRef = useRef<HTMLDivElement | null>(null);
   const memoCanvasHostRef = useRef<HTMLDivElement | null>(null);
   const [isModelReady, setIsModelReady] = useState(false); // New state for model readiness
   const [is2DigitModelReady, setIs2DigitModelReady] = useState(false);
@@ -1454,7 +1459,9 @@ function QuestPageInner() {
   const forcedDigitsRef = useRef<number | null>(null);
   const cooldownUntilRef = useRef(0);
   const AUTO_NEXT_WAIT_MS = 600;
+  const WRONG_MARK_WAIT_MS = 380;
   const autoNextTimerRef = useRef<number | null>(null);
+  const wrongMarkTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
   const grades = useMemo(
     () => getCatalogGrades() as GradeDef[],
@@ -1482,6 +1489,7 @@ function QuestPageInner() {
   const [memoCanvasSize, setMemoCanvasSize] = useState({ width: DEFAULT_VISIBLE_CANVAS_SIZE, height: DEFAULT_VISIBLE_CANVAS_SIZE });
   const [calcZoom, setCalcZoom] = useState(1);
   const [calcPan, setCalcPan] = useState({ x: 0, y: 0 });
+  const [useSingleLineQa, setUseSingleLineQa] = useState(false);
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
   const memoPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const memoPinchStartRef = useRef<{
@@ -1603,6 +1611,9 @@ function QuestPageInner() {
       if (autoNextTimerRef.current) {
         window.clearTimeout(autoNextTimerRef.current);
       }
+      if (wrongMarkTimerRef.current) {
+        window.clearTimeout(wrongMarkTimerRef.current);
+      }
       if (idleCheckTimerRef.current) {
         window.clearInterval(idleCheckTimerRef.current);
       }
@@ -1664,6 +1675,44 @@ function QuestPageInner() {
     observer.observe(el);
     return () => observer.disconnect();
   }, [status]);
+
+  useEffect(() => {
+    const row = qaRowRef.current;
+    const prompt = qaPromptRef.current;
+    const promptContent = qaPromptContentRef.current;
+    const answer = qaAnswerRef.current;
+    const answerContent = qaAnswerContentRef.current;
+    if (!row || !prompt || !answer || !answerContent || status !== "playing" || !quizItems[itemIndex]) return;
+
+    const updateLayout = () => {
+      const available = row.clientWidth;
+      if (available <= 0) return;
+      const promptWidth = promptContent?.scrollWidth ?? prompt.scrollWidth;
+      const answerWidth = answerContent.scrollWidth;
+      const gap = 18;
+      const buffer = 10;
+      setUseSingleLineQa(promptWidth + answerWidth + gap + buffer <= available);
+    };
+
+    updateLayout();
+    const observer = new ResizeObserver(() => updateLayout());
+    observer.observe(row);
+    observer.observe(prompt);
+    observer.observe(answer);
+    if (promptContent) observer.observe(promptContent);
+    observer.observe(answerContent);
+    window.addEventListener("resize", updateLayout);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateLayout);
+    };
+  }, [
+    status,
+    quizItems,
+    itemIndex,
+    input,
+    quadraticAnswers
+  ]);
 
   useEffect(() => {
     if (inkFirstMode) {
@@ -2144,6 +2193,10 @@ function QuestPageInner() {
     });
 
     if (verdict.ok) {
+      if (wrongMarkTimerRef.current) {
+        window.clearTimeout(wrongMarkTimerRef.current);
+        wrongMarkTimerRef.current = null;
+      }
       setResultMark('correct');
       const newCombo = combo + 1;
       setCombo(newCombo);
@@ -2160,7 +2213,14 @@ function QuestPageInner() {
         }, AUTO_NEXT_WAIT_MS);
       }
     } else {
+      if (wrongMarkTimerRef.current) {
+        window.clearTimeout(wrongMarkTimerRef.current);
+      }
       setResultMark('wrong');
+      wrongMarkTimerRef.current = window.setTimeout(() => {
+        setResultMark(null);
+        wrongMarkTimerRef.current = null;
+      }, WRONG_MARK_WAIT_MS);
       setCombo(0);
       const charData = CHARACTERS[character];
       setMessage(charData.misses[Math.floor(Math.random() * charData.misses.length)]);
@@ -2217,50 +2277,60 @@ function QuestPageInner() {
     );
 
   const resultOverlay = resultMark ? (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+    <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
       {resultMark === "correct" ? (
         <svg
           aria-hidden="true"
           viewBox="0 0 120 120"
-          className="h-24 w-24 sm:h-28 sm:w-28 text-green-300/95 drop-shadow-[0_3px_0_rgba(0,0,0,0.28)]"
+          className="h-24 w-24 sm:h-28 sm:w-28 text-red-700 drop-shadow-[0_3px_0_rgba(0,0,0,0.28)]"
         >
           <path
-            d="M18 62 C20 28, 52 10, 84 20 C108 30, 112 72, 88 92 C62 112, 24 98, 18 62"
+            d="M16 61 C18 30, 48 10, 82 17 C108 24, 114 69, 93 93 C66 116, 23 102, 16 61"
             fill="none"
             stroke="currentColor"
-            strokeWidth="9"
+            strokeWidth="10"
             strokeLinecap="round"
           />
           <path
-            d="M24 60 C27 32, 53 18, 80 25"
+            d="M20 60 C23 35, 47 20, 74 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="4.5"
+            strokeWidth="4"
             strokeLinecap="round"
-            opacity="0.7"
+            opacity="0.62"
           />
         </svg>
       ) : (
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 120 120"
-          className="h-24 w-24 sm:h-28 sm:w-28 text-red-300/95 drop-shadow-[0_3px_0_rgba(0,0,0,0.28)]"
-        >
-          <path
-            d="M22 22 L98 98"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="10"
-            strokeLinecap="round"
-          />
-          <path
-            d="M98 24 L26 96"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="10"
-            strokeLinecap="round"
-          />
-        </svg>
+        <div className="relative flex items-center justify-center">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 120 120"
+            className="h-24 w-24 sm:h-28 sm:w-28 text-red-700 drop-shadow-[0_3px_0_rgba(0,0,0,0.28)]"
+          >
+            <path
+              d="M20 22 L100 96"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="11"
+              strokeLinecap="round"
+            />
+            <path
+              d="M97 20 L26 99"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="11"
+              strokeLinecap="round"
+            />
+            <path
+              d="M30 34 L86 84"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="4"
+              strokeLinecap="round"
+              opacity="0.5"
+            />
+          </svg>
+        </div>
       )}
     </div>
   ) : null;
@@ -2492,6 +2562,10 @@ function QuestPageInner() {
       }));
 
       if (verdict.ok) {
+        if (wrongMarkTimerRef.current) {
+          window.clearTimeout(wrongMarkTimerRef.current);
+          wrongMarkTimerRef.current = null;
+        }
         setResultMark('correct');
         const newCombo = combo + 1;
         setCombo(newCombo);
@@ -2512,7 +2586,14 @@ function QuestPageInner() {
           }, AUTO_NEXT_WAIT_MS);
         }
       } else {
+        if (wrongMarkTimerRef.current) {
+          window.clearTimeout(wrongMarkTimerRef.current);
+        }
         setResultMark('wrong');
+        wrongMarkTimerRef.current = window.setTimeout(() => {
+          setResultMark(null);
+          wrongMarkTimerRef.current = null;
+        }, WRONG_MARK_WAIT_MS);
         setCombo(0);
       }
     }
@@ -3034,9 +3115,6 @@ function QuestPageInner() {
                       <span className="text-slate-600">
                         {displayedUserAnswer ? renderMaybeMath(displayedUserAnswer) : "?"}
                       </span>
-                      <span className={finalWrong ? 'text-red-600' : 'text-green-600'}>
-                        {finalWrong ? '✕' : '◯'}
-                      </span>
                     </div>
                   </div>
                 );
@@ -3084,7 +3162,7 @@ function QuestPageInner() {
           </div>
         ) : (
           <>
-            <div className="w-full bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[48vh] overflow-y-auto">
+            <div className="w-full max-h-[48vh] overflow-y-auto">
               {quizItems.length === 0 ? (
                 <div className="text-slate-500 text-center">
                   {emptyMessage}
@@ -3104,49 +3182,85 @@ function QuestPageInner() {
                         <div aria-label="board-chalk-blue" className="h-2.5 w-6 rounded-full border border-sky-300 bg-sky-100 shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
                       </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                      <div className="min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50">
-                        {renderPrompt(currentItem)}
+                    <div
+                      ref={qaRowRef}
+                      className={
+                        useSingleLineQa
+                          ? "flex items-center justify-between gap-3 sm:gap-4"
+                          : "flex flex-col justify-between gap-3 sm:gap-4"
+                      }
+                    >
+                      <div
+                        ref={qaPromptRef}
+                        className={
+                          useSingleLineQa
+                            ? "min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
+                            : "min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
+                        }
+                      >
+                        <span ref={qaPromptContentRef} className="inline-block align-middle">
+                          {renderPrompt(currentItem)}
+                        </span>
                       </div>
                       {isQuadraticRootsQuestion ? (
-                        <div className="relative w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2 overflow-x-auto whitespace-nowrap">
-                          <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x1 =</span>
-                          <button
-                            type="button"
-                            onClick={() => setQuadraticActiveIndex(0)}
-                            aria-label="recognized-answer-1"
-                            className={`w-[72px] sm:w-[84px] shrink-0 h-[48px] sm:h-[56px] px-2 sm:px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
-                              quadraticActiveIndex === 0 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
-                            }`}
-                            style={{ opacity: quadraticAnswers[0] ? 1 : 0.35 }}
-                          >
-                            {quadraticAnswers[0] || "\u2007"}
-                          </button>
-                          <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x2 =</span>
-                          <button
-                            type="button"
-                            onClick={() => setQuadraticActiveIndex(1)}
-                            aria-label="recognized-answer-2"
-                            className={`w-[72px] sm:w-[84px] shrink-0 h-[48px] sm:h-[56px] px-2 sm:px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
-                              quadraticActiveIndex === 1 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
-                            }`}
-                            style={{ opacity: quadraticAnswers[1] ? 1 : 0.35 }}
-                          >
-                            {quadraticAnswers[1] || "\u2007"}
-                          </button>
-                          {resultOverlay}
+                        <div
+                          ref={qaAnswerRef}
+                          className={
+                            useSingleLineQa
+                              ? "w-auto shrink-0 flex items-center gap-2 overflow-x-auto whitespace-nowrap"
+                              : "w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2 overflow-x-auto whitespace-nowrap"
+                          }
+                        >
+                          <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
+                            <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x1 =</span>
+                            <button
+                              type="button"
+                              onClick={() => setQuadraticActiveIndex(0)}
+                              aria-label="recognized-answer-1"
+                              className={`w-[72px] sm:w-[84px] shrink-0 h-[48px] sm:h-[56px] px-2 sm:px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
+                                quadraticActiveIndex === 0 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                              }`}
+                              style={{ opacity: quadraticAnswers[0] ? 1 : 0.35 }}
+                            >
+                              {quadraticAnswers[0] || "\u2007"}
+                            </button>
+                            <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x2 =</span>
+                            <button
+                              type="button"
+                              onClick={() => setQuadraticActiveIndex(1)}
+                              aria-label="recognized-answer-2"
+                              className={`w-[72px] sm:w-[84px] shrink-0 h-[48px] sm:h-[56px] px-2 sm:px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
+                                quadraticActiveIndex === 1 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                              }`}
+                              style={{ opacity: quadraticAnswers[1] ? 1 : 0.35 }}
+                            >
+                              {quadraticAnswers[1] || "\u2007"}
+                            </button>
+                            {resultOverlay}
+                          </div>
                         </div>
                       ) : (
-                        <div className="relative w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2">
-                          <span className="text-[26px] sm:text-[30px] font-bold text-emerald-100">=</span>
-                          <div
-                            aria-label="recognized-answer"
-                            className="w-[150px] sm:w-[180px] shrink-0 max-w-full h-[56px] sm:h-[64px] px-2 sm:px-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 text-[26px] sm:text-[30px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center"
-                            style={{ opacity: displayedAnswer ? 1 : 0.35 }}
-                          >
-                            {displayedAnswer || "\u2007"}
+                        <div
+                          ref={qaAnswerRef}
+                          className={
+                            useSingleLineQa
+                              ? "relative w-auto shrink-0 flex items-center gap-2 overflow-visible"
+                              : "relative w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2 overflow-visible"
+                          }
+                        >
+                          <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
+                            <span className="text-[26px] sm:text-[30px] font-bold text-emerald-100">=</span>
+                            <div className="relative w-[150px] sm:w-[180px] overflow-visible">
+                              <div
+                                aria-label="recognized-answer"
+                                className="w-[150px] sm:w-[180px] shrink-0 max-w-full h-[56px] sm:h-[64px] px-2 sm:px-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 text-[26px] sm:text-[30px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center"
+                                style={{ opacity: displayedAnswer ? 1 : 0.35 }}
+                              >
+                                {displayedAnswer || "\u2007"}
+                              </div>
+                              {resultOverlay}
+                            </div>
                           </div>
-                          {resultOverlay}
                         </div>
                       )}
                     </div>
