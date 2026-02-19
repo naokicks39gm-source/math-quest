@@ -17,15 +17,15 @@ test("quest uses keypad answer flow and calc memo canvas", () => {
   assert.match(questSource, /onClick=\{\(\) => setIsMemoOpen\(\(prev\) => !prev\)\}/);
 });
 
-test("calc memo is stabilized without pinch handlers", () => {
-  assert.equal(questSource.includes("calcZoom"), false);
-  assert.equal(questSource.includes("calcPan"), false);
-  assert.equal(questSource.includes("isPinchingMemo"), false);
-  assert.equal(questSource.includes("handleMemoPointerDown"), false);
-  assert.equal(questSource.includes("handleMemoPointerMove"), false);
-  assert.equal(questSource.includes("handleMemoPointerEnd"), false);
-  assert.equal(questSource.includes("resetMemoViewport"), false);
-  assert.equal(questSource.includes('touchAction: "none"'), false);
+test("calc memo keeps pinch handlers for zoom interactions", () => {
+  assert.equal(questSource.includes("calcZoom"), true);
+  assert.equal(questSource.includes("calcPan"), true);
+  assert.equal(questSource.includes("isPinchingMemo"), true);
+  assert.equal(questSource.includes("handleMemoPointerDown"), true);
+  assert.equal(questSource.includes("handleMemoPointerMove"), true);
+  assert.equal(questSource.includes("handleMemoPointerEnd"), true);
+  assert.equal(questSource.includes("resetMemoViewport"), true);
+  assert.equal(questSource.includes('touchAction: "none"'), true);
 });
 
 test("legacy handwriting route is preserved", () => {
