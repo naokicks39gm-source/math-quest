@@ -263,6 +263,9 @@ const CHARACTERS = {
   }
 };
 
+const DIGIT_KEYPAD_TOKENS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
+const SYMBOL_KEYPAD_TOKENS = ["/", ".", "-"] as const;
+
 type BBox = { minX: number; minY: number; maxX: number; maxY: number };
 type DigitSample = { tensor: tf.Tensor2D; preview: ImageData; width: number; height: number; centerX: number };
 type Component = { mask: Uint8Array; bbox: BBox; area: number };
@@ -2057,7 +2060,6 @@ function QuestPageInner() {
       if (/^\d$/.test(token)) return true;
       if (token === "-") return text.length === 0;
       if (token === ".") {
-        if (activeKind !== "dec") return false;
         if (text.includes(".")) return false;
         if (text === "" || text === "-") return false;
         return true;
@@ -2185,9 +2187,22 @@ function QuestPageInner() {
   const canUseKeyToken = (token: string) => {
     if (/^\d$/.test(token)) return true;
     if (token === "-") return true;
-    if (token === ".") return keypadAnswerKind === "dec";
+    if (token === ".") return true;
     if (token === "/") return true;
     return false;
+  };
+  const renderKeyLabel = (token: string): ReactNode => {
+    if (token === "/") return "分数";
+    if (token === ".") return "小数点";
+    if (token === "-") {
+      return (
+        <span className="inline-flex flex-col items-center leading-[0.9]">
+          <span>マイ</span>
+          <span>ナス</span>
+        </span>
+      );
+    }
+    return token;
   };
   const isValidAnswerText = (text: string, kind: AnswerFormat["kind"]) => {
     const t = text.trim();
@@ -3117,42 +3132,60 @@ function QuestPageInner() {
 
       {/* Bottom: Input + Calc Memo */}
       {status === 'playing' && (
-        <div className="w-full pb-4 space-y-3">
-          <div className="w-full grid grid-cols-4 gap-2">
-            {[["7", "8", "9", "/"], ["4", "5", "6", "."], ["1", "2", "3", "-"]].flat().map((token) => (
+        <div className="w-full pt-2 pb-3 sticky bottom-0 bg-slate-50/95 backdrop-blur-sm z-20 space-y-2">
+          <div className="w-full space-y-1 pb-1">
+            <div className="w-full grid grid-cols-10 gap-1">
+              {DIGIT_KEYPAD_TOKENS.map((token) => (
+                <button
+                  key={token}
+                  onClick={() => handleInput(token)}
+                  disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
+                  className={`
+                    h-9 w-full rounded-md text-sm font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                    ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
+                  `}
+                >
+                  {renderKeyLabel(token)}
+                </button>
+              ))}
+            </div>
+            <div className="w-full grid grid-cols-12 gap-1">
+              {SYMBOL_KEYPAD_TOKENS.map((token) => (
+                <button
+                  key={token}
+                  onClick={() => handleInput(token)}
+                  disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
+                  className={`
+                    col-span-2 h-9 w-full rounded-md text-xs font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                    ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
+                  `}
+                >
+                  {renderKeyLabel(token)}
+                </button>
+              ))}
               <button
-                key={token}
-                onClick={() => handleInput(token)}
-                disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
-                className={`
-                  h-12 rounded-lg text-xl font-bold shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all border-2
-                  ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                `}
+                onClick={handleDelete}
+                disabled={status !== 'playing' || isStarting}
+                className="col-span-2 h-9 w-full rounded-md text-xs font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-red-100 text-red-600 border border-red-200 hover:bg-red-200 flex items-center justify-center"
               >
-                {token === "/" ? "分数" : token === "." ? "小数点" : token}
+                ⌫
               </button>
-            ))}
-            <button
-              onClick={() => handleInput("0")}
-              disabled={status !== 'playing' || isStarting}
-              className="h-12 rounded-lg text-xl font-bold shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50"
-            >
-              0
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={status !== 'playing' || isStarting}
-              className="h-12 rounded-lg text-lg font-bold shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all bg-red-100 text-red-600 border-2 border-red-200 hover:bg-red-200 flex items-center justify-center"
-            >
-              ⌫
-            </button>
-            <button
-              onClick={handleAttack}
-              disabled={status !== 'playing' || isStarting || !canSubmitCurrentAnswer}
-              className="col-span-2 h-12 rounded-lg text-lg font-bold shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all bg-indigo-600 text-white border-2 border-indigo-700 hover:bg-indigo-700 flex items-center justify-center"
-            >
-              {uiText.judge}
-            </button>
+              <button
+                onClick={handleAttack}
+                disabled={status !== 'playing' || isStarting || !canSubmitCurrentAnswer}
+                className="col-span-2 h-9 w-full rounded-md text-xs font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-indigo-600 text-white border border-indigo-700 hover:bg-indigo-700 flex items-center justify-center"
+              >
+                {uiText.judge}
+              </button>
+              <button
+                type="button"
+                onClick={endLearningSession}
+                disabled={sessionActionLoading}
+                className="col-span-2 h-9 w-full rounded-md text-xs font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-emerald-600 text-white border border-emerald-700 hover:bg-emerald-700 disabled:bg-slate-300 flex items-center justify-center"
+              >
+                おわり
+              </button>
+            </div>
           </div>
           <button
             type="button"
@@ -3238,25 +3271,17 @@ function QuestPageInner() {
       )}
 
       {status === 'playing' && (
-        <section className="w-full pb-4 space-y-2">
-          <button
-            type="button"
-            onClick={endLearningSession}
-            disabled={sessionActionLoading}
-            className="w-full px-4 py-3 rounded-xl bg-emerald-600 text-white font-black text-base shadow disabled:bg-slate-300"
-          >
-            {uiText.endWithReport}
-          </button>
+        <section className="w-full pb-1 space-y-1">
           {!studentId && (
-            <div className="text-xs text-slate-600">
+            <div className="text-[10px] text-right text-slate-600 bg-white/90 border border-slate-200 rounded px-2 py-1">
               保護者設定が未保存のためレポート配信はできません。
             </div>
           )}
           {sessionMailStatus && (
-            <div className="text-xs text-emerald-700 font-semibold">{sessionMailStatus}</div>
+            <div className="text-[10px] text-right text-emerald-700 font-semibold bg-emerald-50/95 border border-emerald-200 rounded px-2 py-1">{sessionMailStatus}</div>
           )}
           {sessionError && (
-            <div className="text-xs text-red-700">{sessionError}</div>
+            <div className="text-[10px] text-right text-red-700 bg-red-50/95 border border-red-200 rounded px-2 py-1">{sessionError}</div>
           )}
         </section>
       )}
