@@ -24,3 +24,11 @@ test("quest item factory includes pattern-based generators for fallback expansio
   assert.equal(source.includes('patternId.startsWith("FRAC_")'), true);
   assert.equal(source.includes("while (unique.length < minCount"), true);
 });
+
+test("quest item factory exposes diversity helper functions", () => {
+  assert.equal(source.includes("export const extractQuestionFeatures"), true);
+  assert.equal(source.includes("export const scoreCandidateSet"), true);
+  assert.equal(source.includes("export const reorderAvoidAdjacentSameFamily"), true);
+  assert.equal(source.includes("pickDiverseQuizEntries"), true);
+  assert.equal(source.includes("adjacentPenaltyByFeatures"), true);
+});
