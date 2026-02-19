@@ -96,9 +96,10 @@ const OUTER_MARGIN = 8;
 const DEFAULT_VISIBLE_CANVAS_SIZE = 300;
 const FRACTION_AUTO_MOVE_DELAY_MS = 800;
 const EMPTY_FRACTION_EDITOR: FractionEditorState = { enabled: false, num: "", den: "", part: "num" };
-const MIN_MEMO_ZOOM = 0.2;
+const MIN_MEMO_ZOOM = 0.1;
 const MAX_MEMO_ZOOM = 2.5;
 const MEMO_BRUSH_WIDTH = 2.0;
+const MEMO_WORKSPACE_SCALE = 1.6;
 
 export const getAutoJudgeDelayMs = (digits: number) => {
   if (digits <= 1) return 700;
@@ -2916,8 +2917,8 @@ function QuestPageInner() {
       runInference();
     }, nextDelay);
   };
-  const memoLogicalWidth = Math.ceil(memoCanvasSize.width / MIN_MEMO_ZOOM) + OUTER_MARGIN * 2;
-  const memoLogicalHeight = Math.ceil(memoCanvasSize.height / MIN_MEMO_ZOOM) + OUTER_MARGIN * 2;
+  const memoLogicalWidth = Math.ceil((memoCanvasSize.width / MIN_MEMO_ZOOM) * MEMO_WORKSPACE_SCALE) + OUTER_MARGIN * 2;
+  const memoLogicalHeight = Math.ceil((memoCanvasSize.height / MIN_MEMO_ZOOM) * MEMO_WORKSPACE_SCALE) + OUTER_MARGIN * 2;
   const memoOffsetX = memoCanvasSize.width / 2 - (memoLogicalWidth * calcZoom) / 2 + calcPan.x;
   const memoOffsetY = memoCanvasSize.height / 2 - (memoLogicalHeight * calcZoom) / 2 + calcPan.y;
   const memoDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
@@ -3662,7 +3663,16 @@ function QuestPageInner() {
                   ref={drawAreaRef}
                   data-testid="calc-memo-area"
                   className="relative h-full w-full overflow-hidden bg-white"
-                  style={{ touchAction: "none" }}
+                  style={{
+                    touchAction: "none",
+                    userSelect: "none",
+                    WebkitUserSelect: "none",
+                    WebkitTouchCallout: "none",
+                    WebkitTapHighlightColor: "transparent"
+                  }}
+                  onContextMenu={(e) => e.preventDefault()}
+                  onSelectStart={(e) => e.preventDefault()}
+                  onDragStart={(e) => e.preventDefault()}
                   onPointerDown={handleMemoPointerDown}
                   onPointerMove={handleMemoPointerMove}
                   onPointerUp={handleMemoPointerEnd}
@@ -3671,8 +3681,9 @@ function QuestPageInner() {
                 >
                   <canvas
                     ref={memoCanvasRef}
-                    className="block h-full w-full"
+                    className="block h-full w-full select-none"
                     aria-label="calc-memo-canvas"
+                    draggable={false}
                   />
                 </div>
               </div>

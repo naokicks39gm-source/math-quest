@@ -26,8 +26,9 @@ test("calc memo keeps pinch handlers for zoom interactions", () => {
   assert.equal(questSource.includes("MAX_MEMO_ZOOM"), true);
   assert.equal(questSource.includes("const MEMO_BRUSH_WIDTH = 2.0"), true);
   assert.equal(questSource.includes("ctx.lineWidth = MEMO_BRUSH_WIDTH"), true);
-  assert.equal(questSource.includes("Math.ceil(memoCanvasSize.width / MIN_MEMO_ZOOM)"), true);
-  assert.equal(questSource.includes("Math.ceil(memoCanvasSize.height / MIN_MEMO_ZOOM)"), true);
+  assert.equal(questSource.includes("MEMO_WORKSPACE_SCALE"), true);
+  assert.equal(questSource.includes("Math.ceil((memoCanvasSize.width / MIN_MEMO_ZOOM) * MEMO_WORKSPACE_SCALE)"), true);
+  assert.equal(questSource.includes("Math.ceil((memoCanvasSize.height / MIN_MEMO_ZOOM) * MEMO_WORKSPACE_SCALE)"), true);
   assert.equal(questSource.includes("memoOffsetX"), true);
   assert.equal(questSource.includes("memoOffsetY"), true);
   assert.equal(questSource.includes("memoStrokesRef"), true);
@@ -35,6 +36,14 @@ test("calc memo keeps pinch handlers for zoom interactions", () => {
   assert.equal(questSource.includes("handleMemoPointerMove"), true);
   assert.equal(questSource.includes("handleMemoPointerEnd"), true);
   assert.equal(questSource.includes('touchAction: "none"'), true);
+  assert.equal(questSource.includes('userSelect: "none"'), true);
+  assert.equal(questSource.includes('WebkitUserSelect: "none"'), true);
+  assert.equal(questSource.includes('WebkitTouchCallout: "none"'), true);
+  assert.equal(questSource.includes('WebkitTapHighlightColor: "transparent"'), true);
+  assert.equal(questSource.includes("onContextMenu={(e) => e.preventDefault()}"), true);
+  assert.equal(questSource.includes("onSelectStart={(e) => e.preventDefault()}"), true);
+  assert.equal(questSource.includes("onDragStart={(e) => e.preventDefault()}"), true);
+  assert.equal(questSource.includes("draggable={false}"), true);
   assert.equal(questSource.includes("zoomRatio >= 1"), false);
   assert.equal(questSource.includes("clamp(start.zoom * zoomRatio, MIN_MEMO_ZOOM, MAX_MEMO_ZOOM)"), true);
   assert.equal(questSource.includes("mid: memoMidpoint(p1, p2)"), true);
