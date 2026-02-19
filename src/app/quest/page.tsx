@@ -87,6 +87,7 @@ const LS_STUDENT_ID = "mq:studentId";
 const QUESTION_POOL_SIZE = 50;
 const OUTER_MARGIN = 8;
 const DEFAULT_VISIBLE_CANVAS_SIZE = 300;
+const MIN_MEMO_ZOOM = 0.2;
 
 export const getAutoJudgeDelayMs = (digits: number) => {
   if (digits <= 1) return 700;
@@ -1427,7 +1428,8 @@ function QuestPageInner() {
   const [resultMark, setResultMark] = useState<'correct' | 'wrong' | null>(null);
   const canvasRef = useRef<any>(null); // Ref for CanvasDraw component
   const drawAreaRef = useRef<HTMLDivElement | null>(null);
-  const memoFrameRef = useRef<HTMLDivElement | null>(null);
+  const currentCardRef = useRef<HTMLDivElement | null>(null);
+  const memoCanvasHostRef = useRef<HTMLDivElement | null>(null);
   const [isModelReady, setIsModelReady] = useState(false); // New state for model readiness
   const [is2DigitModelReady, setIs2DigitModelReady] = useState(false);
   const autoRecognizeTimerRef = useRef<number | null>(null);
@@ -1474,9 +1476,9 @@ function QuestPageInner() {
   const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
   const [retryNonce, setRetryNonce] = useState(0);
   const [visibleCanvasSize, setVisibleCanvasSize] = useState(DEFAULT_VISIBLE_CANVAS_SIZE);
+  const [memoCanvasSize, setMemoCanvasSize] = useState({ width: DEFAULT_VISIBLE_CANVAS_SIZE, height: DEFAULT_VISIBLE_CANVAS_SIZE });
   const [calcZoom, setCalcZoom] = useState(1);
   const [calcPan, setCalcPan] = useState({ x: 0, y: 0 });
-  const [isMemoOpen, setIsMemoOpen] = useState(false);
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
   const memoPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const memoPinchStartRef = useRef<{
@@ -1646,26 +1648,18 @@ function QuestPageInner() {
   };
 
   useEffect(() => {
-    const el = memoFrameRef.current;
-    if (!el) return;
+    const el = memoCanvasHostRef.current;
+    if (!el || status !== "playing") return;
     const updateSize = () => {
-      const w = Math.floor(el.clientWidth);
-      const maxByViewport = typeof window !== "undefined"
-        ? Math.floor(window.innerHeight * 0.28)
-        : w;
-      const next = Math.max(180, Math.min(w, maxByViewport));
-      if (next > 0) setVisibleCanvasSize(next);
+      const width = Math.max(180, Math.floor(el.clientWidth));
+      const height = Math.max(180, Math.floor(el.clientHeight));
+      setMemoCanvasSize({ width, height });
+      setVisibleCanvasSize(Math.max(180, Math.min(width, height)));
     };
     updateSize();
     const observer = new ResizeObserver(() => updateSize());
     observer.observe(el);
     return () => observer.disconnect();
-  }, [isMemoOpen, status]);
-
-  useEffect(() => {
-    if (status !== "playing") {
-      setIsMemoOpen(false);
-    }
   }, [status]);
 
   useEffect(() => {
@@ -1934,7 +1928,6 @@ function QuestPageInner() {
       };
   const emptyMessage = uiText.noItems;
   const totalQuizQuestions = Math.min(TOTAL_QUESTIONS, quizItems.length);
-  const currentCardRef = useRef<HTMLDivElement | null>(null);
   const nextQuestion = () => {
     setItemIndex((v) => {
       if (v + 1 >= totalQuizQuestions) {
@@ -2542,19 +2535,23 @@ function QuestPageInner() {
       runInference();
     }, nextDelay);
   };
-  const drawCanvasSize = visibleCanvasSize + OUTER_MARGIN * 2;
+  // Keep a large fixed internal canvas so zooming out reveals more writable area
+  // without resizing CanvasDraw during gesture (mobile crash avoidance).
+  const drawCanvasWidth = Math.ceil(memoCanvasSize.width / MIN_MEMO_ZOOM) + OUTER_MARGIN * 2;
+  const drawCanvasHeight = Math.ceil(memoCanvasSize.height / MIN_MEMO_ZOOM) + OUTER_MARGIN * 2;
+  const drawOffsetX = -OUTER_MARGIN - Math.floor((drawCanvasWidth - memoCanvasSize.width) / 2);
+  const drawOffsetY = -OUTER_MARGIN - Math.floor((drawCanvasHeight - memoCanvasSize.height) / 2);
   const memoDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
     Math.hypot(a.x - b.x, a.y - b.y);
   const memoMidpoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
     x: (a.x + b.x) / 2,
     y: (a.y + b.y) / 2
   });
-  const resetMemoViewport = () => {
-    setCalcZoom(1);
-    setCalcPan({ x: 0, y: 0 });
-  };
   const clearMemo = () => {
     canvasRef.current?.clear();
+  };
+  const undoMemo = () => {
+    canvasRef.current?.undo?.();
   };
   const handleMemoPointerDown = (e: any) => {
     if (e.pointerType !== "touch") return;
@@ -2580,7 +2577,9 @@ function QuestPageInner() {
     const dist = Math.max(1, memoDistance(p1, p2));
     const mid = memoMidpoint(p1, p2);
     const start = memoPinchStartRef.current;
-    const nextZoom = clamp(start.zoom * (dist / start.distance), 0.8, 2.5);
+    const zoomRatio = dist / start.distance;
+    if (zoomRatio >= 1) return;
+    const nextZoom = clamp(start.zoom * zoomRatio, MIN_MEMO_ZOOM, start.zoom);
     setCalcZoom(nextZoom);
     setCalcPan({
       x: start.pan.x + (mid.x - start.mid.x),
@@ -3030,7 +3029,7 @@ function QuestPageInner() {
                 <div className="flex flex-col gap-3">
                   <div
                     ref={currentCardRef}
-                    className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 pt-5 pb-12 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] h-[250px] sm:h-[230px] flex flex-col justify-between"
+                    className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 pt-4 pb-8 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] h-[200px] sm:h-[185px] flex flex-col justify-between"
                   >
                     <div className="pointer-events-none absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_12%_20%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_70%,rgba(255,255,255,0.10),transparent_34%),repeating-linear-gradient(12deg,rgba(255,255,255,0.05)_0px,rgba(255,255,255,0.05)_2px,transparent_2px,transparent_8px)]" />
                     <div className="pointer-events-none absolute bottom-0 left-3 flex items-end gap-2">
@@ -3111,6 +3110,65 @@ function QuestPageInner() {
             )}
 
             {currentAid && <SecondaryExplanationPanel aid={currentAid} />}
+
+            <section className="w-full rounded-2xl border border-slate-200 bg-white/90 p-2 shadow-md">
+              <div className="mb-2 flex items-center justify-between text-sm font-bold text-slate-800">
+                <span>計算メモ（2本指ピンチで縮小）</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={undoMemo}
+                    className="px-2 py-1 rounded-md bg-slate-100 text-slate-700"
+                  >
+                    1つ戻る
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearMemo}
+                    className="px-2 py-1 rounded-md bg-slate-700 text-white"
+                  >
+                    メモ消去
+                  </button>
+                </div>
+              </div>
+              <div ref={memoCanvasHostRef} className="relative h-[40vh] min-h-[260px] w-full">
+                <div
+                  ref={drawAreaRef}
+                  data-testid="calc-memo-area"
+                  className="relative h-full w-full overflow-hidden bg-white"
+                  style={{ touchAction: "none" }}
+                  onPointerDown={handleMemoPointerDown}
+                  onPointerMove={handleMemoPointerMove}
+                  onPointerUp={handleMemoPointerEnd}
+                  onPointerCancel={handleMemoPointerEnd}
+                  onPointerLeave={handleMemoPointerEnd}
+                >
+                  <div
+                    className="absolute"
+                    style={{
+                      left: drawOffsetX,
+                      top: drawOffsetY,
+                      transform: `translate(${calcPan.x}px, ${calcPan.y}px) scale(${calcZoom})`,
+                      transformOrigin: "center center"
+                    }}
+                  >
+                    <CanvasDraw
+                      ref={canvasRef}
+                      hideGrid={true}
+                      brushRadius={3.2}
+                      lazyRadius={0}
+                      immediateLoading
+                      brushColor="#000000"
+                      backgroundColor="#ffffff"
+                      canvasWidth={drawCanvasWidth}
+                      canvasHeight={drawCanvasHeight}
+                      className="shadow-none"
+                      disabled={status !== 'playing' || isPinchingMemo}
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
           </>
         )}
       </div>
@@ -3154,87 +3212,7 @@ function QuestPageInner() {
               {uiText.judge}
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsMemoOpen((prev) => !prev)}
-            className="w-full h-10 rounded-lg text-sm font-bold shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all bg-slate-700 text-white border-2 border-slate-800"
-          >
-            {isMemoOpen ? "計算メモを閉じる" : "計算メモ"}
-          </button>
         </div>
-      )}
-
-      {status === 'playing' && isMemoOpen && (
-        <section className="fixed inset-x-2 bottom-2 z-40 pointer-events-none">
-          <div className="pointer-events-auto mx-auto w-full max-w-xl max-h-[42vh] rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-md p-3 shadow-2xl space-y-2">
-            <div className="flex items-center justify-between text-sm font-bold text-slate-800">
-              <span>計算メモ（2本指ピンチで拡大縮小）</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={resetMemoViewport}
-                  className="px-2 py-1 rounded-md bg-slate-100 text-slate-700"
-                >
-                  100%
-                </button>
-                <button
-                  type="button"
-                  onClick={clearMemo}
-                  className="px-2 py-1 rounded-md bg-slate-700 text-white"
-                >
-                  メモ消去
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsMemoOpen(false)}
-                  className="px-2 py-1 rounded-md bg-slate-200 text-slate-800"
-                >
-                  閉じる
-                </button>
-              </div>
-            </div>
-            <div
-              ref={memoFrameRef}
-              className="w-full flex justify-center"
-            >
-              <div
-              ref={drawAreaRef}
-              data-testid="calc-memo-area"
-              className="relative mx-auto overflow-hidden rounded-xl border-2 border-slate-300 bg-white"
-              style={{ width: visibleCanvasSize, height: visibleCanvasSize, touchAction: "none" }}
-              onPointerDown={handleMemoPointerDown}
-              onPointerMove={handleMemoPointerMove}
-              onPointerUp={handleMemoPointerEnd}
-              onPointerCancel={handleMemoPointerEnd}
-              onPointerLeave={handleMemoPointerEnd}
-            >
-              <div
-                className="absolute"
-                style={{
-                  left: -OUTER_MARGIN,
-                  top: -OUTER_MARGIN,
-                  transform: `translate(${calcPan.x}px, ${calcPan.y}px) scale(${calcZoom})`,
-                  transformOrigin: "center center"
-                }}
-              >
-                <CanvasDraw
-                  ref={canvasRef}
-                  hideGrid={true}
-                  brushRadius={3.2}
-                  lazyRadius={0}
-                  immediateLoading
-                  brushColor="#000000"
-                  backgroundColor="#ffffff"
-                  canvasWidth={drawCanvasSize}
-                  canvasHeight={drawCanvasSize}
-                  className="shadow-lg"
-                  disabled={status !== 'playing' || isPinchingMemo}
-                />
-              </div>
-            </div>
-            </div>
-          </div>
-        </section>
       )}
 
       {status === 'playing' && (
