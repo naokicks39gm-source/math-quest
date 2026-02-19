@@ -9,7 +9,8 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getCatalogGrades } from '@/lib/gradeCatalog';
-import { buildQuestSetWithFallback, buildUniqueQuestSet, entryEquivalentKey, entryPromptKey } from '@/lib/questItemFactory';
+import { entryEquivalentKey, entryPromptKey } from '@/lib/questItemFactory';
+import { buildStocksForTypes, pickUniqueQuizFromStock, type PickMeta, type TypeStockResult } from "@/lib/questStockFactory";
 import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
 import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
 import ElementaryExplanationPanel from "@/components/ElementaryExplanationPanel";
@@ -73,6 +74,13 @@ type QuestEntry = {
   type: TypeDef;
 };
 
+type StockShortage = {
+  typeId: string;
+  typeName: string;
+  count: number;
+  reason?: TypeStockResult["reason"];
+};
+
 type QuestionResultEntry = {
   prompt: string;
   promptTex?: string;
@@ -108,8 +116,6 @@ export const getAutoJudgeDelayMs = (digits: number) => {
   if (digits === 2) return 1000;
   return 1300;
 };
-
-const typeSignature = (typeId: string) => typeId.replace(/^[A-Z]\d\./, "");
 
 const trimTrailingEquationEquals = (text: string) => text.replace(/\s*[=＝]\s*$/u, "");
 
@@ -1503,6 +1509,10 @@ function QuestPageInner() {
   const [sessionActionLoading, setSessionActionLoading] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [quizBuildError, setQuizBuildError] = useState<string | null>(null);
+  const [typeStocks, setTypeStocks] = useState<Map<string, TypeStockResult>>(new Map());
+  const [stockShortages, setStockShortages] = useState<StockShortage[]>([]);
+  const [stockReady, setStockReady] = useState(false);
+  const [activePickMeta, setActivePickMeta] = useState<PickMeta | null>(null);
   const sessionStartInFlightRef = useRef<Promise<string | null> | null>(null);
   const forceFractionRecognitionRef = useRef(false);
   const forceMixedRecognitionRef = useRef(false);
@@ -1902,21 +1912,6 @@ function QuestPageInner() {
     return null;
   })();
 
-  const categoryItems = useMemo(
-    () =>
-      categoryContext
-        ? categoryContext.category.types.flatMap((t) =>
-            t.example_items.map((item) => ({ item, type: t }))
-          )
-        : [],
-    [categoryContext]
-  );
-
-  const typeItems = useMemo(
-    () => (selectedType ? selectedType.example_items.map((item) => ({ item, type: selectedType })) : []),
-    [selectedType]
-  );
-
   const allCategoryItems = useMemo(
     () =>
       grades.flatMap((g) =>
@@ -1941,44 +1936,87 @@ function QuestPageInner() {
     [grades]
   );
 
-  const activeItems = useMemo(
+  const typeCatalog = useMemo(
     () =>
-      hasTypeQuery
-        ? typeItems
-        : hasCategoryQuery
-          ? categoryItems
-          : allCategoryItems,
-    [hasTypeQuery, hasCategoryQuery, typeItems, categoryItems, allCategoryItems]
+      grades.flatMap((grade) =>
+        grade.categories.flatMap((category) =>
+          category.types.map((type) => ({
+            type,
+            typeId: type.type_id,
+            typeName: type.display_name ?? type.type_name ?? type.type_id,
+            categoryId: category.category_id,
+            categoryName: category.category_name
+          }))
+        )
+      ),
+    [grades]
   );
-  const selectedTypeSignature = useMemo(() => {
-    if (typeFromQuery) return typeSignature(typeFromQuery);
-    if (selectedType) return typeSignature(selectedType.type_id);
-    return "";
-  }, [typeFromQuery, selectedType]);
-
-  const poolCandidates = useMemo(() => {
-    if (!hasTypeQuery) return activeItems;
-    if (!selectedTypeSignature) return activeItems;
-
-    const seen = new Set<string>();
-    const picked: QuestEntry[] = [];
-    const pushUnique = (entries: QuestEntry[]) => {
-      for (const entry of entries) {
-        const key = `${entryEquivalentKey(entry)}::${entry.item.answer.trim()}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        picked.push(entry);
-        if (picked.length >= QUESTION_POOL_SIZE) return;
+  const targetStockTypes = useMemo(() => {
+    if (hasTypeQuery) {
+      const byQuery = typeCatalog.find((entry) => entry.typeId === typeFromQuery);
+      if (byQuery) return [byQuery];
+      if (selectedType) {
+        const bySelected = typeCatalog.find((entry) => entry.typeId === selectedType.type_id);
+        if (bySelected) return [bySelected];
       }
-    };
+      return [];
+    }
+    if (hasCategoryQuery && categoryContext) {
+      return categoryContext.category.types.map((type) => ({
+        type,
+        typeId: type.type_id,
+        typeName: type.display_name ?? type.type_name ?? type.type_id,
+        categoryId: categoryContext.category.category_id,
+        categoryName: categoryContext.category.category_name
+      }));
+    }
+    return typeCatalog;
+  }, [hasTypeQuery, hasCategoryQuery, typeFromQuery, selectedType, categoryContext, typeCatalog]);
 
-    const sameTypeAcrossGrades = allCategoryItems.filter(
-      (entry) => typeSignature(entry.type.type_id) === selectedTypeSignature
+  useEffect(() => {
+    setStockReady(false);
+    const stocks = buildStocksForTypes(
+      targetStockTypes.map((entry) => entry.type),
+      QUESTION_POOL_SIZE
     );
-    pushUnique(sameTypeAcrossGrades);
-    return picked.length > 0 ? picked : activeItems;
-  }, [hasTypeQuery, selectedTypeSignature, activeItems, allCategoryItems]);
+    const shortages: StockShortage[] = [];
+    for (const entry of targetStockTypes) {
+      const stock = stocks.get(entry.typeId);
+      if (!stock) continue;
+      if (stock.count < TOTAL_QUESTIONS) {
+        shortages.push({
+          typeId: entry.typeId,
+          typeName: entry.typeName,
+          count: stock.count,
+          reason: stock.reason
+        });
+      }
+    }
+    setTypeStocks(stocks);
+    setStockShortages(shortages);
+    setStockReady(true);
+  }, [targetStockTypes, retryNonce]);
+
+  const activeTypeId = useMemo(() => {
+    if (hasTypeQuery && typeFromQuery) return typeFromQuery;
+    if (selectedType?.type_id) return selectedType.type_id;
+    return targetStockTypes[0]?.typeId ?? "";
+  }, [hasTypeQuery, typeFromQuery, selectedType, targetStockTypes]);
   const quizSize = Math.min(TOTAL_QUESTIONS, QUESTION_POOL_SIZE);
+  const dedupeQuestSet = (set: QuestEntry[]) => {
+    const uniq: QuestEntry[] = [];
+    const promptSeen = new Set<string>();
+    const equivalentSeen = new Set<string>();
+    for (const entry of set) {
+      const promptKey = entryPromptKey(entry);
+      const equivalentKey = entryEquivalentKey(entry);
+      if (promptSeen.has(promptKey) || equivalentSeen.has(equivalentKey)) continue;
+      promptSeen.add(promptKey);
+      equivalentSeen.add(equivalentKey);
+      uniq.push(entry);
+    }
+    return uniq;
+  };
   const hasDuplicateInSet = (set: QuestEntry[]) => {
     const promptSeen = new Set<string>();
     const equivalentSeen = new Set<string>();
@@ -1991,44 +2029,60 @@ function QuestPageInner() {
     }
     return false;
   };
+  const describeStockReason = (reason?: TypeStockResult["reason"]) => {
+    if (!reason) return "出題候補不足";
+    if (reason === "NO_SOURCE") return "元問題なし";
+    if (reason === "NO_PATTERN") return "生成パターンなし";
+    if (reason === "INSUFFICIENT_GENERATABLE") return "生成可能数不足";
+    return reason;
+  };
   useEffect(() => {
     clearAllFractionAutoMoveTimers();
-    let nextSet: QuestEntry[] = [];
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      const candidate = buildUniqueQuestSet({
-        source: poolCandidates,
-        poolSize: QUESTION_POOL_SIZE + attempt * 25,
-        quizSize
-      });
-      if (process.env.NODE_ENV !== "production") {
-        const promptCount = new Set(candidate.map((entry) => entryPromptKey(entry))).size;
-        const equivalentCount = new Set(candidate.map((entry) => entryEquivalentKey(entry))).size;
-        // eslint-disable-next-line no-console
-        console.debug("[quest-page] build attempt", {
-          attempt: attempt + 1,
-          setSize: candidate.length,
-          uniquePromptCount: promptCount,
-          uniqueEquivalentCount: equivalentCount
-        });
-      }
-      if (candidate.length === quizSize && !hasDuplicateInSet(candidate)) {
-        nextSet = candidate;
-        break;
-      }
-    }
-    if (nextSet.length !== quizSize || hasDuplicateInSet(nextSet)) {
-      nextSet = buildQuestSetWithFallback({
-        source: poolCandidates,
-        poolSize: QUESTION_POOL_SIZE + 200,
-        quizSize
-      });
-    }
-    if (nextSet.length !== quizSize) {
+    if (!stockReady) {
       setQuizItems([]);
       setItemIndex(0);
       setQuestionResults({});
       setStatus("blocked");
-      setQuizBuildError("このタイプは一時的に出題候補不足です。別タイプを選ぶか、少し時間をおいて再試行してください。");
+      setQuizBuildError("出題ストックを準備中です。少しお待ちください。");
+      return;
+    }
+    const activeStock = activeTypeId ? typeStocks.get(activeTypeId) : undefined;
+    const firstPick = activeStock ? pickUniqueQuizFromStock(activeStock.entries, quizSize) : { entries: [], meta: { requested: quizSize, availableBeforeDedupe: 0, availableAfterDedupe: 0, picked: 0, dedupedOutCount: 0, reason: "EMPTY" as const } };
+    let nextSet = dedupeQuestSet(firstPick.entries);
+    let pickMeta: PickMeta = firstPick.meta;
+    if (hasDuplicateInSet(nextSet) && activeStock) {
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.debug("[quest-page] duplicate guard retry", { typeId: activeTypeId, firstMeta: firstPick.meta });
+      }
+      const secondPick = pickUniqueQuizFromStock(activeStock.entries, quizSize);
+      nextSet = dedupeQuestSet(secondPick.entries);
+      pickMeta = hasDuplicateInSet(nextSet)
+        ? { ...secondPick.meta, reason: "DUP_GUARD_FAILED" }
+        : secondPick.meta;
+    }
+    setActivePickMeta(pickMeta);
+    if (process.env.NODE_ENV !== "production") {
+      // eslint-disable-next-line no-console
+      console.debug("[quest-page] stock pick", {
+        typeId: activeTypeId,
+        availableBefore: pickMeta.availableBeforeDedupe,
+        availableAfterDedupe: pickMeta.availableAfterDedupe,
+        picked: pickMeta.picked,
+        dedupedOutCount: pickMeta.dedupedOutCount,
+        reason: pickMeta.reason
+      });
+    }
+
+    if (pickMeta.availableAfterDedupe < 1 || pickMeta.reason === "DUP_GUARD_FAILED") {
+      setQuizItems([]);
+      setItemIndex(0);
+      setQuestionResults({});
+      setStatus("blocked");
+      const reasonText = describeStockReason(activeStock?.reason);
+      const available = pickMeta.availableAfterDedupe;
+      const suffix = pickMeta.reason === "DUP_GUARD_FAILED" ? " / 抽出ガード失敗" : "";
+      setQuizBuildError(`このタイプは一時的に出題候補不足です（${reasonText} / 候補 ${available}${suffix}）。別タイプを選ぶか、少し時間をおいて再試行してください。`);
       setPracticeResult(null);
       setResultMark(null);
       setRecognizedNumber(null);
@@ -2048,12 +2102,17 @@ function QuestPageInner() {
     setPracticeResult(null);
     setResultMark(null);
     setRecognizedNumber(null);
+    if (pickMeta.reason === "SHORTAGE") {
+      setQuizBuildError(`候補不足のため ${pickMeta.picked} 題で開始します。`);
+    } else {
+      setQuizBuildError(null);
+    }
     setInput("");
     setFractionInput({ ...EMPTY_FRACTION_EDITOR });
     setQuadraticAnswers(["", ""]);
     setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
     setQuadraticActiveIndex(0);
-  }, [poolCandidates, quizSize, retryNonce]);
+  }, [stockReady, typeStocks, activeTypeId, quizSize, retryNonce]);
 
   const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
   const currentEntry = quizItems[safeIndex] ?? null;
@@ -2140,9 +2199,10 @@ function QuestPageInner() {
     isElementaryGrade(currentGradeId) &&
     practiceResult?.ok === false &&
     Boolean(currentElementaryAid);
+  const totalQuizQuestions = Math.max(1, Math.min(TOTAL_QUESTIONS, quizItems.length || TOTAL_QUESTIONS));
   const uiText = isEarlyElementary
     ? {
-        summary: `${TOTAL_QUESTIONS}もん かんりょう / せいかい ${correctCount}もん`,
+        summary: `${totalQuizQuestions}もん かんりょう / せいかい ${correctCount}もん`,
         yourAnswer: "あなた",
         correct: "⭕ せいかい",
         incorrect: "❌ ざんねん",
@@ -2158,7 +2218,7 @@ function QuestPageInner() {
         answerLabel: "こたえ"
       }
     : {
-        summary: `${TOTAL_QUESTIONS}題完了 / 正解 ${correctCount}題`,
+        summary: `${totalQuizQuestions}題完了 / 正解 ${correctCount}題`,
         yourAnswer: "あなた",
         correct: "⭕ 正解",
         incorrect: "❌ 不正解",
@@ -2174,7 +2234,6 @@ function QuestPageInner() {
         answerLabel: "答え"
       };
   const emptyMessage = uiText.noItems;
-  const totalQuizQuestions = TOTAL_QUESTIONS;
   const nextQuestion = () => {
     setItemIndex((v) => {
       if (v + 1 >= totalQuizQuestions) {
@@ -3729,6 +3788,18 @@ function QuestPageInner() {
             <div className="mt-2 text-sm text-red-700">
               {quizBuildError ?? "このタイプは一時的に出題候補不足です。別タイプを選ぶか、時間をおいて再試行してください。"}
             </div>
+            {stockShortages.length > 0 && (
+              <div className="mt-3 rounded-lg border border-red-200 bg-white/70 px-3 py-2 text-left">
+                <div className="text-xs font-bold text-red-700">候補不足タイプ一覧</div>
+                <ul className="mt-1 space-y-1 text-xs text-red-700">
+                  {stockShortages.slice(0, 8).map((item) => (
+                    <li key={item.typeId}>
+                      {item.typeName} ({item.typeId}): {item.count}題 / 理由 {describeStockReason(item.reason)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="mt-4 space-y-2">
               <button
                 type="button"
@@ -3748,6 +3819,23 @@ function QuestPageInner() {
           </div>
         ) : (
           <>
+            {stockShortages.length > 0 && (
+              <div className="w-full mb-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-left">
+                <div className="text-xs font-bold text-amber-800">候補不足タイプ一覧</div>
+                {activePickMeta && (
+                  <div className="mt-1 text-[11px] text-amber-700">
+                    抽出: 要求 {activePickMeta.requested} / 有効候補 {activePickMeta.availableAfterDedupe} / 取得 {activePickMeta.picked}
+                  </div>
+                )}
+                <ul className="mt-1 space-y-1 text-xs text-amber-800">
+                  {stockShortages.slice(0, 8).map((item) => (
+                    <li key={item.typeId}>
+                      {item.typeName} ({item.typeId}): {item.count}題 / 理由 {describeStockReason(item.reason)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="w-full max-h-[48vh] overflow-y-auto">
               {quizItems.length === 0 ? (
                 <div className="text-slate-500 text-center">

@@ -1,0 +1,36 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+
+const source = fs.readFileSync(
+  path.join(process.cwd(), "src/lib/questStockFactory.ts"),
+  "utf8"
+);
+
+test("stock factory exposes type stock APIs", () => {
+  assert.equal(source.includes("export const buildTypeStock"), true);
+  assert.equal(source.includes("export const buildStocksForTypes"), true);
+  assert.equal(source.includes("export const pickUniqueQuizFromStock"), true);
+});
+
+test("stock generation keeps unique prompt/equivalent keys", () => {
+  assert.equal(source.includes("entryPromptKey"), true);
+  assert.equal(source.includes("entryEquivalentKey"), true);
+  assert.equal(source.includes("if (promptKeys.has(promptKey)) continue;"), true);
+  assert.equal(source.includes("if (equivalentKeys.has(equivalentKey)) continue;"), true);
+});
+
+test("E1 1-digit add stock always blends deterministic candidates", () => {
+  assert.equal(source.includes("patternId.startsWith(\"ADD_1D_1D_\")"), true);
+  assert.equal(source.includes("buildDeterministicAdd1D1D"), true);
+  assert.equal(source.includes("uniqueByPromptAndEquivalent([...deterministic, ...unique])"), true);
+});
+
+test("stock result includes generated count and reason", () => {
+  assert.equal(source.includes("generatedCount"), true);
+  assert.equal(source.includes("buildMs"), true);
+  assert.equal(source.includes("INSUFFICIENT_GENERATABLE"), true);
+  assert.equal(source.includes("NO_PATTERN"), true);
+  assert.equal(source.includes("NO_SOURCE"), true);
+});

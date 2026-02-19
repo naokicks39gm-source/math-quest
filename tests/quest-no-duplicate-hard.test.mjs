@@ -12,19 +12,20 @@ const questSource = fs.readFileSync(
   "utf8"
 );
 
-test("factory keeps strict mode and exposes relaxed fallback builder", () => {
-  assert.equal(factorySource.includes("if (stock.length < quizSize) return [];"), true);
-  assert.equal(factorySource.includes("if (countConstraintViolations(ordered) === 0) return ordered;"), true);
-  assert.equal(factorySource.includes("return reorderAvoidAdjacentSameFamily(shuffle(stock).slice(0, quizSize));"), false);
-  assert.equal(factorySource.includes("export const buildQuestSetWithFallback"), true);
-  assert.equal(factorySource.includes("return shuffle(relaxedPool).slice(0, quizSize);"), true);
-  assert.equal(factorySource.includes("while (picked.length < quizSize)"), true);
+test("factory keeps strict mode only (no duplicate fallback)", () => {
+  assert.equal(factorySource.includes("const strictAttempts = 1200"), false);
+  assert.equal(factorySource.includes("const fallbackAttempts = 360"), false);
+  assert.equal(factorySource.includes("uniqueByPromptAndEquivalent"), true);
+  assert.equal(factorySource.includes("patternId === \"ADD_1D_1D_NO\""), true);
 });
 
-test("quest page retries strict mode then falls back before blocking", () => {
-  assert.equal(questSource.includes("for (let attempt = 0; attempt < 6; attempt += 1)"), true);
-  assert.equal(questSource.includes("nextSet = buildQuestSetWithFallback({"), true);
-  assert.equal(questSource.includes("if (nextSet.length !== quizSize) {"), true);
+test("quest page uses stock-based selection and blocks when stock is empty", () => {
+  assert.equal(questSource.includes("const stocks = buildStocksForTypes("), true);
+  assert.equal(questSource.includes("const firstPick = activeStock ? pickUniqueQuizFromStock(activeStock.entries, quizSize)"), true);
+  assert.equal(questSource.includes("if (hasDuplicateInSet(nextSet) && activeStock)"), true);
+  assert.equal(questSource.includes("const sameGradeFallback = buildUniqueSetFromEntries(sameGradePool, quizSize);"), false);
+  assert.equal(questSource.includes("const globalFallback = buildUniqueSetFromEntries(allCategoryItems, quizSize);"), false);
+  assert.equal(questSource.includes("if (pickMeta.availableAfterDedupe < 1 || pickMeta.reason === \"DUP_GUARD_FAILED\") {"), true);
   assert.equal(questSource.includes("setStatus(\"blocked\");"), true);
   assert.equal(questSource.includes("このタイプは一時的に出題候補不足です。"), true);
 });
