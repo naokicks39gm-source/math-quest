@@ -2974,10 +2974,10 @@ function QuestPageInner() {
                 <div className="flex flex-col gap-3">
                   <div
                     ref={currentCardRef}
-                    className="relative overflow-hidden rounded-none border-x-[10px] border-t-[10px] border-b-[10px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 py-5 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)]"
+                    className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 pt-5 pb-12 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] h-[250px] sm:h-[230px] flex flex-col justify-between"
                   >
                     <div className="pointer-events-none absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_12%_20%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_70%,rgba(255,255,255,0.10),transparent_34%),repeating-linear-gradient(12deg,rgba(255,255,255,0.05)_0px,rgba(255,255,255,0.05)_2px,transparent_2px,transparent_8px)]" />
-                    <div className="pointer-events-none absolute bottom-2 left-2 flex items-end gap-2">
+                    <div className="pointer-events-none absolute bottom-0 left-3 flex items-end gap-2">
                       <div aria-label="board-eraser" className="h-6 w-12 rounded-md border border-amber-900 bg-gradient-to-b from-amber-200 to-amber-500 shadow-[0_2px_0_rgba(0,0,0,0.28)]" />
                       <div className="flex items-end gap-1">
                         <div aria-label="board-chalk-white" className="h-2.5 w-7 rounded-full border border-slate-300 bg-white shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
@@ -2990,13 +2990,13 @@ function QuestPageInner() {
                         {renderPrompt(currentItem)}
                       </div>
                       {isQuadraticRootsQuestion ? (
-                        <div className="w-full sm:w-auto flex items-center gap-2 flex-wrap">
+                        <div className="w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2 overflow-x-auto whitespace-nowrap">
                           <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x1 =</span>
                           <button
                             type="button"
                             onClick={() => setQuadraticActiveIndex(0)}
                             aria-label="recognized-answer-1"
-                            className={`w-[130px] sm:w-[150px] h-[48px] sm:h-[56px] px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end ${
+                            className={`w-[130px] sm:w-[150px] shrink-0 h-[48px] sm:h-[56px] px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
                               quadraticActiveIndex === 0 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
                             }`}
                             style={{ opacity: quadraticAnswers[0] ? 1 : 0.35 }}
@@ -3008,7 +3008,7 @@ function QuestPageInner() {
                             type="button"
                             onClick={() => setQuadraticActiveIndex(1)}
                             aria-label="recognized-answer-2"
-                            className={`w-[130px] sm:w-[150px] h-[48px] sm:h-[56px] px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end ${
+                            className={`w-[130px] sm:w-[150px] shrink-0 h-[48px] sm:h-[56px] px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
                               quadraticActiveIndex === 1 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
                             }`}
                             style={{ opacity: quadraticAnswers[1] ? 1 : 0.35 }}
@@ -3017,11 +3017,11 @@ function QuestPageInner() {
                           </button>
                         </div>
                       ) : (
-                        <div className="w-full sm:w-auto flex items-center gap-2">
+                        <div className="w-full sm:w-auto ml-10 sm:ml-10 flex items-center gap-2">
                           <span className="text-[26px] sm:text-[30px] font-bold text-emerald-100">=</span>
                           <div
                             aria-label="recognized-answer"
-                            className="w-full sm:w-auto sm:min-w-[170px] max-w-full h-[56px] sm:h-[64px] px-3 sm:px-4 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 text-[26px] sm:text-[30px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end"
+                            className="w-full sm:w-auto sm:min-w-[170px] max-w-full h-[56px] sm:h-[64px] px-3 sm:px-4 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 text-[26px] sm:text-[30px] font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center"
                             style={{ opacity: displayedAnswer ? 1 : 0.35 }}
                           >
                             {displayedAnswer || "\u2007"}
@@ -3029,8 +3029,8 @@ function QuestPageInner() {
                         </div>
                       )}
                     </div>
-                    {practiceResult && (
-                      <div className="mt-2 flex justify-end">
+                    <div className="mt-2 h-5 flex justify-end">
+                      {practiceResult && (
                         <div
                           className={`text-xs font-bold ${
                             practiceResult.ok ? "text-green-600" : "text-red-600"
@@ -3038,8 +3038,8 @@ function QuestPageInner() {
                         >
                           {practiceResult.ok ? uiText.correct : uiText.incorrect}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (
