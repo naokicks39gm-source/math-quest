@@ -10,6 +10,8 @@ import {
   TypeDef
 } from "@/lib/elementaryContent";
 import { getCatalogGrades } from "@/lib/gradeCatalog";
+import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
+import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
 
 const gcd = (a: number, b: number) => {
   let x = Math.abs(a);
@@ -124,6 +126,15 @@ export default function PracticePage() {
     if (!selectedType || selectedType.example_items.length === 0) return null;
     return selectedType.example_items[itemIndex % selectedType.example_items.length];
   }, [selectedType, itemIndex]);
+  const currentAid = useMemo(
+    () =>
+      getSecondaryLearningAid({
+        gradeId: selectedType?.type_id.split(".")[0] ?? "",
+        typeId: selectedType?.type_id,
+        patternId: selectedType?.generation_params?.pattern_id
+      }),
+    [selectedType?.type_id, selectedType?.generation_params?.pattern_id]
+  );
 
   const handleSelectType = (type: TypeDef) => {
     setSelectedType(type);
@@ -185,6 +196,12 @@ export default function PracticePage() {
                 <div className="text-sm text-slate-500 mb-1">問題</div>
                 <div className="text-xl font-bold">{renderPrompt(currentItem)}</div>
               </div>
+
+              {currentAid && (
+                <div className="mb-6">
+                  <SecondaryExplanationPanel aid={currentAid} />
+                </div>
+              )}
 
               <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">
                 <div className="w-full md:w-2/3">

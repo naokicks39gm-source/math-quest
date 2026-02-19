@@ -11,6 +11,8 @@ import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getCatalogGrades } from '@/lib/gradeCatalog';
 import { buildUniqueQuestSet } from '@/lib/questItemFactory';
+import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
+import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -1863,6 +1865,15 @@ function QuestPageInner() {
   const nextEntry = quizItems.length > 0 ? quizItems[safeIndex + 1] ?? null : null;
   const currentItem = currentEntry?.item ?? null;
   const currentType = currentEntry?.type ?? selectedType;
+  const currentAid = useMemo(
+    () =>
+      getSecondaryLearningAid({
+        gradeId: currentType?.type_id.split(".")[0] ?? "",
+        typeId: currentType?.type_id,
+        patternId: currentType?.generation_params?.pattern_id
+      }),
+    [currentType?.type_id, currentType?.generation_params?.pattern_id]
+  );
   const nextItem = nextEntry?.item ?? null;
   const isQuadraticRootsQuestion = isQuadraticRootsType(currentType?.type_id);
   const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
@@ -2902,6 +2913,8 @@ function QuestPageInner() {
                 {combo} COMBO!
               </div>
             )}
+
+            {currentAid && <SecondaryExplanationPanel aid={currentAid} />}
           </>
         )}
       </div>
