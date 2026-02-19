@@ -24,10 +24,14 @@ test("adjacent same family is strongly penalized", () => {
 });
 
 test("final quest set is chosen through diversity-aware picker", () => {
-  assert.equal(source.includes("const attempts = 180"), true);
+  assert.equal(source.includes("const strictAttempts = 600"), true);
+  assert.equal(source.includes("const attempts = 240"), true);
+  assert.equal(source.includes("pickStrictUniqueEntries"), true);
+  assert.equal(source.includes("countConstraintViolations"), true);
   assert.equal(source.includes("const sampled = shuffle(stock).slice(0, quizSize)"), true);
   assert.equal(source.includes("const ordered = reorderAvoidAdjacentSameFamily(sampled)"), true);
-  assert.equal(source.includes("return pickDiverseQuizEntries(stock, quizSize);"), true);
+  assert.equal(source.includes("const picked = pickDiverseQuizEntries(stock, quizSize);"), true);
+  assert.equal(source.includes("if (picked.length === quizSize && violations === 0) return picked;"), true);
 });
 
 test("multiplication dan family is explicitly tracked", () => {

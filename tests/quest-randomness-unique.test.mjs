@@ -12,6 +12,9 @@ test("quest item factory exposes unique build APIs", () => {
   assert.equal(source.includes("export const buildUniqueQuestSet"), true);
   assert.equal(source.includes("export const expandEntriesToAtLeast"), true);
   assert.equal(source.includes("entryKey"), true);
+  assert.equal(source.includes("normalizePromptForUniqueness"), true);
+  assert.equal(source.includes("toEquivalentExpressionKey"), true);
+  assert.equal(source.includes("toAnswerKey"), true);
 });
 
 test("quest item factory includes pattern-based generators for fallback expansion", () => {
