@@ -10,6 +10,8 @@ test("quest is keypad-only and memo canvas does not trigger handwriting judge", 
   assert.match(source, /const \[inputMode\] = useState<'numpad' \| 'handwriting'>\('numpad'\)/);
   assert.match(source, /計算メモ/);
   assert.match(source, /data-testid="calc-memo-area"/);
+  assert.match(source, /aria-label="calc-memo-canvas"/);
+  assert.match(source, /MAX_MEMO_ZOOM/);
   assert.match(source, /h-\[200px\] sm:h-\[185px\]/);
   assert.match(source, /onClick=\{handleAttack\}/);
   assert.doesNotMatch(source, /onClick=\{\(\) => runInference\(\)\}/);

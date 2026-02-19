@@ -4,7 +4,6 @@
 import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter, useSearchParams } from "next/navigation";
-import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
@@ -88,6 +87,8 @@ const QUESTION_POOL_SIZE = 50;
 const OUTER_MARGIN = 8;
 const DEFAULT_VISIBLE_CANVAS_SIZE = 300;
 const MIN_MEMO_ZOOM = 0.2;
+const MAX_MEMO_ZOOM = 2.5;
+const MEMO_BRUSH_WIDTH = 2.0;
 
 export const getAutoJudgeDelayMs = (digits: number) => {
   if (digits <= 1) return 700;
@@ -280,6 +281,8 @@ type BinarizedCanvas = {
   threshold: number;
   roi: RecognitionRoi;
 };
+type MemoPoint = { x: number; y: number };
+type MemoStroke = { points: MemoPoint[] };
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
@@ -1429,7 +1432,8 @@ function QuestPageInner() {
   const [quadraticAnswers, setQuadraticAnswers] = useState<[string, string]>(["", ""]);
   const [quadraticActiveIndex, setQuadraticActiveIndex] = useState<0 | 1>(0);
   const [resultMark, setResultMark] = useState<'correct' | 'wrong' | null>(null);
-  const canvasRef = useRef<any>(null); // Ref for CanvasDraw component
+  const canvasRef = useRef<any>(null); // Ref for legacy handwriting canvas adapter
+  const memoCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawAreaRef = useRef<HTMLDivElement | null>(null);
   const currentCardRef = useRef<HTMLDivElement | null>(null);
   const memoCanvasHostRef = useRef<HTMLDivElement | null>(null);
@@ -1483,12 +1487,18 @@ function QuestPageInner() {
   const [calcZoom, setCalcZoom] = useState(1);
   const [calcPan, setCalcPan] = useState({ x: 0, y: 0 });
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
+  const [memoStrokes, setMemoStrokes] = useState<MemoStroke[]>([]);
+  const [memoRedoStack, setMemoRedoStack] = useState<MemoStroke[]>([]);
+  const memoStrokesRef = useRef<MemoStroke[]>([]);
+  const memoActiveStrokeRef = useRef<MemoStroke | null>(null);
+  const memoActivePointerIdRef = useRef<number | null>(null);
+  const memoDrawRafRef = useRef<number | null>(null);
   const memoPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const memoPinchStartRef = useRef<{
     distance: number;
     zoom: number;
-    pan: { x: number; y: number };
     mid: { x: number; y: number };
+    pan: { x: number; y: number };
   } | null>(null);
   const clearResults = useMemo(
     () => Object.entries(questionResults).sort((a, b) => Number(a[0]) - Number(b[0])),
@@ -1664,6 +1674,23 @@ function QuestPageInner() {
     observer.observe(el);
     return () => observer.disconnect();
   }, [status]);
+
+  useEffect(() => {
+    scheduleMemoRedraw();
+  }, [memoCanvasSize.width, memoCanvasSize.height, memoStrokes, calcZoom, calcPan, status]);
+
+  useEffect(() => {
+    return () => {
+      if (memoDrawRafRef.current) {
+        window.cancelAnimationFrame(memoDrawRafRef.current);
+        memoDrawRafRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    memoStrokesRef.current = memoStrokes;
+  }, [memoStrokes]);
 
   useEffect(() => {
     if (inkFirstMode) {
@@ -2599,60 +2626,176 @@ function QuestPageInner() {
       runInference();
     }, nextDelay);
   };
-  // Keep a large fixed internal canvas so zooming out reveals more writable area
-  // without resizing CanvasDraw during gesture (mobile crash avoidance).
-  const drawCanvasWidth = Math.ceil(memoCanvasSize.width / MIN_MEMO_ZOOM) + OUTER_MARGIN * 2;
-  const drawCanvasHeight = Math.ceil(memoCanvasSize.height / MIN_MEMO_ZOOM) + OUTER_MARGIN * 2;
-  const drawOffsetX = -OUTER_MARGIN - Math.floor((drawCanvasWidth - memoCanvasSize.width) / 2);
-  const drawOffsetY = -OUTER_MARGIN - Math.floor((drawCanvasHeight - memoCanvasSize.height) / 2);
+  const memoLogicalWidth = Math.ceil(memoCanvasSize.width / MIN_MEMO_ZOOM) + OUTER_MARGIN * 2;
+  const memoLogicalHeight = Math.ceil(memoCanvasSize.height / MIN_MEMO_ZOOM) + OUTER_MARGIN * 2;
+  const memoOffsetX = memoCanvasSize.width / 2 - (memoLogicalWidth * calcZoom) / 2 + calcPan.x;
+  const memoOffsetY = memoCanvasSize.height / 2 - (memoLogicalHeight * calcZoom) / 2 + calcPan.y;
   const memoDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
     Math.hypot(a.x - b.x, a.y - b.y);
   const memoMidpoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
     x: (a.x + b.x) / 2,
     y: (a.y + b.y) / 2
   });
-  const clearMemo = () => {
-    canvasRef.current?.clear();
+  const getMemoLogicalPoint = (clientX: number, clientY: number): MemoPoint | null => {
+    const host = drawAreaRef.current;
+    if (!host) return null;
+    const rect = host.getBoundingClientRect();
+    const x = (clientX - rect.left - memoOffsetX) / calcZoom;
+    const y = (clientY - rect.top - memoOffsetY) / calcZoom;
+    return {
+      x: clamp(x, 0, memoLogicalWidth),
+      y: clamp(y, 0, memoLogicalHeight)
+    };
   };
-  const undoMemo = () => {
-    canvasRef.current?.undo?.();
-  };
-  const handleMemoPointerDown = (e: any) => {
-    if (e.pointerType !== "touch") return;
-    memoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (memoPointersRef.current.size === 2) {
-      const [p1, p2] = [...memoPointersRef.current.values()];
-      memoPinchStartRef.current = {
-        distance: Math.max(1, memoDistance(p1, p2)),
-        zoom: calcZoom,
-        pan: calcPan,
-        mid: memoMidpoint(p1, p2)
-      };
-      setIsPinchingMemo(true);
+  const drawMemoCanvas = () => {
+    const canvas = memoCanvasRef.current;
+    if (!canvas) return;
+    const dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.floor(memoCanvasSize.width));
+    const height = Math.max(1, Math.floor(memoCanvasSize.height));
+    const pixelWidth = Math.max(1, Math.floor(width * dpr));
+    const pixelHeight = Math.max(1, Math.floor(height * dpr));
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
     }
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.save();
+    ctx.translate(memoOffsetX, memoOffsetY);
+    ctx.scale(calcZoom, calcZoom);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = MEMO_BRUSH_WIDTH;
+    const drawStroke = (stroke: MemoStroke) => {
+      if (stroke.points.length === 0) return;
+      ctx.beginPath();
+      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      for (let i = 1; i < stroke.points.length; i++) {
+        const p = stroke.points[i];
+        ctx.lineTo(p.x, p.y);
+      }
+      if (stroke.points.length === 1) {
+        const p = stroke.points[0];
+        ctx.lineTo(p.x + 0.01, p.y + 0.01);
+      }
+      ctx.stroke();
+    };
+    memoStrokesRef.current.forEach(drawStroke);
+    if (memoActiveStrokeRef.current) {
+      drawStroke(memoActiveStrokeRef.current);
+    }
+    ctx.restore();
   };
-  const handleMemoPointerMove = (e: any) => {
-    if (e.pointerType !== "touch") return;
-    if (!memoPointersRef.current.has(e.pointerId)) return;
-    memoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (memoPointersRef.current.size < 2 || !memoPinchStartRef.current) return;
-    e.preventDefault();
-    const [p1, p2] = [...memoPointersRef.current.values()];
-    const dist = Math.max(1, memoDistance(p1, p2));
-    const mid = memoMidpoint(p1, p2);
-    const start = memoPinchStartRef.current;
-    const zoomRatio = dist / start.distance;
-    if (zoomRatio >= 1) return;
-    const nextZoom = clamp(start.zoom * zoomRatio, MIN_MEMO_ZOOM, start.zoom);
-    setCalcZoom(nextZoom);
-    setCalcPan({
-      x: start.pan.x + (mid.x - start.mid.x),
-      y: start.pan.y + (mid.y - start.mid.y)
+  const scheduleMemoRedraw = () => {
+    if (memoDrawRafRef.current) return;
+    memoDrawRafRef.current = window.requestAnimationFrame(() => {
+      memoDrawRafRef.current = null;
+      drawMemoCanvas();
     });
   };
+  const clearMemo = () => {
+    memoActiveStrokeRef.current = null;
+    memoActivePointerIdRef.current = null;
+    memoStrokesRef.current = [];
+    setCalcPan({ x: 0, y: 0 });
+    setMemoRedoStack([]);
+    setMemoStrokes([]);
+    drawMemoCanvas();
+  };
+  const undoMemo = () => {
+    const current = memoStrokesRef.current;
+    if (current.length === 0) return;
+    const next = current.slice(0, -1);
+    const last = current[current.length - 1];
+    memoStrokesRef.current = next;
+    setMemoRedoStack((redo) => [...redo, last]);
+    setMemoStrokes(next);
+    drawMemoCanvas();
+  };
+  const handleMemoPointerDown = (e: any) => {
+    if (e.pointerType === "touch") {
+      e.preventDefault();
+      memoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (memoPointersRef.current.size === 2) {
+        const [p1, p2] = [...memoPointersRef.current.values()];
+        if (!p1 || !p2) return;
+        if (memoActiveStrokeRef.current?.points.length) {
+          const stroke = memoActiveStrokeRef.current;
+          memoActiveStrokeRef.current = null;
+          memoActivePointerIdRef.current = null;
+          memoStrokesRef.current = [...memoStrokesRef.current, stroke];
+          setMemoStrokes(memoStrokesRef.current);
+        }
+        memoPinchStartRef.current = {
+          distance: Math.max(1, memoDistance(p1, p2)),
+          zoom: calcZoom,
+          mid: memoMidpoint(p1, p2),
+          pan: calcPan
+        };
+        setIsPinchingMemo(true);
+        drawMemoCanvas();
+        return;
+      }
+      if (memoPointersRef.current.size > 1) return;
+    }
+    if (isPinchingMemo) return;
+    const point = getMemoLogicalPoint(e.clientX, e.clientY);
+    if (!point) return;
+    memoActivePointerIdRef.current = e.pointerId;
+    memoActiveStrokeRef.current = { points: [point] };
+    setMemoRedoStack([]);
+    drawMemoCanvas();
+  };
+  const handleMemoPointerMove = (e: any) => {
+    if (e.pointerType === "touch" && memoPointersRef.current.has(e.pointerId)) {
+      memoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    if (memoPointersRef.current.size >= 2 && memoPinchStartRef.current) {
+      e.preventDefault();
+      const [p1, p2] = [...memoPointersRef.current.values()];
+      if (!p1 || !p2) return;
+      const dist = Math.max(1, memoDistance(p1, p2));
+      const mid = memoMidpoint(p1, p2);
+      const start = memoPinchStartRef.current;
+      const zoomRatio = dist / start.distance;
+      const nextZoom = clamp(start.zoom * zoomRatio, MIN_MEMO_ZOOM, MAX_MEMO_ZOOM);
+      const nextPan = {
+        x: start.pan.x + (mid.x - start.mid.x),
+        y: start.pan.y + (mid.y - start.mid.y)
+      };
+      setCalcZoom(nextZoom);
+      setCalcPan(nextPan);
+      scheduleMemoRedraw();
+      return;
+    }
+    if (memoActivePointerIdRef.current !== e.pointerId) return;
+    const point = getMemoLogicalPoint(e.clientX, e.clientY);
+    if (!point || !memoActiveStrokeRef.current) return;
+    memoActiveStrokeRef.current.points.push(point);
+    drawMemoCanvas();
+  };
   const handleMemoPointerEnd = (e: any) => {
-    if (e.pointerType !== "touch") return;
-    memoPointersRef.current.delete(e.pointerId);
+    if (e.pointerType === "touch") {
+      memoPointersRef.current.delete(e.pointerId);
+    }
+    if (memoActivePointerIdRef.current === e.pointerId && memoActiveStrokeRef.current) {
+      const stroke = memoActiveStrokeRef.current;
+      if (stroke.points.length > 0) {
+        memoStrokesRef.current = [...memoStrokesRef.current, stroke];
+        setMemoStrokes(memoStrokesRef.current);
+      }
+      memoActiveStrokeRef.current = null;
+      memoActivePointerIdRef.current = null;
+      drawMemoCanvas();
+    }
     if (memoPointersRef.current.size < 2) {
       memoPinchStartRef.current = null;
       setIsPinchingMemo(false);
@@ -3199,29 +3342,11 @@ function QuestPageInner() {
                   onPointerCancel={handleMemoPointerEnd}
                   onPointerLeave={handleMemoPointerEnd}
                 >
-                  <div
-                    className="absolute"
-                    style={{
-                      left: drawOffsetX,
-                      top: drawOffsetY,
-                      transform: `translate(${calcPan.x}px, ${calcPan.y}px) scale(${calcZoom})`,
-                      transformOrigin: "center center"
-                    }}
-                  >
-                    <CanvasDraw
-                      ref={canvasRef}
-                      hideGrid={true}
-                      brushRadius={3.2}
-                      lazyRadius={0}
-                      immediateLoading
-                      brushColor="#000000"
-                      backgroundColor="#ffffff"
-                      canvasWidth={drawCanvasWidth}
-                      canvasHeight={drawCanvasHeight}
-                      className="shadow-none"
-                      disabled={status !== 'playing' || isPinchingMemo}
-                    />
-                  </div>
+                  <canvas
+                    ref={memoCanvasRef}
+                    className="block h-full w-full"
+                    aria-label="calc-memo-canvas"
+                  />
                 </div>
               </div>
             </section>

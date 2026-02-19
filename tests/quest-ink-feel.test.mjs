@@ -18,20 +18,29 @@ test("quest uses keypad answer flow and calc memo canvas", () => {
 });
 
 test("calc memo keeps pinch handlers for zoom interactions", () => {
+  assert.equal(questSource.includes("CanvasDraw"), false);
   assert.equal(questSource.includes("calcZoom"), true);
   assert.equal(questSource.includes("calcPan"), true);
   assert.equal(questSource.includes("isPinchingMemo"), true);
   assert.equal(questSource.includes("MIN_MEMO_ZOOM"), true);
+  assert.equal(questSource.includes("MAX_MEMO_ZOOM"), true);
+  assert.equal(questSource.includes("const MEMO_BRUSH_WIDTH = 2.0"), true);
+  assert.equal(questSource.includes("ctx.lineWidth = MEMO_BRUSH_WIDTH"), true);
   assert.equal(questSource.includes("Math.ceil(memoCanvasSize.width / MIN_MEMO_ZOOM)"), true);
   assert.equal(questSource.includes("Math.ceil(memoCanvasSize.height / MIN_MEMO_ZOOM)"), true);
-  assert.equal(questSource.includes("drawOffsetX"), true);
-  assert.equal(questSource.includes("drawOffsetY"), true);
+  assert.equal(questSource.includes("memoOffsetX"), true);
+  assert.equal(questSource.includes("memoOffsetY"), true);
+  assert.equal(questSource.includes("memoStrokesRef"), true);
   assert.equal(questSource.includes("handleMemoPointerDown"), true);
   assert.equal(questSource.includes("handleMemoPointerMove"), true);
   assert.equal(questSource.includes("handleMemoPointerEnd"), true);
   assert.equal(questSource.includes('touchAction: "none"'), true);
-  assert.equal(questSource.includes("if (zoomRatio >= 1) return;"), true);
-  assert.equal(questSource.includes("clamp(start.zoom * zoomRatio, MIN_MEMO_ZOOM, start.zoom)"), true);
+  assert.equal(questSource.includes("zoomRatio >= 1"), false);
+  assert.equal(questSource.includes("clamp(start.zoom * zoomRatio, MIN_MEMO_ZOOM, MAX_MEMO_ZOOM)"), true);
+  assert.equal(questSource.includes("mid: memoMidpoint(p1, p2)"), true);
+  assert.equal(questSource.includes("pan: calcPan"), true);
+  assert.equal(questSource.includes("setCalcPan(nextPan)"), true);
+  assert.equal(questSource.includes("setCalcPan({"), true);
 });
 
 test("legacy handwriting route is preserved", () => {
