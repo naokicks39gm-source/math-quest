@@ -16,11 +16,13 @@ test("recognition uses ROI-based binarization and size-aware tuning", () => {
   assert.match(source, /const recognitionRoi = getRecognitionRoi\(drawingCanvas, visibleCanvasSize\)/);
   assert.match(source, /recognizeFractionFromCanvas\(drawingCanvas, recognitionRoi\)/);
   assert.match(source, /recognizeMixedFractionFromCanvas\(drawingCanvas, expectedForm, recognitionRoi\)/);
-  assert.match(source, /preprocessDigits\(drawingCanvas, digits, recognitionRoi\)/);
+  assert.match(source, /preprocessDigits\(drawingCanvas, digits, recognitionRoi,/);
 });
 
 test("integer path avoids fraction fallback and batch exposes failure metrics", () => {
   assert.match(source, /\(plainFractionQuestion \|\| mixedQuestion\) && perDigitString && expectedFractionAnswer/);
+  assert.match(source, /const isQuadraticQuestion = \/二次方程式\//);
+  assert.match(source, /disableForcedSplit: isQuadraticQuestion/);
   assert.match(source, /空判定/);
   assert.match(source, /過分割/);
   assert.match(source, /構造失敗/);

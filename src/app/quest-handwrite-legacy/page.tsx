@@ -1417,7 +1417,7 @@ function QuestPageInner() {
   const [message, setMessage] = useState('Battle Start!');
   const [character, setCharacter] = useState<CharacterType>('warrior');
   const [status, setStatus] = useState<'playing' | 'cleared'>('playing');
-  const [inputMode] = useState<'numpad' | 'handwriting'>('numpad');
+  const [inputMode, setInputMode] = useState<'numpad' | 'handwriting'>('handwriting'); // New state for input mode
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
   const [quadraticAnswers, setQuadraticAnswers] = useState<[string, string]>(["", ""]);
@@ -1471,16 +1471,6 @@ function QuestPageInner() {
   const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
   const [retryNonce, setRetryNonce] = useState(0);
   const [visibleCanvasSize, setVisibleCanvasSize] = useState(DEFAULT_VISIBLE_CANVAS_SIZE);
-  const [calcZoom, setCalcZoom] = useState(1);
-  const [calcPan, setCalcPan] = useState({ x: 0, y: 0 });
-  const [isPinchingMemo, setIsPinchingMemo] = useState(false);
-  const memoPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
-  const memoPinchStartRef = useRef<{
-    distance: number;
-    zoom: number;
-    pan: { x: number; y: number };
-    mid: { x: number; y: number };
-  } | null>(null);
   const clearResults = useMemo(
     () => Object.entries(questionResults).sort((a, b) => Number(a[0]) - Number(b[0])),
     [questionResults]
@@ -2027,159 +2017,49 @@ function QuestPageInner() {
 
   const handleInput = (num: string) => {
     if (status !== 'playing' || isStarting) return;
-    const activeKind: AnswerFormat["kind"] = isQuadraticRootsQuestion
-      ? "pair"
-      : (currentType?.answer_format.kind ?? "int");
-    const currentText = isQuadraticRootsQuestion ? quadraticAnswers[quadraticActiveIndex] : input;
-    const isDigit = /^\d$/.test(num);
-    const canAppendToken = (text: string, token: string) => {
-      if (/^\d$/.test(token)) return true;
-      if (token === "-") return text.length === 0;
-      if (token === ".") {
-        if (activeKind !== "dec") return false;
-        if (text.includes(".")) return false;
-        if (text === "" || text === "-") return false;
-        return true;
-      }
-      if (token === "/") {
-        if (activeKind !== "frac") return false;
-        if (text.includes("/")) return false;
-        if (text === "" || text === "-") return false;
-        return true;
-      }
-      return false;
-    };
-    if (!canAppendToken(currentText, num)) return;
-
-    if (isQuadraticRootsQuestion) {
-      setQuadraticAnswers((prev) => {
-        const next: [string, string] = [...prev] as [string, string];
-        const maxLen = isDigit ? 6 : 7;
-        if (next[quadraticActiveIndex].length >= maxLen) return prev;
-        next[quadraticActiveIndex] = `${next[quadraticActiveIndex]}${num}`;
-        return next;
-      });
+    if (input.length < 3) {
+      setInput(prev => prev + num);
       setResultMark(null);
-      return;
     }
-    if (input.length >= 12) return;
-    setInput((prev) => `${prev}${num}`);
-    setResultMark(null);
   };
 
   const handleDelete = () => {
     if (status !== 'playing' || isStarting) return;
-    if (isQuadraticRootsQuestion) {
-      setQuadraticAnswers((prev) => {
-        const next: [string, string] = [...prev] as [string, string];
-        next[quadraticActiveIndex] = next[quadraticActiveIndex].slice(0, -1);
-        return next;
-      });
-      setResultMark(null);
-      return;
-    }
     setInput(prev => prev.slice(0, -1));
     setResultMark(null);
   };
 
   const handleAttack = () => {
-    if (status !== 'playing' || isStarting || !currentItem || !currentType) return;
-    const answerText = isQuadraticRootsQuestion
-      ? `${quadraticAnswers[0]},${quadraticAnswers[1]}`
-      : input;
-    if (!answerText.trim()) return;
+    if (status !== 'playing' || isStarting || !question) return;
 
-    const verdict = gradeAnswer(answerText, currentItem.answer, currentType.answer_format, {
-      typeId: currentType.type_id,
-      expectedForm: resolveExpectedFormFromPrompt(`${currentItem.prompt} ${currentItem.prompt_tex ?? ""}`)
-    });
-    setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
-    setQuestionResults((prev) => ({
-      ...prev,
-      [itemIndex]: (() => {
-        const prevEntry = prev[itemIndex];
-        const everWrong = (prevEntry?.everWrong ?? false) || !verdict.ok;
-        const firstWrongAnswer =
-          prevEntry?.firstWrongAnswer ??
-          (!verdict.ok ? answerText : undefined);
-        return {
-          prompt: currentItem.prompt,
-          promptTex: currentItem.prompt_tex,
-          userAnswer: answerText,
-          correct: !everWrong,
-          correctAnswer: currentItem.answer,
-          everWrong,
-          firstWrongAnswer
-        };
-      })()
-    }));
-    void ensureActiveSession().then((resolvedSessionId) => {
-      if (!resolvedSessionId) return;
-      return postJson("/api/session/answer", {
-        sessionId: resolvedSessionId,
-        typeId: currentType.type_id,
-        prompt: currentItem.prompt,
-        predicted: answerText,
-        correctAnswer: currentItem.answer,
-        isCorrect: verdict.ok
-      }).catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : "answer_log_failed";
-        setSessionError(message);
-      });
-    });
+    const playerAns = parseInt(input);
+    
+    if (isNaN(playerAns)) return;
 
-    if (verdict.ok) {
+    if (playerAns === question.answer) {
+      // Correct
       setResultMark('correct');
       const newCombo = combo + 1;
       setCombo(newCombo);
+
       const charData = CHARACTERS[character];
       let hitMsg = charData.hits[Math.floor(Math.random() * charData.hits.length)];
-      if (newCombo >= 3) hitMsg += ` (Combo x${newCombo}!)`;
-      setMessage(hitMsg);
-      if (autoNextEnabled) {
-        cooldownUntilRef.current = Date.now() + AUTO_NEXT_WAIT_MS;
-        if (autoNextTimerRef.current) window.clearTimeout(autoNextTimerRef.current);
-        autoNextTimerRef.current = window.setTimeout(() => {
-          autoNextTimerRef.current = null;
-          nextQuestion();
-        }, AUTO_NEXT_WAIT_MS);
+      if (newCombo >= 3) {
+        hitMsg += ` (Combo x${newCombo}!)`;
       }
+      setMessage(hitMsg);
+
+      recordResult(input, true);
     } else {
+      // Incorrect
       setResultMark('wrong');
       setCombo(0);
       const charData = CHARACTERS[character];
       setMessage(charData.misses[Math.floor(Math.random() * charData.misses.length)]);
-    }
-
-    if (isQuadraticRootsQuestion) {
-      setQuadraticAnswers(["", ""]);
-      setQuadraticActiveIndex(0);
-    } else {
+      
       setInput('');
     }
   };
-
-  const keypadAnswerKind: AnswerFormat["kind"] = isQuadraticRootsQuestion
-    ? "pair"
-    : (currentType?.answer_format.kind ?? "int");
-  const canUseKeyToken = (token: string) => {
-    if (/^\d$/.test(token)) return true;
-    if (token === "-") return true;
-    if (token === ".") return keypadAnswerKind === "dec";
-    if (token === "/") return keypadAnswerKind === "frac";
-    return false;
-  };
-  const isValidAnswerText = (text: string, kind: AnswerFormat["kind"]) => {
-    const t = text.trim();
-    if (!t) return false;
-    if (kind === "int" || kind === "pair") return /^-?\d+$/.test(t);
-    if (kind === "dec") return /^-?\d+(\.\d+)?$/.test(t);
-    if (kind === "frac") return /^-?\d+\/-?\d+$/.test(t);
-    return true;
-  };
-  const canSubmitCurrentAnswer = isQuadraticRootsQuestion
-    ? isValidAnswerText(quadraticAnswers[0], "pair") && isValidAnswerText(quadraticAnswers[1], "pair")
-    : isValidAnswerText(input, keypadAnswerKind);
 
 
   const toggleCharacter = () => {
@@ -2516,58 +2396,6 @@ function QuestPageInner() {
     }, nextDelay);
   };
   const drawCanvasSize = visibleCanvasSize + OUTER_MARGIN * 2;
-  const memoDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-    Math.hypot(a.x - b.x, a.y - b.y);
-  const memoMidpoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
-    x: (a.x + b.x) / 2,
-    y: (a.y + b.y) / 2
-  });
-  const resetMemoViewport = () => {
-    setCalcZoom(1);
-    setCalcPan({ x: 0, y: 0 });
-  };
-  const clearMemo = () => {
-    canvasRef.current?.clear();
-  };
-  const handleMemoPointerDown = (e: any) => {
-    if (e.pointerType !== "touch") return;
-    memoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (memoPointersRef.current.size === 2) {
-      const [p1, p2] = [...memoPointersRef.current.values()];
-      memoPinchStartRef.current = {
-        distance: Math.max(1, memoDistance(p1, p2)),
-        zoom: calcZoom,
-        pan: calcPan,
-        mid: memoMidpoint(p1, p2)
-      };
-      setIsPinchingMemo(true);
-    }
-  };
-  const handleMemoPointerMove = (e: any) => {
-    if (e.pointerType !== "touch") return;
-    if (!memoPointersRef.current.has(e.pointerId)) return;
-    memoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (memoPointersRef.current.size < 2 || !memoPinchStartRef.current) return;
-    e.preventDefault();
-    const [p1, p2] = [...memoPointersRef.current.values()];
-    const dist = Math.max(1, memoDistance(p1, p2));
-    const mid = memoMidpoint(p1, p2);
-    const start = memoPinchStartRef.current;
-    const nextZoom = clamp(start.zoom * (dist / start.distance), 0.8, 2.5);
-    setCalcZoom(nextZoom);
-    setCalcPan({
-      x: start.pan.x + (mid.x - start.mid.x),
-      y: start.pan.y + (mid.y - start.mid.y)
-    });
-  };
-  const handleMemoPointerEnd = (e: any) => {
-    if (e.pointerType !== "touch") return;
-    memoPointersRef.current.delete(e.pointerId);
-    if (memoPointersRef.current.size < 2) {
-      memoPinchStartRef.current = null;
-      setIsPinchingMemo(false);
-    }
-  };
 
   const runAutoDrawTest = async (poolOverride?: string[]) => {
     const canvas = getDrawingCanvas(canvasRef.current);
@@ -3082,104 +2910,250 @@ function QuestPageInner() {
         )}
       </div>
 
-      {/* Bottom: Input + Calc Memo */}
-      {status === 'playing' && (
-        <div className="w-full pb-4 space-y-3">
-          <div className="w-full grid grid-cols-4 gap-2">
-            {[["7", "8", "9", "/"], ["4", "5", "6", "."], ["1", "2", "3", "-"]].flat().map((token) => (
-              <button
-                key={token}
-                onClick={() => handleInput(token)}
-                disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
-                className={`
-                  h-12 rounded-lg text-xl font-bold shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all border-2
-                  ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                `}
-              >
-                {token}
-              </button>
-            ))}
+      {/* Bottom: Input Area */}
+      {status === 'playing' && (inputMode === 'numpad' ? (
+        <div className="w-full grid grid-cols-3 gap-3 pb-4">
+          {[7, 8, 9, 4, 5, 6, 1, 2, 3, 0].map((num) => (
             <button
-              onClick={() => handleInput("0")}
+              key={num}
+              onClick={() => handleInput(num.toString())}
               disabled={status !== 'playing' || isStarting}
-              className="h-12 rounded-lg text-xl font-bold shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50"
+              className={`
+                h-16 rounded-xl text-2xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all
+                ${num === 0 ? 'col-span-1' : ''}
+                bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50
+              `}
             >
-              0
+              {num}
             </button>
-            <button
-              onClick={handleDelete}
-              disabled={status !== 'playing' || isStarting}
-              className="h-12 rounded-lg text-lg font-bold shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all bg-red-100 text-red-600 border-2 border-red-200 hover:bg-red-200 flex items-center justify-center"
-            >
-              ⌫
-            </button>
-            <button
-              onClick={handleAttack}
-              disabled={status !== 'playing' || isStarting || !canSubmitCurrentAnswer}
-              className="col-span-2 h-12 rounded-lg text-lg font-bold shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all bg-indigo-600 text-white border-2 border-indigo-700 hover:bg-indigo-700 flex items-center justify-center"
-            >
-              {uiText.judge}
-            </button>
-          </div>
+          ))}
+          
+          {/* Delete Button */}
+          <button
+            onClick={handleDelete}
+            disabled={status !== 'playing' || isStarting}
+            className="h-16 rounded-xl text-xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all bg-red-100 text-red-600 border-2 border-red-200 hover:bg-red-200 flex items-center justify-center"
+          >
+            ⌫
+          </button>
 
-          <div className="w-full rounded-xl border border-slate-200 bg-white p-3 space-y-2">
-            <div className="flex items-center justify-between text-sm font-bold text-slate-700">
-              <span>計算メモ（2本指ピンチで拡大縮小）</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={resetMemoViewport}
-                  className="px-2 py-1 rounded-md bg-slate-100 text-slate-700"
-                >
-                  100%
-                </button>
-                <button
-                  type="button"
-                  onClick={clearMemo}
-                  className="px-2 py-1 rounded-md bg-slate-700 text-white"
-                >
-                  メモ消去
-                </button>
-              </div>
-            </div>
-            <div
-              ref={drawAreaRef}
-              data-testid="calc-memo-area"
-              className="relative mx-auto overflow-hidden rounded-xl border-2 border-slate-300 bg-white"
-              style={{ width: visibleCanvasSize, height: visibleCanvasSize, touchAction: "none" }}
-              onPointerDown={handleMemoPointerDown}
-              onPointerMove={handleMemoPointerMove}
-              onPointerUp={handleMemoPointerEnd}
-              onPointerCancel={handleMemoPointerEnd}
-              onPointerLeave={handleMemoPointerEnd}
-            >
-              <div
-                className="absolute"
-                style={{
-                  left: -OUTER_MARGIN,
-                  top: -OUTER_MARGIN,
-                  transform: `translate(${calcPan.x}px, ${calcPan.y}px) scale(${calcZoom})`,
-                  transformOrigin: "center center"
-                }}
+          {/* Attack/Enter Button */}
+          <button
+            onClick={handleAttack}
+            disabled={status !== 'playing' || input === '' || isStarting}
+            className="h-16 rounded-xl text-xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all bg-indigo-500 text-white border-2 border-indigo-600 hover:bg-indigo-600 flex items-center justify-center"
+          >
+            Attack!
+          </button>
+        </div>
+      ) : (
+        <div className="w-full flex flex-col items-center gap-4 pb-4">
+          <div className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 flex-wrap overflow-x-auto text-sm font-bold text-slate-700">
+              <button
+                onClick={() => runInference()}
+                disabled={isRecognizing || isStarting}
+                className="h-14 px-6 rounded-xl bg-indigo-600 text-white text-lg font-black shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] disabled:opacity-60"
               >
-                <CanvasDraw
-                  ref={canvasRef}
-                  hideGrid={true}
-                  brushRadius={3.2}
-                  lazyRadius={0}
-                  immediateLoading
-                  brushColor="#000000"
-                  backgroundColor="#ffffff"
-                  canvasWidth={drawCanvasSize}
-                  canvasHeight={drawCanvasSize}
-                  className="shadow-lg"
-                  disabled={status !== 'playing' || isPinchingMemo}
-                />
+                {uiText.judge}
+              </button>
+              <button
+                onClick={nextQuestion}
+                disabled={status !== 'playing' || isStarting}
+                className="h-10 px-4 rounded-lg bg-slate-700 text-white"
+              >
+                {uiText.nextQuestion}
+              </button>
+              <button
+                onClick={handleResetAnswer}
+                disabled={status !== 'playing' || isRecognizing}
+                className="h-10 px-4 rounded-lg bg-slate-700 text-white"
+              >
+                {uiText.reset}
+              </button>
+              <button
+                onClick={() => setSettingsOpen((v) => !v)}
+                className="ml-auto h-10 px-3 rounded-lg bg-slate-200 text-slate-700"
+              >
+                ⚙︎
+              </button>
+            </div>
+            {settingsOpen && (
+              <div className="mt-2 text-[11px] text-slate-600 space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => setInkFirstMode((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-full ${
+                      inkFirstMode ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    Ink-first: {inkFirstMode ? "ON" : "OFF"}
+                  </button>
+                  <button
+                    onClick={() => setAutoJudgeEnabled((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-full ${
+                      autoJudgeEnabled ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    AUTO: {autoJudgeEnabled ? "ON" : "OFF"}
+                  </button>
+                  <button
+                    onClick={() => setAutoNextEnabled((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-full ${
+                      autoNextEnabled ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    NEXT: {autoNextEnabled ? "ON" : "OFF"}
+                  </button>
+                  <button
+                    onClick={() => setShowRecognitionGuides((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-full ${
+                      showRecognitionGuides ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    ガイド: {showRecognitionGuides ? "ON" : "OFF"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    data-testid="auto-draw-test"
+                    onClick={() => {
+                      void runAutoDrawTest();
+                    }}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    AutoDraw Test
+                  </button>
+                  <button
+                    data-testid="auto-draw-batch"
+                    onClick={() =>
+                      runAutoDrawBatchTest(
+                        100,
+                        ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+                        "Batch100"
+                      )
+                    }
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    Batch100
+                  </button>
+                  <button
+                    onClick={() => runAutoDrawDecimalBatchTest(100, "BatchDec100")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    BatchDec100
+                  </button>
+                  <button
+                    data-testid="auto-draw-frac-batch"
+                    onClick={() => runAutoDrawFractionBatchTest(100, "BatchFrac100")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    BatchFrac100
+                  </button>
+                  <button
+                    data-testid="auto-draw-mixed-batch"
+                    onClick={() => runAutoDrawMixedBatchTest(100, "BatchMixed100")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    BatchMixed100
+                  </button>
+                  <button
+                    onClick={() =>
+                      runAutoDrawBatchTest(
+                        500,
+                        ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+                        "Batch500"
+                      )
+                    }
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    Batch500
+                  </button>
+                  <button
+                    onClick={() => runAutoDrawBatchTest(200, ["0", "8"], "Batch08")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    Batch08
+                  </button>
+                  <button
+                    onClick={() => runAutoDrawBatchTest(200, ["4", "8", "9"], "Batch489")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    Batch489
+                  </button>
+                </div>
+                {showRecognitionGuides && lastAutoDrawExpected && <div>AutoDraw正解: {lastAutoDrawExpected}</div>}
+                {showRecognitionGuides && autoDrawBatchSummary && <div>{autoDrawBatchSummary}</div>}
               </div>
+            )}
+          </div>
+          <div ref={drawAreaRef} className="w-full">
+            <div
+              onPointerDown={handleDrawStart}
+              onPointerUp={handleDrawEnd}
+              onPointerLeave={handleDrawEnd}
+              onPointerCancel={handleDrawEnd}
+              onTouchStart={handleDrawStart}
+              onTouchEnd={handleDrawEnd}
+              onMouseDown={handleDrawStart}
+              onMouseUp={handleDrawEnd}
+              className="relative mx-auto overflow-visible"
+              style={{ width: visibleCanvasSize, height: visibleCanvasSize }}
+            >
+              <CanvasDraw
+                ref={canvasRef}
+                hideGrid={true}
+                brushRadius={3.2}
+                lazyRadius={0}
+                immediateLoading
+                brushColor="#000000"
+                backgroundColor="#ffffff"
+                canvasWidth={drawCanvasSize}
+                canvasHeight={drawCanvasSize}
+                className="absolute shadow-lg"
+                style={{ left: -OUTER_MARGIN, top: -OUTER_MARGIN }}
+                disabled={status !== 'playing'}
+                onChange={handleCanvasChange}
+              />
+              <div className="pointer-events-none absolute inset-0 rounded-xl border-2 border-slate-300" />
+              {startPopup && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
+                  <div className="px-6 py-3 rounded-full bg-white text-indigo-700 font-black text-2xl shadow-lg">
+                    {startPopup === 'ready' ? 'Ready!' : 'Go!'}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+          {showRecognitionGuides && previewImages.length > 0 && (
+            <div className="w-full flex justify-end">
+              <div className="text-xs text-slate-500 text-right">
+                入力(28x28)
+                <div className="mt-1 grid grid-cols-2 gap-2 justify-end">
+                  {[0, 1, 2, 3].map((idx) => (
+                    <canvas
+                      key={idx}
+                      width={28}
+                      height={28}
+                      className="border border-slate-200 bg-black"
+                      style={{ width: 56, height: 56, imageRendering: 'pixelated' }}
+                      ref={(el) => {
+                        if (!el) return;
+                        const ctx = el.getContext('2d');
+                        if (!ctx) return;
+                        ctx.clearRect(0, 0, 28, 28);
+                        if (previewImages[idx]) {
+                          ctx.putImageData(previewImages[idx], 0, 0);
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      ))}
 
       {status === 'playing' && (
         <section className="w-full pb-4 space-y-2">

@@ -32,7 +32,8 @@ test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("onClick={restartSameLevel}"), true);
   assert.equal(source.includes("onClick={endLearningSession}"), true);
   assert.equal(source.includes("router.push(\"/\");"), true);
-  assert.equal(source.includes("status === 'playing' && (inputMode === 'numpad' ? ("), true);
+  assert.equal(source.includes("status === 'playing' && (inputMode === 'numpad' ? ("), false);
+  assert.equal(source.includes("data-testid=\"calc-memo-area\""), true);
   assert.equal(source.includes("status === 'playing' && selectedPath"), true);
   assert.equal(source.includes("まちがえた もんだい"), false);
   assert.equal(source.includes("`/quest?type=${encodeURIComponent(next.typeId)}&category=${encodeURIComponent(next.categoryId)}`"), true);
