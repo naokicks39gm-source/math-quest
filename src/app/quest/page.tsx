@@ -1527,7 +1527,10 @@ function QuestPageInner() {
   const [useSingleLineQa, setUseSingleLineQa] = useState(false);
   const [qaAnswerOffsetPx, setQaAnswerOffsetPx] = useState(0);
   const [showGradeTypePicker, setShowGradeTypePicker] = useState(false);
-  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(new Set());
+  const [expandedGradePicker, setExpandedGradePicker] = useState(true);
+  const [expandedGradeList, setExpandedGradeList] = useState(false);
+  const [expandedProblemPicker, setExpandedProblemPicker] = useState(true);
+  const [pendingGradeId, setPendingGradeId] = useState("");
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
   const [memoStrokes, setMemoStrokes] = useState<MemoStroke[]>([]);
   const [memoRedoStack, setMemoRedoStack] = useState<MemoStroke[]>([]);
@@ -2156,49 +2159,32 @@ function QuestPageInner() {
       })),
     [grades]
   );
-  const currentGrade = useMemo(
-    () => grades.find((grade) => grade.grade_id === currentGradeId) ?? null,
-    [grades, currentGradeId]
+  const pickerGradeId = pendingGradeId || currentGradeId;
+  const pendingGradeName = useMemo(
+    () => gradeOptions.find((grade) => grade.gradeId === pickerGradeId)?.gradeName ?? "学年を選択",
+    [gradeOptions, pickerGradeId]
   );
-  const currentGradeCategories = useMemo(
+  const pickerGrade = useMemo(
+    () => grades.find((grade) => grade.grade_id === pickerGradeId) ?? null,
+    [grades, pickerGradeId]
+  );
+  const pickerGradeTypes = useMemo(
     () =>
-      (currentGrade?.categories ?? []).map((category) => ({
-        categoryId: category.category_id,
-        categoryName: category.category_name,
-        types: category.types.map((type) => ({
+      (pickerGrade?.categories ?? []).flatMap((category) =>
+        category.types.map((type) => ({
           typeId: type.type_id,
-          typeName: type.display_name ?? type.type_name ?? type.type_id,
-          categoryId: category.category_id
+          typeName: type.display_name ?? type.type_name ?? type.type_id
         }))
-      })),
-    [currentGrade]
+      ),
+    [pickerGrade]
   );
-  const currentGradeCategoryId = useMemo(() => {
-    for (const category of currentGradeCategories) {
-      if (category.types.some((type) => type.typeId === currentType?.type_id)) {
-        return category.categoryId;
-      }
-    }
-    return "";
-  }, [currentGradeCategories, currentType?.type_id]);
+  useEffect(() => {
+    if (!currentGradeId) return;
+    setPendingGradeId((prev) => (prev === currentGradeId ? prev : currentGradeId));
+  }, [currentGradeId]);
   useEffect(() => {
     setShowGradeTypePicker(false);
   }, [currentType?.type_id, status]);
-  useEffect(() => {
-    if (!showGradeTypePicker) return;
-    if (!currentGradeCategoryId) return;
-    setExpandedCategoryIds(new Set([currentGradeCategoryId]));
-  }, [showGradeTypePicker, currentGradeCategoryId]);
-  const selectFirstTypeInGrade = (gradeId: string) => {
-    const grade = grades.find((row) => row.grade_id === gradeId);
-    if (!grade) return;
-    const category = grade.categories.find((row) => row.types.length > 0);
-    const type = category?.types[0];
-    if (!category || !type) return;
-    const isCurrent = type.type_id === currentType?.type_id && category.category_id === categoryFromQuery;
-    if (isCurrent) return;
-    router.push(`/quest?type=${encodeURIComponent(type.type_id)}&category=${encodeURIComponent(category.category_id)}`);
-  };
   const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
   const shouldShowElementaryExplanation =
     status === "playing" &&
@@ -3625,8 +3611,10 @@ function QuestPageInner() {
             type="button"
             onClick={() => {
               setShowGradeTypePicker((prev) => !prev);
-              if (!showGradeTypePicker && currentGradeCategoryId) {
-                setExpandedCategoryIds(new Set([currentGradeCategoryId]));
+              if (!showGradeTypePicker) {
+                setExpandedGradePicker(true);
+                setExpandedGradeList(false);
+                setExpandedProblemPicker(true);
               }
             }}
             className="w-full bg-white border-2 border-slate-200 rounded-2xl px-3 py-2 text-[11px] font-bold text-slate-700 text-left hover:bg-slate-50"
@@ -3641,84 +3629,92 @@ function QuestPageInner() {
               </span>
             </div>
           </button>
-          {showGradeTypePicker && currentGradeCategories.length > 0 && (
+          {showGradeTypePicker && (
             <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg p-1">
-              <div className="space-y-1">
-                <div className="px-2 py-1 text-[10px] font-bold text-slate-500">学年</div>
-                <div className="grid grid-cols-3 gap-1 px-1">
-                  {gradeOptions.map((grade) => {
-                    const isCurrentGrade = grade.gradeId === currentGradeId;
-                    return (
-                      <button
-                        key={grade.gradeId}
-                        type="button"
-                        onClick={() => selectFirstTypeInGrade(grade.gradeId)}
-                        className={`rounded-md px-2 py-1.5 text-[10px] font-bold border ${
-                          isCurrentGrade
-                            ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                        }`}
-                      >
-                        {grade.gradeName}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="mt-2 border-t border-slate-200 pt-2">
-                <div className="px-2 py-1 text-[10px] font-bold text-slate-500">問題</div>
-                {currentGradeCategories.map((category) => {
-                  const isExpanded = expandedCategoryIds.has(category.categoryId);
-                  return (
-                    <div key={category.categoryId} className="mb-1 last:mb-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setExpandedCategoryIds((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(category.categoryId)) {
-                              next.delete(category.categoryId);
-                            } else {
-                              next.add(category.categoryId);
-                            }
-                            return next;
-                          });
-                        }}
-                        className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
-                      >
-                        <span className="truncate">{category.categoryName}</span>
-                        <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
-                          {isExpanded ? "▲" : "▼"}
-                        </span>
-                      </button>
-                      {isExpanded && (
-                        <div className="mt-1 space-y-1 pl-2">
-                          {category.types.map((option) => {
-                            const isCurrent = option.typeId === currentType?.type_id;
-                            return (
-                              <button
-                                key={option.typeId}
-                                type="button"
-                                onClick={() => {
-                                  setShowGradeTypePicker(false);
-                                  if (isCurrent) return;
-                                  router.push(`/quest?type=${encodeURIComponent(option.typeId)}&category=${encodeURIComponent(option.categoryId)}`);
-                                }}
-                                className={`w-full text-left rounded-lg px-2 py-2 text-[11px] ${
-                                  isCurrent
-                                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                                    : "text-slate-700 hover:bg-slate-50"
-                                }`}
-                              >
-                                <div className="font-bold truncate">{option.typeName}</div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+              <button
+                type="button"
+                onClick={() => setExpandedGradePicker((prev) => !prev)}
+                className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
+              >
+                <span>学年</span>
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
+                  {expandedGradePicker ? "▲" : "▼"}
+                </span>
+              </button>
+              {expandedGradePicker && (
+                <div className="mt-1 px-1">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedGradeList((prev) => !prev)}
+                    className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  >
+                    <span className="truncate">{pendingGradeName}</span>
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
+                      {expandedGradeList ? "▲" : "▼"}
+                    </span>
+                  </button>
+                  {expandedGradeList && (
+                    <div className="mt-1 space-y-1">
+                      {gradeOptions.map((grade) => {
+                        const isPickedGrade = grade.gradeId === pickerGradeId;
+                        return (
+                          <button
+                            key={grade.gradeId}
+                            type="button"
+                            onClick={() => {
+                              setPendingGradeId(grade.gradeId);
+                              setExpandedGradeList(false);
+                            }}
+                            className={`w-full text-left rounded-md px-2 py-1.5 text-[10px] font-bold border ${
+                              isPickedGrade
+                                ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            {grade.gradeName}
+                          </button>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  )}
+                </div>
+              )}
+              <div className="mt-2 border-t border-slate-200 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setExpandedProblemPicker((prev) => !prev)}
+                  className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
+                >
+                  <span>問題</span>
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
+                    {expandedProblemPicker ? "▲" : "▼"}
+                  </span>
+                </button>
+                {expandedProblemPicker && (
+                  <div className="mt-1 space-y-1 px-1">
+                    {pickerGradeTypes.map((option) => {
+                      const isCurrent = option.typeId === currentType?.type_id;
+                      return (
+                        <button
+                          key={option.typeId}
+                          type="button"
+                          onClick={() => {
+                            setShowGradeTypePicker(false);
+                            if (isCurrent) return;
+                            router.push(`/quest?type=${encodeURIComponent(option.typeId)}`);
+                          }}
+                          className={`w-full text-left rounded-lg px-2 py-2 text-[11px] ${
+                            isCurrent
+                              ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className="font-bold truncate">{option.typeName}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}

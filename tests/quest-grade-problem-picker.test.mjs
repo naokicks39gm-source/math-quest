@@ -8,18 +8,21 @@ const source = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"
 test("quest top picker uses one problem button with grade and problem sections", () => {
   assert.match(source, /問題を選ぶ/);
   assert.doesNotMatch(source, /同じ学年の問題を選ぶ/);
-  assert.match(source, /text-\[10px\] font-bold text-slate-500">学年<\/div>/);
-  assert.match(source, /text-\[10px\] font-bold text-slate-500">問題<\/div>/);
+  assert.match(source, /<span>学年<\/span>/);
+  assert.match(source, /<span>問題<\/span>/);
   assert.match(source, /const gradeOptions = useMemo/);
-  assert.match(source, /const currentGradeCategories = useMemo/);
+  assert.match(source, /const pickerGradeTypes = useMemo/);
+  assert.match(source, /flatMap\(\(category\) =>/);
 });
 
-test("quest grade selection can navigate to first type in selected grade", () => {
-  assert.match(source, /const selectFirstTypeInGrade = \(gradeId: string\) =>/);
-  assert.match(source, /const category = grade\.categories\.find\(\(row\) => row\.types\.length > 0\)/);
-  assert.match(source, /router\.push\(`\/quest\?type=\$\{encodeURIComponent\(type\.type_id\)\}&category=\$\{encodeURIComponent\(category\.category_id\)\}`\)/);
+test("quest grade selection updates pending grade without immediate navigation", () => {
+  assert.match(source, /const \[pendingGradeId, setPendingGradeId\] = useState\(\"\"\);/);
+  assert.match(source, /setPendingGradeId\(grade\.gradeId\)/);
+  assert.match(source, /const \[expandedGradeList, setExpandedGradeList\] = useState\(false\);/);
+  assert.doesNotMatch(source, /selectFirstTypeInGrade/);
 });
 
-test("quest problem option selection route is preserved", () => {
-  assert.match(source, /router\.push\(`\/quest\?type=\$\{encodeURIComponent\(option\.typeId\)\}&category=\$\{encodeURIComponent\(option\.categoryId\)\}`\)/);
+test("quest problem option selection navigates by type only", () => {
+  assert.match(source, /router\.push\(`\/quest\?type=\$\{encodeURIComponent\(option\.typeId\)\}`\)/);
+  assert.doesNotMatch(source, /router\.push\(`\/quest\?type=\$\{encodeURIComponent\(option\.typeId\)\}&category=/);
 });
