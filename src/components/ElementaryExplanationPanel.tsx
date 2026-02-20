@@ -47,10 +47,8 @@ const renderColumnFrame = (
     operator?: "+" | "-" | "×" | "÷";
     line?: boolean;
     partial?: string;
-    carryMarks?: string;
-    borrowMarks?: string;
+    digitAdjustments?: Array<{ offsetFromRight: number; label: "+1" | "-1" }>;
     focusPlace?: "ones" | "next";
-    carryToFromRight?: number;
   },
   key: string
 ) => (
@@ -62,15 +60,15 @@ const renderColumnFrame = (
       </div>
     ) : (
     <div className="relative mt-1 w-full max-w-[19rem] rounded-lg bg-emerald-50 px-2 py-2 font-mono text-left text-2xl sm:text-3xl leading-tight text-slate-800">
-      {frame.carryMarks && (
+      {(frame.digitAdjustments ?? []).map((adj, idx) => (
         <div
+          key={`${adj.label}-${adj.offsetFromRight}-${idx}`}
           className="absolute -top-3 rounded-full border border-rose-300 bg-rose-500 px-2 py-0.5 text-[11px] font-black leading-none text-white shadow"
-          style={{ right: `calc(${1 + (frame.carryToFromRight ?? 1) * 1.25}ch + 0.25rem)` }}
+          style={{ right: `calc(${1 + adj.offsetFromRight * 1.25}ch + 0.25rem)` }}
         >
-          {frame.carryMarks}
+          {adj.label}
         </div>
-      )}
-      {frame.borrowMarks && <div className="text-sm sm:text-base text-rose-700">{frame.borrowMarks}</div>}
+      ))}
       <div className="text-right">{renderAlignedValue(frame.top, frame.focusPlace)}</div>
       <div className="text-right">{frame.operator ?? ""} {renderAlignedValue(frame.bottom, frame.focusPlace)}</div>
       {frame.line && <div className="my-1 ml-auto w-[9.5rem] sm:w-[11rem] border-t-2 border-slate-500" />}

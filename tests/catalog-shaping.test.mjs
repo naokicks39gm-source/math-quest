@@ -249,16 +249,13 @@ test("1-digit - 1-digit has a single type label", () => {
   assert.match(byId["E1.NA.SUB.SUB_1D_1D_ANY"].display_name, /^Lv:E1-\d+ ひき算（1けた-1けた）$/);
 });
 
-test("E1 2-digit - 2-digit labels include borrow condition information", () => {
-  const catalog = deriveCatalog();
-  const e1 = catalog.find((grade) => grade.grade_id === "E1");
-  assert.ok(e1, "E1 grade must exist");
-  const na = e1.categories.find((category) => category.category_id === "NA");
-  assert.ok(na, "E1.NA category must exist");
-  const byId = Object.fromEntries(na.types.map((type) => [type.type_id, type]));
-  assert.match(byId["E1.NA.SUB.SUB_2D_2D_NO"].display_name, /^Lv:E1-\d+ ひき算（2けた-2けた）（繰り下がりなし）$/);
-  assert.match(byId["E1.NA.SUB.SUB_2D_2D_YES"].display_name, /^Lv:E1-\d+ ひき算（2けた-2けた）（繰り下がりあり）$/);
-  assert.equal(Boolean(byId["E1.NA.SUB.SUB_2D_2D_ANY"]), false);
+test("phase-based profile moves 2-digit - 2-digit from E1 to E2", () => {
+  const profileSource = fs.readFileSync(path.join(process.cwd(), "src/lib/gradeProfiles.ts"), "utf8");
+  const e1Block = profileSource.match(/E1:\s*\{[\s\S]*?\n\s*\},\n\s*E2:/)?.[0] ?? "";
+  assert.equal(e1Block.includes('hasPrefix(p, "SUB_2D_2D")'), false);
+  assert.match(profileSource, /E2\.NA\.SUB\.SUB_2D_2D_NO/);
+  assert.match(profileSource, /E2\.NA\.SUB\.SUB_2D_2D_YES/);
+  assert.match(profileSource, /E2\.NA\.SUB\.SUB_2D_2D_ANY/);
 });
 
 test("E2 2-digit + 2-digit labels include carry condition information", () => {

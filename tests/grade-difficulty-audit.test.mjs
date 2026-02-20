@@ -20,10 +20,14 @@ const gradeOrder = ["E1", "E2", "E3", "E4", "E5", "E6"];
 
 const keepByGrade = {
   E1: (p) =>
+    p === "NUM_COMPARE_UP_TO_20" ||
+    p === "NUM_DECOMP_10" ||
+    p === "NUM_COMP_10" ||
     p.startsWith("ADD_1D_1D") ||
     p.startsWith("SUB_1D_1D") ||
+    p.startsWith("ADD_2D_1D") ||
     p.startsWith("SUB_2D_1D") ||
-    p.startsWith("SUB_2D_2D"),
+    p === "MIXED_TO_20",
   E2: (p) =>
     p.startsWith("ADD_2D_2D") ||
     p.startsWith("SUB_2D_1D") ||
@@ -75,6 +79,14 @@ const keepByGrade = {
 };
 
 const syntheticPatternByGrade = {
+  E1: [
+    "NUM_COMPARE_UP_TO_20",
+    "NUM_DECOMP_10",
+    "NUM_COMP_10",
+    "ADD_2D_1D_NO",
+    "ADD_2D_1D_YES",
+    "MIXED_TO_20"
+  ],
   E2: [
     "SUB_2D_2D_NO",
     "SUB_2D_2D_YES",
@@ -129,6 +141,11 @@ const firstGradeByPattern = () => {
 
 test("difficulty audit keeps multiplication and division progression", () => {
   const first = firstGradeByPattern();
+
+  assert.equal(first["SUB_2D_2D_NO"], "E2");
+  assert.equal(first["SUB_2D_2D_YES"], "E2");
+  assert.equal(first["ADD_2D_1D_NO"], "E1");
+  assert.equal(first["ADD_2D_1D_YES"], "E1");
 
   assert.equal(first["MUL_1D_1D_DAN_1"], "E2");
   assert.equal(first["MUL_1D_1D_DAN_9"], "E2");

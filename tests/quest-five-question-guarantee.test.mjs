@@ -29,6 +29,7 @@ const isPatternGeneratable = (patternId) => {
     patternId.startsWith("DEC_") ||
     patternId.startsWith("FRAC_") ||
     patternId.startsWith("UNIT_FRAC_") ||
+    patternId.startsWith("NUM_") ||
     patternId.startsWith("MIXED_")
   );
 };
