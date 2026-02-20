@@ -30,7 +30,18 @@ test("E1 1-digit add stock always blends deterministic candidates", () => {
 test("stock result includes generated count and reason", () => {
   assert.equal(source.includes("generatedCount"), true);
   assert.equal(source.includes("buildMs"), true);
+  assert.equal(source.includes("failureClass"), true);
+  assert.equal(source.includes("GEN_FAIL"), true);
+  assert.equal(source.includes("GEN_OK_PICK_FAIL"), true);
   assert.equal(source.includes("INSUFFICIENT_GENERATABLE"), true);
   assert.equal(source.includes("NO_PATTERN"), true);
   assert.equal(source.includes("NO_SOURCE"), true);
+});
+
+test("non-frozen grades can use seed-variant fallback", () => {
+  assert.equal(source.includes("isFrozenElementaryGrade"), true);
+  assert.equal(source.includes("if (!isFrozenElementaryGrade(gradeId))"), true);
+  assert.equal(source.includes("buildSeedVariantEntries"), false);
+  assert.equal(source.includes("without altering displayed text"), true);
+  assert.equal(source.includes("れんしゅう"), false);
 });

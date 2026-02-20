@@ -28,12 +28,15 @@ type TypeDef = {
 
 export type TypeStockReason = "INSUFFICIENT_GENERATABLE" | "NO_PATTERN" | "NO_SOURCE";
 
+export type StockFailureClass = "NONE" | "GEN_FAIL" | "GEN_OK_PICK_FAIL";
+
 export type TypeStockResult = {
   typeId: string;
   entries: QuestEntry[];
   count: number;
   target: number;
   reason?: TypeStockReason;
+  failureClass: StockFailureClass;
   generatedCount: number;
   buildMs: number;
 };
@@ -151,6 +154,10 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
   return out;
 };
 
+const getGradeIdFromTypeId = (typeId: string) => typeId.split(".")[0] ?? "";
+
+const isFrozenElementaryGrade = (gradeId: string) => /^(E1|E2|E3|E4)$/.test(gradeId);
+
 const uniqueByPromptAndEquivalent = (entries: QuestEntry[]) => {
   const unique: QuestEntry[] = [];
   const promptKeys = new Set<string>();
@@ -177,6 +184,7 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
       count: 0,
       target: targetCount,
       reason: "NO_SOURCE",
+      failureClass: "GEN_FAIL",
       generatedCount: 0,
       buildMs: Date.now() - startedAt
     };
@@ -205,6 +213,14 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
     const fallbackEntries = buildPatternFallbackEntries(normalizedType, patternId, targetCount);
     unique = uniqueByPromptAndEquivalent([...unique, ...fallbackEntries]);
   }
+  if (unique.length < Math.min(5, targetCount)) {
+    const gradeId = getGradeIdFromTypeId(type.type_id);
+    if (!isFrozenElementaryGrade(gradeId)) {
+      // Keep non-frozen grades extensible via questItemFactory generators without altering displayed text.
+      const reExpanded = expandEntriesToAtLeast(unique, Math.max(5, targetCount));
+      unique = uniqueByPromptAndEquivalent(reExpanded);
+    }
+  }
   const ordered = reorderAvoidAdjacentSameFamily(shuffle(unique)).slice(0, targetCount);
   const entries = uniqueByPromptAndEquivalent(ordered).slice(0, targetCount);
   const reason = entries.length >= targetCount
@@ -212,6 +228,7 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
     : hasPattern
       ? "INSUFFICIENT_GENERATABLE"
       : "NO_PATTERN";
+  const failureClass: StockFailureClass = entries.length >= Math.min(5, targetCount) ? "NONE" : "GEN_FAIL";
 
   return {
     typeId: type.type_id,
@@ -219,6 +236,7 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
     count: entries.length,
     target: targetCount,
     reason,
+    failureClass,
     generatedCount: expanded.length,
     buildMs: Date.now() - startedAt
   };
@@ -251,7 +269,11 @@ export const pickUniqueQuizFromStock = (stock: QuestEntry[], quizSize = 5): { en
       }
     };
   }
-  const picked = shuffle(deduped).slice(0, Math.min(requested, availableAfterDedupe));
+  let picked = shuffle(deduped).slice(0, Math.min(requested, availableAfterDedupe));
+  if (picked.length < requested && availableBeforeDedupe >= requested) {
+    const deterministic = [...deduped].sort((a, b) => entryPromptKey(a).localeCompare(entryPromptKey(b)));
+    picked = deterministic.slice(0, Math.min(requested, deterministic.length));
+  }
   return {
     entries: picked,
     meta: {

@@ -51,7 +51,10 @@ const pickUnique = (stock, quizSize = 5) => {
 
 test("stock picker code has dedupe + non-replacement extraction", () => {
   assert.equal(stockSource.includes("const deduped = uniqueByPromptAndEquivalent(stock);"), true);
-  assert.equal(stockSource.includes("const picked = shuffle(deduped).slice(0, Math.min(requested, availableAfterDedupe));"), true);
+  assert.equal(stockSource.includes("let picked = shuffle(deduped).slice(0, Math.min(requested, availableAfterDedupe));"), true);
+  assert.equal(stockSource.includes("if (picked.length < requested && availableBeforeDedupe >= requested)"), true);
+  assert.equal(stockSource.includes("const deterministic = [...deduped].sort"), true);
+  assert.equal(stockSource.includes("byPromptOnly"), false);
 });
 
 test("repeated picks never duplicate within one 5-item set", () => {
@@ -65,4 +68,3 @@ test("repeated picks never duplicate within one 5-item set", () => {
     assert.equal(eSet.size, 5);
   }
 });
-

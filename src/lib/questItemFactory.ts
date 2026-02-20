@@ -104,6 +104,9 @@ const stripTrailingEquals = (text: string) => text.replace(/\s*[=＝]\s*$/u, "")
 
 export const normalizePromptForUniqueness = (prompt: string) =>
   stripTrailingEquals(prompt)
+    .replace(/\\text\{[^}]*\}/g, "")
+    .replace(/（れんしゅう[^）]*）/g, "")
+    .replace(/\(practice[^)]*\)/gi, "")
     .replace(/\\times/g, "×")
     .replace(/\\div/g, "÷")
     .replace(/＋/g, "+")
@@ -405,6 +408,163 @@ const generateFraction = (type: TypeDef, patternId: string, needed: number, used
   return out;
 };
 
+const generateMixed = (type: TypeDef, patternId: string, needed: number, used: Set<string>) => {
+  const out: QuestEntry[] = [];
+  let attempts = 0;
+  while (out.length < needed && attempts < 2000) {
+    attempts += 1;
+    let item: QuestEntry | null = null;
+    if (patternId === "MIXED_DEC_FRAC") {
+      const denCandidates = [2, 4, 5, 10];
+      const den = denCandidates[randInt(0, denCandidates.length - 1)];
+      const num = randInt(1, den - 1);
+      const left = randInt(1, 20) / 10;
+      const right = `${num}/${den}`;
+      const reduced = reduceFraction(Math.round(left * den) + num, den);
+      item = {
+        type,
+        item: {
+          prompt: `${left} + ${right} =`,
+          prompt_tex: `${left} + ${right} =`,
+          answer: stripDecimal(reduced.n / reduced.d)
+        }
+      };
+    } else if (patternId === "MIXED_EXPRESSION") {
+      const mode = randInt(0, 2);
+      if (mode === 0) {
+        const a = randInt(8, 30);
+        const b = randInt(2, 9);
+        const c = randInt(2, 9);
+        item = {
+          type,
+          item: {
+            prompt: `${a} + ${b} × ${c} =`,
+            prompt_tex: `${a} + ${b} \\times ${c} =`,
+            answer: String(a + b * c)
+          }
+        };
+      } else if (mode === 1) {
+        const c = randInt(2, 9);
+        const q = randInt(2, 12);
+        const b = randInt(2, 9);
+        const a = q * c + b;
+        item = {
+          type,
+          item: {
+            prompt: `(${a} - ${b}) ÷ ${c} =`,
+            prompt_tex: `(${a} - ${b}) \\div ${c} =`,
+            answer: String(q)
+          }
+        };
+      } else {
+        const b = randInt(2, 9);
+        const q = randInt(2, 12);
+        const a = b * q;
+        const c = randInt(1, 9);
+        item = {
+          type,
+          item: {
+            prompt: `${a} ÷ ${b} + ${c} =`,
+            prompt_tex: `${a} \\div ${b} + ${c} =`,
+            answer: String(q + c)
+          }
+        };
+      }
+    }
+    if (item) pushEntry(out, used, item);
+  }
+  return out;
+};
+
+const generateSecondaryBySeedVariants = (type: TypeDef, needed: number, used: Set<string>) => {
+  const out: QuestEntry[] = [];
+  const seed = type.example_items ?? [];
+  if (seed.length === 0) return out;
+
+  const parseBinarySeed = (text: string) => {
+    const normalized = normalizePromptForUniqueness(text);
+    const body = stripTrailingEquals(normalized);
+    const m = body.match(/^(-?\d+(?:\.\d+)?)\s*([+\-×÷])\s*(-?\d+(?:\.\d+)?)$/);
+    if (!m) return null;
+    const a = Number(m[1]);
+    const op = m[2];
+    const b = Number(m[3]);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+    return { a, op, b };
+  };
+
+  const countDecimalPlaces = (value: number) => {
+    const raw = String(value);
+    const idx = raw.indexOf(".");
+    return idx < 0 ? 0 : raw.length - idx - 1;
+  };
+
+  const makeBinaryEntry = (a: number, op: string, b: number) => {
+    if (op === "+") {
+      const answer = stripDecimal(a + b);
+      return { prompt: `${a} + ${b} =`, prompt_tex: `${a} + ${b} =`, answer };
+    }
+    if (op === "-") {
+      if (a <= b) return null;
+      const answer = stripDecimal(a - b);
+      return { prompt: `${a} - ${b} =`, prompt_tex: `${a} - ${b} =`, answer };
+    }
+    if (op === "×") {
+      const answer = stripDecimal(a * b);
+      return { prompt: `${a} × ${b} =`, prompt_tex: `${a} \\times ${b} =`, answer };
+    }
+    if (op === "÷") {
+      if (b === 0) return null;
+      const quotient = a / b;
+      if (!Number.isFinite(quotient)) return null;
+      const decimalPlaces = Math.max(countDecimalPlaces(a), countDecimalPlaces(b));
+      const answer = decimalPlaces > 0 ? stripDecimal(quotient) : String(Math.trunc(quotient));
+      return { prompt: `${a} ÷ ${b} =`, prompt_tex: `${a} \\div ${b} =`, answer };
+    }
+    return null;
+  };
+
+  let round = 1;
+  while (out.length < needed && round <= 30) {
+    for (let i = 0; i < seed.length && out.length < needed; i += 1) {
+      const base = seed[i];
+      const parsed = parseBinarySeed(base.prompt_tex ?? base.prompt);
+      if (!parsed) continue;
+      const delta = round + i + 1;
+      let a = parsed.a;
+      let b = parsed.b;
+      if (parsed.op === "+") {
+        a = parsed.a + delta;
+        b = parsed.b + ((delta % 3) + 1);
+      } else if (parsed.op === "-") {
+        a = parsed.a + delta + 2;
+        b = Math.max(1, parsed.b + (delta % 2));
+        if (a <= b) a = b + delta + 1;
+      } else if (parsed.op === "×") {
+        a = parsed.a + (delta % 7) + 1;
+        b = parsed.b + (delta % 5) + 1;
+      } else if (parsed.op === "÷") {
+        const divisor = Math.max(1, Math.trunc(Math.abs(parsed.b)) + (delta % 4));
+        const quotient = Math.max(1, Math.trunc(Math.abs(Number(base.answer) || parsed.a / parsed.b || 2)) + (delta % 6));
+        a = divisor * quotient;
+        b = divisor;
+      }
+      const binary = makeBinaryEntry(a, parsed.op, b);
+      if (!binary) continue;
+      pushEntry(out, used, {
+        type,
+        item: {
+          prompt: binary.prompt,
+          prompt_tex: binary.prompt_tex,
+          answer: binary.answer
+        }
+      });
+    }
+    round += 1;
+  }
+  return out;
+};
+
 const generateByPattern = (type: TypeDef, used: Set<string>, targetCount: number) => {
   const patternId = type.generation_params?.pattern_id ?? "";
   if (!patternId) return [];
@@ -419,6 +579,12 @@ const generateByPattern = (type: TypeDef, used: Set<string>, targetCount: number
   }
   if (patternId.startsWith("FRAC_") || patternId.startsWith("UNIT_FRAC_")) {
     return generateFraction(type, patternId, targetCount, used);
+  }
+  if (patternId.startsWith("MIXED_")) {
+    return generateMixed(type, patternId, targetCount, used);
+  }
+  if (/^(J[1-3]|H[1-3])\./.test(type.type_id)) {
+    return generateSecondaryBySeedVariants(type, targetCount, used);
   }
   return [];
 };

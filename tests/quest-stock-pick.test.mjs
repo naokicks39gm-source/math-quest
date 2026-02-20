@@ -16,7 +16,10 @@ test("pick quiz from stock uses fisher-yates shuffle + slice", () => {
   assert.equal(source.includes("for (let i = copied.length - 1; i > 0; i -= 1)"), true);
   assert.equal(source.includes("export const pickUniqueQuizFromStock"), true);
   assert.equal(source.includes("const deduped = uniqueByPromptAndEquivalent(stock);"), true);
-  assert.equal(source.includes("const picked = shuffle(deduped).slice(0, Math.min(requested, availableAfterDedupe));"), true);
+  assert.equal(source.includes("let picked = shuffle(deduped).slice(0, Math.min(requested, availableAfterDedupe));"), true);
+  assert.equal(source.includes("if (picked.length < requested && availableBeforeDedupe >= requested)"), true);
+  assert.equal(source.includes("const deterministic = [...deduped].sort"), true);
+  assert.equal(source.includes("byPromptOnly"), false);
   assert.equal(source.includes("reason: picked.length < requested ? \"SHORTAGE\" : undefined"), true);
 });
 
