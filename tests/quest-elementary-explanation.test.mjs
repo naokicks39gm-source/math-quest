@@ -17,12 +17,22 @@ test("quest shows elementary explanation in memo area when elementary answer is 
   assert.match(pageSource, /nextLabel=\{uiText\.nextQuestion\}/);
 });
 
-test("elementary explanation resolver has abacus/column/simple branches", () => {
-  assert.match(libSource, /ElementaryAidKind = "abacus" \| "column" \| "simple"/);
+test("elementary explanation resolver has abacus/column_story/simple branches", () => {
+  assert.match(libSource, /ElementaryAidKind = "abacus" \| "column" \| "column_story" \| "simple"/);
+  assert.match(libSource, /mode: "abacus" \| "column" \| "column_story" \| "simple"/);
   assert.match(libSource, /kind: ElementaryAidKind;/);
   assert.match(libSource, /conclusion: string;/);
-  assert.match(libSource, /if \(!isAddSub\(typeId, patternId, prompt\)\)/);
+  assert.match(libSource, /const isColumnPattern =/);
+  assert.match(libSource, /if \(!isColumnPattern\(typeId, patternId\)\)/);
   assert.match(libSource, /return buildSimpleAid\(\);/);
+  assert.match(libSource, /const buildColumnStoryFrames =/);
+  assert.match(libSource, /kind: "column_story"/);
+  assert.match(libSource, /mode: "column_story"/);
+  assert.match(libSource, /frames: frames\.slice\(0, 5\)/);
+  assert.match(libSource, /focusPlace: "ones"/);
+  assert.match(libSource, /focusPlace: "next"/);
+  assert.match(libSource, /title: "答え"/);
+  assert.match(libSource, /partial: `答え: \$\{formatNumber\(result\)\}`/);
   assert.match(libSource, /if \(isSingleDigitPair\)/);
   assert.match(libSource, /return buildAbacusAid/);
   assert.match(libSource, /return buildColumnAid/);
@@ -36,8 +46,13 @@ test("elementary panel has next button and visual rendering", () => {
   assert.match(panelSource, /nextLabel: string;/);
   assert.match(panelSource, /aid\.visual\?\.mode === "abacus"/);
   assert.match(panelSource, /aid\.visual\?\.mode === "column"/);
+  assert.match(panelSource, /aid\.visual\?\.mode === "column_story"/);
+  assert.match(panelSource, /renderColumnFrame/);
+  assert.match(panelSource, /renderAlignedValue/);
+  assert.match(panelSource, /text-rose-600/);
+  assert.match(panelSource, /text-indigo-600/);
+  assert.match(panelSource, /max-w-\[19rem\]/);
   assert.match(panelSource, /こたえ \{aid\.visual\.result\} こ/);
-  assert.match(panelSource, /こたえ: \{aid\.conclusion\}/);
   assert.match(panelSource, /onClick=\{onNext\}/);
   assert.match(panelSource, /\{nextLabel\}/);
 });
