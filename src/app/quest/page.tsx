@@ -120,8 +120,16 @@ export const getAutoJudgeDelayMs = (digits: number) => {
 
 const trimTrailingEquationEquals = (text: string) => text.replace(/\s*[=＝]\s*$/u, "");
 
-const formatPrompt = (prompt: string) => {
-  return trimTrailingEquationEquals(prompt.replace(/を計算しなさい。$/g, ""));
+const shouldKeepEqualsForE13Plus = (typeId?: string, typeLabel?: string) => {
+  if (!typeId?.startsWith("E1.")) return false;
+  const m = (typeLabel ?? "").match(/Lv:E1-(\d+)/);
+  if (!m) return false;
+  return Number(m[1]) >= 3;
+};
+
+const formatPrompt = (prompt: string, keepEquals = false) => {
+  const cleaned = prompt.replace(/を計算しなさい。$/g, "");
+  return keepEquals ? cleaned.trim() : trimTrailingEquationEquals(cleaned);
 };
 
 const MIXED_FRACTION_TYPE_IDS = new Set<string>([
@@ -253,7 +261,7 @@ const renderMaybeMath = (text: string): ReactNode => {
   );
 };
 const renderNumDecompPrompt = (prompt: string): ReactNode | null => {
-  const normalized = formatPrompt(prompt).replace(/\s+/g, "");
+  const normalized = formatPrompt(prompt, false).replace(/\s+/g, "");
   const match = normalized.match(/^(\d+)は(\d+)と(?:□|[?？])でできます。?$/u);
   if (!match) return null;
   const total = match[1];
@@ -311,24 +319,25 @@ const renderPromptWithSlotBox = (text: string): ReactNode | null => {
   return <span className="inline-flex items-baseline whitespace-nowrap">{nodes}</span>;
 };
 
-const renderPrompt = (item: ExampleItem, typeId?: string) => {
+const renderPrompt = (item: ExampleItem, typeId?: string, typeLabel?: string) => {
+  const keepEquals = shouldKeepEqualsForE13Plus(typeId, typeLabel);
   if (typeId === "E1.NA.NUM.NUM_DECOMP_10") {
     const custom = renderNumDecompPrompt(item.prompt);
     if (custom) return custom;
   }
   const tex = item.prompt_tex?.trim();
   if (tex) {
-    const displayTex = trimTrailingEquationEquals(tex);
+    const displayTex = keepEquals ? tex : trimTrailingEquationEquals(tex);
     return (
       <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
-        <InlineMath math={toEquationTex(displayTex)} renderError={() => <span>{formatPrompt(item.prompt)}</span>} />
+        <InlineMath math={toEquationTex(displayTex)} renderError={() => <span>{formatPrompt(item.prompt, keepEquals)}</span>} />
       </span>
     );
   }
-  const formattedPrompt = formatPrompt(item.prompt);
+  const formattedPrompt = formatPrompt(item.prompt, keepEquals);
   const slotPrompt = renderPromptWithSlotBox(formattedPrompt);
   if (slotPrompt) return slotPrompt;
-  return renderMaybeMath(formatPrompt(item.prompt));
+  return renderMaybeMath(formattedPrompt);
 };
 
 
@@ -4099,7 +4108,7 @@ function QuestPageInner() {
                         }
                       >
                         <span ref={qaPromptContentRef} className="inline-block align-middle">
-                          {renderPrompt(currentItem, currentType?.type_id)}
+                          {renderPrompt(currentItem, currentType?.type_id, currentType?.display_name ?? currentType?.type_name)}
                         </span>
                       </div>
                       {isQuadraticRootsQuestion ? (

@@ -8,7 +8,8 @@ const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 test("quest page exposes fraction TeX helpers for integer and exponent fractions", () => {
   const source = read("src/app/quest/page.tsx");
   assert.match(source, /const trimTrailingEquationEquals = \(text: string\) =>/);
-  assert.match(source, /trimTrailingEquationEquals\(prompt\.replace/);
+  assert.match(source, /const formatPrompt = \(prompt: string, keepEquals = false\) =>/);
+  assert.match(source, /return keepEquals \? cleaned\.trim\(\) : trimTrailingEquationEquals\(cleaned\);/);
   assert.match(source, /const toFractionTexInText = \(text: string\) =>/);
   assert.match(source, /const renderMaybeMath = \(text: string\): ReactNode =>/);
   assert.match(source, /const INTEGER_FRACTION_PATTERN = \/[\s\S]*\\\/[\s\S]*\/g;/);
@@ -19,9 +20,10 @@ test("quest page exposes fraction TeX helpers for integer and exponent fractions
 
 test("quest prompt and clear list use shared math rendering path", () => {
   const source = read("src/app/quest/page.tsx");
-  assert.match(source, /const displayTex = trimTrailingEquationEquals\(tex\);/);
+  assert.match(source, /const keepEquals = shouldKeepEqualsForE13Plus\(typeId, typeLabel\);/);
+  assert.match(source, /const displayTex = keepEquals \? tex : trimTrailingEquationEquals\(tex\);/);
   assert.match(source, /toEquationTex\(trimTrailingEquationEquals\(r\.promptTex\.trim\(\)\)\)/);
-  assert.match(source, /return renderMaybeMath\(formatPrompt\(item\.prompt\)\);/);
+  assert.match(source, /return renderMaybeMath\(formattedPrompt\);/);
   assert.match(source, /renderMaybeMath\(formatPrompt\(r\.prompt\)\)/);
   assert.match(source, /renderMaybeMath\(r\.correctAnswer\)/);
   assert.match(source, /renderMaybeMath\(displayedUserAnswer\)/);
