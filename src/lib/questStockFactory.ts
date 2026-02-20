@@ -32,11 +32,14 @@ export type StockFailureClass = "NONE" | "GEN_FAIL" | "GEN_OK_PICK_FAIL";
 
 export type TypeStockResult = {
   typeId: string;
+  patternId?: string;
   entries: QuestEntry[];
   count: number;
   target: number;
   reason?: TypeStockReason;
   failureClass: StockFailureClass;
+  expandedCount: number;
+  uniqueCount: number;
   generatedCount: number;
   buildMs: number;
 };
@@ -106,6 +109,59 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
     return buildDeterministicAdd1D1D(type, patternId).slice(0, targetCount);
   }
   if (!(patternId.startsWith("ADD_") || patternId.startsWith("SUB_") || patternId.startsWith("MUL_"))) {
+    if (patternId.startsWith("DEC_")) {
+      const out: QuestEntry[] = [];
+      const dpMatch = patternId.match(/_(\d)DP/);
+      const dp = dpMatch ? Number(dpMatch[1]) : 1;
+      const base = 10 ** dp;
+      const asDec = (value: number) => value.toFixed(dp).replace(/\.?0+$/, "");
+      const push = (prompt: string, prompt_tex: string, answer: string) =>
+        out.push({ type, item: { prompt, prompt_tex, answer } });
+
+      for (let i = 0; i < targetCount; i += 1) {
+        if (patternId.includes("DEC_MUL_INT")) {
+          const left = asDec((i + 2) / base + (i % 5));
+          const right = String((i % 8) + 2);
+          const answer = asDec(Number(left) * Number(right));
+          push(`${left} × ${right} =`, `${left} \\times ${right} =`, answer);
+          continue;
+        }
+        if (patternId.includes("DEC_DIV_INT")) {
+          const divisor = (i % 8) + 2;
+          const quotient = asDec((i + 3) / base + (i % 4));
+          const dividend = asDec(Number(quotient) * divisor);
+          push(`${dividend} ÷ ${divisor} =`, `${dividend} \\div ${divisor} =`, quotient);
+          continue;
+        }
+        if (patternId.includes("DEC_ADD")) {
+          const a = asDec((i + 2) / base + (i % 7));
+          const b = asDec((i + 3) / base + ((i + 2) % 6));
+          push(`${a} + ${b} =`, `${a} + ${b} =`, asDec(Number(a) + Number(b)));
+          continue;
+        }
+        if (patternId.includes("DEC_SUB")) {
+          const a = asDec((i + 12) / base + (i % 9));
+          const b = asDec((i + 2) / base + ((i + 1) % 5));
+          if (Number(a) <= Number(b)) continue;
+          push(`${a} - ${b} =`, `${a} - ${b} =`, asDec(Number(a) - Number(b)));
+          continue;
+        }
+        if (patternId.includes("DEC_MUL")) {
+          const a = asDec((i + 2) / base + (i % 5));
+          const b = asDec((i + 4) / base + ((i + 2) % 5));
+          push(`${a} × ${b} =`, `${a} \\times ${b} =`, asDec(Number(a) * Number(b)));
+          continue;
+        }
+        if (patternId.includes("DEC_DIV")) {
+          const b = asDec((i + 2) / base + ((i + 1) % 4));
+          if (Number(b) === 0) continue;
+          const q = asDec((i + 5) / base + ((i + 3) % 5));
+          const a = asDec(Number(b) * Number(q));
+          push(`${a} ÷ ${b} =`, `${a} \\div ${b} =`, q);
+        }
+      }
+      return out;
+    }
     return [] as QuestEntry[];
   }
 
@@ -180,11 +236,14 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
   if (seed.length === 0) {
     return {
       typeId: type.type_id,
+      patternId: derivePatternId(type) || undefined,
       entries: [],
       count: 0,
       target: targetCount,
       reason: "NO_SOURCE",
       failureClass: "GEN_FAIL",
+      expandedCount: 0,
+      uniqueCount: 0,
       generatedCount: 0,
       buildMs: Date.now() - startedAt
     };
@@ -229,14 +288,31 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
       ? "INSUFFICIENT_GENERATABLE"
       : "NO_PATTERN";
   const failureClass: StockFailureClass = entries.length >= Math.min(5, targetCount) ? "NONE" : "GEN_FAIL";
+  if (process.env.NODE_ENV !== "production") {
+    // eslint-disable-next-line no-console
+    console.debug("[stock-build]", {
+      typeId: type.type_id,
+      patternId: hasPattern ? patternId : "",
+      seedCount: normalizedSeed.length,
+      expandedCount: expanded.length,
+      uniqueCount: unique.length,
+      finalCount: entries.length,
+      reason,
+      failureClass,
+      buildMs: Date.now() - startedAt
+    });
+  }
 
   return {
     typeId: type.type_id,
+    patternId: hasPattern ? patternId : undefined,
     entries,
     count: entries.length,
     target: targetCount,
     reason,
     failureClass,
+    expandedCount: expanded.length,
+    uniqueCount: unique.length,
     generatedCount: expanded.length,
     buildMs: Date.now() - startedAt
   };

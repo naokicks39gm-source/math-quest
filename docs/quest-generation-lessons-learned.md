@@ -8,6 +8,8 @@
 1. Generation became heavy and slow after adding broad fallback loops.
 2. Stock existed, but question picking still failed due to strict dedupe collisions.
 3. Unknown `pattern_id` returned too few items (often 3 seed examples only).
+4. Lv label mapping checks used ad-hoc logic and could disagree with `getCatalogGrades()` sequencing.
+5. DEC patterns (especially `DEC_MUL_INT`) occasionally stayed at seed size when fallback path was insufficient.
 
 ## Current Countermeasures
 1. Generation limits:
@@ -49,3 +51,4 @@
 3. Never reduce strict uniqueness globally; deterministic fallback must keep equivalent checks.
 4. Never mix internal identifiers or debug labels into UI prompt text.
 5. Preserve frozen-grade behavior unless explicitly changed.
+6. Verify Lv labels through `getCatalogGrades()` helpers only (no hand-reconstructed ordering).

@@ -2005,6 +2005,10 @@ function QuestPageInner() {
     if (selectedType?.type_id) return selectedType.type_id;
     return targetStockTypes[0]?.typeId ?? "";
   }, [hasTypeQuery, typeFromQuery, selectedType, targetStockTypes]);
+  const activeStockInfo = useMemo(
+    () => (activeTypeId ? typeStocks.get(activeTypeId) ?? null : null),
+    [activeTypeId, typeStocks]
+  );
   const quizSize = Math.min(TOTAL_QUESTIONS, QUESTION_POOL_SIZE);
   const dedupeQuestSet = (set: QuestEntry[]) => {
     const uniq: QuestEntry[] = [];
@@ -3861,6 +3865,21 @@ function QuestPageInner() {
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+            {process.env.NODE_ENV !== "production" && (
+              <div className="w-full mb-2 rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-left">
+                <div className="text-xs font-bold text-sky-800">DEV診断: Lv/type/stock</div>
+                <div className="mt-1 space-y-0.5 text-[11px] text-sky-900">
+                  <div>表示: {currentType?.display_name ?? currentType?.type_name ?? "-"}</div>
+                  <div>type_id: {currentType?.type_id ?? "-"}</div>
+                  <div>pattern_id: {currentType?.generation_params?.pattern_id ?? "-"}</div>
+                  <div>stock.count: {activeStockInfo?.count ?? 0}</div>
+                  <div>stock.reason: {activeStockInfo?.reason ?? "-"}</div>
+                  <div>stock.unique: {activeStockInfo?.uniqueCount ?? 0}</div>
+                  <div>stock.expanded: {activeStockInfo?.expandedCount ?? 0}</div>
+                  <div>pick: {activePickMeta?.picked ?? 0} / {activePickMeta?.requested ?? quizSize}</div>
+                </div>
               </div>
             )}
             <div className="w-full max-h-[48vh] overflow-y-auto">

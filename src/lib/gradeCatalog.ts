@@ -202,3 +202,28 @@ export const getCatalogGrades = (): GradeDef[] => {
     })
     .filter((grade) => grade.categories.length > 0);
 };
+
+export const findTypeByLevelLabel = (grades: GradeDef[], label: string) => {
+  const match = label.match(/^Lv:([A-Z]\d)-(\d+)\s/u);
+  if (!match) return null;
+  const gradeId = match[1];
+  const levelToken = `Lv:${gradeId}-${match[2]} `;
+  const grade = grades.find((g) => g.grade_id === gradeId);
+  if (!grade) return null;
+  for (const category of grade.categories) {
+    const hit = category.types.find((type) => (type.display_name ?? "").startsWith(levelToken));
+    if (hit) {
+      return {
+        grade_id: gradeId,
+        category_id: category.category_id,
+        type_id: hit.type_id
+      };
+    }
+  }
+  return null;
+};
+
+export const getTypeIdByLevelLabel = (label: string) => {
+  const grades = getCatalogGrades();
+  return findTypeByLevelLabel(grades, label)?.type_id ?? null;
+};
