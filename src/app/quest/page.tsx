@@ -3932,6 +3932,14 @@ function QuestPageInner() {
                         <div aria-label="board-chalk-blue" className="h-2.5 w-6 rounded-full border border-sky-300 bg-sky-100 shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={nextQuestion}
+                      disabled={status !== "playing" || isStarting}
+                      className="absolute bottom-3 right-3 z-20 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs sm:text-sm font-bold text-emerald-900 shadow-[0_2px_0_rgba(0,0,0,0.25)] active:translate-y-[1px] disabled:bg-slate-300 disabled:text-slate-500"
+                    >
+                      {uiText.nextQuestion}
+                    </button>
                     <div
                       ref={qaRowRef}
                       className={
