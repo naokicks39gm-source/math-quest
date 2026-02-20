@@ -28,6 +28,9 @@ test("E1 1-digit add stock always blends deterministic candidates", () => {
 });
 
 test("stock result includes generated count and reason", () => {
+  assert.equal(source.includes("patternId?: string"), true);
+  assert.equal(source.includes("expandedCount"), true);
+  assert.equal(source.includes("uniqueCount"), true);
   assert.equal(source.includes("generatedCount"), true);
   assert.equal(source.includes("buildMs"), true);
   assert.equal(source.includes("failureClass"), true);
@@ -44,4 +47,11 @@ test("non-frozen grades can use seed-variant fallback", () => {
   assert.equal(source.includes("buildSeedVariantEntries"), false);
   assert.equal(source.includes("without altering displayed text"), true);
   assert.equal(source.includes("れんしゅう"), false);
+});
+
+test("decimal patterns have deterministic fallback generation", () => {
+  assert.equal(source.includes('if (patternId.startsWith("DEC_"))'), true);
+  assert.equal(source.includes('if (patternId.includes("DEC_MUL_INT"))'), true);
+  assert.equal(source.includes('if (patternId.includes("DEC_DIV_INT"))'), true);
+  assert.equal(source.includes("toFixed(dp)"), true);
 });
