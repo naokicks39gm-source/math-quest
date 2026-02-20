@@ -21,6 +21,7 @@ test("insufficient reason can emit detail classes", () => {
   assert.equal(stockSource.includes("PARAM_RANGE_NARROW"), true);
   assert.equal(stockSource.includes("reasonDetail = \"PATTERN_GENERATOR_MISSING\""), true);
   assert.equal(stockSource.includes("normalizedType.answer_format.kind !== \"expr\""), true);
+  assert.equal(stockSource.includes("!patternId.startsWith(\"NUM_\")"), true);
 });
 
 test("quest page keeps rendering shortage reasons and detail", () => {

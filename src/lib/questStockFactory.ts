@@ -119,6 +119,49 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
   if (patternId.startsWith("ADD_1D_1D_")) {
     return buildDeterministicAdd1D1D(type, patternId).slice(0, targetCount);
   }
+  if (patternId.startsWith("NUM_")) {
+    const out: QuestEntry[] = [];
+    for (let i = 0; i < targetCount; i += 1) {
+      if (patternId === "NUM_COMPARE_UP_TO_20") {
+        const a = i % 21;
+        let b = (i * 13 + 5) % 21;
+        if (a === b) b = (b + 1) % 21;
+        out.push({
+          type,
+          item: {
+            prompt: `${a}と${b}、どちらが大きい？`,
+            answer: String(Math.max(a, b))
+          }
+        });
+        continue;
+      }
+      if (patternId === "NUM_DECOMP_10") {
+        const left = (i % 9) + 1;
+        const right = 10 - left;
+        out.push({
+          type,
+          item: {
+            prompt: `10 は${left}と？でできます。`,
+            answer: String(right)
+          }
+        });
+        continue;
+      }
+      if (patternId === "NUM_COMP_10") {
+        const left = i % 11;
+        const right = 10 - left;
+        out.push({
+          type,
+          item: {
+            prompt: `${left} + ${right} =`,
+            prompt_tex: `${left} + ${right} =`,
+            answer: "10"
+          }
+        });
+      }
+    }
+    return out;
+  }
   if (
     patternId.startsWith("INT_") ||
     patternId.startsWith("LIN_") ||
@@ -451,6 +494,9 @@ const uniqueByPromptAndEquivalent = (entries: QuestEntry[]) => {
 type StockGenerationStrategy = (type: TypeDef, patternId: string, targetCount: number) => QuestEntry[];
 
 const STOCK_STRATEGIES: Record<string, StockGenerationStrategy> = {
+  NUM_COMPARE_UP_TO_20: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),
+  NUM_DECOMP_10: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),
+  NUM_COMP_10: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),
   FACTOR_GCF: (type, _patternId, targetCount) => generateFactorGcfEntries(type, targetCount),
   FACTOR_DIFF_SQ: (type, _patternId, targetCount) => generateFactorDiffSqEntries(type, targetCount),
   FACTOR_PERF_SQ: (type, _patternId, targetCount) => generateFactorPerfSqEntries(type, targetCount),
@@ -527,7 +573,7 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
       ? "INSUFFICIENT_GENERATABLE"
       : "NO_PATTERN";
   if (reason === "INSUFFICIENT_GENERATABLE" && hasPattern) {
-    if (!strategy && normalizedType.answer_format.kind !== "expr" && !patternId.startsWith("ADD_") && !patternId.startsWith("SUB_") && !patternId.startsWith("MUL_") && !patternId.startsWith("DIV_") && !patternId.startsWith("DEC_") && !patternId.startsWith("FRAC_") && !patternId.startsWith("UNIT_FRAC_") && !patternId.startsWith("MIXED_")) {
+    if (!strategy && normalizedType.answer_format.kind !== "expr" && !patternId.startsWith("ADD_") && !patternId.startsWith("SUB_") && !patternId.startsWith("MUL_") && !patternId.startsWith("DIV_") && !patternId.startsWith("DEC_") && !patternId.startsWith("FRAC_") && !patternId.startsWith("UNIT_FRAC_") && !patternId.startsWith("MIXED_") && !patternId.startsWith("NUM_")) {
       reasonDetail = "PATTERN_GENERATOR_MISSING";
     } else if (unique.length > 0 && entries.length <= Math.max(1, Math.floor(targetCount / 5))) {
       reasonDetail = "DEDUPE_COLLISION_HIGH";
