@@ -81,6 +81,8 @@ const derivePatternId = (type: TypeDef) => {
   if (/^[A-Z]+_[0-9A-Z_]+$/u.test(fallback)) return fallback;
   return "";
 };
+const isJ1IntAddType = (type: TypeDef, patternId: string) =>
+  patternId === "INT_ADD" && type.type_id === "J1.AL.INT.INT_ADD";
 
 const buildDeterministicAdd1D1D = (type: TypeDef, patternId: string) => {
   const out: QuestEntry[] = [];
@@ -107,6 +109,190 @@ const buildDeterministicAdd1D1D = (type: TypeDef, patternId: string) => {
 const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCount: number) => {
   if (patternId.startsWith("ADD_1D_1D_")) {
     return buildDeterministicAdd1D1D(type, patternId).slice(0, targetCount);
+  }
+  if (
+    patternId.startsWith("INT_") ||
+    patternId.startsWith("LIN_") ||
+    patternId === "SYS_EQ" ||
+    patternId === "POW_INT" ||
+    patternId === "SQRT_VAL" ||
+    patternId === "EXPAND" ||
+    patternId.startsWith("FACTOR_") ||
+    patternId === "QUAD_VERTEX" ||
+    patternId === "MEAN" ||
+    patternId === "COMB" ||
+    patternId === "DICE_PROB" ||
+    patternId === "POLY_ANGLE_SUM" ||
+    patternId === "CIRCLE"
+  ) {
+    const out: QuestEntry[] = [];
+    const asSigned = (n: number) => (n < 0 ? `(${n})` : String(n));
+    const asSignedWithPlus = (n: number) => (n >= 0 ? `(+${n})` : `(${n})`);
+    const reduced = (a: number, b: number) => {
+      const gcd = (x: number, y: number): number => {
+        let m = Math.abs(x);
+        let n = Math.abs(y);
+        while (n !== 0) {
+          const r = m % n;
+          m = n;
+          n = r;
+        }
+        return m || 1;
+      };
+      const g = gcd(a, b);
+      return { n: a / g, d: b / g };
+    };
+    for (let i = 0; i < targetCount; i += 1) {
+      if (patternId === "INT_ADD") {
+        const a = ((i * 2) % 20) + 1;
+        const b = isJ1IntAddType(type, patternId) ? ((i * 3) % 20) + 1 : (((i * 3) % 10) + 1) * ([1, -1, 1, -1][i % 4] as 1 | -1);
+        const signedA = isJ1IntAddType(type, patternId) ? a : a * ([1, -1, 1, -1][(i + 1) % 4] as 1 | -1);
+        const signedB = b;
+        out.push({ type, item: { prompt: `${asSignedWithPlus(signedA)} + ${asSignedWithPlus(signedB)} =`, answer: String(signedA + signedB) } });
+        continue;
+      }
+      if (patternId === "INT_SUB") {
+        const a = (i % 21) - 10;
+        const b = ((i * 3) % 21) - 10;
+        out.push({ type, item: { prompt: `${asSignedWithPlus(a)} - ${asSignedWithPlus(b)} =`, answer: String(a - b) } });
+        continue;
+      }
+      if (patternId === "INT_MUL") {
+        const a = (i % 13) - 6;
+        const b = ((i * 2) % 13) - 6;
+        out.push({ type, item: { prompt: `${asSigned(a)} × ${asSigned(b)} =`, prompt_tex: `${asSigned(a)} \\times ${asSigned(b)} =`, answer: String(a * b) } });
+        continue;
+      }
+      if (patternId === "INT_DIV") {
+        const b = (i % 11) - 5 || 2;
+        const q = ((i * 2) % 15) - 7;
+        const a = b * q;
+        out.push({ type, item: { prompt: `${asSigned(a)} ÷ ${asSigned(b)} =`, prompt_tex: `${asSigned(a)} \\div ${asSigned(b)} =`, answer: String(q) } });
+        continue;
+      }
+      if (patternId === "LIN_EQ") {
+        const x = (i % 17) - 8;
+        const a = (i % 7) + 1;
+        const b = (i % 19) - 9;
+        const c = a * x + b;
+        out.push({ type, item: { prompt: `${a}x ${b >= 0 ? "+" : "-"} ${Math.abs(b)} = ${c}`, answer: String(x) } });
+        continue;
+      }
+      if (patternId === "LIN_FUNC_PARAMS") {
+        const a = (i % 9) - 4 || 2;
+        const b = (i % 15) - 7;
+        const x1 = (i % 9) - 4;
+        const x2 = ((i + 3) % 9) - 4;
+        const y1 = a * x1 + b;
+        const y2 = a * x2 + b;
+        out.push({ type, item: { prompt: `点 (${x1},${y1}), (${x2},${y2}) を通る一次関数 y=ax+b の a,b`, answer: `${a},${b}` } });
+        continue;
+      }
+      if (patternId === "LIN_INEQ") {
+        const a = (i % 7) + 1;
+        const x = (i % 15) - 7;
+        const b = (i % 11) - 5;
+        const c = a * x + b + 1;
+        out.push({ type, item: { prompt: `${a}x ${b >= 0 ? "+" : "-"} ${Math.abs(b)} < ${c}`, answer: `x < ${(c - b) / a}` } });
+        continue;
+      }
+      if (patternId === "SYS_EQ") {
+        const x = (i % 13) - 6;
+        const y = ((i * 2) % 13) - 6;
+        out.push({ type, item: { prompt: `x+y=${x + y}, x-y=${x - y}`, answer: `${x},${y}` } });
+        continue;
+      }
+      if (patternId === "POW_INT") {
+        const a = (i % 9) - 4;
+        const n = (i % 3) + 2;
+        out.push({ type, item: { prompt: `${asSigned(a)}^${n} =`, answer: String(a ** n) } });
+        continue;
+      }
+      if (patternId === "SQRT_VAL") {
+        const base = (i % 15) + 1;
+        out.push({ type, item: { prompt: `√${base * base} =`, answer: String(base) } });
+        continue;
+      }
+      if (patternId === "EXPAND") {
+        const p = (i % 8) + 1;
+        const q = ((i + 2) % 8) + 1;
+        out.push({ type, item: { prompt: `(x+${p})(x+${q})`, answer: `x^2+${p + q}x+${p * q}` } });
+        continue;
+      }
+      if (patternId === "FACTOR_GCF") {
+        const g = (i % 8) + 2;
+        const a = (i % 7) + 2;
+        const b = (i % 6) + 1;
+        out.push({ type, item: { prompt: `${g * a}x + ${g * b}`, answer: `${g}(${a}x+${b})` } });
+        continue;
+      }
+      if (patternId === "FACTOR_DIFF_SQ") {
+        const k = (i % 10) + 2;
+        out.push({ type, item: { prompt: `x^2 - ${k * k}`, answer: `(x-${k})(x+${k})` } });
+        continue;
+      }
+      if (patternId === "FACTOR_PERF_SQ") {
+        const k = (i % 10) + 2;
+        out.push({ type, item: { prompt: `x^2 + ${2 * k}x + ${k * k}`, answer: `(x+${k})^2` } });
+        continue;
+      }
+      if (patternId === "FACTOR_TRINOM") {
+        const p = (i % 8) + 1;
+        const q = ((i + 3) % 8) + 1;
+        out.push({ type, item: { prompt: `x^2 + ${p + q}x + ${p * q}`, answer: `(x+${p})(x+${q})` } });
+        continue;
+      }
+      if (patternId === "QUAD_VERTEX") {
+        const h = (i % 13) - 6;
+        const k = ((i * 2) % 13) - 6;
+        out.push({ type, item: { prompt: `y=(x${h >= 0 ? "-" : "+"}${Math.abs(h)})^2${k >= 0 ? "+" : ""}${k} の頂点`, answer: `${h},${k}` } });
+        continue;
+      }
+      if (patternId === "MEAN") {
+        const a = (i % 15) + 1;
+        const b = ((i + 3) % 15) + 1;
+        const c = ((i + 6) % 15) + 1;
+        out.push({ type, item: { prompt: `${a}, ${b}, ${c} の平均`, answer: ((a + b + c) / 3).toFixed(6).replace(/\.?0+$/, "") } });
+        continue;
+      }
+      if (patternId === "COMB") {
+        const n = (i % 7) + 4;
+        const r = Math.min(3, (i % 3) + 1);
+        const comb = (x: number, y: number) => {
+          let num = 1;
+          let den = 1;
+          for (let k = 1; k <= y; k += 1) {
+            num *= (x - k + 1);
+            den *= k;
+          }
+          return Math.round(num / den);
+        };
+        out.push({ type, item: { prompt: `${n}C${r} =`, answer: String(comb(n, r)) } });
+        continue;
+      }
+      if (patternId === "DICE_PROB") {
+        const threshold = (i % 5) + 2;
+        const fav = 7 - threshold;
+        const r = reduced(fav, 6);
+        out.push({ type, item: { prompt: `サイコロ1個で ${threshold} 以上が出る確率`, answer: `${r.n}/${r.d}` } });
+        continue;
+      }
+      if (patternId === "POLY_ANGLE_SUM") {
+        const n = (i % 10) + 3;
+        out.push({ type, item: { prompt: `${n}角形の内角の和`, answer: String((n - 2) * 180) } });
+        continue;
+      }
+      if (patternId === "CIRCLE") {
+        const radius = (i % 12) + 1;
+        if (i % 2 === 0) {
+          out.push({ type, item: { prompt: `半径${radius}の円の円周(π=3.14)`, answer: (2 * 3.14 * radius).toFixed(6).replace(/\.?0+$/, "") } });
+        } else {
+          out.push({ type, item: { prompt: `半径${radius}の円の面積(π=3.14)`, answer: (3.14 * radius * radius).toFixed(6).replace(/\.?0+$/, "") } });
+        }
+        continue;
+      }
+    }
+    return out.slice(0, targetCount);
   }
   if (!(patternId.startsWith("ADD_") || patternId.startsWith("SUB_") || patternId.startsWith("MUL_"))) {
     if (patternId.startsWith("DEC_")) {
@@ -289,7 +475,6 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
       : "NO_PATTERN";
   const failureClass: StockFailureClass = entries.length >= Math.min(5, targetCount) ? "NONE" : "GEN_FAIL";
   if (process.env.NODE_ENV !== "production") {
-    // eslint-disable-next-line no-console
     console.debug("[stock-build]", {
       typeId: type.type_id,
       patternId: hasPattern ? patternId : "",

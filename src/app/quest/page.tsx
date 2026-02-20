@@ -251,7 +251,28 @@ const renderMaybeMath = (text: string): ReactNode => {
     </span>
   );
 };
-const renderPrompt = (item: ExampleItem) => {
+const renderNumDecompPrompt = (prompt: string): ReactNode | null => {
+  const normalized = formatPrompt(prompt).replace(/\s+/g, "");
+  const match = normalized.match(/^(\d+)は(\d+)と□でできます。?$/u);
+  if (!match) return null;
+  const total = match[1];
+  const part = match[2];
+  return (
+    <span className="inline-flex items-baseline whitespace-nowrap">
+      <span>{total} は</span>
+      <span className="mx-[0.22em]">{part}</span>
+      <span className="mr-[0.18em]">と</span>
+      <span className="inline-flex h-[1.18em] w-[1.18em] items-center justify-center text-[1.28em] leading-none">□</span>
+      <span className="ml-[0.22em]">でできます。</span>
+    </span>
+  );
+};
+
+const renderPrompt = (item: ExampleItem, typeId?: string) => {
+  if (typeId === "E1.NA.NUM.NUM_DECOMP_10") {
+    const custom = renderNumDecompPrompt(item.prompt);
+    if (custom) return custom;
+  }
   const tex = item.prompt_tex?.trim();
   if (tex) {
     const displayTex = trimTrailingEquationEquals(tex);
@@ -3924,7 +3945,7 @@ function QuestPageInner() {
                         }
                       >
                         <span ref={qaPromptContentRef} className="inline-block align-middle">
-                          {renderPrompt(currentItem)}
+                          {renderPrompt(currentItem, currentType?.type_id)}
                         </span>
                       </div>
                       {isQuadraticRootsQuestion ? (

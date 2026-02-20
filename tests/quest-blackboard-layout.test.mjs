@@ -22,7 +22,7 @@ test("quest current card uses blackboard-themed classes", () => {
   assert.match(source, /aria-label="board-chalk-white"/);
   assert.match(source, /aria-label="board-chalk-pink"/);
   assert.match(source, /aria-label="board-chalk-blue"/);
-  assert.match(source, /renderPrompt\(currentItem\)/);
+  assert.match(source, /renderPrompt\(currentItem, currentType\?\.type_id\)/);
 });
 
 test("quest answer layout keeps right offset and quadratic row", () => {

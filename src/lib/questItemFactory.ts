@@ -476,6 +476,211 @@ const generateMixed = (type: TypeDef, patternId: string, needed: number, used: S
   return out;
 };
 
+const formatSigned = (n: number) => (n < 0 ? `(${n})` : String(n));
+const formatSignedWithPlus = (n: number) => (n >= 0 ? `(+${n})` : `(${n})`);
+const isJ1IntAddType = (type: TypeDef, patternId: string) =>
+  patternId === "INT_ADD" && type.type_id === "J1.AL.INT.INT_ADD";
+
+const pickSignedOperandPair = (variantIndex: number) => {
+  // Keep sign patterns balanced: (+,+), (-,+), (+,-), (-,-)
+  const signVariants: Array<[1 | -1, 1 | -1]> = [
+    [1, 1],
+    [-1, 1],
+    [1, -1],
+    [-1, -1]
+  ];
+  const [aSign, bSign] = signVariants[variantIndex % signVariants.length];
+  const a = randInt(1, 20) * aSign;
+  const b = randInt(1, 20) * bSign;
+  return { a, b };
+};
+
+const generateJuniorHighByPattern = (type: TypeDef, patternId: string, needed: number, used: Set<string>) => {
+  const out: QuestEntry[] = [];
+  let attempts = 0;
+  while (out.length < needed && attempts < 4000) {
+    attempts += 1;
+    let item: QuestEntry | null = null;
+
+    if (patternId === "INT_ADD") {
+      const pair = isJ1IntAddType(type, patternId)
+        ? { a: randInt(1, 20), b: randInt(1, 20) }
+        : pickSignedOperandPair(out.length);
+      const { a, b } = pair;
+      item = {
+        type,
+        item: {
+          prompt: `${formatSignedWithPlus(a)} + ${formatSignedWithPlus(b)} =`,
+          prompt_tex: `${formatSignedWithPlus(a)} + ${formatSignedWithPlus(b)} =`,
+          answer: String(a + b)
+        }
+      };
+    } else if (patternId === "INT_SUB") {
+      const a = randInt(-20, 20);
+      const b = randInt(-20, 20);
+      item = {
+        type,
+        item: {
+          prompt: `${formatSignedWithPlus(a)} - ${formatSignedWithPlus(b)} =`,
+          prompt_tex: `${formatSignedWithPlus(a)} - ${formatSignedWithPlus(b)} =`,
+          answer: String(a - b)
+        }
+      };
+    } else if (patternId === "INT_MUL") {
+      const a = randInt(-12, 12);
+      const b = randInt(-12, 12);
+      item = {
+        type,
+        item: {
+          prompt: `${formatSigned(a)} × ${formatSigned(b)} =`,
+          prompt_tex: `${formatSigned(a)} \\times ${formatSigned(b)} =`,
+          answer: String(a * b)
+        }
+      };
+    } else if (patternId === "INT_DIV") {
+      const b = randInt(-12, 12);
+      if (b === 0) continue;
+      const q = randInt(-12, 12);
+      const a = b * q;
+      item = {
+        type,
+        item: {
+          prompt: `${formatSigned(a)} ÷ ${formatSigned(b)} =`,
+          prompt_tex: `${formatSigned(a)} \\div ${formatSigned(b)} =`,
+          answer: String(q)
+        }
+      };
+    } else if (patternId === "LIN_EQ") {
+      const x = randInt(-9, 9);
+      const a = randInt(1, 9) * (Math.random() < 0.4 ? -1 : 1);
+      const b = randInt(-20, 20);
+      const c = a * x + b;
+      item = {
+        type,
+        item: {
+          prompt: `${a}x ${b >= 0 ? "+" : "-"} ${Math.abs(b)} = ${c}`,
+          answer: String(x)
+        }
+      };
+    } else if (patternId === "LIN_FUNC_PARAMS") {
+      const a = randInt(-6, 6) || 2;
+      const b = randInt(-10, 10);
+      const x1 = randInt(-6, 6);
+      const x2 = randInt(-6, 6);
+      if (x1 === x2) continue;
+      const y1 = a * x1 + b;
+      const y2 = a * x2 + b;
+      item = {
+        type,
+        item: {
+          prompt: `点 (${x1},${y1}), (${x2},${y2}) を通る一次関数 y=ax+b の a,b`,
+          answer: `${a},${b}`
+        }
+      };
+    } else if (patternId === "LIN_INEQ") {
+      const a = randInt(1, 9);
+      const x = randInt(-9, 9);
+      const b = randInt(-12, 12);
+      const c = a * x + b + randInt(1, 4);
+      item = {
+        type,
+        item: {
+          prompt: `${a}x ${b >= 0 ? "+" : "-"} ${Math.abs(b)} < ${c}`,
+          answer: `x < ${(c - b) / a}`
+        }
+      };
+    } else if (patternId === "SYS_EQ") {
+      const x = randInt(-8, 8);
+      const y = randInt(-8, 8);
+      const s = x + y;
+      const d = x - y;
+      item = {
+        type,
+        item: {
+          prompt: `x+y=${s}, x-y=${d}`,
+          answer: `${x},${y}`
+        }
+      };
+    } else if (patternId === "POW_INT") {
+      const a = randInt(-5, 9);
+      const n = randInt(2, 4);
+      item = { type, item: { prompt: `${formatSigned(a)}^${n} =`, answer: String(a ** n) } };
+    } else if (patternId === "SQRT_VAL") {
+      const base = randInt(1, 15);
+      const val = base * base;
+      item = { type, item: { prompt: `√${val} =`, answer: stripDecimal(base) } };
+    } else if (patternId === "EXPAND") {
+      const p = randInt(-8, 8) || 2;
+      const q = randInt(-8, 8) || -3;
+      const b = p + q;
+      const c = p * q;
+      item = {
+        type,
+        item: {
+          prompt: `(x${p >= 0 ? "+" : "-"}${Math.abs(p)})(x${q >= 0 ? "+" : "-"}${Math.abs(q)})`,
+          answer: `x^2${b >= 0 ? "+" : ""}${b}x${c >= 0 ? "+" : ""}${c}`
+        }
+      };
+    } else if (patternId === "FACTOR_GCF") {
+      const g = randInt(2, 9);
+      const a = randInt(2, 9);
+      const b = randInt(1, 9);
+      item = { type, item: { prompt: `${g * a}x + ${g * b}`, answer: `${g}(${a}x+${b})` } };
+    } else if (patternId === "FACTOR_DIFF_SQ") {
+      const k = randInt(2, 12);
+      item = { type, item: { prompt: `x^2 - ${k * k}`, answer: `(x-${k})(x+${k})` } };
+    } else if (patternId === "FACTOR_PERF_SQ") {
+      const k = randInt(2, 12);
+      item = { type, item: { prompt: `x^2 + ${2 * k}x + ${k * k}`, answer: `(x+${k})^2` } };
+    } else if (patternId === "FACTOR_TRINOM") {
+      const p = randInt(1, 9);
+      const q = randInt(1, 9);
+      item = { type, item: { prompt: `x^2 + ${p + q}x + ${p * q}`, answer: `(x+${p})(x+${q})` } };
+    } else if (patternId === "QUAD_VERTEX") {
+      const h = randInt(-8, 8);
+      const k = randInt(-8, 8);
+      item = { type, item: { prompt: `y=(x${h >= 0 ? "-" : "+"}${Math.abs(h)})^2${k >= 0 ? "+" : ""}${k} の頂点`, answer: `${h},${k}` } };
+    } else if (patternId === "MEAN") {
+      const a = randInt(1, 20);
+      const b = randInt(1, 20);
+      const c = randInt(1, 20);
+      item = { type, item: { prompt: `${a}, ${b}, ${c} の平均`, answer: stripDecimal((a + b + c) / 3) } };
+    } else if (patternId === "COMB") {
+      const n = randInt(4, 10);
+      const r = randInt(1, Math.min(4, n - 1));
+      const comb = (x: number, y: number) => {
+        let num = 1;
+        let den = 1;
+        for (let i = 1; i <= y; i += 1) {
+          num *= (x - i + 1);
+          den *= i;
+        }
+        return Math.round(num / den);
+      };
+      item = { type, item: { prompt: `${n}C${r} =`, answer: String(comb(n, r)) } };
+    } else if (patternId === "DICE_PROB") {
+      const threshold = randInt(2, 6);
+      const favorable = 7 - threshold;
+      const reduced = reduceFraction(favorable, 6);
+      item = { type, item: { prompt: `サイコロ1個で ${threshold} 以上が出る確率`, answer: `${reduced.n}/${reduced.d}` } };
+    } else if (patternId === "POLY_ANGLE_SUM") {
+      const n = randInt(3, 12);
+      item = { type, item: { prompt: `${n}角形の内角の和`, answer: String((n - 2) * 180) } };
+    } else if (patternId === "CIRCLE") {
+      const r = randInt(1, 20);
+      const mode = randInt(0, 1);
+      if (mode === 0) {
+        item = { type, item: { prompt: `半径${r}の円の円周(π=3.14)`, answer: stripDecimal(2 * 3.14 * r) } };
+      } else {
+        item = { type, item: { prompt: `半径${r}の円の面積(π=3.14)`, answer: stripDecimal(3.14 * r * r) } };
+      }
+    }
+
+    if (item) pushEntry(out, used, item);
+  }
+  return out;
+};
+
 const generateSecondaryBySeedVariants = (type: TypeDef, needed: number, used: Set<string>) => {
   const out: QuestEntry[] = [];
   const seed = type.example_items ?? [];
@@ -582,6 +787,23 @@ const generateByPattern = (type: TypeDef, used: Set<string>, targetCount: number
   }
   if (patternId.startsWith("MIXED_")) {
     return generateMixed(type, patternId, targetCount, used);
+  }
+  if (
+    patternId.startsWith("INT_") ||
+    patternId.startsWith("LIN_") ||
+    patternId === "SYS_EQ" ||
+    patternId === "POW_INT" ||
+    patternId === "SQRT_VAL" ||
+    patternId === "EXPAND" ||
+    patternId.startsWith("FACTOR_") ||
+    patternId === "QUAD_VERTEX" ||
+    patternId === "MEAN" ||
+    patternId === "COMB" ||
+    patternId === "DICE_PROB" ||
+    patternId === "POLY_ANGLE_SUM" ||
+    patternId === "CIRCLE"
+  ) {
+    return generateJuniorHighByPattern(type, patternId, targetCount, used);
   }
   if (/^(J[1-3]|H[1-3])\./.test(type.type_id)) {
     return generateSecondaryBySeedVariants(type, targetCount, used);
