@@ -57,7 +57,8 @@ export default function Home() {
     const selected = problems.find((problem) => problem.type_id === typeId);
     if (!selected) return;
     localStorage.setItem(LS_LAST_TYPE_ID, typeId);
-    const url = `/quest?type=${encodeURIComponent(typeId)}&category=${encodeURIComponent(selected.category_id)}`;
+    const run = Date.now().toString(36);
+    const url = `/quest?type=${encodeURIComponent(typeId)}&category=${encodeURIComponent(selected.category_id)}&run=${encodeURIComponent(run)}`;
     router.push(url);
   };
 

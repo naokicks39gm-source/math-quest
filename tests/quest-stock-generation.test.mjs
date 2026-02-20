@@ -24,7 +24,7 @@ test("stock generation keeps unique prompt/equivalent keys", () => {
 test("E1 1-digit add stock always blends deterministic candidates", () => {
   assert.equal(source.includes("patternId.startsWith(\"ADD_1D_1D_\")"), true);
   assert.equal(source.includes("buildDeterministicAdd1D1D"), true);
-  assert.equal(source.includes("uniqueByPromptAndEquivalent([...deterministic, ...unique])"), true);
+  assert.equal(source.includes("uniqueByPromptAndEquivalent([...deterministic, ...unique].map(normalizeJ1IntEntry))"), true);
 });
 
 test("stock result includes generated count and reason", () => {

@@ -478,8 +478,6 @@ const generateMixed = (type: TypeDef, patternId: string, needed: number, used: S
 
 const formatSigned = (n: number) => (n < 0 ? `(${n})` : String(n));
 const formatSignedWithPlus = (n: number) => (n >= 0 ? `(+${n})` : `(${n})`);
-const isJ1IntAddType = (type: TypeDef, patternId: string) =>
-  patternId === "INT_ADD" && type.type_id === "J1.AL.INT.INT_ADD";
 
 const pickSignedOperandPair = (variantIndex: number) => {
   // Keep sign patterns balanced: (+,+), (-,+), (+,-), (-,-)
@@ -503,10 +501,7 @@ const generateJuniorHighByPattern = (type: TypeDef, patternId: string, needed: n
     let item: QuestEntry | null = null;
 
     if (patternId === "INT_ADD") {
-      const pair = isJ1IntAddType(type, patternId)
-        ? { a: randInt(1, 20), b: randInt(1, 20) }
-        : pickSignedOperandPair(out.length);
-      const { a, b } = pair;
+      const { a, b } = pickSignedOperandPair(out.length);
       item = {
         type,
         item: {

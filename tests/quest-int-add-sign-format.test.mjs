@@ -24,7 +24,7 @@ test("INT_ADD generation balances sign combinations (+,+),(-,+),(+,-),(-,-)", ()
   assert.equal(factorySource.includes("[-1, 1],"), true);
   assert.equal(factorySource.includes("[1, -1],"), true);
   assert.equal(factorySource.includes("[-1, -1]"), true);
-  assert.equal(factorySource.includes(": pickSignedOperandPair(out.length);"), true);
+  assert.equal(factorySource.includes("const { a, b } = pickSignedOperandPair(out.length);"), true);
 });
 
 test("INT_ADD fallback generation also uses explicit signed parenthesis format", () => {
@@ -38,10 +38,21 @@ test("INT_SUB also uses explicit signed parenthesis format", () => {
   assert.equal(stockSource.includes("prompt: `${asSignedWithPlus(a)} - ${asSignedWithPlus(b)} =`"), true);
 });
 
-test("J1.AL.INT.INT_ADD is restricted to (+) + (+)", () => {
-  assert.equal(factorySource.includes('patternId === "INT_ADD" && type.type_id === "J1.AL.INT.INT_ADD"'), true);
-  assert.equal(factorySource.includes("? { a: randInt(1, 20), b: randInt(1, 20) }"), true);
-  assert.equal(stockSource.includes("const isJ1IntAddType = (type: TypeDef, patternId: string) =>"), true);
-  assert.equal(stockSource.includes("const a = ((i * 2) % 20) + 1;"), true);
-  assert.equal(stockSource.includes("isJ1IntAddType(type, patternId) ? ((i * 3) % 20) + 1"), true);
+test("J1.AL.INT.INT_ADD allows negative operands as signed parentheses", () => {
+  assert.equal(factorySource.includes("const { a, b } = pickSignedOperandPair(out.length);"), true);
+  assert.equal(factorySource.includes('type.type_id === "J1.AL.INT.INT_ADD"'), false);
+  assert.equal(stockSource.includes("const signVariants: Array<[1 | -1, 1 | -1]> = ["), true);
+  assert.equal(stockSource.includes("[-1, 1],"), true);
+  assert.equal(stockSource.includes("[1, -1],"), true);
+});
+
+test("J1.AL.INT.INT_ADD stock is normalized to parenthesized signed operands", () => {
+  assert.equal(stockSource.includes('if (typeId !== "J1.AL.INT.INT_ADD" && typeId !== "J1.AL.INT.INT_SUB") return entry;'), true);
+  assert.equal(stockSource.includes("const normalizePrompt = typeId === \"J1.AL.INT.INT_ADD\" ? normalizeIntAddPrompt : normalizeIntSubPrompt;"), true);
+  assert.equal(stockSource.includes('return `${toSignedParen(left)} + ${toSignedParen(right)} =`;'), true);
+});
+
+test("J1.AL.INT.INT_SUB stock is normalized to parenthesized signed operands", () => {
+  assert.equal(stockSource.includes("const normalizeIntSubPrompt = (prompt: string) => {"), true);
+  assert.equal(stockSource.includes('return `${toSignedParen(left)} - ${toSignedParen(right)} =`;'), true);
 });
