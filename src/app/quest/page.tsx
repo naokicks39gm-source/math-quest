@@ -254,19 +254,61 @@ const renderMaybeMath = (text: string): ReactNode => {
 };
 const renderNumDecompPrompt = (prompt: string): ReactNode | null => {
   const normalized = formatPrompt(prompt).replace(/\s+/g, "");
-  const match = normalized.match(/^(\d+)は(\d+)と□でできます。?$/u);
+  const match = normalized.match(/^(\d+)は(\d+)と(?:□|[?？])でできます。?$/u);
   if (!match) return null;
   const total = match[1];
   const part = match[2];
+  const tokenGapClass = "mx-[0.20em]";
   return (
     <span className="inline-flex items-baseline whitespace-nowrap">
-      <span>{total} は</span>
-      <span className="mx-[0.22em]">{part}</span>
-      <span className="mr-[0.18em]">と</span>
-      <span className="inline-flex h-[1.18em] w-[1.18em] items-center justify-center text-[1.28em] leading-none">□</span>
-      <span className="ml-[0.22em]">でできます。</span>
+      <span className="inline-flex min-w-[2ch] justify-center mr-[0.20em]">{total}</span>
+      <span className="mr-[0.20em]">は</span>
+      <span className={`inline-flex min-w-[2ch] justify-center ${tokenGapClass}`}>{part}</span>
+      <span className="mx-[0.16em]">と</span>
+      <span
+        aria-hidden
+        className={`inline-flex h-[1.12em] w-[1.12em] items-center justify-center rounded-[0.18em] border-2 border-emerald-100 align-[-0.04em] ${tokenGapClass}`}
+      />
+      <span className="ml-[0.16em]">でできます。</span>
     </span>
   );
+};
+
+const SLOT_MARKER_PATTERN = /[?？]/g;
+const SLOT_LEFT_HINT_PATTERN = /[+\-×÷=＝とは]/;
+const SLOT_RIGHT_HINT_PATTERN = /[0-9０-９A-Za-zぁ-んァ-ヶ一-龯(（]/;
+
+const shouldRenderSlotMarker = (text: string, index: number) => {
+  const prev = index > 0 ? text[index - 1] : "";
+  const next = index + 1 < text.length ? text[index + 1] : "";
+  if (next && SLOT_RIGHT_HINT_PATTERN.test(next)) return true;
+  if (!next && SLOT_LEFT_HINT_PATTERN.test(prev)) return true;
+  return false;
+};
+
+const renderPromptWithSlotBox = (text: string): ReactNode | null => {
+  const nodes: ReactNode[] = [];
+  let last = 0;
+  let changed = false;
+  SLOT_MARKER_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = SLOT_MARKER_PATTERN.exec(text))) {
+    const idx = match.index;
+    if (!shouldRenderSlotMarker(text, idx)) continue;
+    changed = true;
+    if (idx > last) nodes.push(<span key={`slot-text-${last}`}>{text.slice(last, idx)}</span>);
+    nodes.push(
+      <span
+        key={`slot-box-${idx}`}
+        aria-hidden
+        className="mx-[0.06em] inline-flex h-[1.12em] w-[1.12em] items-center justify-center rounded-[0.18em] border-2 border-emerald-100 align-[-0.04em]"
+      />
+    );
+    last = idx + match[0].length;
+  }
+  if (!changed) return null;
+  if (last < text.length) nodes.push(<span key={`slot-tail-${last}`}>{text.slice(last)}</span>);
+  return <span className="inline-flex items-baseline whitespace-nowrap">{nodes}</span>;
 };
 
 const renderPrompt = (item: ExampleItem, typeId?: string) => {
@@ -283,6 +325,9 @@ const renderPrompt = (item: ExampleItem, typeId?: string) => {
       </span>
     );
   }
+  const formattedPrompt = formatPrompt(item.prompt);
+  const slotPrompt = renderPromptWithSlotBox(formattedPrompt);
+  if (slotPrompt) return slotPrompt;
   return renderMaybeMath(formatPrompt(item.prompt));
 };
 
@@ -1454,7 +1499,7 @@ const predictDigitEnsemble = (tensor: tf.Tensor2D) => {
 function QuestPageInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const typeFromQuery = params.get("type");
+  const typeFromQuery = (params.get("type") ?? "").trim();
   const categoryFromQuery = params.get("category");
   const TOTAL_QUESTIONS = 5;
   const [combo, setCombo] = useState(0);
@@ -1979,12 +2024,7 @@ function QuestPageInner() {
   const targetStockTypes = useMemo(() => {
     if (hasTypeQuery) {
       const byQuery = typeCatalog.find((entry) => entry.typeId === typeFromQuery);
-      if (byQuery) return [byQuery];
-      if (selectedType) {
-        const bySelected = typeCatalog.find((entry) => entry.typeId === selectedType.type_id);
-        if (bySelected) return [bySelected];
-      }
-      return [];
+      return byQuery ? [byQuery] : [];
     }
     if (hasCategoryQuery && categoryContext) {
       return categoryContext.category.types.map((type) => ({
@@ -2024,8 +2064,14 @@ function QuestPageInner() {
   }, [targetStockTypes, retryNonce]);
 
   const activeTypeId = useMemo(() => {
-    if (hasTypeQuery && typeFromQuery) return typeFromQuery;
-    if (selectedType?.type_id) return selectedType.type_id;
+    if (hasTypeQuery && typeFromQuery) {
+      const existsInTargets = targetStockTypes.some((entry) => entry.typeId === typeFromQuery);
+      if (existsInTargets) return typeFromQuery;
+    }
+    if (selectedType?.type_id) {
+      const existsInTargets = targetStockTypes.some((entry) => entry.typeId === selectedType.type_id);
+      if (existsInTargets) return selectedType.type_id;
+    }
     return targetStockTypes[0]?.typeId ?? "";
   }, [hasTypeQuery, typeFromQuery, selectedType, targetStockTypes]);
   const activeStockInfo = useMemo(
@@ -4013,7 +4059,6 @@ function QuestPageInner() {
                           style={useSingleLineQa ? undefined : { marginLeft: `${qaAnswerOffsetPx}px` }}
                         >
                           <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
-                            <span className="text-[26px] sm:text-[30px] font-bold text-emerald-100">=</span>
                             <div className={`relative overflow-visible ${fractionInput.enabled ? "w-[190px] sm:w-[220px]" : "w-[150px] sm:w-[180px]"}`}>
                               <div
                                 aria-label="recognized-answer"

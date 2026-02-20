@@ -55,3 +55,11 @@ test("decimal patterns have deterministic fallback generation", () => {
   assert.equal(source.includes('if (patternId.includes("DEC_DIV_INT"))'), true);
   assert.equal(source.includes("toFixed(dp)"), true);
 });
+
+test("NUM patterns have deterministic fallback generation", () => {
+  assert.equal(source.includes('if (patternId.startsWith("NUM_"))'), true);
+  assert.equal(source.includes('patternId === "NUM_COMPARE_UP_TO_20"'), true);
+  assert.equal(source.includes('patternId === "NUM_DECOMP_10"'), true);
+  assert.equal(source.includes('patternId === "NUM_COMP_10"'), true);
+  assert.equal(source.includes("どちらが大きい？"), true);
+});
