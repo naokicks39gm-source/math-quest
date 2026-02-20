@@ -270,8 +270,62 @@ const buildSimpleAid = (): ElementaryLearningAid => ({
   }
 });
 
+const buildCompareUpTo20Aid = (left: number, right: number): ElementaryLearningAid => {
+  const answer = Math.max(left, right);
+  return {
+    kind: "simple",
+    title: "かずくらべ",
+    steps: [
+      `${left} と ${right} を くらべます`,
+      `おおきい ほうを えらびます`
+    ],
+    conclusion: `こたえは ${answer}`,
+    visual: {
+      mode: "simple"
+    }
+  };
+};
+
+const parseTenDecompPrompt = (prompt?: string) => {
+  if (!prompt) return null;
+  const compact = prompt.replace(/\s+/g, "");
+  const m = compact.match(/^10は(\d+)と(?:□|[?？])でできます。?$/u);
+  if (!m) return null;
+  const known = Number(m[1]);
+  if (!Number.isFinite(known)) return null;
+  return { total: 10, known };
+};
+
+const buildTenDecompAid = (total: number, known: number): ElementaryLearningAid => {
+  const answer = total - known;
+  return {
+    kind: "simple",
+    title: "10のぶんかい",
+    steps: [
+      `${total} は ${known} と もう1つ で できます`,
+      `${total} から ${known} を ひきます`
+    ],
+    conclusion: `こたえは ${answer}`,
+    visual: {
+      mode: "simple"
+    }
+  };
+};
+
 export const getElementaryLearningAid = ({ gradeId, typeId, patternId, prompt, aDigits, bDigits }: ElementaryAidParams): ElementaryLearningAid | null => {
   if (!isElementaryGrade(gradeId)) return null;
+
+  if (patternId === "NUM_COMPARE_UP_TO_20") {
+    const parsed = parseFirstTwoNumbers(prompt ?? "");
+    if (!parsed) return buildSimpleAid();
+    return buildCompareUpTo20Aid(parsed.left, parsed.right);
+  }
+
+  if (patternId === "NUM_DECOMP_10") {
+    const parsed = parseTenDecompPrompt(prompt);
+    if (!parsed) return buildSimpleAid();
+    return buildTenDecompAid(parsed.total, parsed.known);
+  }
 
   if (!isColumnPattern(typeId, patternId)) {
     return buildSimpleAid();
