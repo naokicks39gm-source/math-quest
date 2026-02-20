@@ -11,7 +11,7 @@ import {
   generateFactorPerfSqEntries,
   generateFactorTrinomEntries
 } from "@/lib/questGenerators/factorGcf";
-import { generateExpRulesEntries, remixSecondaryExprFromSeed } from "@/lib/questGenerators/secondaryExpr";
+import { generateExpRulesEntries, generateQuadRootsEntries, remixSecondaryExprFromSeed } from "@/lib/questGenerators/secondaryExpr";
 
 type AnswerFormat = {
   kind: "int" | "dec" | "frac" | "pair" | "expr";
@@ -455,7 +455,8 @@ const STOCK_STRATEGIES: Record<string, StockGenerationStrategy> = {
   FACTOR_DIFF_SQ: (type, _patternId, targetCount) => generateFactorDiffSqEntries(type, targetCount),
   FACTOR_PERF_SQ: (type, _patternId, targetCount) => generateFactorPerfSqEntries(type, targetCount),
   FACTOR_TRINOM: (type, _patternId, targetCount) => generateFactorTrinomEntries(type, targetCount),
-  EXP_RULES: (type, _patternId, targetCount) => generateExpRulesEntries(type, targetCount)
+  EXP_RULES: (type, _patternId, targetCount) => generateExpRulesEntries(type, targetCount),
+  QUAD_ROOTS: (type, _patternId, targetCount) => generateQuadRootsEntries(type, targetCount)
 };
 
 export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult => {

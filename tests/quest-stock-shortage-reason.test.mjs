@@ -6,6 +6,7 @@ import path from "node:path";
 const root = process.cwd();
 const stockSource = fs.readFileSync(path.join(root, "src/lib/questStockFactory.ts"), "utf8");
 const questSource = fs.readFileSync(path.join(root, "src/app/quest/page.tsx"), "utf8");
+const secondaryExprSource = fs.readFileSync(path.join(root, "src/lib/questGenerators/secondaryExpr.ts"), "utf8");
 
 test("stock result exposes reason_detail and canonical stock key path", () => {
   assert.equal(stockSource.includes("export type StockReasonDetail"), true);
@@ -27,4 +28,11 @@ test("quest page keeps rendering shortage reasons and detail", () => {
   assert.equal(questSource.includes("reasonDetail?: TypeStockResult[\"reasonDetail\"];"), true);
   assert.equal(questSource.includes("reasonDetail: stock.reasonDetail"), true);
   assert.equal(questSource.includes("stock.reason_detail:"), true);
+});
+
+test("quad roots generator derives multiple equation layouts from pair roots", () => {
+  assert.equal(secondaryExprSource.includes("generateQuadRootsEntries"), true);
+  assert.equal(secondaryExprSource.includes("parsePairRoots"), true);
+  assert.equal(secondaryExprSource.includes("lhsVariants"), true);
+  assert.equal(secondaryExprSource.includes("uniquePushEntry"), true);
 });
