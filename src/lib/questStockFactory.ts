@@ -74,6 +74,50 @@ const shuffle = <T,>(list: T[]) => {
 const toQuestEntries = (type: TypeDef): QuestEntry[] =>
   type.example_items.map((item) => ({ item, type }));
 
+const normalizeSignedOperand = (raw: string) => {
+  const cleaned = raw.trim().replace(/[()]/g, "");
+  if (!/^[+-]?\d+$/.test(cleaned)) return null;
+  return Number(cleaned);
+};
+
+const toSignedParen = (value: number) => (value >= 0 ? `(+${value})` : `(${value})`);
+
+const normalizeIntAddPrompt = (prompt: string) => {
+  const body = String(prompt).replace(/\s*[=＝]\s*$/u, "").trim();
+  const match = body.match(/^(.+?)\s*\+\s*(.+)$/u);
+  if (!match) return null;
+  const left = normalizeSignedOperand(match[1]);
+  const right = normalizeSignedOperand(match[2]);
+  if (left === null || right === null) return null;
+  return `${toSignedParen(left)} + ${toSignedParen(right)} =`;
+};
+
+const normalizeIntSubPrompt = (prompt: string) => {
+  const body = String(prompt).replace(/\s*[=＝]\s*$/u, "").trim();
+  const match = body.match(/^(.+?)\s*-\s*(.+)$/u);
+  if (!match) return null;
+  const left = normalizeSignedOperand(match[1]);
+  const right = normalizeSignedOperand(match[2]);
+  if (left === null || right === null) return null;
+  return `${toSignedParen(left)} - ${toSignedParen(right)} =`;
+};
+
+const normalizeJ1IntEntry = (entry: QuestEntry): QuestEntry => {
+  const typeId = entry.type.type_id;
+  if (typeId !== "J1.AL.INT.INT_ADD" && typeId !== "J1.AL.INT.INT_SUB") return entry;
+  const normalizePrompt = typeId === "J1.AL.INT.INT_ADD" ? normalizeIntAddPrompt : normalizeIntSubPrompt;
+  const normalizedPrompt = normalizePrompt(entry.item.prompt_tex ?? entry.item.prompt);
+  if (!normalizedPrompt) return entry;
+  return {
+    ...entry,
+    item: {
+      ...entry.item,
+      prompt: normalizedPrompt,
+      prompt_tex: normalizedPrompt
+    }
+  };
+};
+
 const parseDigitsFromPattern = (patternId: string) => {
   const match = patternId.match(/_(\d)D_(\d)D/);
   if (!match) return { a: 1, b: 1 };
@@ -90,8 +134,6 @@ const derivePatternId = (type: TypeDef) => {
   if (/^[A-Z]+_[0-9A-Z_]+$/u.test(fallback)) return fallback;
   return "";
 };
-const isJ1IntAddType = (type: TypeDef, patternId: string) =>
-  patternId === "INT_ADD" && type.type_id === "J1.AL.INT.INT_ADD";
 
 const buildDeterministicAdd1D1D = (type: TypeDef, patternId: string) => {
   const out: QuestEntry[] = [];
@@ -196,10 +238,15 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
     };
     for (let i = 0; i < targetCount; i += 1) {
       if (patternId === "INT_ADD") {
-        const a = ((i * 2) % 20) + 1;
-        const b = isJ1IntAddType(type, patternId) ? ((i * 3) % 20) + 1 : (((i * 3) % 10) + 1) * ([1, -1, 1, -1][i % 4] as 1 | -1);
-        const signedA = isJ1IntAddType(type, patternId) ? a : a * ([1, -1, 1, -1][(i + 1) % 4] as 1 | -1);
-        const signedB = b;
+        const signVariants: Array<[1 | -1, 1 | -1]> = [
+          [1, 1],
+          [-1, 1],
+          [1, -1],
+          [-1, -1]
+        ];
+        const [aSign, bSign] = signVariants[i % signVariants.length];
+        const signedA = (((i * 2) % 10) + 1) * aSign;
+        const signedB = (((i * 3) % 10) + 1) * bSign;
         out.push({ type, item: { prompt: `${asSignedWithPlus(signedA)} + ${asSignedWithPlus(signedB)} =`, answer: String(signedA + signedB) } });
         continue;
       }
@@ -535,37 +582,39 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
         }
       }
     : type;
-  const normalizedSeed = normalizedType.example_items.map((item) => ({ item, type: normalizedType }));
-  const expanded = expandEntriesToAtLeast(normalizedSeed, targetCount);
+  const normalizedSeed = normalizedType.example_items
+    .map((item) => ({ item, type: normalizedType }))
+    .map(normalizeJ1IntEntry);
+  const expanded = expandEntriesToAtLeast(normalizedSeed, targetCount).map(normalizeJ1IntEntry);
   let unique = uniqueByPromptAndEquivalent(expanded);
   let reasonDetail: StockReasonDetail | undefined;
   const strategy = hasPattern ? STOCK_STRATEGIES[patternId] : undefined;
   if (hasPattern && strategy) {
     const generatedEntries = strategy(normalizedType, patternId, targetCount);
-    unique = uniqueByPromptAndEquivalent([...generatedEntries, ...unique]);
+    unique = uniqueByPromptAndEquivalent([...generatedEntries, ...unique].map(normalizeJ1IntEntry));
   }
   if (hasPattern && !strategy && normalizedType.answer_format.kind === "expr") {
     const remixedExprEntries = remixSecondaryExprFromSeed(normalizedType, targetCount);
-    unique = uniqueByPromptAndEquivalent([...remixedExprEntries, ...unique]);
+    unique = uniqueByPromptAndEquivalent([...remixedExprEntries, ...unique].map(normalizeJ1IntEntry));
   }
   if (hasPattern && patternId.startsWith("ADD_1D_1D_")) {
     // 1けた+1けたは列挙可能なので、常に決定的候補を混ぜて候補不足を防ぐ。
     const deterministic = buildDeterministicAdd1D1D(normalizedType, patternId);
-    unique = uniqueByPromptAndEquivalent([...deterministic, ...unique]);
+    unique = uniqueByPromptAndEquivalent([...deterministic, ...unique].map(normalizeJ1IntEntry));
   }
   if (unique.length < Math.min(5, targetCount) && hasPattern) {
     const fallbackEntries = buildPatternFallbackEntries(normalizedType, patternId, targetCount);
-    unique = uniqueByPromptAndEquivalent([...unique, ...fallbackEntries]);
+    unique = uniqueByPromptAndEquivalent([...unique, ...fallbackEntries].map(normalizeJ1IntEntry));
   }
   if (unique.length < Math.min(5, targetCount)) {
     const gradeId = getGradeIdFromTypeId(type.type_id);
     if (!isFrozenElementaryGrade(gradeId)) {
       // Keep non-frozen grades extensible via questItemFactory generators without altering displayed text.
-      const reExpanded = expandEntriesToAtLeast(unique, Math.max(5, targetCount));
+      const reExpanded = expandEntriesToAtLeast(unique, Math.max(5, targetCount)).map(normalizeJ1IntEntry);
       unique = uniqueByPromptAndEquivalent(reExpanded);
     }
   }
-  const ordered = reorderAvoidAdjacentSameFamily(shuffle(unique)).slice(0, targetCount);
+  const ordered = reorderAvoidAdjacentSameFamily(shuffle(unique).map(normalizeJ1IntEntry)).slice(0, targetCount);
   const entries = uniqueByPromptAndEquivalent(ordered).slice(0, targetCount);
   const reason = entries.length >= targetCount
     ? undefined
