@@ -25,6 +25,10 @@ test("elementary explanation resolver has abacus/column_story/simple branches", 
   assert.match(libSource, /const isColumnPattern =/);
   assert.match(libSource, /if \(!isColumnPattern\(typeId, patternId\)\)/);
   assert.match(libSource, /return buildSimpleAid\(\);/);
+  assert.match(libSource, /if \(patternId === "NUM_COMPARE_UP_TO_20"\)/);
+  assert.match(libSource, /buildCompareUpTo20Aid/);
+  assert.match(libSource, /if \(patternId === "NUM_DECOMP_10"\)/);
+  assert.match(libSource, /buildTenDecompAid/);
   assert.match(libSource, /const buildColumnStoryFrames =/);
   assert.match(libSource, /kind: "column_story"/);
   assert.match(libSource, /mode: "column_story"/);
@@ -51,6 +55,8 @@ test("elementary panel has next button and visual rendering", () => {
   assert.match(panelSource, /aid\.visual\?\.mode === "abacus"/);
   assert.match(panelSource, /aid\.visual\?\.mode === "column"/);
   assert.match(panelSource, /aid\.visual\?\.mode === "column_story"/);
+  assert.match(panelSource, /aid\.steps\.length > 0/);
+  assert.match(panelSource, /こたえ: \{aid\.conclusion\}/);
   assert.match(panelSource, /renderColumnFrame/);
   assert.match(panelSource, /renderAlignedValue/);
   assert.match(panelSource, /text-rose-600/);

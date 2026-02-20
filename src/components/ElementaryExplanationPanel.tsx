@@ -82,6 +82,13 @@ export default function ElementaryExplanationPanel({ aid, onNext, nextLabel, dis
   return (
     <section className="mb-2 rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-slate-800">
       <div className="text-sm font-black text-emerald-800">{aid.title}</div>
+      {aid.steps.length > 0 && (
+        <ol className="mt-2 list-decimal pl-5 text-sm leading-relaxed text-slate-800">
+          {aid.steps.map((step, idx) => (
+            <li key={`${aid.title}-step-${idx}`}>{step}</li>
+          ))}
+        </ol>
+      )}
 
       {aid.visual?.mode === "abacus" && (
         <div className="mt-2 rounded-lg border border-emerald-200 bg-white p-2 text-xs font-mono">
@@ -109,6 +116,10 @@ export default function ElementaryExplanationPanel({ aid, onNext, nextLabel, dis
           {(aid.visual.frames ?? []).map((frame, idx) => renderColumnFrame(frame, `${idx}-${frame.title}`))}
         </div>
       )}
+
+      <div className="mt-2 rounded-lg border border-emerald-300 bg-emerald-100 px-3 py-2 text-sm font-black text-emerald-900">
+        こたえ: {aid.conclusion}
+      </div>
 
       <div className="mt-2 flex justify-end">
         <button
