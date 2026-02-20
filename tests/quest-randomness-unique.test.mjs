@@ -15,6 +15,8 @@ test("quest item factory exposes unique build APIs", () => {
   assert.equal(source.includes("normalizePromptForUniqueness"), true);
   assert.equal(source.includes("toEquivalentExpressionKey"), true);
   assert.equal(source.includes("toAnswerKey"), true);
+  assert.equal(source.includes('replace(/\\\\text\\{[^}]*\\}/g, "")'), true);
+  assert.equal(source.includes('replace(/（れんしゅう[^）]*）/g, "")'), true);
 });
 
 test("quest item factory includes pattern-based generators for fallback expansion", () => {
@@ -25,6 +27,9 @@ test("quest item factory includes pattern-based generators for fallback expansio
   assert.equal(source.includes('patternId.startsWith("DIV_")'), true);
   assert.equal(source.includes('patternId.startsWith("DEC_")'), true);
   assert.equal(source.includes('patternId.startsWith("FRAC_")'), true);
+  assert.equal(source.includes('patternId.startsWith("MIXED_")'), true);
+  assert.equal(source.includes("generateMixed"), true);
+  assert.equal(source.includes("generateSecondaryBySeedVariants"), true);
   assert.equal(source.includes("while (unique.length < minCount"), true);
 });
 
