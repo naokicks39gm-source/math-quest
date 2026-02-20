@@ -79,6 +79,7 @@ type StockShortage = {
   typeName: string;
   count: number;
   reason?: TypeStockResult["reason"];
+  reasonDetail?: TypeStockResult["reasonDetail"];
 };
 
 type QuestionResultEntry = {
@@ -1991,7 +1992,8 @@ function QuestPageInner() {
           typeId: entry.typeId,
           typeName: entry.typeName,
           count: stock.count,
-          reason: stock.reason
+          reason: stock.reason,
+          reasonDetail: stock.reasonDetail
         });
       }
     }
@@ -3826,6 +3828,7 @@ function QuestPageInner() {
                   {stockShortages.slice(0, 8).map((item) => (
                     <li key={item.typeId}>
                       {item.typeName} ({item.typeId}): {item.count}題 / 理由 {describeStockReason(item.reason)}
+                      {item.reasonDetail ? ` (${item.reasonDetail})` : ""}
                     </li>
                   ))}
                 </ul>
@@ -3876,6 +3879,7 @@ function QuestPageInner() {
                   <div>pattern_id: {currentType?.generation_params?.pattern_id ?? "-"}</div>
                   <div>stock.count: {activeStockInfo?.count ?? 0}</div>
                   <div>stock.reason: {activeStockInfo?.reason ?? "-"}</div>
+                  <div>stock.reason_detail: {activeStockInfo?.reasonDetail ?? "-"}</div>
                   <div>stock.unique: {activeStockInfo?.uniqueCount ?? 0}</div>
                   <div>stock.expanded: {activeStockInfo?.expandedCount ?? 0}</div>
                   <div>pick: {activePickMeta?.picked ?? 0} / {activePickMeta?.requested ?? quizSize}</div>

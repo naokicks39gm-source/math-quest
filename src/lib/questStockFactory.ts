@@ -5,6 +5,13 @@ import {
   reorderAvoidAdjacentSameFamily,
   type QuestEntry
 } from "@/lib/questItemFactory";
+import {
+  generateFactorDiffSqEntries,
+  generateFactorGcfEntries,
+  generateFactorPerfSqEntries,
+  generateFactorTrinomEntries
+} from "@/lib/questGenerators/factorGcf";
+import { generateExpRulesEntries, remixSecondaryExprFromSeed } from "@/lib/questGenerators/secondaryExpr";
 
 type AnswerFormat = {
   kind: "int" | "dec" | "frac" | "pair" | "expr";
@@ -27,6 +34,7 @@ type TypeDef = {
 };
 
 export type TypeStockReason = "INSUFFICIENT_GENERATABLE" | "NO_PATTERN" | "NO_SOURCE";
+export type StockReasonDetail = "PATTERN_GENERATOR_MISSING" | "DEDUPE_COLLISION_HIGH" | "PARAM_RANGE_NARROW";
 
 export type StockFailureClass = "NONE" | "GEN_FAIL" | "GEN_OK_PICK_FAIL";
 
@@ -37,6 +45,7 @@ export type TypeStockResult = {
   count: number;
   target: number;
   reason?: TypeStockReason;
+  reasonDetail?: StockReasonDetail;
   failureClass: StockFailureClass;
   expandedCount: number;
   uniqueCount: number;
@@ -214,20 +223,53 @@ const getGradeIdFromTypeId = (typeId: string) => typeId.split(".")[0] ?? "";
 
 const isFrozenElementaryGrade = (gradeId: string) => /^(E1|E2|E3|E4)$/.test(gradeId);
 
+const normalizeStockText = (text: string) =>
+  String(text)
+    .replace(/\s*[=＝]\s*$/u, "")
+    .replace(/\\times/g, "×")
+    .replace(/\\div/g, "÷")
+    .replace(/＋/g, "+")
+    .replace(/－/g, "-")
+    .replace(/ー/g, "-")
+    .replace(/[{}]/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+
+export const canonicalStockKey = (entry: QuestEntry) => {
+  const prompt = normalizeStockText(entry.item.prompt_tex ?? entry.item.prompt);
+  const answer = normalizeStockText(entry.item.answer);
+  const equivalent = normalizeStockText(entryEquivalentKey(entry));
+  return `${equivalent}::${prompt}::${answer}`;
+};
+
 const uniqueByPromptAndEquivalent = (entries: QuestEntry[]) => {
   const unique: QuestEntry[] = [];
   const promptKeys = new Set<string>();
   const equivalentKeys = new Set<string>();
+  const stockKeys = new Set<string>();
   for (const entry of entries) {
     const promptKey = entryPromptKey(entry);
     const equivalentKey = entryEquivalentKey(entry);
+    const stockKey = canonicalStockKey(entry);
     if (promptKeys.has(promptKey)) continue;
     if (equivalentKeys.has(equivalentKey)) continue;
+    if (stockKeys.has(stockKey)) continue;
     promptKeys.add(promptKey);
     equivalentKeys.add(equivalentKey);
+    stockKeys.add(stockKey);
     unique.push(entry);
   }
   return unique;
+};
+
+type StockGenerationStrategy = (type: TypeDef, patternId: string, targetCount: number) => QuestEntry[];
+
+const STOCK_STRATEGIES: Record<string, StockGenerationStrategy> = {
+  FACTOR_GCF: (type, _patternId, targetCount) => generateFactorGcfEntries(type, targetCount),
+  FACTOR_DIFF_SQ: (type, _patternId, targetCount) => generateFactorDiffSqEntries(type, targetCount),
+  FACTOR_PERF_SQ: (type, _patternId, targetCount) => generateFactorPerfSqEntries(type, targetCount),
+  FACTOR_TRINOM: (type, _patternId, targetCount) => generateFactorTrinomEntries(type, targetCount),
+  EXP_RULES: (type, _patternId, targetCount) => generateExpRulesEntries(type, targetCount)
 };
 
 export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult => {
@@ -241,6 +283,7 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
       count: 0,
       target: targetCount,
       reason: "NO_SOURCE",
+      reasonDetail: "PARAM_RANGE_NARROW",
       failureClass: "GEN_FAIL",
       expandedCount: 0,
       uniqueCount: 0,
@@ -263,6 +306,16 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
   const normalizedSeed = normalizedType.example_items.map((item) => ({ item, type: normalizedType }));
   const expanded = expandEntriesToAtLeast(normalizedSeed, targetCount);
   let unique = uniqueByPromptAndEquivalent(expanded);
+  let reasonDetail: StockReasonDetail | undefined;
+  const strategy = hasPattern ? STOCK_STRATEGIES[patternId] : undefined;
+  if (hasPattern && strategy) {
+    const generatedEntries = strategy(normalizedType, patternId, targetCount);
+    unique = uniqueByPromptAndEquivalent([...generatedEntries, ...unique]);
+  }
+  if (hasPattern && !strategy && normalizedType.answer_format.kind === "expr") {
+    const remixedExprEntries = remixSecondaryExprFromSeed(normalizedType, targetCount);
+    unique = uniqueByPromptAndEquivalent([...remixedExprEntries, ...unique]);
+  }
   if (hasPattern && patternId.startsWith("ADD_1D_1D_")) {
     // 1けた+1けたは列挙可能なので、常に決定的候補を混ぜて候補不足を防ぐ。
     const deterministic = buildDeterministicAdd1D1D(normalizedType, patternId);
@@ -287,6 +340,15 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
     : hasPattern
       ? "INSUFFICIENT_GENERATABLE"
       : "NO_PATTERN";
+  if (reason === "INSUFFICIENT_GENERATABLE" && hasPattern) {
+    if (!strategy && normalizedType.answer_format.kind !== "expr" && !patternId.startsWith("ADD_") && !patternId.startsWith("SUB_") && !patternId.startsWith("MUL_") && !patternId.startsWith("DIV_") && !patternId.startsWith("DEC_") && !patternId.startsWith("FRAC_") && !patternId.startsWith("UNIT_FRAC_") && !patternId.startsWith("MIXED_")) {
+      reasonDetail = "PATTERN_GENERATOR_MISSING";
+    } else if (unique.length > 0 && entries.length <= Math.max(1, Math.floor(targetCount / 5))) {
+      reasonDetail = "DEDUPE_COLLISION_HIGH";
+    } else {
+      reasonDetail = "PARAM_RANGE_NARROW";
+    }
+  }
   const failureClass: StockFailureClass = entries.length >= Math.min(5, targetCount) ? "NONE" : "GEN_FAIL";
   if (process.env.NODE_ENV !== "production") {
     // eslint-disable-next-line no-console
@@ -298,6 +360,7 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
       uniqueCount: unique.length,
       finalCount: entries.length,
       reason,
+      reasonDetail,
       failureClass,
       buildMs: Date.now() - startedAt
     });
@@ -310,6 +373,7 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
     count: entries.length,
     target: targetCount,
     reason,
+    reasonDetail,
     failureClass,
     expandedCount: expanded.length,
     uniqueCount: unique.length,
