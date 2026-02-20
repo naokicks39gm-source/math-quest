@@ -10,6 +10,7 @@ export type ColumnStoryFrame = {
   carryMarks?: string;
   borrowMarks?: string;
   focusPlace?: "ones" | "next";
+  carryToFromRight?: number;
 };
 
 export type ElementaryVisual = {
@@ -169,9 +170,10 @@ const buildColumnStoryFrames = (left: number, right: number, operator: "+" | "-"
     operator,
     line: true,
     partial: String(Math.abs(ones) % 10),
-    carryMarks: onesCarry || undefined,
+    carryMarks: onesCarry ? "+1" : undefined,
     borrowMarks: onesBorrow || undefined,
-    focusPlace: "ones"
+    focusPlace: "ones",
+    carryToFromRight: onesCarry ? 1 : undefined
   });
   frames.push({
     title: "つぎのくらい",
@@ -204,10 +206,7 @@ const buildColumnStoryFrames = (left: number, right: number, operator: "+" | "-"
 
   frames.push({
     title: "答え",
-    top: formatAligned(absLeft),
-    bottom: formatAligned(absRight),
-    operator,
-    line: true,
+    line: false,
     partial: `答え: ${formatNumber(result)}`
   });
 
