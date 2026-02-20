@@ -251,34 +251,28 @@ const renderMaybeMath = (text: string): ReactNode => {
     </span>
   );
 };
-const renderPrompt = (item: ExampleItem) => {
-  const rawPrompt = item.prompt_tex ?? item.prompt;
-  const hasQuestionSlot =
-    /([+\-×÷]|と)\s*[?？]/.test(rawPrompt) ||
-    /[?？]\s*(でできます。?|[=＝])/u.test(rawPrompt);
-  const normalizeSlotPrompt = (text: string) =>
-    trimTrailingEquationEquals(text.replace(/[?？]/g, "□").trim());
+const renderNumDecompPrompt = (prompt: string): ReactNode | null => {
+  const normalized = formatPrompt(prompt).replace(/\s+/g, "");
+  const match = normalized.match(/^(\d+)は(\d+)と□でできます。?$/u);
+  if (!match) return null;
+  const total = match[1];
+  const part = match[2];
+  return (
+    <span className="inline-flex items-baseline whitespace-nowrap">
+      <span>{total} は</span>
+      <span className="mx-[0.22em]">{part}</span>
+      <span className="mr-[0.18em]">と</span>
+      <span className="inline-flex h-[1.18em] w-[1.18em] items-center justify-center text-[1.28em] leading-none">□</span>
+      <span className="ml-[0.22em]">でできます。</span>
+    </span>
+  );
+};
 
-  if (hasQuestionSlot) {
-    const source = item.prompt_tex?.trim() || item.prompt;
-    const displayTex = normalizeSlotPrompt(source);
-    const renderedFormula = item.prompt_tex?.trim()
-      ? (
-        <InlineMath
-          math={toEquationTex(displayTex)}
-          renderError={() => <span>{formatPrompt(displayTex)}</span>}
-        />
-      )
-      : renderMaybeMath(formatPrompt(displayTex));
-    return (
-      <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
-        <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap">
-          {renderedFormula}
-        </span>
-      </span>
-    );
+const renderPrompt = (item: ExampleItem, typeId?: string) => {
+  if (typeId === "E1.NA.NUM.NUM_DECOMP_10") {
+    const custom = renderNumDecompPrompt(item.prompt);
+    if (custom) return custom;
   }
-
   const tex = item.prompt_tex?.trim();
   if (tex) {
     const displayTex = trimTrailingEquationEquals(tex);
@@ -3934,14 +3928,6 @@ function QuestPageInner() {
                         <div aria-label="board-chalk-blue" className="h-2.5 w-6 rounded-full border border-sky-300 bg-sky-100 shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={nextQuestion}
-                      disabled={status !== "playing" || isStarting}
-                      className="absolute bottom-3 right-3 z-20 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs sm:text-sm font-bold text-emerald-900 shadow-[0_2px_0_rgba(0,0,0,0.25)] disabled:bg-slate-300 disabled:text-slate-500"
-                    >
-                      {uiText.nextQuestion}
-                    </button>
                     <div
                       ref={qaRowRef}
                       className={
@@ -3959,7 +3945,7 @@ function QuestPageInner() {
                         }
                       >
                         <span ref={qaPromptContentRef} className="inline-block align-middle">
-                          {renderPrompt(currentItem)}
+                          {renderPrompt(currentItem, currentType?.type_id)}
                         </span>
                       </div>
                       {isQuadraticRootsQuestion ? (
@@ -4015,6 +4001,7 @@ function QuestPageInner() {
                           style={useSingleLineQa ? undefined : { marginLeft: `${qaAnswerOffsetPx}px` }}
                         >
                           <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
+                            <span className="text-[26px] sm:text-[30px] font-bold text-emerald-100">=</span>
                             <div className={`relative overflow-visible ${fractionInput.enabled ? "w-[190px] sm:w-[220px]" : "w-[150px] sm:w-[180px]"}`}>
                               <div
                                 aria-label="recognized-answer"
