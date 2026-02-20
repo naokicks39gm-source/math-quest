@@ -34,8 +34,35 @@ test("keypad token guard supports int dec frac rules", () => {
   assert.match(source, /if \(token === "\."\) return true/);
   assert.match(source, /if \(token === "\/"\) return true/);
   assert.match(source, /if \(token === "-"\) return true/);
+  assert.match(source, /if \(isHighSchoolQuest && \(HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS as readonly string\[\]\)\.includes\(token\)\) return true;/);
   assert.match(source, /const isValidAnswerText = \(text: string, kind: AnswerFormat\["kind"\]\) =>/);
   assert.match(source, /kind === "dec"/);
   assert.match(source, /kind === "frac"/);
   assert.match(source, /keypadAnswerKind !== "frac" && input\.trim\(\)\.length > 0 && input\.includes\("\/"\)/);
+});
+
+test("high-school keypad adds four expression keys with compact layout", () => {
+  assert.match(source, /const HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS = \["\(\)", "x", "\^", "\+\/-"\] as const;/);
+  assert.match(source, /const FLICK_THRESHOLD_PX = 12;/);
+  assert.match(source, /const FLICK_MAX_HORIZONTAL_PX = 24;/);
+  assert.match(source, /const isHighSchoolQuest = \/\^\(H1\|H2\|H3\)\$\/\.test\(currentGradeId\);/);
+  assert.match(source, /if \(token === "\+"\) return "プラス";/);
+  assert.match(source, /if \(token === "\+\/-"\)/);
+  assert.match(source, /if \(token === "\^"\) return "指数";/);
+  assert.match(source, /if \(token === "\(\)"\) return "（）";/);
+  assert.match(source, /if \(token === "x"\) return "x";/);
+  assert.match(source, /isHighSchoolQuest \? \(/);
+  assert.match(source, /grid-cols-5 grid-rows-4 gap-1/);
+  assert.match(source, /"1", "2", "3", "\(\)", ""/);
+  assert.match(source, /"4", "5", "6", "x", ""/);
+  assert.match(source, /"7", "8", "9", "\+\/-", ""/);
+  assert.match(source, /"0", "\/", "\^", "\.", ""/);
+  assert.match(source, /onPointerDown=\{token === "\+\/-" \? handlePlusMinusFlickStart : undefined\}/);
+  assert.match(source, /onPointerUp=\{token === "\+\/-" \? handlePlusMinusFlickEnd : undefined\}/);
+  assert.match(source, /onPointerCancel=\{token === "\+\/-" \? handlePlusMinusFlickCancel : undefined\}/);
+  assert.match(source, /style=\{token === "\+\/-" \? \{ touchAction: "none" \} : undefined\}/);
+  assert.match(source, /const resolvePlusMinusFlickToken = \(e: React\.PointerEvent<HTMLButtonElement>\) =>/);
+  assert.match(source, /if \(dy >= FLICK_THRESHOLD_PX\) return "-";/);
+  assert.match(source, /if \(dy <= -FLICK_THRESHOLD_PX\) return "\+";/);
+  assert.match(source, /num === "\(\)" \? `\$\{prev\}\(\)` : `\$\{prev\}\$\{num\}`/);
 });

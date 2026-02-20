@@ -21,7 +21,9 @@ test("stock factory wires factorization strategies", () => {
   assert.equal(stockSource.includes("FACTOR_PERF_SQ"), true);
   assert.equal(stockSource.includes("FACTOR_TRINOM"), true);
   assert.equal(stockSource.includes("EXP_RULES"), true);
+  assert.equal(stockSource.includes("QUAD_ROOTS"), true);
   assert.equal(stockSource.includes("generateExpRulesEntries"), true);
+  assert.equal(stockSource.includes("generateQuadRootsEntries"), true);
   assert.equal(stockSource.includes("remixSecondaryExprFromSeed"), true);
   assert.equal(stockSource.includes("strategy(normalizedType, patternId, targetCount)"), true);
   assert.equal(stockSource.includes("normalizedType.answer_format.kind === \"expr\""), true);
@@ -36,6 +38,7 @@ test("factorization generators create prompt + tex + answer triplet", () => {
   assert.equal(gcfGeneratorSource.includes("generateFactorPerfSqEntries"), true);
   assert.equal(gcfGeneratorSource.includes("generateFactorTrinomEntries"), true);
   assert.equal(secondaryExprSource.includes("generateExpRulesEntries"), true);
+  assert.equal(secondaryExprSource.includes("generateQuadRootsEntries"), true);
   assert.equal(secondaryExprSource.includes("remixSecondaryExprFromSeed"), true);
 });
 
@@ -50,5 +53,7 @@ test("H1 has factorization pattern content to seed and expand", () => {
   assert.equal(h1Source.includes("\"pattern_id\": \"FACTOR_TRINOM\""), true);
   assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EXP.EXP_RULES\""), true);
   assert.equal(h1Source.includes("\"pattern_id\": \"EXP_RULES\""), true);
+  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EQ.QUAD_ROOTS\""), true);
+  assert.equal(h1Source.includes("\"pattern_id\": \"QUAD_ROOTS\""), true);
   assert.equal(h1Source.includes("\"prompt\": \"6x^2+9x =\""), true);
 });

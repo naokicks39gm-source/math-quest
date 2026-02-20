@@ -353,6 +353,9 @@ const CHARACTERS = {
 
 const DIGIT_KEYPAD_TOKENS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 const SYMBOL_KEYPAD_TOKENS = ["/", ".", "-"] as const;
+const HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS = ["()", "x", "^", "+/-"] as const;
+const FLICK_THRESHOLD_PX = 12;
+const FLICK_MAX_HORIZONTAL_PX = 24;
 
 type BBox = { minX: number; minY: number; maxX: number; maxY: number };
 type DigitSample = { tensor: tf.Tensor2D; preview: ImageData; width: number; height: number; centerX: number };
@@ -369,6 +372,7 @@ type BinarizedCanvas = {
 };
 type MemoPoint = { x: number; y: number };
 type MemoStroke = { points: MemoPoint[] };
+type FlickState = { pointerId: number; x: number; y: number; t: number };
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
@@ -1560,6 +1564,8 @@ function QuestPageInner() {
   const autoNextTimerRef = useRef<number | null>(null);
   const wrongMarkTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
+  const flickStartRef = useRef<FlickState | null>(null);
+  const flickActiveKeyRef = useRef<"plusminus" | null>(null);
   const grades = useMemo(
     () => getCatalogGrades() as GradeDef[],
     []
@@ -2224,6 +2230,7 @@ function QuestPageInner() {
   );
   const isQuadraticRootsQuestion = isQuadraticRootsType(currentType?.type_id);
   const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
+  const isHighSchoolQuest = /^(H1|H2|H3)$/.test(currentGradeId);
   const gradeOptions = useMemo(
     () =>
       grades.map((grade) => ({
@@ -2472,6 +2479,7 @@ function QuestPageInner() {
     if (status !== 'playing' || isStarting) return;
     const currentText = isQuadraticRootsQuestion ? quadraticAnswers[quadraticActiveIndex] : input;
     const isDigit = /^\d$/.test(num);
+    const maxInputLength = isHighSchoolQuest ? 24 : 12;
 
     if (num === "/") {
       if (isQuadraticRootsQuestion) {
@@ -2567,6 +2575,27 @@ function QuestPageInner() {
         if (text === "" || text === "-") return false;
         return true;
       }
+      if (token === "+") {
+        if (!isHighSchoolQuest) return false;
+        if (text.length === 0) return false;
+        return !/[+\-x^(/]$/.test(text);
+      }
+      if (token === "x") {
+        if (!isHighSchoolQuest) return false;
+        if (text.length === 0) return false;
+        return /[\d)]$/.test(text);
+      }
+      if (token === "^") {
+        if (!isHighSchoolQuest) return false;
+        if (text.length === 0) return false;
+        return /[\dx)]$/.test(text);
+      }
+      if (token === "()") {
+        if (!isHighSchoolQuest) return false;
+        if (text.endsWith("^")) return false;
+        return true;
+      }
+      if (token === "+/-") return false;
       return false;
     };
     if (!canAppendToken(currentText, num)) return;
@@ -2574,16 +2603,16 @@ function QuestPageInner() {
     if (isQuadraticRootsQuestion) {
       setQuadraticAnswers((prev) => {
         const next: [string, string] = [...prev] as [string, string];
-        const maxLen = isDigit ? 6 : 7;
+        const maxLen = isDigit ? 6 : (isHighSchoolQuest ? 24 : 7);
         if (next[quadraticActiveIndex].length >= maxLen) return prev;
-        next[quadraticActiveIndex] = `${next[quadraticActiveIndex]}${num}`;
+        next[quadraticActiveIndex] = num === "()" ? `${next[quadraticActiveIndex]}()` : `${next[quadraticActiveIndex]}${num}`;
         return next;
       });
       setResultMark(null);
       return;
     }
-    if (input.length >= 12) return;
-    setInput((prev) => `${prev}${num}`);
+    if (input.length >= maxInputLength) return;
+    setInput((prev) => (num === "()" ? `${prev}()` : `${prev}${num}`));
     setResultMark(null);
   };
 
@@ -2739,11 +2768,24 @@ function QuestPageInner() {
     if (token === "-") return true;
     if (token === ".") return true;
     if (token === "/") return true;
+    if (isHighSchoolQuest && (HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS as readonly string[]).includes(token)) return true;
     return false;
   };
   const renderKeyLabel = (token: string): ReactNode => {
     if (token === "/") return "分数";
     if (token === ".") return "小数点";
+    if (token === "+") return "プラス";
+    if (token === "+/-") {
+      return (
+        <span className="inline-flex flex-col items-center leading-[0.9]">
+          <span>プラ</span>
+          <span>マイ</span>
+        </span>
+      );
+    }
+    if (token === "^") return "指数";
+    if (token === "()") return "（）";
+    if (token === "x") return "x";
     if (token === "-") {
       return (
         <span className="inline-flex flex-col items-center leading-[0.9]">
@@ -2775,6 +2817,60 @@ function QuestPageInner() {
     );
   const keypadDigitTopTokens = DIGIT_KEYPAD_TOKENS.filter((token) => token !== "0");
   const smallSymbolTokens: Array<(typeof SYMBOL_KEYPAD_TOKENS)[number]> = [".", "-", "/"];
+  const renderAnswerWithSuperscript = (text: string) => {
+    if (!text) return "\u2007";
+    if (!isHighSchoolQuest || !text.includes("^")) return text;
+    const nodes: ReactNode[] = [];
+    let i = 0;
+    while (i < text.length) {
+      if (text[i] === "^") {
+        let j = i + 1;
+        let sign = "";
+        if (text[j] === "-") {
+          sign = "-";
+          j += 1;
+        }
+        let k = j;
+        while (k < text.length && /\d/.test(text[k])) k += 1;
+        if (k > j) {
+          nodes.push(<sup key={`pow-${i}`}>{`${sign}${text.slice(j, k)}`}</sup>);
+          i = k;
+          continue;
+        }
+      }
+      nodes.push(<span key={`txt-${i}`}>{text[i]}</span>);
+      i += 1;
+    }
+    return <span className="inline-flex items-baseline gap-[1px]">{nodes}</span>;
+  };
+  const handlePlusMinusFlickStart = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (status !== "playing" || isStarting) return;
+    flickStartRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, t: Date.now() };
+    flickActiveKeyRef.current = "plusminus";
+  };
+  const resolvePlusMinusFlickToken = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const start = flickStartRef.current;
+    if (!start || flickActiveKeyRef.current !== "plusminus" || start.pointerId !== e.pointerId) return "+";
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    const elapsed = Date.now() - start.t;
+    if (Math.abs(dx) > FLICK_MAX_HORIZONTAL_PX) return "+";
+    if (elapsed > 700) return "+";
+    if (dy >= FLICK_THRESHOLD_PX) return "-";
+    if (dy <= -FLICK_THRESHOLD_PX) return "+";
+    return "+";
+  };
+  const handlePlusMinusFlickEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (status !== "playing" || isStarting) return;
+    const token = resolvePlusMinusFlickToken(e);
+    handleInput(token);
+    flickStartRef.current = null;
+    flickActiveKeyRef.current = null;
+  };
+  const handlePlusMinusFlickCancel = () => {
+    flickStartRef.current = null;
+    flickActiveKeyRef.current = null;
+  };
 
   const resultOverlay = resultMark ? (
     <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
@@ -4029,7 +4125,7 @@ function QuestPageInner() {
                             >
                               {quadraticFractionInputs[0].enabled
                                 ? renderFractionEditorValue(quadraticFractionInputs[0])
-                                : (quadraticAnswers[0] || "\u2007")}
+                                : renderAnswerWithSuperscript(quadraticAnswers[0])}
                             </button>
                             <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x2 =</span>
                             <button
@@ -4043,7 +4139,7 @@ function QuestPageInner() {
                             >
                               {quadraticFractionInputs[1].enabled
                                 ? renderFractionEditorValue(quadraticFractionInputs[1])
-                                : (quadraticAnswers[1] || "\u2007")}
+                                : renderAnswerWithSuperscript(quadraticAnswers[1])}
                             </button>
                             {resultOverlay}
                           </div>
@@ -4067,7 +4163,7 @@ function QuestPageInner() {
                               >
                                 {fractionInput.enabled
                                   ? renderFractionEditorValue(fractionInput)
-                                  : (displayedAnswer || "\u2007")}
+                                  : renderAnswerWithSuperscript(displayedAnswer)}
                               </div>
                               {resultOverlay}
                             </div>
@@ -4150,46 +4246,79 @@ function QuestPageInner() {
         <div className="w-full pt-2 pb-3 sticky bottom-0 bg-slate-50/95 backdrop-blur-sm z-20 space-y-2">
           <div className="w-full space-y-1 pb-1">
             <div className="w-full flex items-stretch gap-2">
-              <div className="flex-1 grid grid-cols-3 grid-rows-4 gap-1.5">
-                {keypadDigitTopTokens.map((token) => (
-                  <button
-                    key={token}
-                    onClick={() => handleInput(token)}
-                    disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
-                    className={`
-                      h-11 w-full rounded-lg text-base font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
-                      ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                    `}
-                  >
-                    {renderKeyLabel(token)}
-                  </button>
-                ))}
-                <button
-                  onClick={() => handleInput("0")}
-                  disabled={status !== 'playing' || isStarting || !canUseKeyToken("0")}
-                  className={`
-                    h-11 w-full rounded-lg text-base font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
-                    ${canUseKeyToken("0") ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                  `}
-                >
-                  {renderKeyLabel("0")}
-                </button>
-                <div className="col-span-2 h-11 grid grid-cols-3 gap-1">
-                  {smallSymbolTokens.map((token) => (
+              {isHighSchoolQuest ? (
+                <div className="flex-1 grid grid-cols-5 grid-rows-4 gap-1">
+                  {[
+                    "1", "2", "3", "()", "",
+                    "4", "5", "6", "x", "",
+                    "7", "8", "9", "+/-", "",
+                    "0", "/", "^", ".", ""
+                  ].map((token, index) => {
+                    if (!token) return <div key={`hs-spacer-${index}`} className="h-9 w-full" />;
+                    return (
+                      <button
+                        key={`hs-${token}-${index}`}
+                        onClick={() => {
+                          if (token === "+/-") return;
+                          handleInput(token);
+                        }}
+                        onPointerDown={token === "+/-" ? handlePlusMinusFlickStart : undefined}
+                        onPointerUp={token === "+/-" ? handlePlusMinusFlickEnd : undefined}
+                        onPointerCancel={token === "+/-" ? handlePlusMinusFlickCancel : undefined}
+                        disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
+                        className={`
+                          h-9 w-full rounded-md text-[11px] font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                          ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
+                        `}
+                        style={token === "+/-" ? { touchAction: "none" } : undefined}
+                      >
+                        {renderKeyLabel(token)}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex-1 grid grid-cols-3 grid-rows-4 gap-1.5">
+                  {keypadDigitTopTokens.map((token) => (
                     <button
                       key={token}
                       onClick={() => handleInput(token)}
                       disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
                       className={`
-                        h-full w-full rounded-md text-[11px] font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                        h-11 w-full rounded-lg text-base font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
                         ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
                       `}
                     >
                       {renderKeyLabel(token)}
                     </button>
                   ))}
+                  <button
+                    onClick={() => handleInput("0")}
+                    disabled={status !== 'playing' || isStarting || !canUseKeyToken("0")}
+                    className={`
+                      h-11 w-full rounded-lg text-base font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                      ${canUseKeyToken("0") ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
+                    `}
+                  >
+                    {renderKeyLabel("0")}
+                  </button>
+                  <div className="col-span-2 h-11 grid grid-cols-3 gap-1">
+                    {smallSymbolTokens.map((token) => (
+                      <button
+                        key={token}
+                        onClick={() => handleInput(token)}
+                        disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
+                        className={`
+                          h-full w-full rounded-md text-[11px] font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                          ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
+                        `}
+                      >
+                        {renderKeyLabel(token)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="w-[92px] grid grid-cols-1 grid-rows-[44px_88px_36px] gap-1.5">
                 <button
                   onClick={handleDelete}
