@@ -31,6 +31,8 @@ test("elementary explanation resolver has abacus/column_story/simple branches", 
   assert.match(libSource, /frames: frames\.slice\(0, 5\)/);
   assert.match(libSource, /focusPlace: "ones"/);
   assert.match(libSource, /focusPlace: "next"/);
+  assert.match(libSource, /carryMarks: onesCarry \? "\+1" : undefined/);
+  assert.match(libSource, /carryToFromRight: onesCarry \? 1 : undefined/);
   assert.match(libSource, /title: "答え"/);
   assert.match(libSource, /partial: `答え: \$\{formatNumber\(result\)\}`/);
   assert.match(libSource, /if \(isSingleDigitPair\)/);
@@ -51,6 +53,8 @@ test("elementary panel has next button and visual rendering", () => {
   assert.match(panelSource, /renderAlignedValue/);
   assert.match(panelSource, /text-rose-600/);
   assert.match(panelSource, /text-indigo-600/);
+  assert.match(panelSource, /carryToFromRight/);
+  assert.match(panelSource, /rounded-full border border-rose-300 bg-rose-500/);
   assert.match(panelSource, /max-w-\[19rem\]/);
   assert.match(panelSource, /こたえ \{aid\.visual\.result\} こ/);
   assert.match(panelSource, /onClick=\{onNext\}/);
