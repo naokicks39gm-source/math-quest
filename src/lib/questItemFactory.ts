@@ -414,7 +414,34 @@ const generateMixed = (type: TypeDef, patternId: string, needed: number, used: S
   while (out.length < needed && attempts < 2000) {
     attempts += 1;
     let item: QuestEntry | null = null;
-    if (patternId === "MIXED_DEC_FRAC") {
+    if (patternId === "MIXED_TO_20") {
+      const mode = randInt(0, 1);
+      if (mode === 0) {
+        const a = randInt(1, 19);
+        const bMax = 20 - a;
+        if (bMax < 1) continue;
+        const b = randInt(1, bMax);
+        item = {
+          type,
+          item: {
+            prompt: `${a} + ${b} =`,
+            prompt_tex: `${a} + ${b} =`,
+            answer: String(a + b)
+          }
+        };
+      } else {
+        const a = randInt(2, 20);
+        const b = randInt(1, a - 1);
+        item = {
+          type,
+          item: {
+            prompt: `${a} - ${b} =`,
+            prompt_tex: `${a} - ${b} =`,
+            answer: String(a - b)
+          }
+        };
+      }
+    } else if (patternId === "MIXED_DEC_FRAC") {
       const denCandidates = [2, 4, 5, 10];
       const den = denCandidates[randInt(0, denCandidates.length - 1)];
       const num = randInt(1, den - 1);
@@ -470,6 +497,52 @@ const generateMixed = (type: TypeDef, patternId: string, needed: number, used: S
           }
         };
       }
+    }
+    if (item) pushEntry(out, used, item);
+  }
+  return out;
+};
+
+const generateNumberFoundation = (type: TypeDef, patternId: string, needed: number, used: Set<string>) => {
+  const out: QuestEntry[] = [];
+  let attempts = 0;
+  while (out.length < needed && attempts < 2000) {
+    attempts += 1;
+    let item: QuestEntry | null = null;
+    if (patternId === "NUM_COMPARE_UP_TO_20") {
+      const a = randInt(0, 20);
+      let b = randInt(0, 20);
+      if (a === b) {
+        b = (b + 1) % 21;
+      }
+      const prompt = `${a}と${b}、どちらが大きい？`;
+      item = {
+        type,
+        item: {
+          prompt,
+          answer: String(Math.max(a, b))
+        }
+      };
+    } else if (patternId === "NUM_DECOMP_10") {
+      const left = randInt(0, 10);
+      const right = 10 - left;
+      item = {
+        type,
+        item: {
+          prompt: `10 は${left}と？でできます。`,
+          answer: String(right)
+        }
+      };
+    } else if (patternId === "NUM_COMP_10") {
+      const left = randInt(0, 10);
+      const right = 10 - left;
+      item = {
+        type,
+        item: {
+          prompt: `${left} + ${right} =`,
+          answer: "10"
+        }
+      };
     }
     if (item) pushEntry(out, used, item);
   }
@@ -582,6 +655,9 @@ const generateByPattern = (type: TypeDef, used: Set<string>, targetCount: number
   }
   if (patternId.startsWith("MIXED_")) {
     return generateMixed(type, patternId, targetCount, used);
+  }
+  if (patternId.startsWith("NUM_")) {
+    return generateNumberFoundation(type, patternId, targetCount, used);
   }
   if (/^(J[1-3]|H[1-3])\./.test(type.type_id)) {
     return generateSecondaryBySeedVariants(type, targetCount, used);

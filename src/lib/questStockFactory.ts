@@ -108,6 +108,57 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
   if (patternId.startsWith("ADD_1D_1D_")) {
     return buildDeterministicAdd1D1D(type, patternId).slice(0, targetCount);
   }
+  if (patternId.startsWith("NUM_")) {
+    const out: QuestEntry[] = [];
+    for (let i = 0; i < targetCount; i += 1) {
+      if (patternId === "NUM_COMPARE_UP_TO_20") {
+        const a = i % 21;
+        let b = (i * 7 + 3) % 21;
+        if (a === b) {
+          b = (b + 1) % 21;
+        }
+        const prompt = `${a}と${b}、どちらが大きい？`;
+        out.push({ type, item: { prompt, answer: String(Math.max(a, b)) } });
+      } else if (patternId === "NUM_DECOMP_10") {
+        const left = i % 11;
+        out.push({ type, item: { prompt: `10 は${left}と？でできます。`, answer: String(10 - left) } });
+      } else if (patternId === "NUM_COMP_10") {
+        const left = i % 11;
+        const right = 10 - left;
+        out.push({ type, item: { prompt: `${left} + ${right} =`, answer: "10" } });
+      }
+    }
+    return out;
+  }
+  if (patternId === "MIXED_TO_20") {
+    const out: QuestEntry[] = [];
+    for (let i = 0; i < targetCount; i += 1) {
+      if (i % 2 === 0) {
+        const a = (i % 10) + 1;
+        const b = Math.max(1, 20 - a - (i % 3));
+        out.push({
+          type,
+          item: {
+            prompt: `${a} + ${b} =`,
+            prompt_tex: `${a} + ${b} =`,
+            answer: String(a + b)
+          }
+        });
+      } else {
+        const a = 20 - (i % 8);
+        const b = (i % Math.max(1, a - 1)) + 1;
+        out.push({
+          type,
+          item: {
+            prompt: `${a} - ${b} =`,
+            prompt_tex: `${a} - ${b} =`,
+            answer: String(a - b)
+          }
+        });
+      }
+    }
+    return out;
+  }
   if (!(patternId.startsWith("ADD_") || patternId.startsWith("SUB_") || patternId.startsWith("MUL_"))) {
     if (patternId.startsWith("DEC_")) {
       const out: QuestEntry[] = [];

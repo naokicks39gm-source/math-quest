@@ -7,10 +7,8 @@ export type ColumnStoryFrame = {
   operator?: "+" | "-" | "×" | "÷";
   line?: boolean;
   partial?: string;
-  carryMarks?: string;
-  borrowMarks?: string;
+  digitAdjustments?: Array<{ offsetFromRight: number; label: "+1" | "-1" }>;
   focusPlace?: "ones" | "next";
-  carryToFromRight?: number;
 };
 
 export type ElementaryVisual = {
@@ -138,8 +136,40 @@ const buildColumnStoryFrames = (left: number, right: number, operator: "+" | "-"
   const formatAligned = (value: number) =>
     decimalPlaces > 0 ? value.toFixed(decimalPlaces) : String(Math.trunc(value));
 
-  const onesCarry = operator === "+" ? ((intLeft % 10) + (intRight % 10) >= 10 ? "↑1" : "") : "";
-  const onesBorrow = operator === "-" ? ((intLeft % 10) < (intRight % 10) ? "↓1" : "") : "";
+  const collectDigitAdjustments = (): Array<{ offsetFromRight: number; label: "+1" | "-1" }> => {
+    if (operator !== "+" && operator !== "-") return [];
+    const scale = 10 ** decimalPlaces;
+    const lhs = Math.round(absLeft * scale);
+    const rhs = Math.round(absRight * scale);
+    const marks = new Map<number, "+1" | "-1">();
+    const maxLen = Math.max(String(lhs).length, String(rhs).length) + 1;
+    let carryOrBorrow = 0;
+    for (let place = 0; place < maxLen; place += 1) {
+      const base = 10 ** place;
+      const d1 = Math.floor(lhs / base) % 10;
+      const d2 = Math.floor(rhs / base) % 10;
+      if (operator === "+") {
+        const sum = d1 + d2 + carryOrBorrow;
+        carryOrBorrow = sum >= 10 ? 1 : 0;
+        if (carryOrBorrow === 1) {
+          marks.set(place + 1, "+1");
+        }
+      } else {
+        const lhsAfterBorrow = d1 - carryOrBorrow;
+        if (lhsAfterBorrow < d2) {
+          marks.set(place + 1, "-1");
+          carryOrBorrow = 1;
+        } else {
+          carryOrBorrow = 0;
+        }
+      }
+    }
+    return [...marks.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([offsetFromRight, label]) => ({ offsetFromRight, label }));
+  };
+
+  const digitAdjustments = collectDigitAdjustments();
 
   const frames: ColumnStoryFrame[] = [];
 
@@ -163,27 +193,26 @@ const buildColumnStoryFrames = (left: number, right: number, operator: "+" | "-"
 
   if (operator === "+" || operator === "-") {
     const ones = operator === "+" ? (intLeft % 10) + (intRight % 10) : (intLeft % 10) - (intRight % 10);
-  frames.push({
-    title: "1のくらい",
-    top: formatAligned(absLeft),
-    bottom: formatAligned(absRight),
-    operator,
-    line: true,
-    partial: String(Math.abs(ones) % 10),
-    carryMarks: onesCarry ? "+1" : undefined,
-    borrowMarks: onesBorrow || undefined,
-    focusPlace: "ones",
-    carryToFromRight: onesCarry ? 1 : undefined
-  });
-  frames.push({
-    title: "つぎのくらい",
-    top: formatAligned(absLeft),
-    bottom: formatAligned(absRight),
-    operator,
-    line: true,
-    partial: formatNumber(result),
-    focusPlace: "next"
-  });
+    frames.push({
+      title: "1のくらい",
+      top: formatAligned(absLeft),
+      bottom: formatAligned(absRight),
+      operator,
+      line: true,
+      partial: String(Math.abs(ones) % 10),
+      digitAdjustments,
+      focusPlace: "ones"
+    });
+    frames.push({
+      title: "つぎのくらい",
+      top: formatAligned(absLeft),
+      bottom: formatAligned(absRight),
+      operator,
+      line: true,
+      partial: formatNumber(result),
+      digitAdjustments,
+      focusPlace: "next"
+    });
   } else if (operator === "×") {
     frames.push({
       title: "かける",

@@ -29,10 +29,12 @@ test("elementary explanation resolver has abacus/column_story/simple branches", 
   assert.match(libSource, /kind: "column_story"/);
   assert.match(libSource, /mode: "column_story"/);
   assert.match(libSource, /frames: frames\.slice\(0, 5\)/);
+  assert.match(libSource, /const collectDigitAdjustments =/);
+  assert.match(libSource, /digitAdjustments/);
+  assert.match(libSource, /marks\.set\(place \+ 1, "\+1"\);/);
+  assert.match(libSource, /marks\.set\(place \+ 1, "-1"\);/);
   assert.match(libSource, /focusPlace: "ones"/);
   assert.match(libSource, /focusPlace: "next"/);
-  assert.match(libSource, /carryMarks: onesCarry \? "\+1" : undefined/);
-  assert.match(libSource, /carryToFromRight: onesCarry \? 1 : undefined/);
   assert.match(libSource, /title: "答え"/);
   assert.match(libSource, /partial: `答え: \$\{formatNumber\(result\)\}`/);
   assert.match(libSource, /if \(isSingleDigitPair\)/);
@@ -53,7 +55,9 @@ test("elementary panel has next button and visual rendering", () => {
   assert.match(panelSource, /renderAlignedValue/);
   assert.match(panelSource, /text-rose-600/);
   assert.match(panelSource, /text-indigo-600/);
-  assert.match(panelSource, /carryToFromRight/);
+  assert.match(panelSource, /digitAdjustments/);
+  assert.match(panelSource, /adj\.offsetFromRight/);
+  assert.match(panelSource, /adj\.label/);
   assert.match(panelSource, /rounded-full border border-rose-300 bg-rose-500/);
   assert.match(panelSource, /max-w-\[19rem\]/);
   assert.match(panelSource, /こたえ \{aid\.visual\.result\} こ/);

@@ -4,6 +4,7 @@ type GradeProfile = {
   conceptTags: string[];
   keep: (type: TypeDef) => boolean;
   synthetic: TypeDef[];
+  orderedTypeIds?: string[];
 };
 
 type SyntheticAnswerKind = "int" | "dec" | "frac" | "expr";
@@ -60,9 +61,62 @@ const profiles: Record<string, GradeProfile> = {
     conceptTags: ["number_sense", "concrete_operation"],
     keep: (type) => {
       const p = getPatternId(type);
-      return hasPrefix(p, "ADD_1D_1D") || hasPrefix(p, "SUB_1D_1D") || hasPrefix(p, "SUB_2D_1D") || hasPrefix(p, "SUB_2D_2D");
+      return (
+        p === "NUM_COMPARE_UP_TO_20" ||
+        p === "NUM_DECOMP_10" ||
+        p === "NUM_COMP_10" ||
+        hasPrefix(p, "ADD_1D_1D") ||
+        hasPrefix(p, "SUB_1D_1D") ||
+        hasPrefix(p, "ADD_2D_1D") ||
+        hasPrefix(p, "SUB_2D_1D") ||
+        p === "MIXED_TO_20"
+      );
     },
-    synthetic: []
+    synthetic: [
+      intType("E1.NA.NUM.NUM_COMPARE_UP_TO_20", "かずくらべ（20まで）", "NUM_COMPARE_UP_TO_20", [
+        { prompt: "14と9、どちらが大きい？", answer: "14" },
+        { prompt: "7と13、どちらが大きい？", answer: "13" },
+        { prompt: "10と12、どちらが大きい？", answer: "12" }
+      ]),
+      intType("E1.NA.NUM.NUM_DECOMP_10", "10のぶんかい", "NUM_DECOMP_10", [
+        { prompt: "10 は7と？でできます。", answer: "3" },
+        { prompt: "10 は5と？でできます。", answer: "5" },
+        { prompt: "10 は8と？でできます。", answer: "2" }
+      ]),
+      intType("E1.NA.NUM.NUM_COMP_10", "10のごうせい", "NUM_COMP_10", [
+        { prompt: "7 + 3 =", answer: "10" },
+        { prompt: "4 + 6 =", answer: "10" },
+        { prompt: "1 + 9 =", answer: "10" }
+      ]),
+      intType("E1.NA.ADD.ADD_2D_1D_NO", "たし算（2けた+1けた）", "ADD_2D_1D_NO", [
+        { prompt: "12 + 3 =", answer: "15" },
+        { prompt: "15 + 2 =", answer: "17" },
+        { prompt: "24 + 5 =", answer: "29" }
+      ]),
+      intType("E1.NA.ADD.ADD_2D_1D_YES", "たし算（2けた+1けた）", "ADD_2D_1D_YES", [
+        { prompt: "18 + 5 =", answer: "23" },
+        { prompt: "19 + 3 =", answer: "22" },
+        { prompt: "27 + 6 =", answer: "33" }
+      ]),
+      intType("E1.NA.MIX.MIXED_TO_20", "20までのたしひきこんごう", "MIXED_TO_20", [
+        { prompt: "9 + 8 =", answer: "17" },
+        { prompt: "14 - 6 =", answer: "8" },
+        { prompt: "17 - 9 =", answer: "8" }
+      ])
+    ],
+    orderedTypeIds: [
+      "E1.NA.NUM.NUM_COMPARE_UP_TO_20",
+      "E1.NA.NUM.NUM_DECOMP_10",
+      "E1.NA.NUM.NUM_COMP_10",
+      "E1.NA.ADD.ADD_1D_1D_NO",
+      "E1.NA.ADD.ADD_1D_1D_YES",
+      "E1.NA.SUB.SUB_1D_1D_ANY",
+      "E1.NA.ADD.ADD_2D_1D_NO",
+      "E1.NA.ADD.ADD_2D_1D_YES",
+      "E1.NA.SUB.SUB_2D_1D_NO",
+      "E1.NA.SUB.SUB_2D_1D_YES",
+      "E1.NA.MIX.MIXED_TO_20"
+    ]
   },
   E2: {
     conceptTags: ["place_value", "memorization"],
@@ -303,5 +357,18 @@ export const applyGradeProfileToNaTypes = (gradeId: string, types: TypeDef[]): T
   });
   const kept = types.filter(profile.keep).map(withTags);
   const synthetic = profile.synthetic.map(withTags);
-  return dedupeByTypeId([...kept, ...synthetic]);
+  const merged = dedupeByTypeId([...kept, ...synthetic]);
+  const orderedIds = profile.orderedTypeIds;
+  if (!orderedIds || orderedIds.length === 0) {
+    return merged;
+  }
+  const order = new Map<string, number>(orderedIds.map((id, idx) => [id, idx]));
+  return [...merged].sort((a, b) => {
+    const ai = order.get(a.type_id);
+    const bi = order.get(b.type_id);
+    if (ai === undefined && bi === undefined) return 0;
+    if (ai === undefined) return 1;
+    if (bi === undefined) return -1;
+    return ai - bi;
+  });
 };
