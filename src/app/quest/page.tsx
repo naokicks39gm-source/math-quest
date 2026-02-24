@@ -104,6 +104,10 @@ type FractionEditorState = {
 
 const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
 const LS_STUDENT_ID = "mq:studentId";
+const DEFAULT_TOTAL_QUESTIONS = 5;
+const E1_SUMMARY_TYPE_ID = "E1.NA.MIX.MIXED_TO_20";
+const getTargetQuestionCount = (typeId?: string) =>
+  typeId === E1_SUMMARY_TYPE_ID ? 10 : DEFAULT_TOTAL_QUESTIONS;
 const QUESTION_POOL_SIZE = 50;
 const OUTER_MARGIN = 8;
 const DEFAULT_VISIBLE_CANVAS_SIZE = 300;
@@ -1525,7 +1529,6 @@ function QuestPageInner() {
   const params = useSearchParams();
   const typeFromQuery = (params.get("type") ?? "").trim();
   const categoryFromQuery = params.get("category");
-  const TOTAL_QUESTIONS = 5;
   const [combo, setCombo] = useState(0);
   const [question, setQuestion] = useState<Question | null>(null);
   const [history, setHistory] = useState<Array<{ id: number; text: string }>>([]);
@@ -2089,7 +2092,7 @@ function QuestPageInner() {
     for (const entry of targetStockTypes) {
       const stock = stocks.get(entry.typeId);
       if (!stock) continue;
-      if (stock.count < TOTAL_QUESTIONS) {
+      if (stock.count < getTargetQuestionCount(entry.typeId)) {
         shortages.push({
           typeId: entry.typeId,
           typeName: entry.typeName,
@@ -2119,7 +2122,11 @@ function QuestPageInner() {
     () => (activeTypeId ? typeStocks.get(activeTypeId) ?? null : null),
     [activeTypeId, typeStocks]
   );
-  const quizSize = Math.min(TOTAL_QUESTIONS, QUESTION_POOL_SIZE);
+  const targetQuestionCount = useMemo(
+    () => getTargetQuestionCount(activeTypeId),
+    [activeTypeId]
+  );
+  const quizSize = Math.min(targetQuestionCount, QUESTION_POOL_SIZE);
   const dedupeQuestSet = (set: QuestEntry[]) => {
     const uniq: QuestEntry[] = [];
     const promptSeen = new Set<string>();
@@ -2313,7 +2320,7 @@ function QuestPageInner() {
     isElementaryGrade(currentGradeId) &&
     practiceResult?.ok === false &&
     Boolean(currentElementaryAid);
-  const totalQuizQuestions = Math.max(1, Math.min(TOTAL_QUESTIONS, quizItems.length || TOTAL_QUESTIONS));
+  const totalQuizQuestions = Math.max(1, Math.min(targetQuestionCount, quizItems.length || targetQuestionCount));
   const uiText = isEarlyElementary
     ? {
         summary: `${totalQuizQuestions}もん かんりょう / せいかい ${correctCount}もん`,
@@ -2465,7 +2472,7 @@ function QuestPageInner() {
       ...prev,
       { id: Date.now() + Math.random(), text, userAnswer, correct }
     ]);
-    if (questionIndex >= TOTAL_QUESTIONS) {
+    if (questionIndex >= totalQuizQuestions) {
       setStatus('cleared');
       setMessage("クリアー！");
       return;

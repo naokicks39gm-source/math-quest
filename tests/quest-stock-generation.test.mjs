@@ -95,3 +95,26 @@ test("E1 phase7-10 stock applies per-type operand/answer limit rules", () => {
   assert.equal(source.includes("if (limitAnswerTo20 && (answer < 0 || answer > 20)) return false;"), true);
   assert.equal(source.includes("unique = filterE1Phase7To10To20Range(unique, type.type_id);"), true);
 });
+
+test("E2 2-digit+1-digit stock applies final range guard", () => {
+  assert.equal(source.includes("const isE2Add2D1DType ="), true);
+  assert.equal(source.includes("const limitE2Add2D1DRange = isE2Add2D1DType(type.type_id) && patternId.startsWith(\"ADD_2D_1D_\");"), true);
+  assert.equal(source.includes("if ((limitE2Add2D1DRange || limitE2Sub2D1DRange) && (a < 20 || a > 98 || b < 1 || b > 9)) continue;"), true);
+  assert.equal(source.includes("if (limitE2Add2D1DRange && sum > 99) continue;"), true);
+  assert.equal(source.includes("const filterE2Add2D1DRange ="), true);
+  assert.equal(source.includes("if (!isE2Add2D1DType(typeId)) return entries;"), true);
+  assert.equal(source.includes("if (a < 20 || a > 98) return false;"), true);
+  assert.equal(source.includes("if (b < 1 || b > 9) return false;"), true);
+  assert.equal(source.includes("if (answer < 0 || answer > 99) return false;"), true);
+  assert.equal(source.includes("unique = filterE2Add2D1DRange(unique, type.type_id);"), true);
+});
+
+test("E2 2-digit-1-digit stock applies final range guard", () => {
+  assert.equal(source.includes("const isE2Sub2D1DType ="), true);
+  assert.equal(source.includes("const limitE2Sub2D1DRange = isE2Sub2D1DType(type.type_id) && patternId.startsWith(\"SUB_2D_1D_\");"), true);
+  assert.equal(source.includes("if ((limitE2Add2D1DRange || limitE2Sub2D1DRange) && (a < 20 || a > 98 || b < 1 || b > 9)) continue;"), true);
+  assert.equal(source.includes("if (limitE2Sub2D1DRange && diff < 0) continue;"), true);
+  assert.equal(source.includes("const filterE2Sub2D1DRange ="), true);
+  assert.equal(source.includes("if (!isE2Sub2D1DType(typeId)) return entries;"), true);
+  assert.equal(source.includes("unique = filterE2Sub2D1DRange(unique, type.type_id);"), true);
+});

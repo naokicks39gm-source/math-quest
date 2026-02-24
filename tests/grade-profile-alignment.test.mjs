@@ -20,11 +20,20 @@ test("grade profile defines concept tags and synthetic IDs for E1-E6 alignment",
   assert.match(source, /E1\.NA\.ADD\.ADD_2D_1D_NO/);
   assert.match(source, /E1\.NA\.ADD\.ADD_2D_1D_YES/);
   assert.match(source, /E1\.NA\.MIX\.MIXED_TO_20/);
+  assert.match(source, /"１年生のまとめ"/);
   assert.match(source, /orderedTypeIds/);
   const e1Block = source.match(/E1:\s*\{[\s\S]*?\n\s*\},\n\s*E2:/)?.[0] ?? "";
   assert.equal(e1Block.includes('hasPrefix(p, "SUB_2D_2D")'), false);
 
   assert.match(source, /E2\.NA\.MUL\.MUL_1D_1D_DAN_1/);
+  assert.match(source, /E2\.NA\.ADD\.ADD_2D_1D_NO/);
+  assert.match(source, /E2\.NA\.ADD\.ADD_2D_1D_YES/);
+  assert.match(source, /E2\.NA\.SUB\.SUB_2D_1D_NO/);
+  assert.match(source, /E2\.NA\.SUB\.SUB_2D_1D_YES/);
+  assert.match(source, /ADD_2D_1D_E2_NO/);
+  assert.match(source, /ADD_2D_1D_E2_YES/);
+  assert.match(source, /SUB_2D_1D_E2_NO/);
+  assert.match(source, /SUB_2D_1D_E2_YES/);
   assert.match(source, /E2\.NA\.MUL\.MUL_1D_1D_DAN_9/);
   assert.match(source, /E2\.NA\.MUL\.MUL_1D_1D_MIX_1_9/);
   assert.doesNotMatch(source, /E2\.NA\.MUL\.MUL_1D_1D",/);

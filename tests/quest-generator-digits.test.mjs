@@ -31,3 +31,20 @@ test("E1 phase7-10 generator applies per-type 20-limit rules", () => {
   assert.equal(source.includes("if (limitAnswerTo20 && sum > 20) continue;"), true);
   assert.equal(source.includes("if (limitAnswerTo20 && (diff < 0 || diff > 20)) continue;"), true);
 });
+
+test("E2 2-digit+1-digit generator enforces 20..98 operand and 2-digit answer", () => {
+  assert.equal(source.includes("const isE2Add2D1DNo = type.type_id === \"E2.NA.ADD.ADD_2D_1D_NO\";"), true);
+  assert.equal(source.includes("const isE2Add2D1DYes = type.type_id === \"E2.NA.ADD.ADD_2D_1D_YES\";"), true);
+  assert.equal(source.includes("const isE2Add2D1D = isE2Add2D1DNo || isE2Add2D1DYes;"), true);
+  assert.equal(source.includes("if ((isE2Add2D1D || isE2Sub2D1D) && (a < 20 || a > 98)) continue;"), true);
+  assert.equal(source.includes("if ((isE2Add2D1D || isE2Sub2D1D) && (b < 1 || b > 9)) continue;"), true);
+  assert.equal(source.includes("if (isE2Add2D1D && sum > 99) continue;"), true);
+});
+
+test("E2 2-digit-1-digit generator enforces 20..98 and 1..9 operands", () => {
+  assert.equal(source.includes("const isE2Sub2D1DNo = type.type_id === \"E2.NA.SUB.SUB_2D_1D_NO\";"), true);
+  assert.equal(source.includes("const isE2Sub2D1DYes = type.type_id === \"E2.NA.SUB.SUB_2D_1D_YES\";"), true);
+  assert.equal(source.includes("const isE2Sub2D1D = isE2Sub2D1DNo || isE2Sub2D1DYes;"), true);
+  assert.equal(source.includes("if ((isE2Add2D1D || isE2Sub2D1D) && (a < 20 || a > 98)) continue;"), true);
+  assert.equal(source.includes("if ((isE2Add2D1D || isE2Sub2D1D) && (b < 1 || b > 9)) continue;"), true);
+});

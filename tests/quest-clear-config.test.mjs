@@ -7,7 +7,10 @@ const questPath = path.join(process.cwd(), "src/app/quest/page.tsx");
 const source = fs.readFileSync(questPath, "utf8");
 
 test("quest uses random pool questions and next-level navigation", () => {
-  assert.equal(source.includes("const TOTAL_QUESTIONS = 5;"), true);
+  assert.equal(source.includes("const DEFAULT_TOTAL_QUESTIONS = 5;"), true);
+  assert.equal(source.includes("const E1_SUMMARY_TYPE_ID = \"E1.NA.MIX.MIXED_TO_20\";"), true);
+  assert.equal(source.includes("const getTargetQuestionCount = (typeId?: string) =>"), true);
+  assert.equal(source.includes("typeId === E1_SUMMARY_TYPE_ID ? 10 : DEFAULT_TOTAL_QUESTIONS;"), true);
   assert.equal(source.includes("const QUESTION_POOL_SIZE = 50;"), true);
   assert.equal(source.includes("buildStocksForTypes("), true);
   assert.equal(source.includes("pickUniqueQuizFromStock("), true);
@@ -15,7 +18,7 @@ test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("setStatus('cleared');"), true);
   assert.equal(source.includes("クリアー！"), true);
   assert.equal(source.includes("if (v + 1 >= totalQuizQuestions)"), true);
-  assert.equal(source.includes("const totalQuizQuestions = Math.max(1, Math.min(TOTAL_QUESTIONS, quizItems.length || TOTAL_QUESTIONS));"), true);
+  assert.equal(source.includes("const totalQuizQuestions = Math.max(1, Math.min(targetQuestionCount, quizItems.length || targetQuestionCount));"), true);
   assert.equal(source.includes("setQuestionResults((prev) => ({"), true);
   assert.equal(source.includes("correctAnswer?: string"), true);
   assert.equal(source.includes("everWrong: boolean"), true);
