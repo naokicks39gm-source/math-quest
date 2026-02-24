@@ -4250,7 +4250,17 @@ function QuestPageInner() {
                   {showSecondaryHint && (
                     <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
                       <div className="text-sm font-bold text-amber-700">ヒント</div>
-                      <div className="text-base font-semibold text-slate-800">{currentAid.hint}</div>
+                      {currentAid.hintLines && currentAid.hintLines.length > 0 ? (
+                        <ul className="mt-0.5 list-none space-y-1 pl-0 text-base font-semibold text-slate-800">
+                          {currentAid.hintLines.map((line, idx) => (
+                            <li key={`hint-line-${idx}`} className="leading-7">
+                              {line.kind === "tex" ? <InlineMath math={line.value} /> : line.value}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-base font-semibold text-slate-800">{currentAid.hint}</div>
+                      )}
                     </div>
                   )}
                   {showSecondaryExplanation && (

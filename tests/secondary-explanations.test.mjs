@@ -50,6 +50,13 @@ test("all middle/high pattern_id values are covered in PATTERN_IDS", () => {
 
 test("learning aid includes hint and explanation building", () => {
   assert.equal(source.includes("hint: toHint(patternId)"), true);
+  assert.equal(source.includes("typeId === \"J1.AL.INT.INT_ADD\" && pid === \"INT_ADD\""), true);
+  assert.equal(source.includes("hintLines?: { kind: \"text\" | \"tex\"; value: string }[]"), true);
+  assert.equal(source.includes("{ kind: \"text\", value: \"符号のルール\" }"), true);
+  assert.equal(source.includes("String.raw`+\\left(+\\right)\\to +`"), true);
+  assert.equal(source.includes("String.raw`+\\left(-\\right)\\to -`"), true);
+  assert.equal(source.includes("String.raw`-\\left(+\\right)\\to -`"), true);
+  assert.equal(source.includes("String.raw`-\\left(-\\right)\\to -`"), true);
   assert.equal(source.includes("buildGenericExplanation(patternId)"), true);
   assert.equal(source.includes("headers"), true);
   assert.equal(source.includes("diagramLines"), true);
