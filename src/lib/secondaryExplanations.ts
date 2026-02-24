@@ -14,6 +14,7 @@ export type ExplanationContent = {
 
 export type SecondaryLearningAid = {
   hint: string;
+  hintLines?: { kind: "text" | "tex"; value: string }[];
   explanation: ExplanationContent;
 };
 
@@ -144,19 +145,34 @@ const getGradeIdFromTypeId = (typeId?: string) => {
 export const getSecondaryLearningAid = ({ gradeId, typeId, patternId, answer }: AidParams): SecondaryLearningAid | null => {
   const resolvedGrade = gradeId || getGradeIdFromTypeId(typeId);
   if (!resolvedGrade || !isSecondaryGrade(resolvedGrade)) return null;
+  const intAddSignRulesLines: SecondaryLearningAid["hintLines"] = [
+    { kind: "text", value: "符号のルール" },
+    { kind: "tex", value: String.raw`+\left(+\right)\to +` },
+    { kind: "tex", value: String.raw`+\left(-\right)\to -` },
+    { kind: "tex", value: String.raw`-\left(+\right)\to -` },
+    { kind: "tex", value: String.raw`-\left(-\right)\to -` }
+  ];
+  const intAddSignRulesHint = intAddSignRulesLines.map((line) => line.value).join("\n");
+  const resolveHint = (pid: string) =>
+    typeId === "J1.AL.INT.INT_ADD" && pid === "INT_ADD" ? intAddSignRulesHint : toHint(pid);
+  const resolveHintLines = (pid: string) =>
+    typeId === "J1.AL.INT.INT_ADD" && pid === "INT_ADD" ? intAddSignRulesLines : undefined;
 
   if (patternId && AID_BY_PATTERN.has(patternId)) {
     const aid = AID_BY_PATTERN.get(patternId);
     if (!aid) return null;
     return {
       ...aid,
+      hint: resolveHint(patternId),
+      hintLines: resolveHintLines(patternId),
       explanation: buildGenericExplanation(patternId, answer)
     };
   }
 
   if (patternId) {
     return {
-      hint: toHint(patternId),
+      hint: resolveHint(patternId),
+      hintLines: resolveHintLines(patternId),
       explanation: buildGenericExplanation(patternId, answer)
     };
   }
