@@ -4225,6 +4225,9 @@ function QuestPageInner() {
                     style={useSingleLineQa ? undefined : { marginLeft: `${qaAnswerOffsetPx}px` }}
                   >
                     <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
+                      {isSecondaryQuest ? (
+                        <span className="text-[24px] sm:text-[30px] leading-none font-extrabold text-emerald-100">=</span>
+                      ) : null}
                       <div className={`relative overflow-visible ${fractionInput.enabled ? "w-[190px] sm:w-[220px]" : "w-[150px] sm:w-[180px]"}`}>
                         <div
                           aria-label="recognized-answer"
