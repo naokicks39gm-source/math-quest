@@ -16,6 +16,7 @@ export type ElementaryVisual = {
   left?: number;
   right?: number;
   result?: number;
+  showTenBundle?: boolean;
   top?: number;
   bottom?: number;
   operator?: "+" | "-" | "×" | "÷";
@@ -27,6 +28,9 @@ export type ElementaryLearningAid = {
   title: string;
   steps: string[];
   conclusion: string;
+  numberingStyle?: "decimal" | "circled";
+  embedAnswerInSteps?: boolean;
+  cleanAnswerText?: string;
   visual?: ElementaryVisual;
 };
 
@@ -74,6 +78,40 @@ const stripDecimal = (value: number) => {
 };
 
 const formatNumber = (value: number) => stripDecimal(value);
+const E1_FOUNDATION_PATTERNS = new Set(["NUM_COMPARE_UP_TO_20", "NUM_DECOMP_10", "NUM_COMP_10"]);
+
+const normalizeAnswerText = (raw: string) =>
+  String(raw)
+    .replace(/[=＝]/g, " ")
+    .replace(/^(こたえ|答え)\s*[は:：]?\s*/u, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const shouldUseCircledNumbering = (gradeId?: string, patternId?: string) =>
+  isElementaryGrade(gradeId) && Boolean(patternId) && !E1_FOUNDATION_PATTERNS.has(patternId ?? "");
+
+const getOperationStepText = (operator?: "+" | "-" | "×" | "÷") => {
+  if (operator === "+") return "② たす（ふやす）";
+  if (operator === "-") return "② ひく（へらす）";
+  if (operator === "×") return "② かける";
+  if (operator === "÷") return "② わる";
+  return "② けいさんする";
+};
+
+const applyCircledStyle = (aid: ElementaryLearningAid): ElementaryLearningAid => {
+  const answerText = normalizeAnswerText(aid.cleanAnswerText ?? aid.conclusion);
+  return {
+    ...aid,
+    numberingStyle: "circled",
+    embedAnswerInSteps: true,
+    cleanAnswerText: answerText,
+    steps: [
+      "① もんだいを みる",
+      getOperationStepText(aid.visual?.operator),
+      `③ こたえ：${answerText}`
+    ]
+  };
+};
 
 const isColumnPattern = (typeId?: string, patternId?: string) => {
   const p = patternId ?? "";
@@ -96,15 +134,17 @@ const isColumnPattern = (typeId?: string, patternId?: string) => {
 
 const buildAbacusAid = (left: number, right: number, operator: "+" | "-"): ElementaryLearningAid => {
   const result = operator === "+" ? left + right : left - right;
+  const resultText = formatNumber(result);
   return {
     kind: "abacus",
     title: "おはじき",
     steps: [
       `${left} こ`,
       operator === "+" ? `+ ${right} こ` : `- ${right} こ`,
-      `= ${result} こ`
+      `${resultText} こ`
     ],
-    conclusion: `= ${result}`,
+    conclusion: resultText,
+    cleanAnswerText: resultText,
     visual: {
       mode: "abacus",
       left,
@@ -250,6 +290,7 @@ const buildColumnAid = (left: number, right: number, operator: "+" | "-" | "×" 
     title: "筆算",
     steps: [],
     conclusion: result,
+    cleanAnswerText: normalizeAnswerText(result),
     visual: {
       mode: "column_story",
       top: first?.top ? Number(first.top) : undefined,
@@ -265,6 +306,7 @@ const buildSimpleAid = (): ElementaryLearningAid => ({
   title: "ヒント",
   steps: ["順番に計算", "最後に確認"],
   conclusion: "答えを確認",
+  cleanAnswerText: "答えを確認",
   visual: {
     mode: "simple"
   }
@@ -272,16 +314,21 @@ const buildSimpleAid = (): ElementaryLearningAid => ({
 
 const buildCompareUpTo20Aid = (left: number, right: number): ElementaryLearningAid => {
   const answer = Math.max(left, right);
+  const answerText = formatNumber(answer);
   return {
-    kind: "simple",
-    title: "かずくらべ",
+    kind: "abacus",
+    title: "おはじきでくらべる",
     steps: [
       `${left} と ${right} を くらべます`,
       `おおきい ほうを えらびます`
     ],
-    conclusion: `こたえは ${answer}`,
+    conclusion: answerText,
+    cleanAnswerText: answerText,
     visual: {
-      mode: "simple"
+      mode: "abacus",
+      left,
+      right,
+      result: answer
     }
   };
 };
@@ -298,41 +345,78 @@ const parseTenDecompPrompt = (prompt?: string) => {
 
 const buildTenDecompAid = (total: number, known: number): ElementaryLearningAid => {
   const answer = total - known;
+  const answerText = formatNumber(answer);
   return {
-    kind: "simple",
-    title: "10のぶんかい",
+    kind: "abacus",
+    title: "おはじきで10のぶんかい",
     steps: [
       `${total} は ${known} と もう1つ で できます`,
       `${total} から ${known} を ひきます`
     ],
-    conclusion: `こたえは ${answer}`,
+    conclusion: answerText,
+    cleanAnswerText: answerText,
     visual: {
-      mode: "simple"
+      mode: "abacus",
+      left: known,
+      right: answer,
+      result: total,
+      operator: "+"
+    }
+  };
+};
+
+const buildNumComp10Aid = (left: number, right: number): ElementaryLearningAid => {
+  const result = left + right;
+  const resultText = formatNumber(result);
+  return {
+    kind: "abacus",
+    title: "おはじきで10のごうせい",
+    steps: [
+      `${left} こと ${right} こを あわせます`,
+      `${result} こは 10のまとまりで みます`
+    ],
+    conclusion: resultText,
+    cleanAnswerText: resultText,
+    visual: {
+      mode: "abacus",
+      left,
+      right,
+      result,
+      operator: "+",
+      showTenBundle: true
     }
   };
 };
 
 export const getElementaryLearningAid = ({ gradeId, typeId, patternId, prompt, aDigits, bDigits }: ElementaryAidParams): ElementaryLearningAid | null => {
   if (!isElementaryGrade(gradeId)) return null;
+  const finalize = (aid: ElementaryLearningAid) =>
+    shouldUseCircledNumbering(gradeId, patternId) ? applyCircledStyle(aid) : aid;
 
   if (patternId === "NUM_COMPARE_UP_TO_20") {
     const parsed = parseFirstTwoNumbers(prompt ?? "");
-    if (!parsed) return buildSimpleAid();
-    return buildCompareUpTo20Aid(parsed.left, parsed.right);
+    if (!parsed) return finalize(buildSimpleAid());
+    return finalize(buildCompareUpTo20Aid(parsed.left, parsed.right));
   }
 
   if (patternId === "NUM_DECOMP_10") {
     const parsed = parseTenDecompPrompt(prompt);
-    if (!parsed) return buildSimpleAid();
-    return buildTenDecompAid(parsed.total, parsed.known);
+    if (!parsed) return finalize(buildSimpleAid());
+    return finalize(buildTenDecompAid(parsed.total, parsed.known));
+  }
+
+  if (patternId === "NUM_COMP_10") {
+    const parsed = parseFirstTwoNumbers(prompt ?? "");
+    if (!parsed) return finalize(buildSimpleAid());
+    return finalize(buildNumComp10Aid(parsed.left, parsed.right));
   }
 
   if (!isColumnPattern(typeId, patternId)) {
-    return buildSimpleAid();
+    return finalize(buildSimpleAid());
   }
 
   const parsed = parseFirstTwoNumbers(prompt ?? "");
-  if (!parsed) return buildSimpleAid();
+  if (!parsed) return finalize(buildSimpleAid());
 
   const operator = detectOperator(typeId, patternId, prompt);
   const left = parsed.left;
@@ -348,7 +432,7 @@ export const getElementaryLearningAid = ({ gradeId, typeId, patternId, prompt, a
     rightDigits <= 1;
 
   if (isSingleDigitPair) {
-    return buildAbacusAid(Math.abs(left), Math.abs(right), operator);
+    return finalize(buildAbacusAid(Math.abs(left), Math.abs(right), operator));
   }
-  return buildColumnAid(Math.abs(left), Math.abs(right), operator);
+  return finalize(buildColumnAid(Math.abs(left), Math.abs(right), operator));
 };

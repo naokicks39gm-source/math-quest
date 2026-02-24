@@ -79,24 +79,49 @@ const renderColumnFrame = (
 );
 
 export default function ElementaryExplanationPanel({ aid, onNext, nextLabel, disabled = false }: Props) {
+  const isCircled = aid.numberingStyle === "circled";
+  const stepLabels = ["①", "②", "③", "④", "⑤", "⑥"];
   return (
     <section className="mb-2 rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-slate-800">
       <div className="text-sm font-black text-emerald-800">{aid.title}</div>
       {aid.steps.length > 0 && (
-        <ol className="mt-2 list-decimal pl-5 text-sm leading-relaxed text-slate-800">
-          {aid.steps.map((step, idx) => (
-            <li key={`${aid.title}-step-${idx}`}>{step}</li>
-          ))}
-        </ol>
+        isCircled ? (
+          <div className="mt-2 space-y-1 text-sm leading-relaxed text-slate-800">
+            {aid.steps.map((step, idx) => {
+              const raw = step.replace(/^[①②③④⑤⑥]\s*/u, "");
+              const label = step.match(/^[①②③④⑤⑥]/u)?.[0] ?? stepLabels[idx] ?? "・";
+              return (
+                <div key={`${aid.title}-step-${idx}`} className="flex items-start gap-2">
+                  <span className="font-black text-emerald-800">{label}</span>
+                  <span>{raw}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <ol className="mt-2 list-decimal pl-5 text-sm leading-relaxed text-slate-800">
+            {aid.steps.map((step, idx) => (
+              <li key={`${aid.title}-step-${idx}`}>{step}</li>
+            ))}
+          </ol>
+        )
       )}
 
       {aid.visual?.mode === "abacus" && (
         <div className="mt-2 rounded-lg border border-emerald-200 bg-white p-2 text-xs font-mono">
           <div>{aid.visual.left} こ: {dotRow(aid.visual.left ?? 0)}</div>
-          <div>{aid.visual.operator === "+" ? "ふやす" : "とる"} {aid.visual.right} こ: {dotRow(aid.visual.right ?? 0)}</div>
+          <div>
+            {aid.visual.operator === "+" ? "ふやす" : aid.visual.operator === "-" ? "とる" : "くらべる"} {aid.visual.right} こ: {dotRow(aid.visual.right ?? 0)}
+          </div>
           <div className="mt-1 border-t border-emerald-200 pt-1">
             こたえ {aid.visual.result} こ: {dotRow(aid.visual.result ?? 0)}
           </div>
+          {aid.visual.showTenBundle && (
+            <div className="mt-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px]">
+              <div>10のまとまり: {Math.floor((aid.visual.result ?? 0) / 10)}こ</div>
+              <div>のこり: {(aid.visual.result ?? 0) % 10}こ</div>
+            </div>
+          )}
         </div>
       )}
 
@@ -117,9 +142,11 @@ export default function ElementaryExplanationPanel({ aid, onNext, nextLabel, dis
         </div>
       )}
 
-      <div className="mt-2 rounded-lg border border-emerald-300 bg-emerald-100 px-3 py-2 text-sm font-black text-emerald-900">
-        こたえ: {aid.conclusion}
-      </div>
+      {!aid.embedAnswerInSteps && (
+        <div className="mt-2 rounded-lg border border-emerald-300 bg-emerald-100 px-3 py-2 text-sm font-black text-emerald-900">
+          こたえ: {aid.cleanAnswerText ?? aid.conclusion}
+        </div>
+      )}
 
       <div className="mt-2 flex justify-end">
         <button

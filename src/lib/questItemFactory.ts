@@ -173,6 +173,7 @@ const makeIntEntry = (type: TypeDef, a: number, op: string, b: number, answer: n
 
 const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, used: Set<string>) => {
   const out: QuestEntry[] = [];
+  const isE1Add2D1DYes = type.type_id === "E1.NA.ADD.ADD_2D_1D_YES" && patternId === "ADD_2D_1D_YES";
   if (patternId === "ADD_1D_1D_NO") {
     const all: QuestEntry[] = [];
     for (let a = 1; a <= 9; a += 1) {
@@ -215,7 +216,9 @@ const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, use
       const hasCarry = (a % 10) + (b % 10) >= 10;
       if (carry === true && !hasCarry) continue;
       if (carry === false && hasCarry) continue;
-      pushEntry(out, used, makeIntEntry(type, a, "+", b, a + b));
+      const sum = a + b;
+      if (isE1Add2D1DYes && sum > 99) continue;
+      pushEntry(out, used, makeIntEntry(type, a, "+", b, sum));
       continue;
     }
     if (isSub) {

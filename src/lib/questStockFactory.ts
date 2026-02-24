@@ -495,6 +495,14 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
   return out;
 };
 
+const filterE1Add2D1DYesToTwoDigits = (entries: QuestEntry[], typeId: string, patternId?: string) => {
+  if (!(typeId.startsWith("E1.") && patternId === "ADD_2D_1D_YES")) return entries;
+  return entries.filter((entry) => {
+    const answer = Number(entry.item.answer);
+    return Number.isFinite(answer) && answer < 100;
+  });
+};
+
 const getGradeIdFromTypeId = (typeId: string) => typeId.split(".")[0] ?? "";
 
 const isFrozenElementaryGrade = (gradeId: string) => /^(E1|E2|E3|E4)$/.test(gradeId);
@@ -615,6 +623,7 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
       unique = uniqueByPromptAndEquivalent(reExpanded);
     }
   }
+  unique = filterE1Add2D1DYesToTwoDigits(unique, type.type_id, hasPattern ? patternId : undefined);
   const ordered = reorderAvoidAdjacentSameFamily(shuffle(unique).map(normalizeJ1IntEntry)).slice(0, targetCount);
   const entries = uniqueByPromptAndEquivalent(ordered).slice(0, targetCount);
   const reason = entries.length >= targetCount
