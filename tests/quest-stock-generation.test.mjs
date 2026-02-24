@@ -63,3 +63,10 @@ test("NUM patterns have deterministic fallback generation", () => {
   assert.equal(source.includes('patternId === "NUM_COMP_10"'), true);
   assert.equal(source.includes("どちらが大きい？"), true);
 });
+
+test("E1 ADD_2D_1D_YES stock has 2-digit-only final guard", () => {
+  assert.equal(source.includes("const filterE1Add2D1DYesToTwoDigits ="), true);
+  assert.equal(source.includes("typeId.startsWith(\"E1.\") && patternId === \"ADD_2D_1D_YES\""), true);
+  assert.equal(source.includes("return Number.isFinite(answer) && answer < 100;"), true);
+  assert.equal(source.includes("unique = filterE1Add2D1DYesToTwoDigits(unique, type.type_id, hasPattern ? patternId : undefined);"), true);
+});
