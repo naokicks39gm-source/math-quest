@@ -2792,6 +2792,10 @@ function QuestPageInner() {
         window.clearTimeout(wrongMarkTimerRef.current);
       }
       setResultMark('wrong');
+      if (isSecondaryQuest) {
+        setShowSecondaryHint(false);
+        setShowSecondaryExplanation(true);
+      }
       wrongMarkTimerRef.current = window.setTimeout(() => {
         setResultMark(null);
         wrongMarkTimerRef.current = null;
@@ -3404,6 +3408,10 @@ function QuestPageInner() {
           window.clearTimeout(wrongMarkTimerRef.current);
         }
         setResultMark('wrong');
+        if (isSecondaryQuest) {
+          setShowSecondaryHint(false);
+          setShowSecondaryExplanation(true);
+        }
         wrongMarkTimerRef.current = window.setTimeout(() => {
           setResultMark(null);
           wrongMarkTimerRef.current = null;
