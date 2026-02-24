@@ -76,13 +76,20 @@ const renderColumnFrame = (
           const stackIndex = stackIndexByOffset.get(adj.offsetFromRight) ?? 0;
           stackIndexByOffset.set(adj.offsetFromRight, stackIndex + 1);
           const rightBase = `calc(${1 + adj.offsetFromRight * 1.25}ch + 0.25rem)`;
+          // Keep borrow pair (-1 and +10) visibly separated even when places are adjacent.
           const right =
             adj.label === "+10"
-              ? `calc(${rightBase} + 0.35ch)`
+              ? `calc(${rightBase} - 2.90ch)`
               : adj.label === "-1"
-                ? `calc(${rightBase} - 0.35ch)`
+                ? `calc(${rightBase} + 0.80ch)`
                 : rightBase;
-          const top = `calc(-0.75rem - ${stackIndex * 1.05}rem)`;
+          const baseTop =
+            adj.label === "+10"
+              ? -1.05
+              : adj.label === "-1"
+                ? -1.05
+                : -1.35;
+          const top = `calc(${baseTop}rem - ${stackIndex * 1.05}rem)`;
           return (
             <div
               key={`${adj.label}-${adj.offsetFromRight}-${idx}`}
