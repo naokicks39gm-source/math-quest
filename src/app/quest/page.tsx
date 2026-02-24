@@ -364,8 +364,8 @@ const CHARACTERS = {
 const DIGIT_KEYPAD_TOKENS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 const SYMBOL_KEYPAD_TOKENS = ["/", ".", "-"] as const;
 const HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS = ["()", "x", "^", "+/-"] as const;
-const FLICK_THRESHOLD_PX = 12;
-const FLICK_MAX_HORIZONTAL_PX = 24;
+const PLUS_MINUS_LONG_PRESS_MS = 220;
+const PLUS_MINUS_POPUP_SWITCH_PX = 14;
 
 type BBox = { minX: number; minY: number; maxX: number; maxY: number };
 type DigitSample = { tensor: tf.Tensor2D; preview: ImageData; width: number; height: number; centerX: number };
@@ -382,7 +382,13 @@ type BinarizedCanvas = {
 };
 type MemoPoint = { x: number; y: number };
 type MemoStroke = { points: MemoPoint[] };
-type FlickState = { pointerId: number; x: number; y: number; t: number };
+type PlusMinusPressState = {
+  pointerId: number;
+  startY: number;
+  currentY: number;
+  longPressed: boolean;
+  longPressTimer: number | null;
+};
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
@@ -1574,8 +1580,7 @@ function QuestPageInner() {
   const autoNextTimerRef = useRef<number | null>(null);
   const wrongMarkTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
-  const flickStartRef = useRef<FlickState | null>(null);
-  const flickActiveKeyRef = useRef<"plusminus" | null>(null);
+  const plusMinusPressRef = useRef<PlusMinusPressState | null>(null);
   const grades = useMemo(
     () => getCatalogGrades() as GradeDef[],
     []
@@ -1615,6 +1620,8 @@ function QuestPageInner() {
   const [expandedProblemPicker, setExpandedProblemPicker] = useState(true);
   const [pendingGradeId, setPendingGradeId] = useState("");
   const [showHighSchoolHint, setShowHighSchoolHint] = useState(false);
+  const [plusMinusPopupOpen, setPlusMinusPopupOpen] = useState(false);
+  const [plusMinusCandidate, setPlusMinusCandidate] = useState<"+" | "-" | null>(null);
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
   const [showSecondaryHint, setShowSecondaryHint] = useState(false);
   const [showSecondaryExplanation, setShowSecondaryExplanation] = useState(false);
@@ -2888,34 +2895,83 @@ function QuestPageInner() {
     }
     return <span className="inline-flex items-baseline gap-[1px]">{nodes}</span>;
   };
+  const clearPlusMinusPressTimer = (state: PlusMinusPressState | null) => {
+    if (!state || state.longPressTimer === null) return;
+    window.clearTimeout(state.longPressTimer);
+    state.longPressTimer = null;
+  };
+  const resolvePlusMinusToken = (state: PlusMinusPressState) =>
+    state.currentY - state.startY >= PLUS_MINUS_POPUP_SWITCH_PX ? "-" as const : "+" as const;
+  const resetPlusMinusInputState = () => {
+    clearPlusMinusPressTimer(plusMinusPressRef.current);
+    plusMinusPressRef.current = null;
+    setPlusMinusPopupOpen(false);
+    setPlusMinusCandidate(null);
+  };
   const handlePlusMinusFlickStart = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (status !== "playing" || isStarting) return;
-    flickStartRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, t: Date.now() };
-    flickActiveKeyRef.current = "plusminus";
+    resetPlusMinusInputState();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const state: PlusMinusPressState = {
+      pointerId: e.pointerId,
+      startY: e.clientY,
+      currentY: e.clientY,
+      longPressed: false,
+      longPressTimer: null
+    };
+    state.longPressTimer = window.setTimeout(() => {
+      const active = plusMinusPressRef.current;
+      if (!active || active.pointerId !== e.pointerId) return;
+      active.longPressed = true;
+      active.longPressTimer = null;
+      const candidate = resolvePlusMinusToken(active);
+      setPlusMinusPopupOpen(true);
+      setPlusMinusCandidate(candidate);
+    }, PLUS_MINUS_LONG_PRESS_MS);
+    plusMinusPressRef.current = state;
   };
-  const resolvePlusMinusFlickToken = (e: React.PointerEvent<HTMLButtonElement>) => {
-    const start = flickStartRef.current;
-    if (!start || flickActiveKeyRef.current !== "plusminus" || start.pointerId !== e.pointerId) return "+";
-    const dx = e.clientX - start.x;
-    const dy = e.clientY - start.y;
-    const elapsed = Date.now() - start.t;
-    if (Math.abs(dx) > FLICK_MAX_HORIZONTAL_PX) return "+";
-    if (elapsed > 700) return "+";
-    if (dy >= FLICK_THRESHOLD_PX) return "-";
-    if (dy <= -FLICK_THRESHOLD_PX) return "+";
-    return "+";
+  const handlePlusMinusFlickMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const active = plusMinusPressRef.current;
+    if (!active || active.pointerId !== e.pointerId) return;
+    active.currentY = e.clientY;
+    if (!active.longPressed) return;
+    setPlusMinusCandidate(resolvePlusMinusToken(active));
   };
   const handlePlusMinusFlickEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (status !== "playing" || isStarting) return;
-    const token = resolvePlusMinusFlickToken(e);
+    const active = plusMinusPressRef.current;
+    if (!active || active.pointerId !== e.pointerId) {
+      resetPlusMinusInputState();
+      return;
+    }
+    active.currentY = e.clientY;
+    const token = active.longPressed ? resolvePlusMinusToken(active) : "+" as const;
+    clearPlusMinusPressTimer(active);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    resetPlusMinusInputState();
     handleInput(token);
-    flickStartRef.current = null;
-    flickActiveKeyRef.current = null;
   };
-  const handlePlusMinusFlickCancel = () => {
-    flickStartRef.current = null;
-    flickActiveKeyRef.current = null;
+  const handlePlusMinusFlickCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    resetPlusMinusInputState();
   };
+  useEffect(() => {
+    clearPlusMinusPressTimer(plusMinusPressRef.current);
+    plusMinusPressRef.current = null;
+    setPlusMinusPopupOpen(false);
+    setPlusMinusCandidate(null);
+  }, [itemIndex, currentType?.type_id, status]);
+  useEffect(
+    () => () => {
+      clearPlusMinusPressTimer(plusMinusPressRef.current);
+      plusMinusPressRef.current = null;
+    },
+    []
+  );
 
   const resultOverlay = resultMark ? (
     <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
@@ -4379,16 +4435,28 @@ function QuestPageInner() {
                           handleInput(token);
                         }}
                         onPointerDown={token === "+/-" ? handlePlusMinusFlickStart : undefined}
+                        onPointerMove={token === "+/-" ? handlePlusMinusFlickMove : undefined}
                         onPointerUp={token === "+/-" ? handlePlusMinusFlickEnd : undefined}
                         onPointerCancel={token === "+/-" ? handlePlusMinusFlickCancel : undefined}
                         disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken(token)}
                         className={`
-                          h-9 w-full rounded-md text-[11px] font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                          relative overflow-visible h-9 w-full rounded-md text-[11px] font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
                           ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
+                          ${token === "+/-" && plusMinusPopupOpen && plusMinusCandidate === "-" ? "bg-rose-50 text-rose-700 border-rose-300" : ""}
                         `}
                         style={token === "+/-" ? { touchAction: "none" } : undefined}
                       >
                         {renderKeyLabel(token)}
+                        {token === "+/-" && plusMinusPopupOpen ? (
+                          <span className="pointer-events-none absolute -top-[74px] left-1/2 z-20 inline-flex w-[46px] -translate-x-1/2 flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-lg">
+                            <span className={`flex h-8 items-center justify-center text-xs font-bold ${plusMinusCandidate === "+" ? "bg-emerald-100 text-emerald-800" : "bg-white text-slate-700"}`}>
+                              +
+                            </span>
+                            <span className={`flex h-8 items-center justify-center text-xs font-bold border-t border-slate-200 ${plusMinusCandidate === "-" ? "bg-rose-100 text-rose-700" : "bg-white text-slate-700"}`}>
+                              -
+                            </span>
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })}
