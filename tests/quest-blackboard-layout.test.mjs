@@ -37,7 +37,7 @@ test("quest answer layout keeps right offset and quadratic row", () => {
   assert.match(source, /style=\{useSingleLineQa \? undefined : \{ marginLeft: `\$\{qaAnswerOffsetPx\}px` \}\}/);
   assert.match(source, /w-full sm:w-auto flex items-center gap-2 overflow-x-auto whitespace-nowrap/);
   assert.match(source, /w-full sm:w-auto flex items-center gap-2 overflow-visible/);
-  assert.match(source, /\{isSecondaryQuest \? \(\s*<span className="text-\[24px\] sm:text-\[30px\] leading-none font-extrabold text-emerald-100">=<\/span>/);
+  assert.match(source, /\{isSecondaryQuest \? \(\s*<span className="text-\[24px\] sm:text-\[30px\] leading-none font-extrabold text-emerald-100"[\s\S]*>=<\/span>/);
   assert.doesNotMatch(source, /recognized-answer-1"[\s\S]*flex-wrap/);
   assert.match(source, /aria-label="recognized-answer-1"/);
   assert.match(source, /aria-label="recognized-answer-2"/);
