@@ -2,21 +2,18 @@ import { SecondaryLearningAid } from "@/lib/secondaryExplanations";
 
 type Props = {
   aid: SecondaryLearningAid;
+  onNext?: () => void;
+  nextLabel?: string;
+  showNextButton?: boolean;
 };
 
-export default function SecondaryExplanationPanel({ aid }: Props) {
-  const { hint, explanation } = aid;
+export default function SecondaryExplanationPanel({ aid, onNext, nextLabel = "次の問題へ", showNextButton = false }: Props) {
+  const { explanation } = aid;
 
   return (
     <section className="w-full rounded-xl border border-amber-200 bg-amber-50 p-4 text-base text-slate-800">
-      <div className="rounded-lg border border-amber-300 bg-white px-3 py-2">
-        <div className="text-sm font-bold text-amber-700">ヒント</div>
-        <div className="text-base font-semibold">{hint}</div>
-      </div>
-
-      <details className="mt-3 rounded-lg border border-slate-200 bg-white p-4">
-        <summary className="cursor-pointer text-base font-bold text-indigo-700">解説を開く</summary>
-        <div className="mt-4 space-y-4 text-base">
+      <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="space-y-4 text-base">
           <div>
             <div className="text-lg font-bold text-slate-800">{explanation.title}</div>
             <div className="text-slate-700">{explanation.point}</div>
@@ -70,8 +67,17 @@ export default function SecondaryExplanationPanel({ aid }: Props) {
             <div className="text-sm font-bold text-indigo-700">答え</div>
             <div className="text-lg font-bold text-indigo-900">{explanation.conclusion}</div>
           </div>
+          {showNextButton && onNext && (
+            <button
+              type="button"
+              onClick={onNext}
+              className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
+            >
+              {nextLabel}
+            </button>
+          )}
         </div>
-      </details>
+      </div>
     </section>
   );
 }
