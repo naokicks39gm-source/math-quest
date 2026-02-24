@@ -20,6 +20,9 @@ test("secondary quest uses separate hint and explanation toggles", () => {
 test("secondary explanation panel is explanation-only and supports next button", () => {
   assert.equal(panelSource.includes("const { hint, explanation } = aid;"), false);
   assert.match(panelSource, /const \{ explanation \} = aid;/);
+  assert.match(panelSource, /explanation\.derivationLines\.map/);
+  assert.equal(panelSource.includes("式変形 {idx + 1}"), false);
+  assert.equal(panelSource.includes("rounded-md border border-slate-200 bg-slate-50"), false);
   assert.match(panelSource, /showNextButton/);
   assert.match(panelSource, /onNext/);
   assert.match(panelSource, /nextLabel/);
