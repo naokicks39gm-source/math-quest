@@ -43,8 +43,8 @@ test("keypad token guard supports int dec frac rules", () => {
 
 test("high-school keypad adds four expression keys with compact layout", () => {
   assert.match(source, /const HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS = \["\(\)", "x", "\^", "\+\/-"\] as const;/);
-  assert.match(source, /const FLICK_THRESHOLD_PX = 12;/);
-  assert.match(source, /const FLICK_MAX_HORIZONTAL_PX = 24;/);
+  assert.match(source, /const PLUS_MINUS_LONG_PRESS_MS = 220;/);
+  assert.match(source, /const PLUS_MINUS_POPUP_SWITCH_PX = 14;/);
   assert.match(source, /const isHighSchoolQuest = \/\^\(H1\|H2\|H3\)\$\/\.test\(currentGradeId\);/);
   assert.match(source, /if \(token === "\+"\) return "プラス";/);
   assert.match(source, /if \(token === "\+\/-"\)/);
@@ -58,11 +58,18 @@ test("high-school keypad adds four expression keys with compact layout", () => {
   assert.match(source, /"7", "8", "9", "\+\/-", ""/);
   assert.match(source, /"0", "\/", "\^", "\.", ""/);
   assert.match(source, /onPointerDown=\{token === "\+\/-" \? handlePlusMinusFlickStart : undefined\}/);
+  assert.match(source, /onPointerMove=\{token === "\+\/-" \? handlePlusMinusFlickMove : undefined\}/);
   assert.match(source, /onPointerUp=\{token === "\+\/-" \? handlePlusMinusFlickEnd : undefined\}/);
   assert.match(source, /onPointerCancel=\{token === "\+\/-" \? handlePlusMinusFlickCancel : undefined\}/);
   assert.match(source, /style=\{token === "\+\/-" \? \{ touchAction: "none" \} : undefined\}/);
-  assert.match(source, /const resolvePlusMinusFlickToken = \(e: React\.PointerEvent<HTMLButtonElement>\) =>/);
-  assert.match(source, /if \(dy >= FLICK_THRESHOLD_PX\) return "-";/);
-  assert.match(source, /if \(dy <= -FLICK_THRESHOLD_PX\) return "\+";/);
+  assert.match(source, /e\.currentTarget\.setPointerCapture\(e\.pointerId\);/);
+  assert.match(source, /if \(e\.currentTarget\.hasPointerCapture\(e\.pointerId\)\) \{/);
+  assert.match(source, /e\.currentTarget\.releasePointerCapture\(e\.pointerId\);/);
+  assert.match(source, /const \[plusMinusPopupOpen, setPlusMinusPopupOpen\] = useState\(false\);/);
+  assert.match(source, /const \[plusMinusCandidate, setPlusMinusCandidate\] = useState<"\+" \| "-" \| null>\(null\);/);
+  assert.match(source, /const resolvePlusMinusToken = \(state: PlusMinusPressState\) =>/);
+  assert.match(source, /const token = active\.longPressed \? resolvePlusMinusToken\(active\) : "\+" as const;/);
+  assert.match(source, /setPlusMinusPopupOpen\(true\);/);
+  assert.match(source, /setPlusMinusCandidate\(candidate\);/);
   assert.match(source, /num === "\(\)" \? `\$\{prev\}\(\)` : `\$\{prev\}\$\{num\}`/);
 });
