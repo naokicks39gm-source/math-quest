@@ -270,6 +270,19 @@ test("E2 2-digit + 2-digit labels include carry condition information", () => {
   assert.equal(Boolean(byId["E2.NA.ADD.ADD_2D_2D_ANY"]), false);
 });
 
+test("E2 orderedTypeIds place 2-digit+1-digit before 2-digit+2-digit and 2-digit-1-digit before 2-digit-2-digit", () => {
+  const profileSource = fs.readFileSync(path.join(process.cwd(), "src/lib/gradeProfiles.ts"), "utf8");
+  const e2Block = profileSource.match(/E2:\s*\{[\s\S]*?\n\s*\},\n\s*E3:/)?.[0] ?? "";
+  const add2d1dNo = e2Block.indexOf('"E2.NA.ADD.ADD_2D_1D_NO"');
+  const add2d2dNo = e2Block.indexOf('"E2.NA.ADD.ADD_2D_2D_NO"');
+  const sub2d1dNo = e2Block.indexOf('"E2.NA.SUB.SUB_2D_1D_NO"');
+  const sub2d2dNo = e2Block.indexOf('"E2.NA.SUB.SUB_2D_2D_NO"');
+  assert.ok(add2d1dNo >= 0 && add2d2dNo >= 0, "E2 add orderedTypeIds must exist");
+  assert.ok(sub2d1dNo >= 0 && sub2d2dNo >= 0, "E2 sub orderedTypeIds must exist");
+  assert.ok(add2d1dNo < add2d2dNo, "2桁+1桁 should be before 2桁+2桁 in E2 order");
+  assert.ok(sub2d1dNo < sub2d2dNo, "2桁-1桁 should be before 2桁-2桁 in E2 order");
+});
+
 test("display names include Lv prefix and grade-local sequence numbers", () => {
   const catalog = deriveCatalog();
   for (const grade of catalog) {
