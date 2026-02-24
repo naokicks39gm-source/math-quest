@@ -14,7 +14,7 @@ test("quest uses keypad answer flow and calc memo canvas", () => {
   assert.match(questSource, /onClick=\{undoMemo\}/);
   assert.match(questSource, /onClick=\{clearMemo\}/);
   assert.equal(questSource.includes("100%"), false);
-  assert.equal(questSource.includes("閉じる"), false);
+  assert.equal(questSource.includes("ExplanationModal"), false);
 });
 
 test("calc memo keeps pinch handlers for zoom interactions", () => {

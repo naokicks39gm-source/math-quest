@@ -98,5 +98,9 @@ test("secondary explanation path remains in quest page", () => {
   assert.match(pageSource, /解説を見る/);
   assert.match(pageSource, /showNextButton/);
   assert.match(pageSource, /skipFromExplanation/);
+  assert.match(pageSource, /const \[showHighSchoolHint, setShowHighSchoolHint\] = useState\(false\);/);
+  assert.match(pageSource, /isHighSchoolQuest \?/);
+  assert.match(pageSource, /ヒントを閉じる/);
+  assert.match(pageSource, /\{showHighSchoolHint && \(/);
   assert.match(pageSource, /<SecondaryExplanationPanel aid=\{currentAid\} \/>/);
 });
