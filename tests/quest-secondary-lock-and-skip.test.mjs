@@ -9,6 +9,7 @@ test("answer operations are locked while secondary explanation is open", () => {
   assert.match(source, /const isAnswerLockedByExplanation = isSecondaryQuest && showSecondaryExplanation/);
   assert.match(source, /if \(status !== 'playing' \|\| isStarting \|\| isAnswerLockedByExplanation\) return;/);
   assert.match(source, /disabled=\{status !== 'playing' \|\| isStarting \|\| isAnswerLockedByExplanation \|\| !canSubmitCurrentAnswer\}/);
+  assert.match(source, /if \(isSecondaryQuest\) \{\s*setShowSecondaryHint\(false\);\s*setShowSecondaryExplanation\(true\);\s*\}/);
 });
 
 test("skip from explanation is recorded and advances to next question", () => {

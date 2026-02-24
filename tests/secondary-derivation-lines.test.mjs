@@ -23,6 +23,8 @@ test("secondary derivation builder guarantees at least two lines", () => {
 });
 
 test("secondary derivation builder highlights changed parts and does not inject sign-rule arrows into INT derivation", () => {
+  assert.match(source, /const parseSignedBinaryExpression = \(value: string\)/);
+  assert.match(source, /const buildIntDerivationLines = \(baseExpression: string, answerText: string\)/);
   assert.match(source, /const tokenizeForHighlight = \(tex: string\)/);
   assert.match(source, /const diffTokens = \(prev: string, next: string\)/);
   assert.match(source, /const applyHighlight = \(tex: string, tokens: string\[\]\)/);

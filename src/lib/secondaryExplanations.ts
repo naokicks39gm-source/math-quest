@@ -57,10 +57,7 @@ const toHint = (patternId: string) => {
 };
 
 const buildConclusion = (answer?: string) => {
-  if (!answer || answer.trim() === "") {
-    return "つまり、表と手順どおりに計算した値が答えです。";
-  }
-  return `つまり、答えは ${answer} です。`;
+  return answer?.trim() ?? "";
 };
 
 const toTexSafe = (value: string) =>
@@ -78,12 +75,86 @@ const stripPromptTail = (value: string) =>
     .replace(/\s*[=＝]\s*$/u, "")
     .trim();
 
+const parseSignedBinaryExpression = (value: string) => {
+  const normalized = value.replace(/[（]/g, "(").replace(/[）]/g, ")").replace(/\s+/g, "");
+  const paren = normalized.match(/^\(([+-]?\d+)\)([+\-*/×÷])\(([+-]?\d+)\)$/u);
+  if (paren) {
+    return {
+      a: Number(paren[1]),
+      op: paren[2],
+      b: Number(paren[3])
+    };
+  }
+  const plain = normalized.match(/^([+-]?\d+)([+\-*/×÷])([+-]?\d+)$/u);
+  if (plain) {
+    return {
+      a: Number(plain[1]),
+      op: plain[2],
+      b: Number(plain[3])
+    };
+  }
+  return null;
+};
+
+const formatSigned = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+const formatSignedParenTex = (n: number) => String.raw`\left(${formatSigned(n)}\right)`;
+
+const buildIntDerivationLines = (baseExpression: string, answerText: string) => {
+  const parsed = parseSignedBinaryExpression(baseExpression);
+  if (!parsed) {
+    return [
+      { kind: "tex" as const, value: toTexSafe(baseExpression) },
+      { kind: "tex" as const, value: String.raw`=${answerText}` }
+    ];
+  }
+  const op = parsed.op === "×" ? "\\times" : parsed.op === "÷" ? "\\div" : parsed.op;
+  const first = `${formatSignedParenTex(parsed.a)}${op}${formatSignedParenTex(parsed.b)}`;
+  const result = parsed.a + parsed.b;
+  if (parsed.op === "+") {
+    const secondOp = parsed.b >= 0 ? "+" : "-";
+    const second = `${parsed.a}${secondOp}${Math.abs(parsed.b)}`;
+    return [
+      { kind: "tex" as const, value: first },
+      { kind: "tex" as const, value: `=${second}` },
+      { kind: "tex" as const, value: `=${result}` }
+    ];
+  }
+  if (parsed.op === "-") {
+    const converted = -parsed.b;
+    const secondOp = converted >= 0 ? "+" : "-";
+    const second = `${parsed.a}${secondOp}${Math.abs(converted)}`;
+    return [
+      { kind: "tex" as const, value: first },
+      { kind: "tex" as const, value: `=${second}` },
+      { kind: "tex" as const, value: `=${parsed.a - parsed.b}` }
+    ];
+  }
+  if (parsed.op === "*" || parsed.op === "×") {
+    return [
+      { kind: "tex" as const, value: first },
+      { kind: "tex" as const, value: `=${parsed.a}\\times${parsed.b}` },
+      { kind: "tex" as const, value: `=${parsed.a * parsed.b}` }
+    ];
+  }
+  if (parsed.op === "/" || parsed.op === "÷") {
+    return [
+      { kind: "tex" as const, value: first },
+      { kind: "tex" as const, value: `=${parsed.a}\\div${parsed.b}` },
+      { kind: "tex" as const, value: `=${answerText}` }
+    ];
+  }
+  return [
+    { kind: "tex" as const, value: first },
+    { kind: "tex" as const, value: String.raw`=${answerText}` }
+  ];
+};
+
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const tokenizeForHighlight = (tex: string) =>
   tex
     .replace(/\\text\{[^{}]*\}/g, "")
-    .match(/\\[a-zA-Z]+(?:\{[^{}]*\})?|-?\d+(?:\.\d+)?|[A-Za-z]+|[=+\-*/()]/g) ?? [];
+    .match(/-?\d+(?:\.\d+)?/g) ?? [];
 
 const diffTokens = (prev: string, next: string) => {
   const prevTokens = tokenizeForHighlight(prev);
@@ -96,7 +167,7 @@ const applyHighlight = (tex: string, tokens: string[]) => {
   const unique = [...new Set(tokens.map((t) => t.trim()).filter(Boolean))].sort((a, b) => b.length - a.length);
   let out = tex;
   for (const token of unique) {
-    const pattern = new RegExp(escapeRegExp(token));
+    const pattern = new RegExp(String.raw`(?<!\\)\b${escapeRegExp(token)}\b`);
     out = out.replace(pattern, String.raw`\color{#2563eb}{${token}}`);
   }
   return out;
@@ -111,9 +182,8 @@ const addHighlightsToLines = (lines: { kind: "tex" | "text"; value: string }[]) 
       continue;
     }
     const changedTokens = prevTex ? diffTokens(prevTex, line.value) : [];
-    const fallbackToken = line.value.includes("=")
-      ? (line.value.split("=").pop() ?? "").trim()
-      : (tokenizeForHighlight(line.value).slice(-1)[0] ?? "");
+    const numericTokens = tokenizeForHighlight(line.value);
+    const fallbackToken = numericTokens.length > 0 ? numericTokens[numericTokens.length - 1] ?? "" : "";
     const highlightTokens = changedTokens.length > 0 ? changedTokens : fallbackToken ? [fallbackToken] : [];
     const highlighted = highlightTokens.length > 0 ? applyHighlight(line.value, highlightTokens) : line.value;
     result.push({ ...line, value: highlighted, highlights: highlightTokens });
@@ -134,12 +204,7 @@ const buildDerivationLines = (
 
   let lines: { kind: "tex" | "text"; value: string }[];
   if (patternId.startsWith("INT_")) {
-    lines = [
-      { kind: "tex", value: base },
-      { kind: "tex", value: String.raw`=\text{符号を整理}` },
-      { kind: "tex", value: String.raw`=\text{絶対値を計算}` },
-      { kind: "tex", value: String.raw`=${answerText}` }
-    ];
+    lines = buildIntDerivationLines(baseExpression || base, answerText);
   } else if (patternId === "LIN_EQ" || patternId === "LIN_INEQ") {
     lines = [
       { kind: "tex", value: base },
@@ -213,7 +278,7 @@ const buildGenericExplanation = (
   const name = toMathName(patternId);
   return {
     title: `${name}の解き方（${patternId}）`,
-    point: "形を見分けて、1つの公式で最後まで計算します。",
+    point: "",
     derivationLines: buildDerivationLines(patternId, options?.prompt, options?.promptTex, answer),
     steps: [
       "形を判定して、使う公式を1つ決める。",

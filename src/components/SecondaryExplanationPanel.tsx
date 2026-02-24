@@ -15,11 +15,6 @@ export default function SecondaryExplanationPanel({ aid, onNext, nextLabel = "Ê¨
     <section className="w-full rounded-xl border border-amber-200 bg-amber-50 p-4 text-base text-slate-800">
       <div className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="space-y-4 text-base">
-          <div>
-            <div className="text-lg font-bold text-slate-800">{explanation.title}</div>
-            <div className="text-slate-700">{explanation.point}</div>
-          </div>
-
           <div className="space-y-2">
             {explanation.derivationLines.map((line, idx) => (
               <div key={`${idx}-${line.value}`} className="overflow-x-auto py-1 text-slate-800">
@@ -29,8 +24,7 @@ export default function SecondaryExplanationPanel({ aid, onNext, nextLabel = "Ê¨
           </div>
 
           <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
-            <div className="text-sm font-bold text-indigo-700">Á≠î„Åà</div>
-            <div className="text-lg font-bold text-indigo-900">{explanation.conclusion}</div>
+            <div className="text-xl font-bold text-indigo-900">{explanation.conclusion}</div>
           </div>
           {showNextButton && onNext && (
             <button

@@ -65,13 +65,13 @@ test("learning aid includes hint and explanation building", () => {
   assert.equal(source.includes("headers"), true);
   assert.equal(source.includes("diagramLines"), true);
   assert.equal(source.includes("conclusion"), true);
-  assert.equal(source.includes("つまり、"), true);
+  assert.equal(source.includes("return answer?.trim() ?? \"\";"), true);
 });
 
 test("secondary explanation panel shows conclusion answer section", () => {
-  assert.equal(panelSource.includes("答え"), true);
   assert.equal(panelSource.includes("explanation.conclusion"), true);
   assert.equal(panelSource.includes("explanation.derivationLines"), true);
   assert.equal(panelSource.includes("InlineMath"), true);
   assert.equal(panelSource.includes("式変形"), false);
+  assert.equal(panelSource.includes("text-sm font-bold text-indigo-700"), false);
 });
