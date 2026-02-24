@@ -1841,6 +1841,14 @@ function QuestPageInner() {
     return () => observer.disconnect();
   }, [status]);
 
+  const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
+  const currentEntry = quizItems[safeIndex] ?? null;
+  const currentItem = currentEntry?.item ?? null;
+  const currentType = currentEntry?.type ?? selectedType;
+  const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
+  const isSecondaryQuest = /^(J1|J2|J3|H1|H2|H3)$/.test(currentGradeId);
+  const isHighSchoolQuest = /^(H1|H2|H3)$/.test(currentGradeId);
+
   useEffect(() => {
     const row = qaRowRef.current;
     const prompt = qaPromptRef.current;
@@ -2274,10 +2282,6 @@ function QuestPageInner() {
     setQuadraticActiveIndex(0);
   }, [stockReady, typeStocks, activeTypeId, quizSize, retryNonce]);
 
-  const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
-  const currentEntry = quizItems[safeIndex] ?? null;
-  const currentItem = currentEntry?.item ?? null;
-  const currentType = currentEntry?.type ?? selectedType;
   const currentAid = useMemo(
     () =>
       getSecondaryLearningAid({
@@ -2309,9 +2313,6 @@ function QuestPageInner() {
     ]
   );
   const isQuadraticRootsQuestion = isQuadraticRootsType(currentType?.type_id);
-  const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
-  const isSecondaryQuest = /^(J1|J2|J3|H1|H2|H3)$/.test(currentGradeId);
-  const isHighSchoolQuest = /^(H1|H2|H3)$/.test(currentGradeId);
   const gradeOptions = useMemo(
     () =>
       grades.map((grade) => ({
