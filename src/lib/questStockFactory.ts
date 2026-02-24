@@ -140,6 +140,14 @@ const isE1Phase7To10AnswerLimitedType = (typeId: string) =>
   typeId === "E1.NA.SUB.SUB_2D_1D_NO" ||
   typeId === "E1.NA.SUB.SUB_2D_1D_YES";
 
+const isE2Add2D1DType = (typeId: string) =>
+  typeId === "E2.NA.ADD.ADD_2D_1D_NO" ||
+  typeId === "E2.NA.ADD.ADD_2D_1D_YES";
+
+const isE2Sub2D1DType = (typeId: string) =>
+  typeId === "E2.NA.SUB.SUB_2D_1D_NO" ||
+  typeId === "E2.NA.SUB.SUB_2D_1D_YES";
+
 const minByDigits = (d: number) => 10 ** Math.max(0, d - 1);
 const maxByDigits = (d: number) => 10 ** d - 1;
 
@@ -521,6 +529,8 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
     isE1Phase7To10OperandsLimitedType(type.type_id) && (patternId.startsWith("ADD_2D_1D_") || patternId.startsWith("SUB_2D_1D_"));
   const limitAnswerTo20 =
     isE1Phase7To10AnswerLimitedType(type.type_id) && (patternId.startsWith("ADD_2D_1D_") || patternId.startsWith("SUB_2D_1D_"));
+  const limitE2Add2D1DRange = isE2Add2D1DType(type.type_id) && patternId.startsWith("ADD_2D_1D_");
+  const limitE2Sub2D1DRange = isE2Sub2D1DType(type.type_id) && patternId.startsWith("SUB_2D_1D_");
 
   let attempts = 0;
   const maxAttempts = 20000;
@@ -529,11 +539,13 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
     const a = minByDigits(aDigits) + Math.floor(Math.random() * (maxByDigits(aDigits) - minByDigits(aDigits) + 1));
     const b = minByDigits(bDigits) + Math.floor(Math.random() * (maxByDigits(bDigits) - minByDigits(bDigits) + 1));
     if (limitOperandsTo20 && (a > 20 || b > 20)) continue;
+    if ((limitE2Add2D1DRange || limitE2Sub2D1DRange) && (a < 20 || a > 98 || b < 1 || b > 9)) continue;
     if (isAdd) {
       const carry = (a % 10) + (b % 10) >= 10;
       if (needsNo && carry) continue;
       if (needsYes && !carry) continue;
       const sum = a + b;
+      if (limitE2Add2D1DRange && sum > 99) continue;
       if (limitAnswerTo20 && sum > 20) continue;
       out.push({
         type,
@@ -547,6 +559,7 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
       if (needsNo && borrow) continue;
       if (needsYes && !borrow) continue;
       const diff = a - b;
+      if (limitE2Sub2D1DRange && diff < 0) continue;
       if (limitAnswerTo20 && (diff < 0 || diff > 20)) continue;
       out.push({
         type,
@@ -586,6 +599,40 @@ const filterE1Phase7To10To20Range = (entries: QuestEntry[], typeId: string) => {
     if (!(Number.isFinite(a) && Number.isFinite(b) && Number.isFinite(answer))) return false;
     if (limitOperandsTo20 && (a > 20 || b > 20)) return false;
     if (limitAnswerTo20 && (answer < 0 || answer > 20)) return false;
+    return true;
+  });
+};
+
+const filterE2Add2D1DRange = (entries: QuestEntry[], typeId: string) => {
+  if (!isE2Add2D1DType(typeId)) return entries;
+  return entries.filter((entry) => {
+    const prompt = entry.item.prompt_tex ?? entry.item.prompt;
+    const nums = String(prompt).match(/\d+(?:\.\d+)?/g) ?? [];
+    if (nums.length < 2) return false;
+    const a = Number(nums[0]);
+    const b = Number(nums[1]);
+    const answer = Number(entry.item.answer);
+    if (!(Number.isFinite(a) && Number.isFinite(b) && Number.isFinite(answer))) return false;
+    if (a < 20 || a > 98) return false;
+    if (b < 1 || b > 9) return false;
+    if (answer < 0 || answer > 99) return false;
+    return true;
+  });
+};
+
+const filterE2Sub2D1DRange = (entries: QuestEntry[], typeId: string) => {
+  if (!isE2Sub2D1DType(typeId)) return entries;
+  return entries.filter((entry) => {
+    const prompt = entry.item.prompt_tex ?? entry.item.prompt;
+    const nums = String(prompt).match(/\d+(?:\.\d+)?/g) ?? [];
+    if (nums.length < 2) return false;
+    const a = Number(nums[0]);
+    const b = Number(nums[1]);
+    const answer = Number(entry.item.answer);
+    if (!(Number.isFinite(a) && Number.isFinite(b) && Number.isFinite(answer))) return false;
+    if (a < 20 || a > 98) return false;
+    if (b < 1 || b > 9) return false;
+    if (answer < 0 || answer > 99) return false;
     return true;
   });
 };
@@ -713,6 +760,8 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
   }
   unique = filterE1Add2D1DYesToTwoDigits(unique, type.type_id, hasPattern ? patternId : undefined);
   unique = filterE1Phase7To10To20Range(unique, type.type_id);
+  unique = filterE2Add2D1DRange(unique, type.type_id);
+  unique = filterE2Sub2D1DRange(unique, type.type_id);
   const ordered = reorderAvoidAdjacentSameFamily(shuffle(unique).map(normalizeJ1IntEntry)).slice(0, targetCount);
   const entries = uniqueByPromptAndEquivalent(ordered).slice(0, targetCount);
   const reason = entries.length >= targetCount

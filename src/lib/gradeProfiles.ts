@@ -98,7 +98,7 @@ const profiles: Record<string, GradeProfile> = {
         { prompt: "19 + 3 =", answer: "22" },
         { prompt: "27 + 6 =", answer: "33" }
       ]),
-      intType("E1.NA.MIX.MIXED_TO_20", "20までのたしひきこんごう", "MIXED_TO_20", [
+      intType("E1.NA.MIX.MIXED_TO_20", "１年生のまとめ", "MIXED_TO_20", [
         { prompt: "9 + 8 =", answer: "17" },
         { prompt: "14 - 6 =", answer: "8" },
         { prompt: "17 - 9 =", answer: "8" }
@@ -122,9 +122,29 @@ const profiles: Record<string, GradeProfile> = {
     conceptTags: ["place_value", "memorization"],
     keep: (type) => {
       const p = getPatternId(type);
-      return hasPrefix(p, "ADD_2D_2D") || hasPrefix(p, "SUB_2D_1D") || hasPrefix(p, "SUB_2D_2D") || hasPrefix(p, "MUL_1D_1D_") || p === "DIV_EQUAL_SHARE_BASIC";
+      return hasPrefix(p, "ADD_2D_1D") || hasPrefix(p, "ADD_2D_2D") || hasPrefix(p, "SUB_2D_1D") || hasPrefix(p, "SUB_2D_2D") || hasPrefix(p, "MUL_1D_1D_") || p === "DIV_EQUAL_SHARE_BASIC";
     },
     synthetic: [
+      intType("E2.NA.ADD.ADD_2D_1D_NO", "たし算（2けた+1けた）", "ADD_2D_1D_E2_NO", [
+        { prompt: "24 + 3 =", answer: "27" },
+        { prompt: "46 + 2 =", answer: "48" },
+        { prompt: "71 + 8 =", answer: "79" }
+      ]),
+      intType("E2.NA.ADD.ADD_2D_1D_YES", "たし算（2けた+1けた）", "ADD_2D_1D_E2_YES", [
+        { prompt: "28 + 5 =", answer: "33" },
+        { prompt: "47 + 6 =", answer: "53" },
+        { prompt: "69 + 4 =", answer: "73" }
+      ]),
+      intType("E2.NA.SUB.SUB_2D_1D_NO", "ひき算（2けた-1けた）", "SUB_2D_1D_E2_NO", [
+        { prompt: "34 - 2 =", answer: "32" },
+        { prompt: "57 - 4 =", answer: "53" },
+        { prompt: "82 - 1 =", answer: "81" }
+      ]),
+      intType("E2.NA.SUB.SUB_2D_1D_YES", "ひき算（2けた-1けた）", "SUB_2D_1D_E2_YES", [
+        { prompt: "31 - 7 =", answer: "24" },
+        { prompt: "52 - 8 =", answer: "44" },
+        { prompt: "70 - 6 =", answer: "64" }
+      ]),
       intType("E2.NA.SUB.SUB_2D_2D_NO", "ひき算（2けた-2けた）", "SUB_2D_2D_NO", [
         { prompt: "73 - 41 =", answer: "32" },
         { prompt: "88 - 45 =", answer: "43" },

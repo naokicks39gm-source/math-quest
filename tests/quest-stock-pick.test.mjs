@@ -26,6 +26,6 @@ test("pick quiz from stock uses fisher-yates shuffle + slice", () => {
 test("quest page renders shortage list when stock count is low", () => {
   assert.equal(questSource.includes("const [stockShortages, setStockShortages] = useState<StockShortage[]>([]);"), true);
   assert.equal(questSource.includes("候補不足タイプ一覧"), true);
-  assert.equal(questSource.includes("stock.count < TOTAL_QUESTIONS"), true);
+  assert.equal(questSource.includes("stock.count < getTargetQuestionCount(entry.typeId)"), true);
   assert.equal(questSource.includes("pickMeta.availableAfterDedupe < 1"), true);
 });

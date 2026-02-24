@@ -177,6 +177,12 @@ const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, use
   const isE1Add2D1DNo = type.type_id === "E1.NA.ADD.ADD_2D_1D_NO";
   const isE1Sub2D1DNo = type.type_id === "E1.NA.SUB.SUB_2D_1D_NO";
   const isE1Sub2D1DYes = type.type_id === "E1.NA.SUB.SUB_2D_1D_YES";
+  const isE2Add2D1DNo = type.type_id === "E2.NA.ADD.ADD_2D_1D_NO";
+  const isE2Add2D1DYes = type.type_id === "E2.NA.ADD.ADD_2D_1D_YES";
+  const isE2Add2D1D = isE2Add2D1DNo || isE2Add2D1DYes;
+  const isE2Sub2D1DNo = type.type_id === "E2.NA.SUB.SUB_2D_1D_NO";
+  const isE2Sub2D1DYes = type.type_id === "E2.NA.SUB.SUB_2D_1D_YES";
+  const isE2Sub2D1D = isE2Sub2D1DNo || isE2Sub2D1DYes;
   const limitOperandsTo20 = isE1Add2D1DNo || isE1Add2D1DYes || isE1Sub2D1DNo;
   const limitAnswerTo20 = isE1Add2D1DNo || isE1Sub2D1DNo || isE1Sub2D1DYes;
   if (patternId === "ADD_1D_1D_NO") {
@@ -217,6 +223,8 @@ const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, use
       a = randInt(minByDigits(aDigits), maxByDigits(aDigits));
       b = randInt(minByDigits(bDigits), maxByDigits(bDigits));
     }
+    if ((isE2Add2D1D || isE2Sub2D1D) && (a < 20 || a > 98)) continue;
+    if ((isE2Add2D1D || isE2Sub2D1D) && (b < 1 || b > 9)) continue;
     if (limitOperandsTo20 && (a > 20 || b > 20)) continue;
     if (isAdd) {
       const hasCarry = (a % 10) + (b % 10) >= 10;
@@ -224,6 +232,7 @@ const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, use
       if (carry === false && hasCarry) continue;
       const sum = a + b;
       if (isE1Add2D1DYes && sum > 99) continue;
+      if (isE2Add2D1D && sum > 99) continue;
       if (limitAnswerTo20 && sum > 20) continue;
       pushEntry(out, used, makeIntEntry(type, a, "+", b, sum));
       continue;
