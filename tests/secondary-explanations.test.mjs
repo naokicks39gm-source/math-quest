@@ -52,11 +52,15 @@ test("learning aid includes hint and explanation building", () => {
   assert.equal(source.includes("hint: toHint(patternId)"), true);
   assert.equal(source.includes("typeId === \"J1.AL.INT.INT_ADD\" && pid === \"INT_ADD\""), true);
   assert.equal(source.includes("hintLines?: { kind: \"text\" | \"tex\"; value: string }[]"), true);
+  assert.equal(source.includes("derivationLines: { kind: \"tex\" | \"text\"; value: string; highlights?: string[] }[]"), true);
+  assert.equal(source.includes("const buildDerivationLines = ("), true);
   assert.equal(source.includes("{ kind: \"text\", value: \"符号のルール\" }"), true);
   assert.equal(source.includes("String.raw`+\\left(+\\right)\\to +`"), true);
   assert.equal(source.includes("String.raw`+\\left(-\\right)\\to -`"), true);
   assert.equal(source.includes("String.raw`-\\left(+\\right)\\to -`"), true);
-  assert.equal(source.includes("String.raw`-\\left(-\\right)\\to -`"), true);
+  assert.equal(source.includes("String.raw`-\\left(-\\right)\\to +`"), true);
+  assert.equal(source.includes("if (normalized.length >= 2) return addHighlightsToLines(normalized);"), true);
+  assert.equal(source.includes("derivationLines: buildDerivationLines"), true);
   assert.equal(source.includes("buildGenericExplanation(patternId)"), true);
   assert.equal(source.includes("headers"), true);
   assert.equal(source.includes("diagramLines"), true);
@@ -67,4 +71,7 @@ test("learning aid includes hint and explanation building", () => {
 test("secondary explanation panel shows conclusion answer section", () => {
   assert.equal(panelSource.includes("答え"), true);
   assert.equal(panelSource.includes("explanation.conclusion"), true);
+  assert.equal(panelSource.includes("explanation.derivationLines"), true);
+  assert.equal(panelSource.includes("InlineMath"), true);
+  assert.equal(panelSource.includes("式変形"), false);
 });

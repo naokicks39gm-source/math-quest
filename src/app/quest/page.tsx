@@ -2226,9 +2226,11 @@ function QuestPageInner() {
         gradeId: currentType?.type_id.split(".")[0] ?? "",
         typeId: currentType?.type_id,
         patternId: currentType?.generation_params?.pattern_id,
-        answer: currentItem?.answer
+        answer: currentItem?.answer,
+        prompt: currentItem?.prompt,
+        promptTex: currentItem?.prompt_tex
       }),
-    [currentType?.type_id, currentType?.generation_params?.pattern_id, currentItem?.answer]
+    [currentType?.type_id, currentType?.generation_params?.pattern_id, currentItem?.answer, currentItem?.prompt, currentItem?.prompt_tex]
   );
   const currentElementaryAid = useMemo(
     () =>

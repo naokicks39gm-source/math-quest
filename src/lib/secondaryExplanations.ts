@@ -6,6 +6,7 @@ export type ExplanationTable = {
 export type ExplanationContent = {
   title: string;
   point: string;
+  derivationLines: { kind: "tex" | "text"; value: string; highlights?: string[] }[];
   steps: string[];
   table: ExplanationTable;
   diagramLines: string[];
@@ -23,6 +24,8 @@ type AidParams = {
   typeId?: string;
   patternId?: string;
   answer?: string;
+  prompt?: string;
+  promptTex?: string;
 };
 
 const SECONDARY_GRADE_RE = /^(J[1-3]|H[1-3])$/;
@@ -60,11 +63,158 @@ const buildConclusion = (answer?: string) => {
   return `つまり、答えは ${answer} です。`;
 };
 
-const buildGenericExplanation = (patternId: string, answer?: string): ExplanationContent => {
+const toTexSafe = (value: string) =>
+  value
+    .replace(/\\/g, "\\\\")
+    .replace(/\u00d7/g, String.raw`\times`)
+    .replace(/\u00f7/g, String.raw`\div`)
+    .replace(/\u2212/g, "-");
+
+const stripPromptTail = (value: string) =>
+  value
+    .replace(/を計算しなさい。?$/u, "")
+    .replace(/を解きなさい。?$/u, "")
+    .replace(/を求めなさい。?$/u, "")
+    .replace(/\s*[=＝]\s*$/u, "")
+    .trim();
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const tokenizeForHighlight = (tex: string) =>
+  tex
+    .replace(/\\text\{[^{}]*\}/g, "")
+    .match(/\\[a-zA-Z]+(?:\{[^{}]*\})?|-?\d+(?:\.\d+)?|[A-Za-z]+|[=+\-*/()]/g) ?? [];
+
+const diffTokens = (prev: string, next: string) => {
+  const prevTokens = tokenizeForHighlight(prev);
+  const nextTokens = tokenizeForHighlight(next);
+  const prevSet = new Set(prevTokens);
+  return nextTokens.filter((token) => !prevSet.has(token));
+};
+
+const applyHighlight = (tex: string, tokens: string[]) => {
+  const unique = [...new Set(tokens.map((t) => t.trim()).filter(Boolean))].sort((a, b) => b.length - a.length);
+  let out = tex;
+  for (const token of unique) {
+    const pattern = new RegExp(escapeRegExp(token));
+    out = out.replace(pattern, String.raw`\color{#2563eb}{${token}}`);
+  }
+  return out;
+};
+
+const addHighlightsToLines = (lines: { kind: "tex" | "text"; value: string }[]) => {
+  const result: { kind: "tex" | "text"; value: string; highlights?: string[] }[] = [];
+  let prevTex = "";
+  for (const line of lines) {
+    if (line.kind !== "tex") {
+      result.push(line);
+      continue;
+    }
+    const changedTokens = prevTex ? diffTokens(prevTex, line.value) : [];
+    const fallbackToken = line.value.includes("=")
+      ? (line.value.split("=").pop() ?? "").trim()
+      : (tokenizeForHighlight(line.value).slice(-1)[0] ?? "");
+    const highlightTokens = changedTokens.length > 0 ? changedTokens : fallbackToken ? [fallbackToken] : [];
+    const highlighted = highlightTokens.length > 0 ? applyHighlight(line.value, highlightTokens) : line.value;
+    result.push({ ...line, value: highlighted, highlights: highlightTokens });
+    prevTex = line.value;
+  }
+  return result;
+};
+
+const buildDerivationLines = (
+  patternId: string,
+  prompt?: string,
+  promptTex?: string,
+  answer?: string
+): { kind: "tex" | "text"; value: string; highlights?: string[] }[] => {
+  const baseExpression = stripPromptTail(promptTex?.trim() || prompt?.trim() || "");
+  const base = baseExpression ? toTexSafe(baseExpression) : String.raw`\text{問題の式}`;
+  const answerText = answer?.trim() ? toTexSafe(answer.trim()) : String.raw`\text{答え}`;
+
+  let lines: { kind: "tex" | "text"; value: string }[];
+  if (patternId.startsWith("INT_")) {
+    lines = [
+      { kind: "tex", value: base },
+      { kind: "tex", value: String.raw`=\text{符号を整理}` },
+      { kind: "tex", value: String.raw`=\text{絶対値を計算}` },
+      { kind: "tex", value: String.raw`=${answerText}` }
+    ];
+  } else if (patternId === "LIN_EQ" || patternId === "LIN_INEQ") {
+    lines = [
+      { kind: "tex", value: base },
+      { kind: "tex", value: String.raw`\text{同類項をまとめる}` },
+      { kind: "tex", value: String.raw`\text{文字を片側、数を反対側に移項}` },
+      { kind: "tex", value: String.raw`\text{係数で割って整理}` },
+      { kind: "tex", value: String.raw`\text{解}=${answerText}` }
+    ];
+  } else if (patternId === "SYS_EQ") {
+    lines = [
+      { kind: "tex", value: base },
+      { kind: "tex", value: String.raw`\text{加減法または代入法で1文字にする}` },
+      { kind: "tex", value: String.raw`\text{求めた値を元の式に代入}` },
+      { kind: "tex", value: String.raw`\text{2つの値をそろえて確認}` },
+      { kind: "tex", value: String.raw`\text{解}=${answerText}` }
+    ];
+  } else if (patternId === "QUAD_ROOTS") {
+    lines = [
+      { kind: "tex", value: base },
+      { kind: "tex", value: String.raw`\text{0になる形に整理}` },
+      { kind: "tex", value: String.raw`\text{因数分解または解の公式を使う}` },
+      { kind: "tex", value: String.raw`\text{2つの解を確認}` },
+      { kind: "tex", value: String.raw`\text{解}=${answerText}` }
+    ];
+  } else if (patternId.startsWith("FACTOR_") || patternId === "EXPAND" || patternId === "EXP_RULES") {
+    lines = [
+      { kind: "tex", value: base },
+      { kind: "tex", value: String.raw`\text{公式に当てはめる形へ整理}` },
+      { kind: "tex", value: String.raw`\text{分配法則・公式で展開/因数分解}` },
+      { kind: "tex", value: String.raw`\text{同類項をまとめる}` },
+      { kind: "tex", value: String.raw`=${answerText}` }
+    ];
+  } else if (patternId === "POW_INT" || patternId === "SQRT_VAL" || patternId === "LOG_VAL") {
+    lines = [
+      { kind: "tex", value: base },
+      { kind: "tex", value: String.raw`\text{指数・根号・対数の基本公式を確認}` },
+      { kind: "tex", value: String.raw`\text{式を同じ底・同じ次数でそろえる}` },
+      { kind: "tex", value: String.raw`\text{計算して整理}` },
+      { kind: "tex", value: String.raw`=${answerText}` }
+    ];
+  } else if (patternId.startsWith("TRIG_") || patternId.startsWith("DIFF_") || patternId === "DEF_INT") {
+    lines = [
+      { kind: "tex", value: base },
+      { kind: "tex", value: String.raw`\text{使う公式を1つ決める}` },
+      { kind: "tex", value: String.raw`\text{代入して順に計算}` },
+      { kind: "tex", value: String.raw`\text{定義域・条件を確認}` },
+      { kind: "tex", value: String.raw`=${answerText}` }
+    ];
+  } else {
+    lines = [
+      { kind: "tex", value: base },
+      { kind: "tex", value: String.raw`\text{条件を整理して計算式にする}` },
+      { kind: "tex", value: String.raw`\text{順に計算して答えを出す}` },
+      { kind: "tex", value: String.raw`=${answerText}` }
+    ];
+  }
+
+  const normalized = lines.filter((line) => line.value.trim() !== "");
+  if (normalized.length >= 2) return addHighlightsToLines(normalized);
+  return addHighlightsToLines([
+    { kind: "tex", value: base },
+    { kind: "tex", value: String.raw`=${answerText}` }
+  ]);
+};
+
+const buildGenericExplanation = (
+  patternId: string,
+  answer?: string,
+  options?: { prompt?: string; promptTex?: string; typeId?: string }
+): ExplanationContent => {
   const name = toMathName(patternId);
   return {
     title: `${name}の解き方（${patternId}）`,
     point: "形を見分けて、1つの公式で最後まで計算します。",
+    derivationLines: buildDerivationLines(patternId, options?.prompt, options?.promptTex, answer),
     steps: [
       "形を判定して、使う公式を1つ決める。",
       "表の順に代入・計算して答えを出す。",
@@ -142,7 +292,7 @@ const getGradeIdFromTypeId = (typeId?: string) => {
   return typeId.split(".")[0] ?? "";
 };
 
-export const getSecondaryLearningAid = ({ gradeId, typeId, patternId, answer }: AidParams): SecondaryLearningAid | null => {
+export const getSecondaryLearningAid = ({ gradeId, typeId, patternId, answer, prompt, promptTex }: AidParams): SecondaryLearningAid | null => {
   const resolvedGrade = gradeId || getGradeIdFromTypeId(typeId);
   if (!resolvedGrade || !isSecondaryGrade(resolvedGrade)) return null;
   const intAddSignRulesLines: SecondaryLearningAid["hintLines"] = [
@@ -150,7 +300,7 @@ export const getSecondaryLearningAid = ({ gradeId, typeId, patternId, answer }: 
     { kind: "tex", value: String.raw`+\left(+\right)\to +` },
     { kind: "tex", value: String.raw`+\left(-\right)\to -` },
     { kind: "tex", value: String.raw`-\left(+\right)\to -` },
-    { kind: "tex", value: String.raw`-\left(-\right)\to -` }
+    { kind: "tex", value: String.raw`-\left(-\right)\to +` }
   ];
   const intAddSignRulesHint = intAddSignRulesLines.map((line) => line.value).join("\n");
   const resolveHint = (pid: string) =>
@@ -165,7 +315,7 @@ export const getSecondaryLearningAid = ({ gradeId, typeId, patternId, answer }: 
       ...aid,
       hint: resolveHint(patternId),
       hintLines: resolveHintLines(patternId),
-      explanation: buildGenericExplanation(patternId, answer)
+      explanation: buildGenericExplanation(patternId, answer, { prompt, promptTex, typeId })
     };
   }
 
@@ -173,14 +323,14 @@ export const getSecondaryLearningAid = ({ gradeId, typeId, patternId, answer }: 
     return {
       hint: resolveHint(patternId),
       hintLines: resolveHintLines(patternId),
-      explanation: buildGenericExplanation(patternId, answer)
+      explanation: buildGenericExplanation(patternId, answer, { prompt, promptTex, typeId })
     };
   }
 
   const fallbackPatternId = typeId?.split(".").slice(-1)[0] ?? "GENERIC";
   return {
     hint: toHint(fallbackPatternId),
-    explanation: buildGenericExplanation(fallbackPatternId, answer)
+    explanation: buildGenericExplanation(fallbackPatternId, answer, { prompt, promptTex, typeId })
   };
 };
 
