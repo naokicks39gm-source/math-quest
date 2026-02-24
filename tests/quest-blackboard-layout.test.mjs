@@ -23,6 +23,12 @@ test("quest current card uses blackboard-themed classes", () => {
   assert.match(source, /aria-label="board-chalk-pink"/);
   assert.match(source, /aria-label="board-chalk-blue"/);
   assert.match(source, /renderPrompt\(currentItem, currentType\?\.type_id, currentType\?\.display_name \?\? currentType\?\.type_name\)/);
+  assert.match(source, /\{status === "playing" && \(/);
+  assert.match(source, /問題を選ぶ/);
+  assert.match(source, /fixed left-1\/2 top-2 z-40 w-full max-w-md -translate-x-1\/2 px-4/);
+  assert.match(source, /aria-hidden="true" className="h-\[292px\] sm:h-\[276px\]"/);
+  assert.doesNotMatch(source, /sticky top-2 z-30 bg-slate-50\/95 backdrop-blur-sm/);
+  assert.doesNotMatch(source, /w-full max-h-\[48vh\] overflow-y-auto/);
 });
 
 test("quest answer layout keeps right offset and quadratic row", () => {

@@ -43,7 +43,8 @@ test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("h-[120%] w-[120%]"), true);
   assert.equal(source.includes("overflow-visible"), true);
   assert.equal(source.includes("fixed inset-x-2 bottom-2"), false);
-  assert.equal(source.includes("status === 'playing' && selectedPath"), true);
+  assert.equal(source.includes("status === \"playing\" && ("), true);
+  assert.equal(source.includes("selectedPath && ("), true);
   assert.equal(source.includes("まちがえた もんだい"), false);
   assert.equal(source.includes("`/quest?type=${encodeURIComponent(next.typeId)}&category=${encodeURIComponent(next.categoryId)}`"), true);
 });

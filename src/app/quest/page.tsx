@@ -90,6 +90,7 @@ type QuestionResultEntry = {
   correctAnswer?: string;
   everWrong: boolean;
   firstWrongAnswer?: string;
+  skipped?: boolean;
 };
 
 type FractionEditorPart = "num" | "den";
@@ -1614,6 +1615,8 @@ function QuestPageInner() {
   const [expandedProblemPicker, setExpandedProblemPicker] = useState(true);
   const [pendingGradeId, setPendingGradeId] = useState("");
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
+  const [showSecondaryHint, setShowSecondaryHint] = useState(false);
+  const [showSecondaryExplanation, setShowSecondaryExplanation] = useState(false);
   const [memoStrokes, setMemoStrokes] = useState<MemoStroke[]>([]);
   const [memoRedoStack, setMemoRedoStack] = useState<MemoStroke[]>([]);
   const memoStrokesRef = useRef<MemoStroke[]>([]);
@@ -2239,6 +2242,7 @@ function QuestPageInner() {
   );
   const isQuadraticRootsQuestion = isQuadraticRootsType(currentType?.type_id);
   const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
+  const isSecondaryQuest = /^(J1|J2|J3|H1|H2|H3)$/.test(currentGradeId);
   const isHighSchoolQuest = /^(H1|H2|H3)$/.test(currentGradeId);
   const gradeOptions = useMemo(
     () =>
@@ -2271,6 +2275,10 @@ function QuestPageInner() {
     if (!currentGradeId) return;
     setPendingGradeId((prev) => (prev === currentGradeId ? prev : currentGradeId));
   }, [currentGradeId]);
+  useEffect(() => {
+    setShowSecondaryHint(false);
+    setShowSecondaryExplanation(false);
+  }, [currentType?.type_id, itemIndex]);
   useEffect(() => {
     setShowGradeTypePicker(false);
   }, [currentType?.type_id, status]);
@@ -2315,6 +2323,7 @@ function QuestPageInner() {
         answerLabel: "答え"
       };
   const emptyMessage = uiText.noItems;
+  const isAnswerLockedByExplanation = isSecondaryQuest && showSecondaryExplanation;
   const nextQuestion = () => {
     setItemIndex((v) => {
       if (v + 1 >= totalQuizQuestions) {
@@ -2370,10 +2379,11 @@ function QuestPageInner() {
   }, [itemIndex]);
 
   useEffect(() => {
+    if (status === "playing") return;
     if (currentCardRef.current) {
-      currentCardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      currentCardRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-  }, [itemIndex, selectedType]);
+  }, [itemIndex, selectedType, status]);
 
   function createQuestion(): Question {
     // Generate simple addition/subtraction
@@ -2485,7 +2495,7 @@ function QuestPageInner() {
   };
 
   const handleInput = (num: string) => {
-    if (status !== 'playing' || isStarting) return;
+    if (status !== 'playing' || isStarting || isAnswerLockedByExplanation) return;
     const currentText = isQuadraticRootsQuestion ? quadraticAnswers[quadraticActiveIndex] : input;
     const isDigit = /^\d$/.test(num);
     const maxInputLength = isHighSchoolQuest ? 24 : 12;
@@ -2626,7 +2636,7 @@ function QuestPageInner() {
   };
 
   const handleDelete = () => {
-    if (status !== 'playing' || isStarting) return;
+    if (status !== 'playing' || isStarting || isAnswerLockedByExplanation) return;
     if (isQuadraticRootsQuestion && quadraticFractionInputs[quadraticActiveIndex].enabled) {
       clearQuadraticFractionAutoMoveTimer(quadraticActiveIndex);
       setQuadraticFractionInputs((prev) => {
@@ -2677,7 +2687,7 @@ function QuestPageInner() {
   };
 
   const handleAttack = () => {
-    if (status !== 'playing' || isStarting || !currentItem || !currentType) return;
+    if (status !== 'playing' || isStarting || isAnswerLockedByExplanation || !currentItem || !currentType) return;
     const answerText = isQuadraticRootsQuestion
       ? `${quadraticFractionInputs[0].enabled ? fractionEditorToAnswerText(quadraticFractionInputs[0]) : quadraticAnswers[0]},${quadraticFractionInputs[1].enabled ? fractionEditorToAnswerText(quadraticFractionInputs[1]) : quadraticAnswers[1]}`
       : (fractionInput.enabled ? fractionEditorToAnswerText(fractionInput) : input);
@@ -2824,6 +2834,26 @@ function QuestPageInner() {
       (fractionInput.enabled ? isFractionEditorReady(fractionInput) : isValidAnswerText(input, keypadAnswerKind)) ||
       (keypadAnswerKind !== "frac" && input.trim().length > 0 && input.includes("/"))
     );
+  const skipFromExplanation = () => {
+    if (status !== "playing" || !currentItem) return;
+    setQuestionResults((prev) => ({
+      ...prev,
+      [itemIndex]: {
+        prompt: currentItem.prompt,
+        promptTex: currentItem.prompt_tex,
+        userAnswer: "",
+        correct: false,
+        correctAnswer: currentItem.answer,
+        everWrong: false,
+        skipped: true
+      }
+    }));
+    setPracticeResult(null);
+    setResultMark(null);
+    setShowSecondaryExplanation(false);
+    setShowSecondaryHint(false);
+    nextQuestion();
+  };
   const keypadDigitTopTokens = DIGIT_KEYPAD_TOKENS.filter((token) => token !== "0");
   const smallSymbolTokens: Array<(typeof SYMBOL_KEYPAD_TOKENS)[number]> = [".", "-", "/"];
   const renderAnswerWithSuperscript = (text: string) => {
@@ -3783,120 +3813,247 @@ function QuestPageInner() {
       
       {/* Input Mode Toggle removed */}
 
-      {status === 'playing' && selectedPath && (
-        <div className="w-full relative">
-          <button
-            type="button"
-            onClick={() => {
-              setShowGradeTypePicker((prev) => !prev);
-              if (!showGradeTypePicker) {
-                setExpandedGradePicker(true);
-                setExpandedGradeList(false);
-                setExpandedProblemPicker(true);
-              }
-            }}
-            className="w-full bg-white border-2 border-slate-200 rounded-2xl px-3 py-2 text-[11px] font-bold text-slate-700 text-left hover:bg-slate-50"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate">{selectedPath.gradeName} / {selectedPath.typeName}</span>
-              <span className="flex items-center gap-2 shrink-0">
-                <span className="text-[10px] text-slate-500">問題を選ぶ</span>
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-300 bg-slate-100 text-slate-600 shadow-sm">
-                  {showGradeTypePicker ? "▲" : "▼"}
-                </span>
-              </span>
-            </div>
-          </button>
-          {showGradeTypePicker && (
-            <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg p-1">
+      {status === "playing" && (
+        <div className="fixed left-1/2 top-2 z-40 w-full max-w-md -translate-x-1/2 px-4">
+          {selectedPath && (
+            <div className="w-full relative">
               <button
                 type="button"
-                onClick={() => setExpandedGradePicker((prev) => !prev)}
-                className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
+                onClick={() => {
+                  setShowGradeTypePicker((prev) => !prev);
+                  if (!showGradeTypePicker) {
+                    setExpandedGradePicker(true);
+                    setExpandedGradeList(false);
+                    setExpandedProblemPicker(true);
+                  }
+                }}
+                className="w-full bg-white border-2 border-slate-200 rounded-2xl px-3 py-2 text-[11px] font-bold text-slate-700 text-left hover:bg-slate-50"
               >
-                <span>学年</span>
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
-                  {expandedGradePicker ? "▲" : "▼"}
-                </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate">{selectedPath.gradeName} / {selectedPath.typeName}</span>
+                  <span className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] text-slate-500">問題を選ぶ</span>
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-300 bg-slate-100 text-slate-600 shadow-sm">
+                      {showGradeTypePicker ? "▲" : "▼"}
+                    </span>
+                  </span>
+                </div>
               </button>
-              {expandedGradePicker && (
-                <div className="mt-1 px-1">
+              {showGradeTypePicker && (
+                <div className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg p-1">
                   <button
                     type="button"
-                    onClick={() => setExpandedGradeList((prev) => !prev)}
-                    className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    onClick={() => setExpandedGradePicker((prev) => !prev)}
+                    className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
                   >
-                    <span className="truncate">{pendingGradeName}</span>
+                    <span>学年</span>
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
-                      {expandedGradeList ? "▲" : "▼"}
+                      {expandedGradePicker ? "▲" : "▼"}
                     </span>
                   </button>
-                  {expandedGradeList && (
-                    <div className="mt-1 space-y-1">
-                      {gradeOptions.map((grade) => {
-                        const isPickedGrade = grade.gradeId === pickerGradeId;
-                        return (
-                          <button
-                            key={grade.gradeId}
-                            type="button"
-                            onClick={() => {
-                              setPendingGradeId(grade.gradeId);
-                              setExpandedGradeList(false);
-                            }}
-                            className={`w-full text-left rounded-md px-2 py-1.5 text-[10px] font-bold border ${
-                              isPickedGrade
-                                ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                                : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                            }`}
-                          >
-                            {grade.gradeName}
-                          </button>
-                        );
-                      })}
+                  {expandedGradePicker && (
+                    <div className="mt-1 px-1">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedGradeList((prev) => !prev)}
+                        className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      >
+                        <span className="truncate">{pendingGradeName}</span>
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
+                          {expandedGradeList ? "▲" : "▼"}
+                        </span>
+                      </button>
+                      {expandedGradeList && (
+                        <div className="mt-1 space-y-1">
+                          {gradeOptions.map((grade) => {
+                            const isPickedGrade = grade.gradeId === pickerGradeId;
+                            return (
+                              <button
+                                key={grade.gradeId}
+                                type="button"
+                                onClick={() => {
+                                  setPendingGradeId(grade.gradeId);
+                                  setExpandedGradeList(false);
+                                }}
+                                className={`w-full text-left rounded-md px-2 py-1.5 text-[10px] font-bold border ${
+                                  isPickedGrade
+                                    ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                                }`}
+                              >
+                                {grade.gradeName}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
+                  <div className="mt-2 border-t border-slate-200 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedProblemPicker((prev) => !prev)}
+                      className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
+                    >
+                      <span>問題</span>
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
+                        {expandedProblemPicker ? "▲" : "▼"}
+                      </span>
+                    </button>
+                    {expandedProblemPicker && (
+                      <div className="mt-1 space-y-1 px-1">
+                        {pickerGradeTypes.map((option) => {
+                          const isCurrent = option.typeId === currentType?.type_id;
+                          return (
+                            <button
+                              key={option.typeId}
+                              type="button"
+                              onClick={() => {
+                                setShowGradeTypePicker(false);
+                                if (isCurrent) return;
+                                router.push(`/quest?type=${encodeURIComponent(option.typeId)}`);
+                              }}
+                              className={`w-full text-left rounded-lg px-2 py-2 text-[11px] ${
+                                isCurrent
+                                  ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                            >
+                              <div className="font-bold truncate">{option.typeName}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
-              <div className="mt-2 border-t border-slate-200 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setExpandedProblemPicker((prev) => !prev)}
-                  className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
+            </div>
+          )}
+          {currentItem && currentType && (
+            <div className="bg-slate-50/95 backdrop-blur-sm py-1">
+            <div
+              ref={currentCardRef}
+              className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 py-4 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] h-[200px] sm:h-[185px] flex items-center justify-center"
+            >
+              <div className="pointer-events-none absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_12%_20%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_70%,rgba(255,255,255,0.10),transparent_34%),repeating-linear-gradient(12deg,rgba(255,255,255,0.05)_0px,rgba(255,255,255,0.05)_2px,transparent_2px,transparent_8px)]" />
+              {combo >= 2 && (
+                <div className="pointer-events-none absolute top-2 right-2 -rotate-12 rounded-md border border-yellow-200/70 bg-yellow-300/90 px-2 py-0.5 text-[10px] sm:text-xs font-black tracking-wide text-emerald-950 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
+                  {combo} COMBO!
+                </div>
+              )}
+              <div className="pointer-events-none absolute bottom-0 left-3 flex items-end gap-2">
+                <div aria-label="board-eraser" className="h-6 w-12 rounded-md border border-amber-900 bg-gradient-to-b from-amber-200 to-amber-500 shadow-[0_2px_0_rgba(0,0,0,0.28)]" />
+                <div className="flex items-end gap-1">
+                  <div aria-label="board-chalk-white" className="h-2.5 w-7 rounded-full border border-slate-300 bg-white shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
+                  <div aria-label="board-chalk-pink" className="h-2.5 w-6 rounded-full border border-pink-300 bg-pink-100 shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
+                  <div aria-label="board-chalk-blue" className="h-2.5 w-6 rounded-full border border-sky-300 bg-sky-100 shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={nextQuestion}
+                disabled={status !== "playing" || isStarting}
+                className="absolute bottom-3 right-3 z-20 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs sm:text-sm font-bold text-emerald-900 shadow-[0_2px_0_rgba(0,0,0,0.25)] active:translate-y-[1px] disabled:bg-slate-300 disabled:text-slate-500"
+              >
+                {uiText.nextQuestion}
+              </button>
+              <div
+                ref={qaRowRef}
+                className={
+                  useSingleLineQa
+                    ? "relative z-10 w-full flex items-center justify-start gap-2 sm:gap-3"
+                    : "relative z-10 w-full flex flex-col justify-center gap-1 sm:gap-2"
+                }
+              >
+                <div
+                  ref={qaPromptRef}
+                  className={
+                    useSingleLineQa
+                      ? "min-w-0 w-auto max-w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
+                      : "min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
+                  }
                 >
-                  <span>問題</span>
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
-                    {expandedProblemPicker ? "▲" : "▼"}
+                  <span ref={qaPromptContentRef} className="inline-block align-middle">
+                    {renderPrompt(currentItem, currentType?.type_id, currentType?.display_name ?? currentType?.type_name)}
                   </span>
-                </button>
-                {expandedProblemPicker && (
-                  <div className="mt-1 space-y-1 px-1">
-                    {pickerGradeTypes.map((option) => {
-                      const isCurrent = option.typeId === currentType?.type_id;
-                      return (
-                        <button
-                          key={option.typeId}
-                          type="button"
-                          onClick={() => {
-                            setShowGradeTypePicker(false);
-                            if (isCurrent) return;
-                            router.push(`/quest?type=${encodeURIComponent(option.typeId)}`);
-                          }}
-                          className={`w-full text-left rounded-lg px-2 py-2 text-[11px] ${
-                            isCurrent
-                              ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                              : "text-slate-700 hover:bg-slate-50"
-                          }`}
+                </div>
+                {isQuadraticRootsQuestion ? (
+                  <div
+                    ref={qaAnswerRef}
+                    className={
+                      useSingleLineQa
+                        ? "w-auto shrink-0 flex items-center gap-2 overflow-x-auto whitespace-nowrap"
+                        : "w-full sm:w-auto flex items-center gap-2 overflow-x-auto whitespace-nowrap"
+                    }
+                    style={useSingleLineQa ? undefined : { marginLeft: `${qaAnswerOffsetPx}px` }}
+                  >
+                    <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
+                      <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x1 =</span>
+                      <button
+                        type="button"
+                        onClick={() => setQuadraticActiveIndex(0)}
+                        aria-label="recognized-answer-1"
+                        className={`${quadraticFractionInputs[0].enabled ? "w-[98px] sm:w-[116px] h-[64px] sm:h-[76px] text-[18px] sm:text-[22px]" : "w-[72px] sm:w-[84px] h-[48px] sm:h-[56px] text-[22px] sm:text-[26px]"} shrink-0 px-2 sm:px-3 rounded-xl border-2 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
+                          quadraticActiveIndex === 0 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                        }`}
+                        style={{ opacity: quadraticFractionInputs[0].enabled ? 1 : (quadraticAnswers[0] ? 1 : 0.35) }}
+                      >
+                        {quadraticFractionInputs[0].enabled
+                          ? renderFractionEditorValue(quadraticFractionInputs[0])
+                          : renderAnswerWithSuperscript(quadraticAnswers[0])}
+                      </button>
+                      <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x2 =</span>
+                      <button
+                        type="button"
+                        onClick={() => setQuadraticActiveIndex(1)}
+                        aria-label="recognized-answer-2"
+                        className={`${quadraticFractionInputs[1].enabled ? "w-[98px] sm:w-[116px] h-[64px] sm:h-[76px] text-[18px] sm:text-[22px]" : "w-[72px] sm:w-[84px] h-[48px] sm:h-[56px] text-[22px] sm:text-[26px]"} shrink-0 px-2 sm:px-3 rounded-xl border-2 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
+                          quadraticActiveIndex === 1 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                        }`}
+                        style={{ opacity: quadraticFractionInputs[1].enabled ? 1 : (quadraticAnswers[1] ? 1 : 0.35) }}
+                      >
+                        {quadraticFractionInputs[1].enabled
+                          ? renderFractionEditorValue(quadraticFractionInputs[1])
+                          : renderAnswerWithSuperscript(quadraticAnswers[1])}
+                      </button>
+                      {resultOverlay}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    ref={qaAnswerRef}
+                    className={
+                      useSingleLineQa
+                        ? "relative w-auto shrink-0 flex items-center gap-2 overflow-visible"
+                        : "relative w-full sm:w-auto flex items-center gap-2 overflow-visible"
+                    }
+                    style={useSingleLineQa ? undefined : { marginLeft: `${qaAnswerOffsetPx}px` }}
+                  >
+                    <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
+                      <div className={`relative overflow-visible ${fractionInput.enabled ? "w-[190px] sm:w-[220px]" : "w-[150px] sm:w-[180px]"}`}>
+                        <div
+                          aria-label="recognized-answer"
+                          className={`${fractionInput.enabled ? "w-[190px] sm:w-[220px] h-[74px] sm:h-[84px] text-[20px] sm:text-[24px]" : "w-[150px] sm:w-[180px] h-[56px] sm:h-[64px] text-[26px] sm:text-[30px]"} shrink-0 max-w-full px-2 sm:px-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center`}
+                          style={{ opacity: fractionInput.enabled ? 1 : (displayedAnswer ? 1 : 0.35) }}
                         >
-                          <div className="font-bold truncate">{option.typeName}</div>
-                        </button>
-                      );
-                    })}
+                          {fractionInput.enabled
+                            ? renderFractionEditorValue(fractionInput)
+                            : renderAnswerWithSuperscript(displayedAnswer)}
+                        </div>
+                        {resultOverlay}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
+            </div>
           )}
         </div>
+      )}
+      {status === "playing" && (
+        <div aria-hidden="true" className="h-[292px] sm:h-[276px]" />
       )}
       {/* Center: Character & Message */} 
       <div className="flex flex-col items-center space-y-3 my-2 flex-1 justify-start w-full">
@@ -3912,6 +4069,7 @@ function QuestPageInner() {
             <div className="mt-5 space-y-2 max-h-[28vh] overflow-y-auto rounded-2xl bg-white/90 p-3 text-left">
               {clearResults.map(([index, r]) => {
                 const finalWrong = r.everWrong === true;
+                const skipped = r.skipped === true;
                 const displayedUserAnswer = finalWrong
                   ? (r.firstWrongAnswer ?? r.userAnswer)
                   : r.userAnswer;
@@ -3919,7 +4077,7 @@ function QuestPageInner() {
                   <div
                     key={index}
                     className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
-                      finalWrong ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'
+                      skipped ? 'border-amber-200 bg-amber-50' : (finalWrong ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50')
                     }`}
                   >
                     <div className="font-bold text-slate-700">
@@ -3940,7 +4098,7 @@ function QuestPageInner() {
                     <div className="flex items-center gap-2 font-bold text-right">
                       <span className="text-slate-600">{uiText.yourAnswer}:</span>
                       <span className="text-slate-600">
-                        {displayedUserAnswer ? renderMaybeMath(displayedUserAnswer) : "?"}
+                        {skipped ? "スキップ" : (displayedUserAnswer ? renderMaybeMath(displayedUserAnswer) : "?")}
                       </span>
                     </div>
                   </div>
@@ -4058,136 +4216,52 @@ function QuestPageInner() {
                 </div>
               </div>
             )}
-            <div className="w-full max-h-[48vh] overflow-y-auto">
-              {quizItems.length === 0 ? (
-                <div className="text-slate-500 text-center">
-                  {emptyMessage}
-                </div>
-              ) : currentItem ? (
-                <div className="flex flex-col gap-3">
-                  <div
-                    ref={currentCardRef}
-                    className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 py-4 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] h-[200px] sm:h-[185px] flex items-center justify-center"
-                  >
-                    <div className="pointer-events-none absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_12%_20%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_70%,rgba(255,255,255,0.10),transparent_34%),repeating-linear-gradient(12deg,rgba(255,255,255,0.05)_0px,rgba(255,255,255,0.05)_2px,transparent_2px,transparent_8px)]" />
-                    {combo >= 2 && (
-                      <div className="pointer-events-none absolute top-2 right-2 -rotate-12 rounded-md border border-yellow-200/70 bg-yellow-300/90 px-2 py-0.5 text-[10px] sm:text-xs font-black tracking-wide text-emerald-950 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
-                        {combo} COMBO!
-                      </div>
-                    )}
-                    <div className="pointer-events-none absolute bottom-0 left-3 flex items-end gap-2">
-                      <div aria-label="board-eraser" className="h-6 w-12 rounded-md border border-amber-900 bg-gradient-to-b from-amber-200 to-amber-500 shadow-[0_2px_0_rgba(0,0,0,0.28)]" />
-                      <div className="flex items-end gap-1">
-                        <div aria-label="board-chalk-white" className="h-2.5 w-7 rounded-full border border-slate-300 bg-white shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
-                        <div aria-label="board-chalk-pink" className="h-2.5 w-6 rounded-full border border-pink-300 bg-pink-100 shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
-                        <div aria-label="board-chalk-blue" className="h-2.5 w-6 rounded-full border border-sky-300 bg-sky-100 shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
-                      </div>
-                    </div>
+            {(quizItems.length === 0 || !currentItem) && (
+              <div className="w-full text-slate-500 text-center">
+                {quizItems.length === 0 ? emptyMessage : uiText.selectType}
+              </div>
+            )}
+
+            {currentAid && (
+              isSecondaryQuest ? (
+                <section className="w-full">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={nextQuestion}
-                      disabled={status !== "playing" || isStarting}
-                      className="absolute bottom-3 right-3 z-20 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs sm:text-sm font-bold text-emerald-900 shadow-[0_2px_0_rgba(0,0,0,0.25)] active:translate-y-[1px] disabled:bg-slate-300 disabled:text-slate-500"
+                      onClick={() => setShowSecondaryHint((prev) => !prev)}
+                      className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-left text-base font-bold text-indigo-700"
                     >
-                      {uiText.nextQuestion}
+                      {showSecondaryHint ? "ヒントを隠す" : "ヒントを見る"}
                     </button>
-                    <div
-                      ref={qaRowRef}
-                      className={
-                        useSingleLineQa
-                          ? "relative z-10 w-full flex items-center justify-start gap-2 sm:gap-3"
-                          : "relative z-10 w-full flex flex-col justify-center gap-1 sm:gap-2"
-                      }
+                    <button
+                      type="button"
+                      onClick={() => setShowSecondaryExplanation((prev) => !prev)}
+                      className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left text-base font-bold text-violet-700"
                     >
-                      <div
-                        ref={qaPromptRef}
-                        className={
-                          useSingleLineQa
-                            ? "min-w-0 w-auto max-w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
-                            : "min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
-                        }
-                      >
-                        <span ref={qaPromptContentRef} className="inline-block align-middle">
-                          {renderPrompt(currentItem, currentType?.type_id, currentType?.display_name ?? currentType?.type_name)}
-                        </span>
-                      </div>
-                      {isQuadraticRootsQuestion ? (
-                        <div
-                          ref={qaAnswerRef}
-                          className={
-                            useSingleLineQa
-                              ? "w-auto shrink-0 flex items-center gap-2 overflow-x-auto whitespace-nowrap"
-                              : "w-full sm:w-auto flex items-center gap-2 overflow-x-auto whitespace-nowrap"
-                          }
-                          style={useSingleLineQa ? undefined : { marginLeft: `${qaAnswerOffsetPx}px` }}
-                        >
-                          <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
-                            <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x1 =</span>
-                            <button
-                              type="button"
-                              onClick={() => setQuadraticActiveIndex(0)}
-                              aria-label="recognized-answer-1"
-                              className={`${quadraticFractionInputs[0].enabled ? "w-[98px] sm:w-[116px] h-[64px] sm:h-[76px] text-[18px] sm:text-[22px]" : "w-[72px] sm:w-[84px] h-[48px] sm:h-[56px] text-[22px] sm:text-[26px]"} shrink-0 px-2 sm:px-3 rounded-xl border-2 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
-                                quadraticActiveIndex === 0 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
-                              }`}
-                              style={{ opacity: quadraticFractionInputs[0].enabled ? 1 : (quadraticAnswers[0] ? 1 : 0.35) }}
-                            >
-                              {quadraticFractionInputs[0].enabled
-                                ? renderFractionEditorValue(quadraticFractionInputs[0])
-                                : renderAnswerWithSuperscript(quadraticAnswers[0])}
-                            </button>
-                            <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x2 =</span>
-                            <button
-                              type="button"
-                              onClick={() => setQuadraticActiveIndex(1)}
-                              aria-label="recognized-answer-2"
-                              className={`${quadraticFractionInputs[1].enabled ? "w-[98px] sm:w-[116px] h-[64px] sm:h-[76px] text-[18px] sm:text-[22px]" : "w-[72px] sm:w-[84px] h-[48px] sm:h-[56px] text-[22px] sm:text-[26px]"} shrink-0 px-2 sm:px-3 rounded-xl border-2 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
-                                quadraticActiveIndex === 1 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
-                              }`}
-                              style={{ opacity: quadraticFractionInputs[1].enabled ? 1 : (quadraticAnswers[1] ? 1 : 0.35) }}
-                            >
-                              {quadraticFractionInputs[1].enabled
-                                ? renderFractionEditorValue(quadraticFractionInputs[1])
-                                : renderAnswerWithSuperscript(quadraticAnswers[1])}
-                            </button>
-                            {resultOverlay}
-                          </div>
-                        </div>
-                      ) : (
-                        <div
-                          ref={qaAnswerRef}
-                          className={
-                            useSingleLineQa
-                              ? "relative w-auto shrink-0 flex items-center gap-2 overflow-visible"
-                              : "relative w-full sm:w-auto flex items-center gap-2 overflow-visible"
-                          }
-                          style={useSingleLineQa ? undefined : { marginLeft: `${qaAnswerOffsetPx}px` }}
-                        >
-                          <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
-                            <div className={`relative overflow-visible ${fractionInput.enabled ? "w-[190px] sm:w-[220px]" : "w-[150px] sm:w-[180px]"}`}>
-                              <div
-                                aria-label="recognized-answer"
-                                className={`${fractionInput.enabled ? "w-[190px] sm:w-[220px] h-[74px] sm:h-[84px] text-[20px] sm:text-[24px]" : "w-[150px] sm:w-[180px] h-[56px] sm:h-[64px] text-[26px] sm:text-[30px]"} shrink-0 max-w-full px-2 sm:px-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center`}
-                                style={{ opacity: fractionInput.enabled ? 1 : (displayedAnswer ? 1 : 0.35) }}
-                              >
-                                {fractionInput.enabled
-                                  ? renderFractionEditorValue(fractionInput)
-                                  : renderAnswerWithSuperscript(displayedAnswer)}
-                              </div>
-                              {resultOverlay}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                      {showSecondaryExplanation ? "解説を隠す" : "解説を見る"}
+                    </button>
                   </div>
-                </div>
+                  {showSecondaryHint && (
+                    <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+                      <div className="text-sm font-bold text-amber-700">ヒント</div>
+                      <div className="text-base font-semibold text-slate-800">{currentAid.hint}</div>
+                    </div>
+                  )}
+                  {showSecondaryExplanation && (
+                    <div className="mt-2">
+                      <SecondaryExplanationPanel
+                        aid={currentAid}
+                        onNext={skipFromExplanation}
+                        nextLabel={uiText.nextQuestion}
+                        showNextButton
+                      />
+                    </div>
+                  )}
+                </section>
               ) : (
-                <div className="text-slate-500 text-center">{uiText.selectType}</div>
-              )}
-            </div>
-
-            {currentAid && <SecondaryExplanationPanel aid={currentAid} />}
+                <SecondaryExplanationPanel aid={currentAid} />
+              )
+            )}
 
             <section className="w-full rounded-2xl border border-slate-200 bg-white/90 p-2 shadow-md">
               <div className="mb-2 flex items-center justify-between text-sm font-bold text-slate-800">
@@ -4274,7 +4348,7 @@ function QuestPageInner() {
                         onPointerDown={token === "+/-" ? handlePlusMinusFlickStart : undefined}
                         onPointerUp={token === "+/-" ? handlePlusMinusFlickEnd : undefined}
                         onPointerCancel={token === "+/-" ? handlePlusMinusFlickCancel : undefined}
-                        disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
+                        disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken(token)}
                         className={`
                           h-9 w-full rounded-md text-[11px] font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
                           ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
@@ -4292,7 +4366,7 @@ function QuestPageInner() {
                     <button
                       key={token}
                       onClick={() => handleInput(token)}
-                      disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
+                      disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken(token)}
                       className={`
                         h-11 w-full rounded-lg text-base font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
                         ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
@@ -4303,7 +4377,7 @@ function QuestPageInner() {
                   ))}
                   <button
                     onClick={() => handleInput("0")}
-                    disabled={status !== 'playing' || isStarting || !canUseKeyToken("0")}
+                    disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken("0")}
                     className={`
                       h-11 w-full rounded-lg text-base font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
                       ${canUseKeyToken("0") ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
@@ -4316,7 +4390,7 @@ function QuestPageInner() {
                       <button
                         key={token}
                         onClick={() => handleInput(token)}
-                        disabled={status !== 'playing' || isStarting || !canUseKeyToken(token)}
+                        disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken(token)}
                         className={`
                           h-full w-full rounded-md text-[11px] font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
                           ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
@@ -4331,14 +4405,14 @@ function QuestPageInner() {
               <div className="w-[92px] grid grid-cols-1 grid-rows-[44px_88px_36px] gap-1.5">
                 <button
                   onClick={handleDelete}
-                  disabled={status !== 'playing' || isStarting}
+                  disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation}
                   className="h-full w-full rounded-lg text-sm font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-red-100 text-red-600 border border-red-200 hover:bg-red-200 flex items-center justify-center"
                 >
                   ⌫
                 </button>
                 <button
                   onClick={handleAttack}
-                  disabled={status !== 'playing' || isStarting || !canSubmitCurrentAnswer}
+                  disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canSubmitCurrentAnswer}
                   className="h-full w-full rounded-lg text-base font-black shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all bg-indigo-600 text-white border border-indigo-700 hover:bg-indigo-700 flex items-center justify-center"
                 >
                   {uiText.judge}
