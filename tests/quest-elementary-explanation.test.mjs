@@ -74,5 +74,10 @@ test("elementary panel has next button and visual rendering", () => {
 test("secondary explanation path remains in quest page", () => {
   assert.match(pageSource, /SecondaryExplanationPanel/);
   assert.match(pageSource, /getSecondaryLearningAid/);
-  assert.match(pageSource, /\{currentAid && <SecondaryExplanationPanel aid=\{currentAid\} \/>\}/);
+  assert.match(pageSource, /const \[showHighSchoolHint, setShowHighSchoolHint\] = useState\(false\);/);
+  assert.match(pageSource, /isHighSchoolQuest \?/);
+  assert.match(pageSource, /ヒントを見る/);
+  assert.match(pageSource, /ヒントを閉じる/);
+  assert.match(pageSource, /\{showHighSchoolHint && \(/);
+  assert.match(pageSource, /<SecondaryExplanationPanel aid=\{currentAid\} \/>/);
 });

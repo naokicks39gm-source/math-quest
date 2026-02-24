@@ -1613,6 +1613,7 @@ function QuestPageInner() {
   const [expandedGradeList, setExpandedGradeList] = useState(false);
   const [expandedProblemPicker, setExpandedProblemPicker] = useState(true);
   const [pendingGradeId, setPendingGradeId] = useState("");
+  const [showHighSchoolHint, setShowHighSchoolHint] = useState(false);
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
   const [memoStrokes, setMemoStrokes] = useState<MemoStroke[]>([]);
   const [memoRedoStack, setMemoRedoStack] = useState<MemoStroke[]>([]);
@@ -2367,7 +2368,12 @@ function QuestPageInner() {
     setQuadraticActiveIndex(0);
     setPreviewImages([]);
     canvasRef.current?.clear();
+    setShowHighSchoolHint(false);
   }, [itemIndex]);
+
+  useEffect(() => {
+    setShowHighSchoolHint(false);
+  }, [currentType?.type_id]);
 
   useEffect(() => {
     if (currentCardRef.current) {
@@ -4187,7 +4193,26 @@ function QuestPageInner() {
               )}
             </div>
 
-            {currentAid && <SecondaryExplanationPanel aid={currentAid} />}
+            {currentAid && (
+              isHighSchoolQuest ? (
+                <section className="w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowHighSchoolHint((prev) => !prev)}
+                    className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-bold text-amber-800 text-left hover:bg-amber-50"
+                  >
+                    {showHighSchoolHint ? "ヒントを閉じる" : "ヒントを見る"}
+                  </button>
+                  {showHighSchoolHint && (
+                    <div className="mt-2">
+                      <SecondaryExplanationPanel aid={currentAid} />
+                    </div>
+                  )}
+                </section>
+              ) : (
+                <SecondaryExplanationPanel aid={currentAid} />
+              )
+            )}
 
             <section className="w-full rounded-2xl border border-slate-200 bg-white/90 p-2 shadow-md">
               <div className="mb-2 flex items-center justify-between text-sm font-bold text-slate-800">
