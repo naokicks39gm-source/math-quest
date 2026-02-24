@@ -230,6 +230,30 @@ const profiles: Record<string, GradeProfile> = {
         { prompt: "10こを 2人で 同じ数に分けると 1人何こ？", answer: "5" },
         { prompt: "15こを 5人で 同じ数に分けると 1人何こ？", answer: "3" }
       ])
+    ],
+    orderedTypeIds: [
+      "E2.NA.ADD.ADD_2D_1D_NO",
+      "E2.NA.ADD.ADD_2D_1D_YES",
+      "E2.NA.ADD.ADD_2D_2D_NO",
+      "E2.NA.ADD.ADD_2D_2D_YES",
+      "E2.NA.SUB.SUB_2D_1D_NO",
+      "E2.NA.SUB.SUB_2D_1D_YES",
+      "E2.NA.SUB.SUB_2D_2D_NO",
+      "E2.NA.SUB.SUB_2D_2D_YES",
+      "E2.NA.MUL.MUL_1D_1D_DAN_1",
+      "E2.NA.MUL.MUL_1D_1D_DAN_2",
+      "E2.NA.MUL.MUL_1D_1D_DAN_3",
+      "E2.NA.MUL.MUL_1D_1D_DAN_4",
+      "E2.NA.MUL.MUL_1D_1D_DAN_5",
+      "E2.NA.MUL.MUL_1D_1D_DAN_6",
+      "E2.NA.MUL.MUL_1D_1D_DAN_7",
+      "E2.NA.MUL.MUL_1D_1D_DAN_8",
+      "E2.NA.MUL.MUL_1D_1D_DAN_9",
+      "E2.NA.MUL.MUL_1D_1D_MIX_1_3",
+      "E2.NA.MUL.MUL_1D_1D_MIX_4_6",
+      "E2.NA.MUL.MUL_1D_1D_MIX_7_9",
+      "E2.NA.MUL.MUL_1D_1D_MIX_1_9",
+      "E2.NA.DIV.DIV_EQUAL_SHARE_BASIC"
     ]
   },
   E3: {
