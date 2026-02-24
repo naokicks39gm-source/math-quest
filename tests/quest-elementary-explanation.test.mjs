@@ -91,7 +91,10 @@ test("elementary panel has next button and visual rendering", () => {
   assert.match(panelSource, /const stackIndexByOffset = new Map<number, number>\(\);/);
   assert.match(panelSource, /const stackIndex = stackIndexByOffset\.get\(adj\.offsetFromRight\) \?\? 0;/);
   assert.match(panelSource, /stackIndexByOffset\.set\(adj\.offsetFromRight, stackIndex \+ 1\);/);
-  assert.match(panelSource, /const top = `calc\(-0\.75rem - \$\{stackIndex \* 1\.05\}rem\)`;/);
+  assert.match(panelSource, /const baseTop =/);
+  assert.match(panelSource, /adj\.label === "\+10"/);
+  assert.match(panelSource, /adj\.label === "-1"/);
+  assert.match(panelSource, /const top = `calc\(\$\{baseTop\}rem - \$\{stackIndex \* 1\.05\}rem\)`;/);
   assert.match(panelSource, /max-w-\[19rem\]/);
   assert.match(panelSource, /こたえ \{aid\.visual\.result\} こ/);
   assert.match(panelSource, /onClick=\{onNext\}/);

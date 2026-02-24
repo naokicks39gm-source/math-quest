@@ -174,6 +174,11 @@ const makeIntEntry = (type: TypeDef, a: number, op: string, b: number, answer: n
 const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, used: Set<string>) => {
   const out: QuestEntry[] = [];
   const isE1Add2D1DYes = type.type_id === "E1.NA.ADD.ADD_2D_1D_YES" && patternId === "ADD_2D_1D_YES";
+  const isE1Add2D1DNo = type.type_id === "E1.NA.ADD.ADD_2D_1D_NO";
+  const isE1Sub2D1DNo = type.type_id === "E1.NA.SUB.SUB_2D_1D_NO";
+  const isE1Sub2D1DYes = type.type_id === "E1.NA.SUB.SUB_2D_1D_YES";
+  const limitOperandsTo20 = isE1Add2D1DNo || isE1Add2D1DYes || isE1Sub2D1DNo;
+  const limitAnswerTo20 = isE1Add2D1DNo || isE1Sub2D1DNo || isE1Sub2D1DYes;
   if (patternId === "ADD_1D_1D_NO") {
     const all: QuestEntry[] = [];
     for (let a = 1; a <= 9; a += 1) {
@@ -212,12 +217,14 @@ const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, use
       a = randInt(minByDigits(aDigits), maxByDigits(aDigits));
       b = randInt(minByDigits(bDigits), maxByDigits(bDigits));
     }
+    if (limitOperandsTo20 && (a > 20 || b > 20)) continue;
     if (isAdd) {
       const hasCarry = (a % 10) + (b % 10) >= 10;
       if (carry === true && !hasCarry) continue;
       if (carry === false && hasCarry) continue;
       const sum = a + b;
       if (isE1Add2D1DYes && sum > 99) continue;
+      if (limitAnswerTo20 && sum > 20) continue;
       pushEntry(out, used, makeIntEntry(type, a, "+", b, sum));
       continue;
     }
@@ -226,7 +233,9 @@ const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, use
       const hasBorrow = (a % 10) < (b % 10);
       if (borrow === true && !hasBorrow) continue;
       if (borrow === false && hasBorrow) continue;
-      pushEntry(out, used, makeIntEntry(type, a, "-", b, a - b));
+      const diff = a - b;
+      if (limitAnswerTo20 && (diff < 0 || diff > 20)) continue;
+      pushEntry(out, used, makeIntEntry(type, a, "-", b, diff));
       continue;
     }
     if (isMul) {

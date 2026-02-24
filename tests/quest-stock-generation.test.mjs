@@ -64,9 +64,34 @@ test("NUM patterns have deterministic fallback generation", () => {
   assert.equal(source.includes("どちらが大きい？"), true);
 });
 
+test("MIXED_TO_20 has deterministic fallback generation and strategy mapping", () => {
+  assert.equal(source.includes('if (patternId === "MIXED_TO_20")'), true);
+  assert.equal(source.includes("const addPairs: Array<[number, number]> = [];"), true);
+  assert.equal(source.includes("const subPairs: Array<[number, number]> = [];"), true);
+  assert.equal(source.includes('prompt: `${a} + ${b} =`'), true);
+  assert.equal(source.includes('prompt: `${a} - ${b} =`'), true);
+  assert.equal(source.includes("MIXED_TO_20: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),"), true);
+});
+
 test("E1 ADD_2D_1D_YES stock has 2-digit-only final guard", () => {
   assert.equal(source.includes("const filterE1Add2D1DYesToTwoDigits ="), true);
   assert.equal(source.includes("typeId.startsWith(\"E1.\") && patternId === \"ADD_2D_1D_YES\""), true);
   assert.equal(source.includes("return Number.isFinite(answer) && answer < 100;"), true);
   assert.equal(source.includes("unique = filterE1Add2D1DYesToTwoDigits(unique, type.type_id, hasPattern ? patternId : undefined);"), true);
+});
+
+test("E1 phase7-10 stock applies per-type operand/answer limit rules", () => {
+  assert.equal(source.includes("const isE1Phase7To10Type ="), true);
+  assert.equal(source.includes("const isE1Phase7To10OperandsLimitedType ="), true);
+  assert.equal(source.includes("const isE1Phase7To10AnswerLimitedType ="), true);
+  assert.equal(source.includes("const limitOperandsTo20 ="), true);
+  assert.equal(source.includes("const limitAnswerTo20 ="), true);
+  assert.equal(source.includes("if (limitOperandsTo20 && (a > 20 || b > 20)) continue;"), true);
+  assert.equal(source.includes("if (limitAnswerTo20 && sum > 20) continue;"), true);
+  assert.equal(source.includes("if (limitAnswerTo20 && (diff < 0 || diff > 20)) continue;"), true);
+  assert.equal(source.includes("const filterE1Phase7To10To20Range ="), true);
+  assert.equal(source.includes("if (!isE1Phase7To10Type(typeId)) return entries;"), true);
+  assert.equal(source.includes("if (limitOperandsTo20 && (a > 20 || b > 20)) return false;"), true);
+  assert.equal(source.includes("if (limitAnswerTo20 && (answer < 0 || answer > 20)) return false;"), true);
+  assert.equal(source.includes("unique = filterE1Phase7To10To20Range(unique, type.type_id);"), true);
 });

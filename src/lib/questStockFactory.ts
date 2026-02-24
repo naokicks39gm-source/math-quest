@@ -124,6 +124,22 @@ const parseDigitsFromPattern = (patternId: string) => {
   return { a: Number(match[1]), b: Number(match[2]) };
 };
 
+const isE1Phase7To10Type = (typeId: string) =>
+  typeId === "E1.NA.ADD.ADD_2D_1D_NO" ||
+  typeId === "E1.NA.ADD.ADD_2D_1D_YES" ||
+  typeId === "E1.NA.SUB.SUB_2D_1D_NO" ||
+  typeId === "E1.NA.SUB.SUB_2D_1D_YES";
+
+const isE1Phase7To10OperandsLimitedType = (typeId: string) =>
+  typeId === "E1.NA.ADD.ADD_2D_1D_NO" ||
+  typeId === "E1.NA.ADD.ADD_2D_1D_YES" ||
+  typeId === "E1.NA.SUB.SUB_2D_1D_NO";
+
+const isE1Phase7To10AnswerLimitedType = (typeId: string) =>
+  typeId === "E1.NA.ADD.ADD_2D_1D_NO" ||
+  typeId === "E1.NA.SUB.SUB_2D_1D_NO" ||
+  typeId === "E1.NA.SUB.SUB_2D_1D_YES";
+
 const minByDigits = (d: number) => 10 ** Math.max(0, d - 1);
 const maxByDigits = (d: number) => 10 ** d - 1;
 
@@ -198,6 +214,50 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
             prompt: `${left} + ${right} =`,
             prompt_tex: `${left} + ${right} =`,
             answer: "10"
+          }
+        });
+      }
+    }
+    return out;
+  }
+  if (patternId === "MIXED_TO_20") {
+    const out: QuestEntry[] = [];
+    const addPairs: Array<[number, number]> = [];
+    const subPairs: Array<[number, number]> = [];
+
+    // Build a broad deterministic catalog for <= 20 mixed add/sub.
+    for (let a = 1; a <= 9; a += 1) {
+      for (let b = a; b <= 10; b += 1) {
+        if (a + b <= 20) addPairs.push([a, b]);
+      }
+    }
+    for (let a = 11; a <= 20; a += 1) {
+      for (let b = 1; b <= 10; b += 1) {
+        if (a > b) subPairs.push([a, b]);
+      }
+    }
+
+    const maxRounds = Math.max(addPairs.length, subPairs.length);
+    for (let i = 0; i < maxRounds && out.length < targetCount; i += 1) {
+      if (addPairs.length > 0 && out.length < targetCount) {
+        const [a, b] = addPairs[(i * 11) % addPairs.length];
+        out.push({
+          type,
+          item: {
+            prompt: `${a} + ${b} =`,
+            prompt_tex: `${a} + ${b} =`,
+            answer: String(a + b)
+          }
+        });
+      }
+      if (subPairs.length > 0 && out.length < targetCount) {
+        const [a, b] = subPairs[(i * 7) % subPairs.length];
+        out.push({
+          type,
+          item: {
+            prompt: `${a} - ${b} =`,
+            prompt_tex: `${a} - ${b} =`,
+            answer: String(a - b)
           }
         });
       }
@@ -457,6 +517,10 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
   const isMul = patternId.startsWith("MUL_");
   const needsNo = patternId.endsWith("_NO");
   const needsYes = patternId.endsWith("_YES");
+  const limitOperandsTo20 =
+    isE1Phase7To10OperandsLimitedType(type.type_id) && (patternId.startsWith("ADD_2D_1D_") || patternId.startsWith("SUB_2D_1D_"));
+  const limitAnswerTo20 =
+    isE1Phase7To10AnswerLimitedType(type.type_id) && (patternId.startsWith("ADD_2D_1D_") || patternId.startsWith("SUB_2D_1D_"));
 
   let attempts = 0;
   const maxAttempts = 20000;
@@ -464,13 +528,16 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
     attempts += 1;
     const a = minByDigits(aDigits) + Math.floor(Math.random() * (maxByDigits(aDigits) - minByDigits(aDigits) + 1));
     const b = minByDigits(bDigits) + Math.floor(Math.random() * (maxByDigits(bDigits) - minByDigits(bDigits) + 1));
+    if (limitOperandsTo20 && (a > 20 || b > 20)) continue;
     if (isAdd) {
       const carry = (a % 10) + (b % 10) >= 10;
       if (needsNo && carry) continue;
       if (needsYes && !carry) continue;
+      const sum = a + b;
+      if (limitAnswerTo20 && sum > 20) continue;
       out.push({
         type,
-        item: { prompt: `${a} + ${b} =`, prompt_tex: `${a} + ${b} =`, answer: String(a + b) }
+        item: { prompt: `${a} + ${b} =`, prompt_tex: `${a} + ${b} =`, answer: String(sum) }
       });
       continue;
     }
@@ -479,9 +546,11 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
       const borrow = (a % 10) < (b % 10);
       if (needsNo && borrow) continue;
       if (needsYes && !borrow) continue;
+      const diff = a - b;
+      if (limitAnswerTo20 && (diff < 0 || diff > 20)) continue;
       out.push({
         type,
-        item: { prompt: `${a} - ${b} =`, prompt_tex: `${a} - ${b} =`, answer: String(a - b) }
+        item: { prompt: `${a} - ${b} =`, prompt_tex: `${a} - ${b} =`, answer: String(diff) }
       });
       continue;
     }
@@ -500,6 +569,24 @@ const filterE1Add2D1DYesToTwoDigits = (entries: QuestEntry[], typeId: string, pa
   return entries.filter((entry) => {
     const answer = Number(entry.item.answer);
     return Number.isFinite(answer) && answer < 100;
+  });
+};
+
+const filterE1Phase7To10To20Range = (entries: QuestEntry[], typeId: string) => {
+  if (!isE1Phase7To10Type(typeId)) return entries;
+  const limitOperandsTo20 = isE1Phase7To10OperandsLimitedType(typeId);
+  const limitAnswerTo20 = isE1Phase7To10AnswerLimitedType(typeId);
+  return entries.filter((entry) => {
+    const prompt = entry.item.prompt_tex ?? entry.item.prompt;
+    const nums = String(prompt).match(/\d+(?:\.\d+)?/g) ?? [];
+    if (nums.length < 2) return false;
+    const a = Number(nums[0]);
+    const b = Number(nums[1]);
+    const answer = Number(entry.item.answer);
+    if (!(Number.isFinite(a) && Number.isFinite(b) && Number.isFinite(answer))) return false;
+    if (limitOperandsTo20 && (a > 20 || b > 20)) return false;
+    if (limitAnswerTo20 && (answer < 0 || answer > 20)) return false;
+    return true;
   });
 };
 
@@ -552,6 +639,7 @@ const STOCK_STRATEGIES: Record<string, StockGenerationStrategy> = {
   NUM_COMPARE_UP_TO_20: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),
   NUM_DECOMP_10: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),
   NUM_COMP_10: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),
+  MIXED_TO_20: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),
   FACTOR_GCF: (type, _patternId, targetCount) => generateFactorGcfEntries(type, targetCount),
   FACTOR_DIFF_SQ: (type, _patternId, targetCount) => generateFactorDiffSqEntries(type, targetCount),
   FACTOR_PERF_SQ: (type, _patternId, targetCount) => generateFactorPerfSqEntries(type, targetCount),
@@ -624,6 +712,7 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
     }
   }
   unique = filterE1Add2D1DYesToTwoDigits(unique, type.type_id, hasPattern ? patternId : undefined);
+  unique = filterE1Phase7To10To20Range(unique, type.type_id);
   const ordered = reorderAvoidAdjacentSameFamily(shuffle(unique).map(normalizeJ1IntEntry)).slice(0, targetCount);
   const entries = uniqueByPromptAndEquivalent(ordered).slice(0, targetCount);
   const reason = entries.length >= targetCount
