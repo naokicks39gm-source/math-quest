@@ -3,6 +3,7 @@
 
 import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import type { ReactNode } from 'react';
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
 import { InlineMath } from "react-katex";
@@ -365,7 +366,8 @@ const DIGIT_KEYPAD_TOKENS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] a
 const SYMBOL_KEYPAD_TOKENS = ["/", ".", "-"] as const;
 const HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS = ["()", "x", "^", "+/-"] as const;
 const PLUS_MINUS_LONG_PRESS_MS = 220;
-const PLUS_MINUS_POPUP_SWITCH_PX = 14;
+const PLUS_MINUS_POPUP_SWITCH_PX = 0;
+const PLUS_MINUS_TAP_DEADZONE_PX = 6;
 
 type BBox = { minX: number; minY: number; maxX: number; maxY: number };
 type DigitSample = { tensor: tf.Tensor2D; preview: ImageData; width: number; height: number; centerX: number };
@@ -387,7 +389,9 @@ type PlusMinusPressState = {
   startY: number;
   currentY: number;
   longPressed: boolean;
+  settled: boolean;
   longPressTimer: number | null;
+  triggerButton: HTMLButtonElement | null;
 };
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
@@ -1581,6 +1585,16 @@ function QuestPageInner() {
   const wrongMarkTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
   const plusMinusPressRef = useRef<PlusMinusPressState | null>(null);
+  const plusMinusWindowHandlersRef = useRef<{
+    move: (event: PointerEvent) => void;
+    up: (event: PointerEvent) => void;
+    cancel: (event: PointerEvent) => void;
+  } | null>(null);
+  const plusMinusTouchHandlersRef = useRef<{
+    move: (event: TouchEvent) => void;
+    end: (event: TouchEvent) => void;
+    cancel: (event: TouchEvent) => void;
+  } | null>(null);
   const grades = useMemo(
     () => getCatalogGrades() as GradeDef[],
     []
@@ -1622,6 +1636,7 @@ function QuestPageInner() {
   const [showHighSchoolHint, setShowHighSchoolHint] = useState(false);
   const [plusMinusPopupOpen, setPlusMinusPopupOpen] = useState(false);
   const [plusMinusCandidate, setPlusMinusCandidate] = useState<"+" | "-" | null>(null);
+  const [plusMinusPopupAnchor, setPlusMinusPopupAnchor] = useState<{ left: number; top: number } | null>(null);
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
   const [showSecondaryHint, setShowSecondaryHint] = useState(false);
   const [showSecondaryExplanation, setShowSecondaryExplanation] = useState(false);
@@ -2603,7 +2618,11 @@ function QuestPageInner() {
 
     const canAppendToken = (text: string, token: string) => {
       if (/^\d$/.test(token)) return true;
-      if (token === "-") return text.length === 0;
+      if (token === "-") {
+        if (!isHighSchoolQuest) return text.length === 0;
+        if (text.length === 0) return true;
+        return /[\dx)]$/.test(text);
+      }
       if (token === ".") {
         if (text.includes(".")) return false;
         if (text === "" || text === "-") return false;
@@ -2612,12 +2631,13 @@ function QuestPageInner() {
       if (token === "+") {
         if (!isHighSchoolQuest) return false;
         if (text.length === 0) return false;
-        return !/[+\-x^(/]$/.test(text);
+        return /[\dx)]$/.test(text);
       }
       if (token === "x") {
         if (!isHighSchoolQuest) return false;
-        if (text.length === 0) return false;
-        return /[\d)]$/.test(text);
+        if (text.length === 0) return true;
+        if (/[x^(/]$/.test(text)) return false;
+        return true;
       }
       if (token === "^") {
         if (!isHighSchoolQuest) return false;
@@ -2809,17 +2829,10 @@ function QuestPageInner() {
     if (token === "/") return "分数";
     if (token === ".") return "小数点";
     if (token === "+") return "プラス";
-    if (token === "+/-") {
-      return (
-        <span className="inline-flex flex-col items-center leading-[0.9]">
-          <span>プラ</span>
-          <span>マイ</span>
-        </span>
-      );
-    }
+    if (token === "+/-") return "+/-";
     if (token === "^") return "指数";
     if (token === "()") return "（）";
-    if (token === "x") return "x";
+    if (token === "x") return <InlineMath math="x" renderError={() => <span>x</span>} />;
     if (token === "-") {
       return (
         <span className="inline-flex flex-col items-center leading-[0.9]">
@@ -2873,104 +2886,206 @@ function QuestPageInner() {
   const smallSymbolTokens: Array<(typeof SYMBOL_KEYPAD_TOKENS)[number]> = [".", "-", "/"];
   const renderAnswerWithSuperscript = (text: string) => {
     if (!text) return "\u2007";
-    if (!isHighSchoolQuest || !text.includes("^")) return text;
-    const nodes: ReactNode[] = [];
-    let i = 0;
-    while (i < text.length) {
-      if (text[i] === "^") {
-        let j = i + 1;
-        let sign = "";
-        if (text[j] === "-") {
-          sign = "-";
-          j += 1;
-        }
-        let k = j;
-        while (k < text.length && /\d/.test(text[k])) k += 1;
-        if (k > j) {
-          nodes.push(<sup key={`pow-${i}`}>{`${sign}${text.slice(j, k)}`}</sup>);
-          i = k;
-          continue;
-        }
-      }
-      nodes.push(<span key={`txt-${i}`}>{text[i]}</span>);
-      i += 1;
-    }
-    return <span className="inline-flex items-baseline gap-[1px]">{nodes}</span>;
+    if (!isHighSchoolQuest) return text;
+    const tex = toEquationTex(text).replace(/([A-Za-z0-9)])\^(-?\d+)/g, "$1^{$2}");
+    return (
+      <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
+        <InlineMath math={tex} renderError={() => <span>{text}</span>} />
+      </span>
+    );
   };
   const clearPlusMinusPressTimer = (state: PlusMinusPressState | null) => {
     if (!state || state.longPressTimer === null) return;
     window.clearTimeout(state.longPressTimer);
     state.longPressTimer = null;
   };
-  const resolvePlusMinusToken = (state: PlusMinusPressState) =>
-    state.currentY - state.startY >= PLUS_MINUS_POPUP_SWITCH_PX ? "-" as const : "+" as const;
-  const resetPlusMinusInputState = () => {
+  const detachPlusMinusWindowTracking = () => {
+    const handlers = plusMinusWindowHandlersRef.current;
+    if (!handlers) return;
+    window.removeEventListener("pointermove", handlers.move);
+    window.removeEventListener("pointerup", handlers.up);
+    window.removeEventListener("pointercancel", handlers.cancel);
+    plusMinusWindowHandlersRef.current = null;
+  };
+  const detachPlusMinusTouchTracking = () => {
+    const handlers = plusMinusTouchHandlersRef.current;
+    if (!handlers) return;
+    window.removeEventListener("touchmove", handlers.move);
+    window.removeEventListener("touchend", handlers.end);
+    window.removeEventListener("touchcancel", handlers.cancel);
+    plusMinusTouchHandlersRef.current = null;
+  };
+  const resolvePlusMinusTokenFromDelta = (deltaY: number) =>
+    deltaY < PLUS_MINUS_POPUP_SWITCH_PX ? "+" as const : "-" as const;
+  const resetPlusMinusInputState = (skipDetach = false) => {
     clearPlusMinusPressTimer(plusMinusPressRef.current);
+    const active = plusMinusPressRef.current;
+    if (active?.triggerButton && active.triggerButton.hasPointerCapture(active.pointerId)) {
+      active.triggerButton.releasePointerCapture(active.pointerId);
+    }
     plusMinusPressRef.current = null;
+    if (!skipDetach) detachPlusMinusWindowTracking();
+    if (!skipDetach) detachPlusMinusTouchTracking();
     setPlusMinusPopupOpen(false);
     setPlusMinusCandidate(null);
+    setPlusMinusPopupAnchor(null);
+  };
+  const finalizePlusMinusPress = (
+    event: Pick<PointerEvent, "pointerId" | "clientY"> | null,
+    cancelled: boolean
+  ) => {
+    const active = plusMinusPressRef.current;
+    if (!active) {
+      resetPlusMinusInputState();
+      return;
+    }
+    if (active.settled) {
+      resetPlusMinusInputState();
+      return;
+    }
+    if (event && event.pointerId !== active.pointerId) return;
+    active.settled = true;
+    if (event) {
+      active.currentY = event.clientY;
+    }
+    const deltaY = active.currentY - active.startY;
+    const movedBeyondTap = Math.abs(deltaY) > PLUS_MINUS_TAP_DEADZONE_PX;
+    const token = cancelled
+      ? null
+      : (movedBeyondTap ? resolvePlusMinusTokenFromDelta(deltaY) : "+" as const);
+    resetPlusMinusInputState();
+    if (token) handleInput(token);
+  };
+  const attachPlusMinusWindowTracking = () => {
+    detachPlusMinusWindowTracking();
+    const move = (event: PointerEvent) => {
+      const active = plusMinusPressRef.current;
+      if (!active || active.pointerId !== event.pointerId || active.settled) return;
+      active.currentY = event.clientY;
+      if (!active.longPressed) return;
+      setPlusMinusCandidate(resolvePlusMinusTokenFromDelta(active.currentY - active.startY));
+      event.preventDefault();
+    };
+    const up = (event: PointerEvent) => {
+      finalizePlusMinusPress(event, false);
+    };
+    const cancel = (event: PointerEvent) => {
+      finalizePlusMinusPress(event, true);
+    };
+    plusMinusWindowHandlersRef.current = { move, up, cancel };
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+  };
+  const findTouchById = (touches: TouchList, id: number) => {
+    for (let i = 0; i < touches.length; i += 1) {
+      if (touches[i].identifier === id) return touches[i];
+    }
+    return null;
+  };
+  const attachPlusMinusTouchTracking = () => {
+    detachPlusMinusTouchTracking();
+    const move = (event: TouchEvent) => {
+      const active = plusMinusPressRef.current;
+      if (!active || active.settled) return;
+      const touch = findTouchById(event.touches, active.pointerId) ?? findTouchById(event.changedTouches, active.pointerId);
+      if (!touch) return;
+      active.currentY = touch.clientY;
+      if (active.longPressed) {
+        setPlusMinusCandidate(resolvePlusMinusTokenFromDelta(active.currentY - active.startY));
+      }
+      event.preventDefault();
+    };
+    const end = (event: TouchEvent) => {
+      const active = plusMinusPressRef.current;
+      if (!active || active.settled) return;
+      const touch = findTouchById(event.changedTouches, active.pointerId);
+      if (!touch) return;
+      finalizePlusMinusPress({ pointerId: active.pointerId, clientY: touch.clientY }, false);
+    };
+    const cancel = (event: TouchEvent) => {
+      const active = plusMinusPressRef.current;
+      if (!active || active.settled) return;
+      const touch = findTouchById(event.changedTouches, active.pointerId);
+      if (!touch) return;
+      finalizePlusMinusPress({ pointerId: active.pointerId, clientY: touch.clientY }, true);
+    };
+    plusMinusTouchHandlersRef.current = { move, end, cancel };
+    window.addEventListener("touchmove", move, { passive: false });
+    window.addEventListener("touchend", end);
+    window.addEventListener("touchcancel", cancel);
   };
   const handlePlusMinusFlickStart = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (status !== "playing" || isStarting) return;
+    e.preventDefault();
     resetPlusMinusInputState();
     e.currentTarget.setPointerCapture(e.pointerId);
+    const rect = e.currentTarget.getBoundingClientRect();
     const state: PlusMinusPressState = {
       pointerId: e.pointerId,
       startY: e.clientY,
       currentY: e.clientY,
       longPressed: false,
-      longPressTimer: null
+      settled: false,
+      longPressTimer: null,
+      triggerButton: e.currentTarget
     };
+    attachPlusMinusWindowTracking();
     state.longPressTimer = window.setTimeout(() => {
       const active = plusMinusPressRef.current;
       if (!active || active.pointerId !== e.pointerId) return;
       active.longPressed = true;
       active.longPressTimer = null;
-      const candidate = resolvePlusMinusToken(active);
+      const candidate = resolvePlusMinusTokenFromDelta(active.currentY - active.startY);
+      setPlusMinusPopupAnchor({ left: rect.left + rect.width / 2, top: rect.top - 72 });
       setPlusMinusPopupOpen(true);
       setPlusMinusCandidate(candidate);
     }, PLUS_MINUS_LONG_PRESS_MS);
     plusMinusPressRef.current = state;
   };
-  const handlePlusMinusFlickMove = (e: React.PointerEvent<HTMLButtonElement>) => {
-    const active = plusMinusPressRef.current;
-    if (!active || active.pointerId !== e.pointerId) return;
-    active.currentY = e.clientY;
-    if (!active.longPressed) return;
-    setPlusMinusCandidate(resolvePlusMinusToken(active));
+  const handlePlusMinusTouchStart = (e: React.TouchEvent<HTMLButtonElement>) => {
+    if (status !== "playing" || isStarting) return;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    e.preventDefault();
+    resetPlusMinusInputState();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const state: PlusMinusPressState = {
+      pointerId: touch.identifier,
+      startY: touch.clientY,
+      currentY: touch.clientY,
+      longPressed: false,
+      settled: false,
+      longPressTimer: null,
+      triggerButton: e.currentTarget
+    };
+    attachPlusMinusTouchTracking();
+    state.longPressTimer = window.setTimeout(() => {
+      const active = plusMinusPressRef.current;
+      if (!active || active.pointerId !== touch.identifier) return;
+      active.longPressed = true;
+      active.longPressTimer = null;
+      const candidate = resolvePlusMinusTokenFromDelta(active.currentY - active.startY);
+      setPlusMinusPopupAnchor({ left: rect.left + rect.width / 2, top: rect.top - 72 });
+      setPlusMinusPopupOpen(true);
+      setPlusMinusCandidate(candidate);
+    }, PLUS_MINUS_LONG_PRESS_MS);
+    plusMinusPressRef.current = state;
   };
   const handlePlusMinusFlickEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (status !== "playing" || isStarting) return;
-    const active = plusMinusPressRef.current;
-    if (!active || active.pointerId !== e.pointerId) {
-      resetPlusMinusInputState();
-      return;
-    }
-    active.currentY = e.clientY;
-    const token = active.longPressed ? resolvePlusMinusToken(active) : "+" as const;
-    clearPlusMinusPressTimer(active);
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-    resetPlusMinusInputState();
-    handleInput(token);
+    finalizePlusMinusPress({ pointerId: e.pointerId, clientY: e.clientY }, false);
   };
   const handlePlusMinusFlickCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-    resetPlusMinusInputState();
+    finalizePlusMinusPress({ pointerId: e.pointerId, clientY: e.clientY }, true);
   };
   useEffect(() => {
-    clearPlusMinusPressTimer(plusMinusPressRef.current);
-    plusMinusPressRef.current = null;
-    setPlusMinusPopupOpen(false);
-    setPlusMinusCandidate(null);
+    resetPlusMinusInputState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemIndex, currentType?.type_id, status]);
   useEffect(
     () => () => {
-      clearPlusMinusPressTimer(plusMinusPressRef.current);
-      plusMinusPressRef.current = null;
+      resetPlusMinusInputState();
     },
     []
   );
@@ -4437,28 +4552,19 @@ function QuestPageInner() {
                           handleInput(token);
                         }}
                         onPointerDown={token === "+/-" ? handlePlusMinusFlickStart : undefined}
-                        onPointerMove={token === "+/-" ? handlePlusMinusFlickMove : undefined}
                         onPointerUp={token === "+/-" ? handlePlusMinusFlickEnd : undefined}
                         onPointerCancel={token === "+/-" ? handlePlusMinusFlickCancel : undefined}
+                        onTouchStart={token === "+/-" ? handlePlusMinusTouchStart : undefined}
                         disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken(token)}
                         className={`
-                          relative overflow-visible h-9 w-full rounded-md text-[11px] font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                          relative overflow-visible w-full font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                          ${token === "+/-" ? "h-10 rounded-lg text-[13px] tracking-wide mx-1" : "h-9 rounded-md text-[11px]"}
                           ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
                           ${token === "+/-" && plusMinusPopupOpen && plusMinusCandidate === "-" ? "bg-rose-50 text-rose-700 border-rose-300" : ""}
                         `}
                         style={token === "+/-" ? { touchAction: "none" } : undefined}
                       >
                         {renderKeyLabel(token)}
-                        {token === "+/-" && plusMinusPopupOpen ? (
-                          <span className="pointer-events-none absolute -top-[74px] left-1/2 z-20 inline-flex w-[46px] -translate-x-1/2 flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-lg">
-                            <span className={`flex h-8 items-center justify-center text-xs font-bold ${plusMinusCandidate === "+" ? "bg-emerald-100 text-emerald-800" : "bg-white text-slate-700"}`}>
-                              +
-                            </span>
-                            <span className={`flex h-8 items-center justify-center text-xs font-bold border-t border-slate-200 ${plusMinusCandidate === "-" ? "bg-rose-100 text-rose-700" : "bg-white text-slate-700"}`}>
-                              -
-                            </span>
-                          </span>
-                        ) : null}
                       </button>
                     );
                   })}
@@ -4549,6 +4655,19 @@ function QuestPageInner() {
           )}
         </section>
       )}
+      {plusMinusPopupOpen && plusMinusPopupAnchor && typeof document !== "undefined"
+        ? createPortal(
+          <div
+            className="pointer-events-none fixed z-[120] inline-flex w-[52px] -translate-x-1/2 flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-xl"
+            style={{ left: plusMinusPopupAnchor.left, top: plusMinusPopupAnchor.top }}
+            aria-hidden="true"
+          >
+            <div className={`flex h-8 items-center justify-center text-sm font-bold ${plusMinusCandidate === "+" ? "bg-emerald-100 text-emerald-800" : "bg-white text-slate-700"}`}>+</div>
+            <div className={`flex h-8 items-center justify-center text-sm font-bold border-t border-slate-200 ${plusMinusCandidate === "-" ? "bg-rose-100 text-rose-700" : "bg-white text-slate-700"}`}>-</div>
+          </div>,
+          document.body
+        )
+        : null}
 
     </main>
   );
