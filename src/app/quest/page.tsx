@@ -372,6 +372,8 @@ const HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS = ["()", "x", "^", "+/-"] as const;
 const PLUS_MINUS_LONG_PRESS_MS = 220;
 const PLUS_MINUS_POPUP_SWITCH_PX = 0;
 const PLUS_MINUS_TAP_DEADZONE_PX = 6;
+const QA_PROMPT_FONT_STEPS = [32, 30, 28, 26, 24] as const;
+const QA_ANSWER_FONT_STEPS = [30, 28, 26, 24] as const;
 
 type BBox = { minX: number; minY: number; maxX: number; maxY: number };
 type DigitSample = { tensor: tf.Tensor2D; preview: ImageData; width: number; height: number; centerX: number };
@@ -1631,6 +1633,8 @@ function QuestPageInner() {
   const [calcPan, setCalcPan] = useState({ x: 0, y: 0 });
   const [useSingleLineQa, setUseSingleLineQa] = useState(false);
   const [qaAnswerOffsetPx, setQaAnswerOffsetPx] = useState(0);
+  const [qaPromptFontPx, setQaPromptFontPx] = useState<number>(QA_PROMPT_FONT_STEPS[0]);
+  const [qaAnswerFontPx, setQaAnswerFontPx] = useState<number>(QA_ANSWER_FONT_STEPS[0]);
   const [showGradeTypePicker, setShowGradeTypePicker] = useState(false);
   const [expandedGradePicker, setExpandedGradePicker] = useState(true);
   const [expandedGradeList, setExpandedGradeList] = useState(false);
@@ -1848,15 +1852,46 @@ function QuestPageInner() {
     const updateLayout = () => {
       const available = row.clientWidth;
       if (available <= 0) return;
-      const promptWidth = promptContent?.scrollWidth ?? prompt.scrollWidth;
-      const answerWidth = answerContent.scrollWidth;
+      const measure = (promptFontPx: number, answerFontPx: number) => {
+        prompt.style.fontSize = `${promptFontPx}px`;
+        answer.style.fontSize = `${answerFontPx}px`;
+        const promptWidth = promptContent?.scrollWidth ?? prompt.scrollWidth;
+        const answerWidth = answerContent.scrollWidth;
+        return { promptWidth, answerWidth };
+      };
       const gap = 10;
       const buffer = 10;
-      const singleLine = promptWidth + answerWidth + gap + buffer <= available;
-      setUseSingleLineQa(singleLine);
-      if (singleLine) {
+
+      if (!isSecondaryQuest) {
+        const size = measure(QA_PROMPT_FONT_STEPS[2], QA_ANSWER_FONT_STEPS[2]);
+        const singleLine = size.promptWidth + size.answerWidth + gap + buffer <= available;
+        setUseSingleLineQa(singleLine);
+        setQaPromptFontPx(QA_PROMPT_FONT_STEPS[2]);
+        setQaAnswerFontPx(QA_ANSWER_FONT_STEPS[2]);
+        setQaAnswerOffsetPx(0);
+        return;
+      }
+
+      let fitStep: { prompt: number; answer: number } | null = null;
+      for (let i = 0; i < QA_PROMPT_FONT_STEPS.length; i += 1) {
+        const promptStep = QA_PROMPT_FONT_STEPS[i];
+        const answerStep = QA_ANSWER_FONT_STEPS[Math.min(i, QA_ANSWER_FONT_STEPS.length - 1)];
+        const size = measure(promptStep, answerStep);
+        if (size.promptWidth + size.answerWidth + gap + buffer <= available) {
+          fitStep = { prompt: promptStep, answer: answerStep };
+          break;
+        }
+      }
+
+      if (fitStep) {
+        setUseSingleLineQa(true);
+        setQaPromptFontPx(fitStep.prompt);
+        setQaAnswerFontPx(fitStep.answer);
         setQaAnswerOffsetPx(0);
       } else {
+        setUseSingleLineQa(false);
+        setQaPromptFontPx(QA_PROMPT_FONT_STEPS[0]);
+        setQaAnswerFontPx(QA_ANSWER_FONT_STEPS[0]);
         setQaAnswerOffsetPx(0);
       }
     };
@@ -1878,7 +1913,8 @@ function QuestPageInner() {
     quizItems,
     itemIndex,
     input,
-    quadraticAnswers
+    quadraticAnswers,
+    isSecondaryQuest
   ]);
 
   useEffect(() => {
@@ -4162,6 +4198,7 @@ function QuestPageInner() {
               >
                 <div
                   ref={qaPromptRef}
+                  style={isSecondaryQuest ? { fontSize: `${qaPromptFontPx}px` } : undefined}
                   className={
                     useSingleLineQa
                       ? "min-w-0 w-auto max-w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
@@ -4183,7 +4220,7 @@ function QuestPageInner() {
                     style={useSingleLineQa ? undefined : { marginLeft: `${qaAnswerOffsetPx}px` }}
                   >
                     <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
-                      <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x1 =</span>
+                      <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100" style={isSecondaryQuest ? { fontSize: `${Math.max(18, qaAnswerFontPx - 6)}px` } : undefined}>x1 =</span>
                       <button
                         type="button"
                         onClick={() => setQuadraticActiveIndex(0)}
@@ -4191,13 +4228,16 @@ function QuestPageInner() {
                         className={`${quadraticFractionInputs[0].enabled ? "w-[98px] sm:w-[116px] h-[64px] sm:h-[76px] text-[18px] sm:text-[22px]" : "w-[72px] sm:w-[84px] h-[48px] sm:h-[56px] text-[22px] sm:text-[26px]"} shrink-0 px-2 sm:px-3 rounded-xl border-2 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
                           quadraticActiveIndex === 0 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
                         }`}
-                        style={{ opacity: quadraticFractionInputs[0].enabled ? 1 : (quadraticAnswers[0] ? 1 : 0.35) }}
+                        style={{
+                          opacity: quadraticFractionInputs[0].enabled ? 1 : (quadraticAnswers[0] ? 1 : 0.35),
+                          fontSize: isSecondaryQuest ? `${qaAnswerFontPx}px` : undefined
+                        }}
                       >
                         {quadraticFractionInputs[0].enabled
                           ? renderFractionEditorValue(quadraticFractionInputs[0])
                           : renderAnswerWithSuperscript(quadraticAnswers[0])}
                       </button>
-                      <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100">x2 =</span>
+                      <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100" style={isSecondaryQuest ? { fontSize: `${Math.max(18, qaAnswerFontPx - 6)}px` } : undefined}>x2 =</span>
                       <button
                         type="button"
                         onClick={() => setQuadraticActiveIndex(1)}
@@ -4205,7 +4245,10 @@ function QuestPageInner() {
                         className={`${quadraticFractionInputs[1].enabled ? "w-[98px] sm:w-[116px] h-[64px] sm:h-[76px] text-[18px] sm:text-[22px]" : "w-[72px] sm:w-[84px] h-[48px] sm:h-[56px] text-[22px] sm:text-[26px]"} shrink-0 px-2 sm:px-3 rounded-xl border-2 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
                           quadraticActiveIndex === 1 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
                         }`}
-                        style={{ opacity: quadraticFractionInputs[1].enabled ? 1 : (quadraticAnswers[1] ? 1 : 0.35) }}
+                        style={{
+                          opacity: quadraticFractionInputs[1].enabled ? 1 : (quadraticAnswers[1] ? 1 : 0.35),
+                          fontSize: isSecondaryQuest ? `${qaAnswerFontPx}px` : undefined
+                        }}
                       >
                         {quadraticFractionInputs[1].enabled
                           ? renderFractionEditorValue(quadraticFractionInputs[1])
@@ -4226,13 +4269,16 @@ function QuestPageInner() {
                   >
                     <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
                       {isSecondaryQuest ? (
-                        <span className="text-[24px] sm:text-[30px] leading-none font-extrabold text-emerald-100">=</span>
+                        <span className="text-[24px] sm:text-[30px] leading-none font-extrabold text-emerald-100" style={isSecondaryQuest ? { fontSize: `${qaAnswerFontPx}px` } : undefined}>=</span>
                       ) : null}
                       <div className={`relative overflow-visible ${fractionInput.enabled ? "w-[190px] sm:w-[220px]" : "w-[150px] sm:w-[180px]"}`}>
                         <div
                           aria-label="recognized-answer"
                           className={`${fractionInput.enabled ? "w-[190px] sm:w-[220px] h-[74px] sm:h-[84px] text-[20px] sm:text-[24px]" : "w-[150px] sm:w-[180px] h-[56px] sm:h-[64px] text-[26px] sm:text-[30px]"} shrink-0 max-w-full px-2 sm:px-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center`}
-                          style={{ opacity: fractionInput.enabled ? 1 : (displayedAnswer ? 1 : 0.35) }}
+                          style={{
+                            opacity: fractionInput.enabled ? 1 : (displayedAnswer ? 1 : 0.35),
+                            fontSize: isSecondaryQuest ? `${qaAnswerFontPx}px` : undefined
+                          }}
                         >
                           {fractionInput.enabled
                             ? renderFractionEditorValue(fractionInput)
