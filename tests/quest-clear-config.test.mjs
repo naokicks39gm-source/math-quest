@@ -9,8 +9,14 @@ const source = fs.readFileSync(questPath, "utf8");
 test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("const DEFAULT_TOTAL_QUESTIONS = 5;"), true);
   assert.equal(source.includes("const E1_SUMMARY_TYPE_ID = \"E1.NA.MIX.MIXED_TO_20\";"), true);
+  assert.equal(source.includes("const E2_DAN_MUL_TYPE_RE = /^E2\\.NA\\.MUL\\.MUL_1D_1D_DAN_[1-9]$/;"), true);
+  assert.equal(source.includes("const E2_MIX_TEN_TYPE_RE = /^E2\\.NA\\.MUL\\.MUL_1D_1D_MIX_(1_3|4_6|7_9)$/;"), true);
+  assert.equal(source.includes("const E2_MIX_99_TEST_TYPE_ID = \"E2.NA.MUL.MUL_1D_1D_MIX_1_9\";"), true);
   assert.equal(source.includes("const getTargetQuestionCount = (typeId?: string) =>"), true);
-  assert.equal(source.includes("typeId === E1_SUMMARY_TYPE_ID ? 10 : DEFAULT_TOTAL_QUESTIONS;"), true);
+  assert.equal(source.includes("if (typeId === E2_MIX_99_TEST_TYPE_ID) return 20;"), true);
+  assert.equal(source.includes("if (E2_DAN_MUL_TYPE_RE.test(typeId)) return 9;"), true);
+  assert.equal(source.includes("if (E2_MIX_TEN_TYPE_RE.test(typeId)) return 10;"), true);
+  assert.equal(source.includes("if (typeId === E1_SUMMARY_TYPE_ID) return 10;"), true);
   assert.equal(source.includes("const QUESTION_POOL_SIZE = 50;"), true);
   assert.equal(source.includes("buildStocksForTypes("), true);
   assert.equal(source.includes("pickUniqueQuizFromStock("), true);
