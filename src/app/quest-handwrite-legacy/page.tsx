@@ -3,19 +3,14 @@
 
 import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
+import CanvasDraw from 'react-canvas-draw'; // Import CanvasDraw
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getCatalogGrades } from '@/lib/gradeCatalog';
-import { entryEquivalentKey, entryPromptKey } from '@/lib/questItemFactory';
-import { buildStocksForTypes, pickUniqueQuizFromStock, type PickMeta, type TypeStockResult } from "@/lib/questStockFactory";
-import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
-import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
-import ElementaryExplanationPanel from "@/components/ElementaryExplanationPanel";
-import { getElementaryLearningAid, isElementaryGrade } from "@/lib/elementaryExplanations";
+import { buildStocksForTypes, pickUniqueQuizFromStock, type TypeStockResult } from "@/lib/questStockFactory";
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -75,14 +70,6 @@ type QuestEntry = {
   type: TypeDef;
 };
 
-type StockShortage = {
-  typeId: string;
-  typeName: string;
-  count: number;
-  reason?: TypeStockResult["reason"];
-  reasonDetail?: TypeStockResult["reasonDetail"];
-};
-
 type QuestionResultEntry = {
   prompt: string;
   promptTex?: string;
@@ -91,32 +78,13 @@ type QuestionResultEntry = {
   correctAnswer?: string;
   everWrong: boolean;
   firstWrongAnswer?: string;
-  skipped?: boolean;
-};
-
-type FractionEditorPart = "num" | "den";
-type FractionEditorState = {
-  enabled: boolean;
-  num: string;
-  den: string;
-  part: FractionEditorPart;
 };
 
 const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
 const LS_STUDENT_ID = "mq:studentId";
-const DEFAULT_TOTAL_QUESTIONS = 5;
-const E1_SUMMARY_TYPE_ID = "E1.NA.MIX.MIXED_TO_20";
-const getTargetQuestionCount = (typeId?: string) =>
-  typeId === E1_SUMMARY_TYPE_ID ? 10 : DEFAULT_TOTAL_QUESTIONS;
 const QUESTION_POOL_SIZE = 50;
 const OUTER_MARGIN = 8;
 const DEFAULT_VISIBLE_CANVAS_SIZE = 300;
-const FRACTION_AUTO_MOVE_DELAY_MS = 800;
-const EMPTY_FRACTION_EDITOR: FractionEditorState = { enabled: false, num: "", den: "", part: "num" };
-const MIN_MEMO_ZOOM = 0.1;
-const MAX_MEMO_ZOOM = 2.5;
-const MEMO_BRUSH_WIDTH = 2.0;
-const MEMO_WORKSPACE_SCALE = 1.6;
 
 export const getAutoJudgeDelayMs = (digits: number) => {
   if (digits <= 1) return 700;
@@ -126,16 +94,8 @@ export const getAutoJudgeDelayMs = (digits: number) => {
 
 const trimTrailingEquationEquals = (text: string) => text.replace(/\s*[=＝]\s*$/u, "");
 
-const shouldKeepEqualsForE13Plus = (typeId?: string, typeLabel?: string) => {
-  if (!typeId?.startsWith("E1.")) return false;
-  const m = (typeLabel ?? "").match(/Lv:E1-(\d+)/);
-  if (!m) return false;
-  return Number(m[1]) >= 3;
-};
-
-const formatPrompt = (prompt: string, keepEquals = false) => {
-  const cleaned = prompt.replace(/を計算しなさい。$/g, "");
-  return keepEquals ? cleaned.trim() : trimTrailingEquationEquals(cleaned);
+const formatPrompt = (prompt: string) => {
+  return trimTrailingEquationEquals(prompt.replace(/を計算しなさい。$/g, ""));
 };
 
 const MIXED_FRACTION_TYPE_IDS = new Set<string>([
@@ -266,84 +226,17 @@ const renderMaybeMath = (text: string): ReactNode => {
     </span>
   );
 };
-const renderNumDecompPrompt = (prompt: string): ReactNode | null => {
-  const normalized = formatPrompt(prompt, false).replace(/\s+/g, "");
-  const match = normalized.match(/^(\d+)は(\d+)と(?:□|[?？])でできます。?$/u);
-  if (!match) return null;
-  const total = match[1];
-  const part = match[2];
-  const tokenGapClass = "mx-[0.20em]";
-  return (
-    <span className="inline-flex items-baseline whitespace-nowrap">
-      <span className="inline-flex min-w-[2ch] justify-center mr-[0.20em]">{total}</span>
-      <span className="mr-[0.20em]">は</span>
-      <span className={`inline-flex min-w-[2ch] justify-center ${tokenGapClass}`}>{part}</span>
-      <span className="mx-[0.16em]">と</span>
-      <span
-        aria-hidden
-        className={`inline-flex h-[1.12em] w-[1.12em] items-center justify-center rounded-[0.18em] border-2 border-emerald-100 align-[-0.04em] ${tokenGapClass}`}
-      />
-      <span className="ml-[0.16em]">でできます。</span>
-    </span>
-  );
-};
-
-const SLOT_MARKER_PATTERN = /[?？]/g;
-const SLOT_LEFT_HINT_PATTERN = /[+\-×÷=＝とは]/;
-const SLOT_RIGHT_HINT_PATTERN = /[0-9０-９A-Za-zぁ-んァ-ヶ一-龯(（]/;
-
-const shouldRenderSlotMarker = (text: string, index: number) => {
-  const prev = index > 0 ? text[index - 1] : "";
-  const next = index + 1 < text.length ? text[index + 1] : "";
-  if (next && SLOT_RIGHT_HINT_PATTERN.test(next)) return true;
-  if (!next && SLOT_LEFT_HINT_PATTERN.test(prev)) return true;
-  return false;
-};
-
-const renderPromptWithSlotBox = (text: string): ReactNode | null => {
-  const nodes: ReactNode[] = [];
-  let last = 0;
-  let changed = false;
-  SLOT_MARKER_PATTERN.lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = SLOT_MARKER_PATTERN.exec(text))) {
-    const idx = match.index;
-    if (!shouldRenderSlotMarker(text, idx)) continue;
-    changed = true;
-    if (idx > last) nodes.push(<span key={`slot-text-${last}`}>{text.slice(last, idx)}</span>);
-    nodes.push(
-      <span
-        key={`slot-box-${idx}`}
-        aria-hidden
-        className="mx-[0.06em] inline-flex h-[1.12em] w-[1.12em] items-center justify-center rounded-[0.18em] border-2 border-emerald-100 align-[-0.04em]"
-      />
-    );
-    last = idx + match[0].length;
-  }
-  if (!changed) return null;
-  if (last < text.length) nodes.push(<span key={`slot-tail-${last}`}>{text.slice(last)}</span>);
-  return <span className="inline-flex items-baseline whitespace-nowrap">{nodes}</span>;
-};
-
-const renderPrompt = (item: ExampleItem, typeId?: string, typeLabel?: string) => {
-  const keepEquals = shouldKeepEqualsForE13Plus(typeId, typeLabel);
-  if (typeId === "E1.NA.NUM.NUM_DECOMP_10") {
-    const custom = renderNumDecompPrompt(item.prompt);
-    if (custom) return custom;
-  }
+const renderPrompt = (item: ExampleItem) => {
   const tex = item.prompt_tex?.trim();
   if (tex) {
-    const displayTex = keepEquals ? tex : trimTrailingEquationEquals(tex);
+    const displayTex = trimTrailingEquationEquals(tex);
     return (
       <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
-        <InlineMath math={toEquationTex(displayTex)} renderError={() => <span>{formatPrompt(item.prompt, keepEquals)}</span>} />
+        <InlineMath math={toEquationTex(displayTex)} renderError={() => <span>{formatPrompt(item.prompt)}</span>} />
       </span>
     );
   }
-  const formattedPrompt = formatPrompt(item.prompt, keepEquals);
-  const slotPrompt = renderPromptWithSlotBox(formattedPrompt);
-  if (slotPrompt) return slotPrompt;
-  return renderMaybeMath(formattedPrompt);
+  return renderMaybeMath(formatPrompt(item.prompt));
 };
 
 
@@ -366,15 +259,6 @@ const CHARACTERS = {
   }
 };
 
-const DIGIT_KEYPAD_TOKENS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
-const SYMBOL_KEYPAD_TOKENS = ["/", ".", "-"] as const;
-const HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS = ["()", "x", "^", "+/-"] as const;
-const PLUS_MINUS_LONG_PRESS_MS = 220;
-const PLUS_MINUS_POPUP_SWITCH_PX = 0;
-const PLUS_MINUS_TAP_DEADZONE_PX = 6;
-const QA_PROMPT_FONT_STEPS = [32, 30, 28, 26, 24] as const;
-const QA_ANSWER_FONT_STEPS = [30, 28, 26, 24] as const;
-
 type BBox = { minX: number; minY: number; maxX: number; maxY: number };
 type DigitSample = { tensor: tf.Tensor2D; preview: ImageData; width: number; height: number; centerX: number };
 type Component = { mask: Uint8Array; bbox: BBox; area: number };
@@ -387,17 +271,6 @@ type BinarizedCanvas = {
   ink: Uint8Array;
   threshold: number;
   roi: RecognitionRoi;
-};
-type MemoPoint = { x: number; y: number };
-type MemoStroke = { points: MemoPoint[] };
-type PlusMinusPressState = {
-  pointerId: number;
-  startY: number;
-  currentY: number;
-  longPressed: boolean;
-  settled: boolean;
-  longPressTimer: number | null;
-  triggerButton: HTMLButtonElement | null;
 };
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
@@ -1529,8 +1402,9 @@ const predictDigitEnsemble = (tensor: tf.Tensor2D) => {
 function QuestPageInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const typeFromQuery = (params.get("type") ?? "").trim();
+  const typeFromQuery = params.get("type");
   const categoryFromQuery = params.get("category");
+  const TOTAL_QUESTIONS = 5;
   const [combo, setCombo] = useState(0);
   const [question, setQuestion] = useState<Question | null>(null);
   const [history, setHistory] = useState<Array<{ id: number; text: string }>>([]);
@@ -1538,35 +1412,20 @@ function QuestPageInner() {
   const [results, setResults] = useState<Array<{ id: number; text: string; userAnswer: string; correct: boolean }>>([]);
   const [questionResults, setQuestionResults] = useState<Record<number, QuestionResultEntry>>({});
   const [input, setInput] = useState('');
-  const [fractionInput, setFractionInput] = useState<FractionEditorState>(EMPTY_FRACTION_EDITOR);
   const [message, setMessage] = useState('Battle Start!');
   const [character, setCharacter] = useState<CharacterType>('warrior');
-  const [status, setStatus] = useState<'playing' | 'cleared' | 'blocked'>('playing');
-  const [inputMode] = useState<'numpad' | 'handwriting'>('numpad');
+  const [status, setStatus] = useState<'playing' | 'cleared'>('playing');
+  const [inputMode, setInputMode] = useState<'numpad' | 'handwriting'>('handwriting'); // New state for input mode
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
   const [quadraticAnswers, setQuadraticAnswers] = useState<[string, string]>(["", ""]);
-  const [quadraticFractionInputs, setQuadraticFractionInputs] = useState<[FractionEditorState, FractionEditorState]>([
-    { ...EMPTY_FRACTION_EDITOR },
-    { ...EMPTY_FRACTION_EDITOR }
-  ]);
   const [quadraticActiveIndex, setQuadraticActiveIndex] = useState<0 | 1>(0);
   const [resultMark, setResultMark] = useState<'correct' | 'wrong' | null>(null);
-  const canvasRef = useRef<any>(null); // Ref for legacy handwriting canvas adapter
-  const memoCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasRef = useRef<any>(null); // Ref for CanvasDraw component
   const drawAreaRef = useRef<HTMLDivElement | null>(null);
-  const currentCardRef = useRef<HTMLDivElement | null>(null);
-  const qaRowRef = useRef<HTMLDivElement | null>(null);
-  const qaPromptRef = useRef<HTMLDivElement | null>(null);
-  const qaPromptContentRef = useRef<HTMLSpanElement | null>(null);
-  const qaAnswerRef = useRef<HTMLDivElement | null>(null);
-  const qaAnswerContentRef = useRef<HTMLDivElement | null>(null);
-  const memoCanvasHostRef = useRef<HTMLDivElement | null>(null);
   const [isModelReady, setIsModelReady] = useState(false); // New state for model readiness
   const [is2DigitModelReady, setIs2DigitModelReady] = useState(false);
   const autoRecognizeTimerRef = useRef<number | null>(null);
-  const fractionAutoMoveTimerRef = useRef<number | null>(null);
-  const quadraticFractionAutoMoveTimerRefs = useRef<[number | null, number | null]>([null, null]);
   const lastDrawAtRef = useRef<number>(0);
   const isDrawingRef = useRef(false);
   const [previewImages, setPreviewImages] = useState<ImageData[]>([]);
@@ -1584,22 +1443,9 @@ function QuestPageInner() {
   const pendingRecognizeRef = useRef(false);
   const forcedDigitsRef = useRef<number | null>(null);
   const cooldownUntilRef = useRef(0);
-  const AUTO_NEXT_WAIT_MS = 600;
-  const WRONG_MARK_WAIT_MS = 380;
+  const AUTO_NEXT_WAIT_MS = 900;
   const autoNextTimerRef = useRef<number | null>(null);
-  const wrongMarkTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
-  const plusMinusPressRef = useRef<PlusMinusPressState | null>(null);
-  const plusMinusWindowHandlersRef = useRef<{
-    move: (event: PointerEvent) => void;
-    up: (event: PointerEvent) => void;
-    cancel: (event: PointerEvent) => void;
-  } | null>(null);
-  const plusMinusTouchHandlersRef = useRef<{
-    move: (event: TouchEvent) => void;
-    end: (event: TouchEvent) => void;
-    cancel: (event: TouchEvent) => void;
-  } | null>(null);
   const grades = useMemo(
     () => getCatalogGrades() as GradeDef[],
     []
@@ -1615,51 +1461,16 @@ function QuestPageInner() {
   const [sessionMailStatus, setSessionMailStatus] = useState<string | null>(null);
   const [sessionActionLoading, setSessionActionLoading] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
-  const [quizBuildError, setQuizBuildError] = useState<string | null>(null);
-  const [typeStocks, setTypeStocks] = useState<Map<string, TypeStockResult>>(new Map());
-  const [stockShortages, setStockShortages] = useState<StockShortage[]>([]);
-  const [stockReady, setStockReady] = useState(false);
-  const [activePickMeta, setActivePickMeta] = useState<PickMeta | null>(null);
   const sessionStartInFlightRef = useRef<Promise<string | null> | null>(null);
   const forceFractionRecognitionRef = useRef(false);
   const forceMixedRecognitionRef = useRef(false);
   const forcedFractionAnswerRef = useRef<string | null>(null);
   const forcedExpectedFormRef = useRef<ExpectedForm | null>(null);
   const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
+  const [typeStocks, setTypeStocks] = useState<Map<string, TypeStockResult>>(new Map());
+  const [stockReady, setStockReady] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const [visibleCanvasSize, setVisibleCanvasSize] = useState(DEFAULT_VISIBLE_CANVAS_SIZE);
-  const [memoCanvasSize, setMemoCanvasSize] = useState({ width: DEFAULT_VISIBLE_CANVAS_SIZE, height: DEFAULT_VISIBLE_CANVAS_SIZE });
-  const [calcZoom, setCalcZoom] = useState(1);
-  const [calcPan, setCalcPan] = useState({ x: 0, y: 0 });
-  const [useSingleLineQa, setUseSingleLineQa] = useState(false);
-  const [qaAnswerOffsetPx, setQaAnswerOffsetPx] = useState(0);
-  const [qaPromptFontPx, setQaPromptFontPx] = useState<number>(QA_PROMPT_FONT_STEPS[0]);
-  const [qaAnswerFontPx, setQaAnswerFontPx] = useState<number>(QA_ANSWER_FONT_STEPS[0]);
-  const [showGradeTypePicker, setShowGradeTypePicker] = useState(false);
-  const [expandedGradePicker, setExpandedGradePicker] = useState(true);
-  const [expandedGradeList, setExpandedGradeList] = useState(false);
-  const [expandedProblemPicker, setExpandedProblemPicker] = useState(true);
-  const [pendingGradeId, setPendingGradeId] = useState("");
-  const [showHighSchoolHint, setShowHighSchoolHint] = useState(false);
-  const [plusMinusPopupOpen, setPlusMinusPopupOpen] = useState(false);
-  const [plusMinusCandidate, setPlusMinusCandidate] = useState<"+" | "-" | null>(null);
-  const [plusMinusPopupAnchor, setPlusMinusPopupAnchor] = useState<{ left: number; top: number } | null>(null);
-  const [isPinchingMemo, setIsPinchingMemo] = useState(false);
-  const [showSecondaryHint, setShowSecondaryHint] = useState(false);
-  const [showSecondaryExplanation, setShowSecondaryExplanation] = useState(false);
-  const [memoStrokes, setMemoStrokes] = useState<MemoStroke[]>([]);
-  const [memoRedoStack, setMemoRedoStack] = useState<MemoStroke[]>([]);
-  const memoStrokesRef = useRef<MemoStroke[]>([]);
-  const memoActiveStrokeRef = useRef<MemoStroke | null>(null);
-  const memoActivePointerIdRef = useRef<number | null>(null);
-  const memoDrawRafRef = useRef<number | null>(null);
-  const memoPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
-  const memoPinchStartRef = useRef<{
-    distance: number;
-    zoom: number;
-    mid: { x: number; y: number };
-    pan: { x: number; y: number };
-  } | null>(null);
   const clearResults = useMemo(
     () => Object.entries(questionResults).sort((a, b) => Number(a[0]) - Number(b[0])),
     [questionResults]
@@ -1740,8 +1551,7 @@ function QuestPageInner() {
 
   const endLearningSession = async () => {
     if (!activeSessionId) {
-      setSessionError(null);
-      router.push("/");
+      setSessionError("セッションが開始されていません。保護者設定を保存した状態で回答すると自動開始されます。");
       return;
     }
     try {
@@ -1757,7 +1567,6 @@ function QuestPageInner() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "session_end_failed";
       setSessionError(message);
-      router.push("/");
     } finally {
       setSessionActionLoading(false);
     }
@@ -1775,13 +1584,9 @@ function QuestPageInner() {
       if (autoNextTimerRef.current) {
         window.clearTimeout(autoNextTimerRef.current);
       }
-      if (wrongMarkTimerRef.current) {
-        window.clearTimeout(wrongMarkTimerRef.current);
-      }
       if (idleCheckTimerRef.current) {
         window.clearInterval(idleCheckTimerRef.current);
       }
-      clearAllFractionAutoMoveTimers();
     };
   }, []);
 
@@ -1827,120 +1632,17 @@ function QuestPageInner() {
   };
 
   useEffect(() => {
-    const el = memoCanvasHostRef.current;
-    if (!el || status !== "playing") return;
+    const el = drawAreaRef.current;
+    if (!el) return;
     const updateSize = () => {
-      const width = Math.max(180, Math.floor(el.clientWidth));
-      const height = Math.max(180, Math.floor(el.clientHeight));
-      setMemoCanvasSize({ width, height });
-      setVisibleCanvasSize(Math.max(180, Math.min(width, height)));
+      const w = Math.floor(el.clientWidth);
+      if (w > 0) setVisibleCanvasSize(w);
     };
     updateSize();
     const observer = new ResizeObserver(() => updateSize());
     observer.observe(el);
     return () => observer.disconnect();
-  }, [status]);
-
-  const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
-  const currentEntry = quizItems[safeIndex] ?? null;
-  const currentItem = currentEntry?.item ?? null;
-  const currentType = currentEntry?.type ?? selectedType;
-  const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
-  const isSecondaryQuest = /^(J1|J2|J3|H1|H2|H3)$/.test(currentGradeId);
-  const isHighSchoolQuest = /^(H1|H2|H3)$/.test(currentGradeId);
-
-  useEffect(() => {
-    const row = qaRowRef.current;
-    const prompt = qaPromptRef.current;
-    const promptContent = qaPromptContentRef.current;
-    const answer = qaAnswerRef.current;
-    const answerContent = qaAnswerContentRef.current;
-    if (!row || !prompt || !answer || !answerContent || status !== "playing" || !quizItems[itemIndex]) return;
-
-    const updateLayout = () => {
-      const available = row.clientWidth;
-      if (available <= 0) return;
-      const measure = (promptFontPx: number, answerFontPx: number) => {
-        prompt.style.fontSize = `${promptFontPx}px`;
-        answer.style.fontSize = `${answerFontPx}px`;
-        const promptWidth = promptContent?.scrollWidth ?? prompt.scrollWidth;
-        const answerWidth = answerContent.scrollWidth;
-        return { promptWidth, answerWidth };
-      };
-      const gap = 10;
-      const buffer = 10;
-
-      if (!isSecondaryQuest) {
-        const size = measure(QA_PROMPT_FONT_STEPS[2], QA_ANSWER_FONT_STEPS[2]);
-        const singleLine = size.promptWidth + size.answerWidth + gap + buffer <= available;
-        setUseSingleLineQa(singleLine);
-        setQaPromptFontPx(QA_PROMPT_FONT_STEPS[2]);
-        setQaAnswerFontPx(QA_ANSWER_FONT_STEPS[2]);
-        setQaAnswerOffsetPx(0);
-        return;
-      }
-
-      let fitStep: { prompt: number; answer: number } | null = null;
-      for (let i = 0; i < QA_PROMPT_FONT_STEPS.length; i += 1) {
-        const promptStep = QA_PROMPT_FONT_STEPS[i];
-        const answerStep = QA_ANSWER_FONT_STEPS[Math.min(i, QA_ANSWER_FONT_STEPS.length - 1)];
-        const size = measure(promptStep, answerStep);
-        if (size.promptWidth + size.answerWidth + gap + buffer <= available) {
-          fitStep = { prompt: promptStep, answer: answerStep };
-          break;
-        }
-      }
-
-      if (fitStep) {
-        setUseSingleLineQa(true);
-        setQaPromptFontPx(fitStep.prompt);
-        setQaAnswerFontPx(fitStep.answer);
-        setQaAnswerOffsetPx(0);
-      } else {
-        setUseSingleLineQa(false);
-        setQaPromptFontPx(QA_PROMPT_FONT_STEPS[0]);
-        setQaAnswerFontPx(QA_ANSWER_FONT_STEPS[0]);
-        setQaAnswerOffsetPx(0);
-      }
-    };
-
-    updateLayout();
-    const observer = new ResizeObserver(() => updateLayout());
-    observer.observe(row);
-    observer.observe(prompt);
-    observer.observe(answer);
-    if (promptContent) observer.observe(promptContent);
-    observer.observe(answerContent);
-    window.addEventListener("resize", updateLayout);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", updateLayout);
-    };
-  }, [
-    status,
-    quizItems,
-    itemIndex,
-    input,
-    quadraticAnswers,
-    isSecondaryQuest
-  ]);
-
-  useEffect(() => {
-    scheduleMemoRedraw();
-  }, [memoCanvasSize.width, memoCanvasSize.height, memoStrokes, calcZoom, calcPan, status]);
-
-  useEffect(() => {
-    return () => {
-      if (memoDrawRafRef.current) {
-        window.cancelAnimationFrame(memoDrawRafRef.current);
-        memoDrawRafRef.current = null;
-      }
-    };
   }, []);
-
-  useEffect(() => {
-    memoStrokesRef.current = memoStrokes;
-  }, [memoStrokes]);
 
   useEffect(() => {
     if (inkFirstMode) {
@@ -1989,14 +1691,10 @@ function QuestPageInner() {
       }
     }
     if (found) {
-      clearAllFractionAutoMoveTimers();
       setSelectedType(found);
       setItemIndex(0);
       setPracticeResult(null);
       setResultMark(null);
-      setInput("");
-      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
-      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
       canvasRef.current?.clear();
       return;
     }
@@ -2005,14 +1703,10 @@ function QuestPageInner() {
         .flatMap((g) => g.categories)
         .find((c) => c.category_id === categoryFromQuery);
       if (category && category.types[0]) {
-        clearAllFractionAutoMoveTimers();
         setSelectedType(category.types[0]);
         setItemIndex(0);
         setPracticeResult(null);
         setResultMark(null);
-        setInput("");
-        setFractionInput({ ...EMPTY_FRACTION_EDITOR });
-        setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
         canvasRef.current?.clear();
         return;
       }
@@ -2070,13 +1764,14 @@ function QuestPageInner() {
     return null;
   })();
 
-  const allCategoryItems = useMemo(
+  const typeCatalog = useMemo(
     () =>
-      grades.flatMap((g) =>
-        g.categories.flatMap((c) =>
-          c.types.flatMap((t) =>
-            t.example_items.map((item) => ({ item, type: t }))
-          )
+      grades.flatMap((grade) =>
+        grade.categories.flatMap((category) =>
+          category.types.map((type) => ({
+            type,
+            typeId: type.type_id
+          }))
         )
       ),
     [grades]
@@ -2094,34 +1789,18 @@ function QuestPageInner() {
     [grades]
   );
 
-  const typeCatalog = useMemo(
-    () =>
-      grades.flatMap((grade) =>
-        grade.categories.flatMap((category) =>
-          category.types.map((type) => ({
-            type,
-            typeId: type.type_id,
-            typeName: type.display_name ?? type.type_name ?? type.type_id,
-            categoryId: category.category_id,
-            categoryName: category.category_name
-          }))
-        )
-      ),
-    [grades]
-  );
   const targetStockTypes = useMemo(() => {
     if (hasTypeQuery) {
       const byQuery = typeCatalog.find((entry) => entry.typeId === typeFromQuery);
-      return byQuery ? [byQuery] : [];
+      if (byQuery) return [byQuery];
+      if (selectedType) {
+        const bySelected = typeCatalog.find((entry) => entry.typeId === selectedType.type_id);
+        if (bySelected) return [bySelected];
+      }
+      return [];
     }
     if (hasCategoryQuery && categoryContext) {
-      return categoryContext.category.types.map((type) => ({
-        type,
-        typeId: type.type_id,
-        typeName: type.display_name ?? type.type_name ?? type.type_id,
-        categoryId: categoryContext.category.category_id,
-        categoryName: categoryContext.category.category_name
-      }));
+      return categoryContext.category.types.map((type) => ({ type, typeId: type.type_id }));
     }
     return typeCatalog;
   }, [hasTypeQuery, hasCategoryQuery, typeFromQuery, selectedType, categoryContext, typeCatalog]);
@@ -2132,235 +1811,47 @@ function QuestPageInner() {
       targetStockTypes.map((entry) => entry.type),
       QUESTION_POOL_SIZE
     );
-    const shortages: StockShortage[] = [];
-    for (const entry of targetStockTypes) {
-      const stock = stocks.get(entry.typeId);
-      if (!stock) continue;
-      if (stock.count < getTargetQuestionCount(entry.typeId)) {
-        shortages.push({
-          typeId: entry.typeId,
-          typeName: entry.typeName,
-          count: stock.count,
-          reason: stock.reason,
-          reasonDetail: stock.reasonDetail
-        });
-      }
-    }
     setTypeStocks(stocks);
-    setStockShortages(shortages);
     setStockReady(true);
   }, [targetStockTypes, retryNonce]);
 
   const activeTypeId = useMemo(() => {
-    if (hasTypeQuery && typeFromQuery) {
-      const existsInTargets = targetStockTypes.some((entry) => entry.typeId === typeFromQuery);
-      if (existsInTargets) return typeFromQuery;
-    }
-    if (selectedType?.type_id) {
-      const existsInTargets = targetStockTypes.some((entry) => entry.typeId === selectedType.type_id);
-      if (existsInTargets) return selectedType.type_id;
-    }
+    if (hasTypeQuery && typeFromQuery) return typeFromQuery;
+    if (selectedType?.type_id) return selectedType.type_id;
     return targetStockTypes[0]?.typeId ?? "";
   }, [hasTypeQuery, typeFromQuery, selectedType, targetStockTypes]);
-  const activeStockInfo = useMemo(
-    () => (activeTypeId ? typeStocks.get(activeTypeId) ?? null : null),
-    [activeTypeId, typeStocks]
-  );
-  const targetQuestionCount = useMemo(
-    () => getTargetQuestionCount(activeTypeId),
-    [activeTypeId]
-  );
-  const quizSize = Math.min(targetQuestionCount, QUESTION_POOL_SIZE);
-  const dedupeQuestSet = (set: QuestEntry[]) => {
-    const uniq: QuestEntry[] = [];
-    const promptSeen = new Set<string>();
-    const equivalentSeen = new Set<string>();
-    for (const entry of set) {
-      const promptKey = entryPromptKey(entry);
-      const equivalentKey = entryEquivalentKey(entry);
-      if (promptSeen.has(promptKey) || equivalentSeen.has(equivalentKey)) continue;
-      promptSeen.add(promptKey);
-      equivalentSeen.add(equivalentKey);
-      uniq.push(entry);
-    }
-    return uniq;
-  };
-  const hasDuplicateInSet = (set: QuestEntry[]) => {
-    const promptSeen = new Set<string>();
-    const equivalentSeen = new Set<string>();
-    for (const entry of set) {
-      const promptKey = entryPromptKey(entry);
-      const equivalentKey = entryEquivalentKey(entry);
-      if (promptSeen.has(promptKey) || equivalentSeen.has(equivalentKey)) return true;
-      promptSeen.add(promptKey);
-      equivalentSeen.add(equivalentKey);
-    }
-    return false;
-  };
-  const describeStockReason = (reason?: TypeStockResult["reason"]) => {
-    if (!reason) return "出題候補不足";
-    if (reason === "NO_SOURCE") return "元問題なし";
-    if (reason === "NO_PATTERN") return "生成パターンなし";
-    if (reason === "INSUFFICIENT_GENERATABLE") return "生成可能数不足";
-    return reason;
-  };
+  const quizSize = Math.min(TOTAL_QUESTIONS, QUESTION_POOL_SIZE);
   useEffect(() => {
-    clearAllFractionAutoMoveTimers();
     if (!stockReady) {
       setQuizItems([]);
-      setItemIndex(0);
-      setQuestionResults({});
-      setStatus("blocked");
-      setQuizBuildError("出題ストックを準備中です。少しお待ちください。");
       return;
     }
-    const activeStock = activeTypeId ? typeStocks.get(activeTypeId) : undefined;
-    const firstPick = activeStock ? pickUniqueQuizFromStock(activeStock.entries, quizSize) : { entries: [], meta: { requested: quizSize, availableBeforeDedupe: 0, availableAfterDedupe: 0, picked: 0, dedupedOutCount: 0, reason: "EMPTY" as const } };
-    let nextSet = dedupeQuestSet(firstPick.entries);
-    let pickMeta: PickMeta = firstPick.meta;
-    if (hasDuplicateInSet(nextSet) && activeStock) {
-      if (process.env.NODE_ENV !== "production") {
-        // eslint-disable-next-line no-console
-        console.debug("[quest-page] duplicate guard retry", { typeId: activeTypeId, firstMeta: firstPick.meta });
-      }
-      const secondPick = pickUniqueQuizFromStock(activeStock.entries, quizSize);
-      nextSet = dedupeQuestSet(secondPick.entries);
-      pickMeta = hasDuplicateInSet(nextSet)
-        ? { ...secondPick.meta, reason: "DUP_GUARD_FAILED" }
-        : secondPick.meta;
-    }
-    setActivePickMeta(pickMeta);
-    if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
-      console.debug("[quest-page] stock pick", {
-        typeId: activeTypeId,
-        availableBefore: pickMeta.availableBeforeDedupe,
-        availableAfterDedupe: pickMeta.availableAfterDedupe,
-        picked: pickMeta.picked,
-        dedupedOutCount: pickMeta.dedupedOutCount,
-        reason: pickMeta.reason
-      });
-    }
-
-    if (pickMeta.availableAfterDedupe < 1 || pickMeta.reason === "DUP_GUARD_FAILED") {
-      setQuizItems([]);
-      setItemIndex(0);
-      setQuestionResults({});
-      setStatus("blocked");
-      const reasonText = describeStockReason(activeStock?.reason);
-      const available = pickMeta.availableAfterDedupe;
-      const suffix = pickMeta.reason === "DUP_GUARD_FAILED" ? " / 抽出ガード失敗" : "";
-      setQuizBuildError(`このタイプは一時的に出題候補不足です（${reasonText} / 候補 ${available}${suffix}）。別タイプを選ぶか、少し時間をおいて再試行してください。`);
-      setPracticeResult(null);
-      setResultMark(null);
-      setRecognizedNumber(null);
-      setInput("");
-      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
-      setQuadraticAnswers(["", ""]);
-      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
-      setQuadraticActiveIndex(0);
-      return;
-    }
+    const stock = activeTypeId ? typeStocks.get(activeTypeId) : undefined;
+    const nextSet = stock ? pickUniqueQuizFromStock(stock.entries, quizSize).entries : [];
     setQuizItems(nextSet);
     setItemIndex(0);
     setQuestionResults({});
     setStatus("playing");
-    setQuizBuildError(null);
     setMessage("Battle Start!");
     setPracticeResult(null);
     setResultMark(null);
     setRecognizedNumber(null);
-    if (pickMeta.reason === "SHORTAGE") {
-      setQuizBuildError(`候補不足のため ${pickMeta.picked} 題で開始します。`);
-    } else {
-      setQuizBuildError(null);
-    }
-    setInput("");
-    setFractionInput({ ...EMPTY_FRACTION_EDITOR });
     setQuadraticAnswers(["", ""]);
-    setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
     setQuadraticActiveIndex(0);
   }, [stockReady, typeStocks, activeTypeId, quizSize, retryNonce]);
 
-  const currentAid = useMemo(
-    () =>
-      getSecondaryLearningAid({
-        gradeId: currentType?.type_id.split(".")[0] ?? "",
-        typeId: currentType?.type_id,
-        patternId: currentType?.generation_params?.pattern_id,
-        answer: currentItem?.answer,
-        prompt: currentItem?.prompt,
-        promptTex: currentItem?.prompt_tex
-      }),
-    [currentType?.type_id, currentType?.generation_params?.pattern_id, currentItem?.answer, currentItem?.prompt, currentItem?.prompt_tex]
-  );
-  const currentElementaryAid = useMemo(
-    () =>
-      getElementaryLearningAid({
-        gradeId: currentType?.type_id.split(".")[0] ?? "",
-        typeId: currentType?.type_id,
-        patternId: currentType?.generation_params?.pattern_id,
-        prompt: currentItem?.prompt,
-        aDigits: currentType?.generation_params?.a_digits,
-        bDigits: currentType?.generation_params?.b_digits
-      }),
-    [
-      currentType?.type_id,
-      currentType?.generation_params?.pattern_id,
-      currentType?.generation_params?.a_digits,
-      currentType?.generation_params?.b_digits,
-      currentItem?.prompt
-    ]
-  );
+  const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
+  const currentEntry = quizItems[safeIndex] ?? null;
+  const nextEntry = quizItems.length > 0 ? quizItems[safeIndex + 1] ?? null : null;
+  const currentItem = currentEntry?.item ?? null;
+  const currentType = currentEntry?.type ?? selectedType;
+  const nextItem = nextEntry?.item ?? null;
   const isQuadraticRootsQuestion = isQuadraticRootsType(currentType?.type_id);
-  const gradeOptions = useMemo(
-    () =>
-      grades.map((grade) => ({
-        gradeId: grade.grade_id,
-        gradeName: grade.grade_name
-      })),
-    [grades]
-  );
-  const pickerGradeId = pendingGradeId || currentGradeId;
-  const pendingGradeName = useMemo(
-    () => gradeOptions.find((grade) => grade.gradeId === pickerGradeId)?.gradeName ?? "学年を選択",
-    [gradeOptions, pickerGradeId]
-  );
-  const pickerGrade = useMemo(
-    () => grades.find((grade) => grade.grade_id === pickerGradeId) ?? null,
-    [grades, pickerGradeId]
-  );
-  const pickerGradeTypes = useMemo(
-    () =>
-      (pickerGrade?.categories ?? []).flatMap((category) =>
-        category.types.map((type) => ({
-          typeId: type.type_id,
-          typeName: type.display_name ?? type.type_name ?? type.type_id
-        }))
-      ),
-    [pickerGrade]
-  );
-  useEffect(() => {
-    if (!currentGradeId) return;
-    setPendingGradeId((prev) => (prev === currentGradeId ? prev : currentGradeId));
-  }, [currentGradeId]);
-  useEffect(() => {
-    setShowSecondaryHint(false);
-    setShowSecondaryExplanation(false);
-  }, [currentType?.type_id, itemIndex]);
-  useEffect(() => {
-    setShowGradeTypePicker(false);
-  }, [currentType?.type_id, status]);
+  const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
   const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
-  const shouldShowElementaryExplanation =
-    status === "playing" &&
-    isElementaryGrade(currentGradeId) &&
-    practiceResult?.ok === false &&
-    Boolean(currentElementaryAid);
-  const totalQuizQuestions = Math.max(1, Math.min(targetQuestionCount, quizItems.length || targetQuestionCount));
   const uiText = isEarlyElementary
     ? {
-        summary: `${totalQuizQuestions}もん かんりょう / せいかい ${correctCount}もん`,
+        summary: `${TOTAL_QUESTIONS}もん かんりょう / せいかい ${correctCount}もん`,
         yourAnswer: "あなた",
         correct: "⭕ せいかい",
         incorrect: "❌ ざんねん",
@@ -2376,7 +1867,7 @@ function QuestPageInner() {
         answerLabel: "こたえ"
       }
     : {
-        summary: `${totalQuizQuestions}題完了 / 正解 ${correctCount}題`,
+        summary: `${TOTAL_QUESTIONS}題完了 / 正解 ${correctCount}題`,
         yourAnswer: "あなた",
         correct: "⭕ 正解",
         incorrect: "❌ 不正解",
@@ -2392,7 +1883,8 @@ function QuestPageInner() {
         answerLabel: "答え"
       };
   const emptyMessage = uiText.noItems;
-  const isAnswerLockedByExplanation = isSecondaryQuest && showSecondaryExplanation;
+  const totalQuizQuestions = Math.min(TOTAL_QUESTIONS, quizItems.length);
+  const currentCardRef = useRef<HTMLDivElement | null>(null);
   const nextQuestion = () => {
     setItemIndex((v) => {
       if (v + 1 >= totalQuizQuestions) {
@@ -2414,16 +1906,12 @@ function QuestPageInner() {
     );
   };
   const restartSameLevel = () => {
-    clearAllFractionAutoMoveTimers();
     setItemIndex(0);
     setQuestionResults({});
     setPracticeResult(null);
     setResultMark(null);
     setRecognizedNumber(null);
-    setInput("");
-    setFractionInput({ ...EMPTY_FRACTION_EDITOR });
     setQuadraticAnswers(["", ""]);
-    setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
     setQuadraticActiveIndex(0);
     setPreviewImages([]);
     setCombo(0);
@@ -2434,30 +1922,20 @@ function QuestPageInner() {
   };
 
   useEffect(() => {
-    clearAllFractionAutoMoveTimers();
     setPracticeResult(null);
     setResultMark(null);
     setRecognizedNumber(null);
-    setInput("");
-    setFractionInput({ ...EMPTY_FRACTION_EDITOR });
     setQuadraticAnswers(["", ""]);
-    setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
     setQuadraticActiveIndex(0);
     setPreviewImages([]);
     canvasRef.current?.clear();
-    setShowHighSchoolHint(false);
   }, [itemIndex]);
 
   useEffect(() => {
-    setShowHighSchoolHint(false);
-  }, [currentType?.type_id]);
-
-  useEffect(() => {
-    if (status === "playing") return;
     if (currentCardRef.current) {
-      currentCardRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      currentCardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-  }, [itemIndex, selectedType, status]);
+  }, [itemIndex, selectedType]);
 
   function createQuestion(): Question {
     // Generate simple addition/subtraction
@@ -2509,7 +1987,7 @@ function QuestPageInner() {
       ...prev,
       { id: Date.now() + Math.random(), text, userAnswer, correct }
     ]);
-    if (questionIndex >= totalQuizQuestions) {
+    if (questionIndex >= TOTAL_QUESTIONS) {
       setStatus('cleared');
       setMessage("クリアー！");
       return;
@@ -2518,684 +1996,51 @@ function QuestPageInner() {
     advanceQuestionWithDelay(800);
   };
 
-  const clearFractionAutoMoveTimer = () => {
-    if (fractionAutoMoveTimerRef.current) {
-      window.clearTimeout(fractionAutoMoveTimerRef.current);
-      fractionAutoMoveTimerRef.current = null;
-    }
-  };
-
-  const clearQuadraticFractionAutoMoveTimer = (index: 0 | 1) => {
-    const timer = quadraticFractionAutoMoveTimerRefs.current[index];
-    if (timer) {
-      window.clearTimeout(timer);
-      quadraticFractionAutoMoveTimerRefs.current[index] = null;
-    }
-  };
-
-  const clearAllFractionAutoMoveTimers = () => {
-    clearFractionAutoMoveTimer();
-    clearQuadraticFractionAutoMoveTimer(0);
-    clearQuadraticFractionAutoMoveTimer(1);
-  };
-
-  const isFractionPartTokenValid = (current: string, token: string) => {
-    if (/^\d$/.test(token)) return true;
-    if (token === "-") return current.length === 0;
-    return false;
-  };
-
-  const isFractionPartReady = (value: string) => /^-?\d+$/.test(value);
-  const isFractionEditorReady = (editor: FractionEditorState) =>
-    editor.enabled && isFractionPartReady(editor.num) && isFractionPartReady(editor.den);
-  const fractionEditorToAnswerText = (editor: FractionEditorState) => `${editor.num}/${editor.den}`;
-
-  const renderFractionEditorValue = (editor: FractionEditorState) => {
-    const renderPart = (text: string, active: boolean) => (
-      <span className="inline-flex items-center justify-center min-h-[1.1em] min-w-[1.2em]">
-        <span>{text || "\u2007"}</span>
-        {active && (
-          <span className="inline-block ml-0.5 h-[0.9em] w-[2px] bg-current animate-pulse align-middle" />
-        )}
-      </span>
-    );
-    return (
-      <span className="inline-flex flex-col items-center leading-none">
-        <span>{renderPart(editor.num, editor.part === "num")}</span>
-        <span className="my-0.5 block h-[2px] w-[1.8em] rounded bg-current/80" />
-        <span>{renderPart(editor.den, editor.part === "den")}</span>
-      </span>
-    );
-  };
-
   const handleInput = (num: string) => {
-    if (status !== 'playing' || isStarting || isAnswerLockedByExplanation) return;
-    const currentText = isQuadraticRootsQuestion ? quadraticAnswers[quadraticActiveIndex] : input;
-    const isDigit = /^\d$/.test(num);
-    const maxInputLength = isHighSchoolQuest ? 24 : 12;
-
-    if (num === "/") {
-      if (isQuadraticRootsQuestion) {
-        clearQuadraticFractionAutoMoveTimer(quadraticActiveIndex);
-        setQuadraticFractionInputs((prev) => {
-          if (prev[quadraticActiveIndex].enabled) return prev;
-          const next: [FractionEditorState, FractionEditorState] = [prev[0], prev[1]];
-          next[quadraticActiveIndex] = { enabled: true, num: "", den: "", part: "num" };
-          return next;
-        });
-        setQuadraticAnswers((prev) => {
-          const next: [string, string] = [...prev] as [string, string];
-          next[quadraticActiveIndex] = "";
-          return next;
-        });
-      } else {
-        clearFractionAutoMoveTimer();
-        setFractionInput((prev) => (prev.enabled ? prev : { enabled: true, num: "", den: "", part: "num" }));
-        setInput("");
-      }
+    if (status !== 'playing' || isStarting) return;
+    if (input.length < 3) {
+      setInput(prev => prev + num);
       setResultMark(null);
-      return;
     }
-
-    if (isQuadraticRootsQuestion && quadraticFractionInputs[quadraticActiveIndex].enabled) {
-      const currentEditor = quadraticFractionInputs[quadraticActiveIndex];
-      const currentPartValue = currentEditor.part === "num" ? currentEditor.num : currentEditor.den;
-      if (!isFractionPartTokenValid(currentPartValue, num)) return;
-      setQuadraticFractionInputs((prev) => {
-        const target = prev[quadraticActiveIndex];
-        const next: [FractionEditorState, FractionEditorState] = [prev[0], prev[1]];
-        const part = target.part;
-        const maxLen = isDigit ? 6 : 7;
-        const nextPartValue = `${part === "num" ? target.num : target.den}${num}`;
-        if (nextPartValue.length > maxLen) return prev;
-        next[quadraticActiveIndex] = {
-          ...target,
-          num: part === "num" ? nextPartValue : target.num,
-          den: part === "den" ? nextPartValue : target.den
-        };
-        return next;
-      });
-      if (currentEditor.part === "num") {
-        clearQuadraticFractionAutoMoveTimer(quadraticActiveIndex);
-        quadraticFractionAutoMoveTimerRefs.current[quadraticActiveIndex] = window.setTimeout(() => {
-          setQuadraticFractionInputs((prev) => {
-            const target = prev[quadraticActiveIndex];
-            if (!target.enabled || target.part !== "num" || target.num.length === 0 || target.den.length > 0) return prev;
-            const next: [FractionEditorState, FractionEditorState] = [prev[0], prev[1]];
-            next[quadraticActiveIndex] = { ...target, part: "den" };
-            return next;
-          });
-          quadraticFractionAutoMoveTimerRefs.current[quadraticActiveIndex] = null;
-        }, FRACTION_AUTO_MOVE_DELAY_MS);
-      }
-      setResultMark(null);
-      return;
-    }
-
-    if (!isQuadraticRootsQuestion && fractionInput.enabled) {
-      const currentPartValue = fractionInput.part === "num" ? fractionInput.num : fractionInput.den;
-      if (!isFractionPartTokenValid(currentPartValue, num)) return;
-      setFractionInput((prev) => {
-        const part = prev.part;
-        const maxLen = isDigit ? 12 : 13;
-        const nextPartValue = `${part === "num" ? prev.num : prev.den}${num}`;
-        if (nextPartValue.length > maxLen) return prev;
-        return {
-          ...prev,
-          num: part === "num" ? nextPartValue : prev.num,
-          den: part === "den" ? nextPartValue : prev.den
-        };
-      });
-      if (fractionInput.part === "num") {
-        clearFractionAutoMoveTimer();
-        fractionAutoMoveTimerRef.current = window.setTimeout(() => {
-          setFractionInput((prev) => {
-            if (!prev.enabled || prev.part !== "num" || prev.num.length === 0 || prev.den.length > 0) return prev;
-            return { ...prev, part: "den" };
-          });
-          fractionAutoMoveTimerRef.current = null;
-        }, FRACTION_AUTO_MOVE_DELAY_MS);
-      }
-      setResultMark(null);
-      return;
-    }
-
-    const canAppendToken = (text: string, token: string) => {
-      if (/^\d$/.test(token)) return true;
-      if (token === "-") {
-        if (!isHighSchoolQuest) return text.length === 0;
-        if (text.length === 0) return true;
-        return /[\dx)]$/.test(text);
-      }
-      if (token === ".") {
-        if (text.includes(".")) return false;
-        if (text === "" || text === "-") return false;
-        return true;
-      }
-      if (token === "+") {
-        if (!isHighSchoolQuest) return false;
-        if (text.length === 0) return false;
-        return /[\dx)]$/.test(text);
-      }
-      if (token === "x") {
-        if (!isHighSchoolQuest) return false;
-        if (text.length === 0) return true;
-        if (/[x^(/]$/.test(text)) return false;
-        return true;
-      }
-      if (token === "^") {
-        if (!isHighSchoolQuest) return false;
-        if (text.length === 0) return false;
-        return /[\dx)]$/.test(text);
-      }
-      if (token === "()") {
-        if (!isHighSchoolQuest) return false;
-        if (text.endsWith("^")) return false;
-        return true;
-      }
-      if (token === "+/-") return false;
-      return false;
-    };
-    if (!canAppendToken(currentText, num)) return;
-
-    if (isQuadraticRootsQuestion) {
-      setQuadraticAnswers((prev) => {
-        const next: [string, string] = [...prev] as [string, string];
-        const maxLen = isDigit ? 6 : (isHighSchoolQuest ? 24 : 7);
-        if (next[quadraticActiveIndex].length >= maxLen) return prev;
-        next[quadraticActiveIndex] = num === "()" ? `${next[quadraticActiveIndex]}()` : `${next[quadraticActiveIndex]}${num}`;
-        return next;
-      });
-      setResultMark(null);
-      return;
-    }
-    if (input.length >= maxInputLength) return;
-    setInput((prev) => (num === "()" ? `${prev}()` : `${prev}${num}`));
-    setResultMark(null);
   };
 
   const handleDelete = () => {
-    if (status !== 'playing' || isStarting || isAnswerLockedByExplanation) return;
-    if (isQuadraticRootsQuestion && quadraticFractionInputs[quadraticActiveIndex].enabled) {
-      clearQuadraticFractionAutoMoveTimer(quadraticActiveIndex);
-      setQuadraticFractionInputs((prev) => {
-        const target = prev[quadraticActiveIndex];
-        const next: [FractionEditorState, FractionEditorState] = [prev[0], prev[1]];
-        if (target.part === "den") {
-          if (target.den.length > 0) {
-            next[quadraticActiveIndex] = { ...target, den: target.den.slice(0, -1) };
-          } else {
-            next[quadraticActiveIndex] = { ...target, part: "num" };
-          }
-          return next;
-        }
-        if (target.num.length > 0) {
-          next[quadraticActiveIndex] = { ...target, num: target.num.slice(0, -1) };
-          return next;
-        }
-        next[quadraticActiveIndex] = { ...EMPTY_FRACTION_EDITOR };
-        return next;
-      });
-      setResultMark(null);
-      return;
-    }
-    if (!isQuadraticRootsQuestion && fractionInput.enabled) {
-      clearFractionAutoMoveTimer();
-      setFractionInput((prev) => {
-        if (prev.part === "den") {
-          if (prev.den.length > 0) return { ...prev, den: prev.den.slice(0, -1) };
-          return { ...prev, part: "num" };
-        }
-        if (prev.num.length > 0) return { ...prev, num: prev.num.slice(0, -1) };
-        return { ...EMPTY_FRACTION_EDITOR };
-      });
-      setResultMark(null);
-      return;
-    }
-    if (isQuadraticRootsQuestion) {
-      setQuadraticAnswers((prev) => {
-        const next: [string, string] = [...prev] as [string, string];
-        next[quadraticActiveIndex] = next[quadraticActiveIndex].slice(0, -1);
-        return next;
-      });
-      setResultMark(null);
-      return;
-    }
+    if (status !== 'playing' || isStarting) return;
     setInput(prev => prev.slice(0, -1));
     setResultMark(null);
   };
 
   const handleAttack = () => {
-    if (status !== 'playing' || isStarting || isAnswerLockedByExplanation || !currentItem || !currentType) return;
-    const answerText = isQuadraticRootsQuestion
-      ? `${quadraticFractionInputs[0].enabled ? fractionEditorToAnswerText(quadraticFractionInputs[0]) : quadraticAnswers[0]},${quadraticFractionInputs[1].enabled ? fractionEditorToAnswerText(quadraticFractionInputs[1]) : quadraticAnswers[1]}`
-      : (fractionInput.enabled ? fractionEditorToAnswerText(fractionInput) : input);
-    if (!answerText.trim()) return;
+    if (status !== 'playing' || isStarting || !question) return;
 
-    const verdict = gradeAnswer(answerText, currentItem.answer, currentType.answer_format, {
-      typeId: currentType.type_id,
-      expectedForm: resolveExpectedFormFromPrompt(`${currentItem.prompt} ${currentItem.prompt_tex ?? ""}`)
-    });
-    setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
-    setQuestionResults((prev) => ({
-      ...prev,
-      [itemIndex]: (() => {
-        const prevEntry = prev[itemIndex];
-        const everWrong = (prevEntry?.everWrong ?? false) || !verdict.ok;
-        const firstWrongAnswer =
-          prevEntry?.firstWrongAnswer ??
-          (!verdict.ok ? answerText : undefined);
-        return {
-          prompt: currentItem.prompt,
-          promptTex: currentItem.prompt_tex,
-          userAnswer: answerText,
-          correct: !everWrong,
-          correctAnswer: currentItem.answer,
-          everWrong,
-          firstWrongAnswer
-        };
-      })()
-    }));
-    void ensureActiveSession().then((resolvedSessionId) => {
-      if (!resolvedSessionId) return;
-      return postJson("/api/session/answer", {
-        sessionId: resolvedSessionId,
-        typeId: currentType.type_id,
-        prompt: currentItem.prompt,
-        predicted: answerText,
-        correctAnswer: currentItem.answer,
-        isCorrect: verdict.ok
-      }).catch((error: unknown) => {
-        const message = error instanceof Error ? error.message : "answer_log_failed";
-        setSessionError(message);
-      });
-    });
+    const playerAns = parseInt(input);
+    
+    if (isNaN(playerAns)) return;
 
-    if (verdict.ok) {
-      if (wrongMarkTimerRef.current) {
-        window.clearTimeout(wrongMarkTimerRef.current);
-        wrongMarkTimerRef.current = null;
-      }
+    if (playerAns === question.answer) {
+      // Correct
       setResultMark('correct');
       const newCombo = combo + 1;
       setCombo(newCombo);
+
       const charData = CHARACTERS[character];
       let hitMsg = charData.hits[Math.floor(Math.random() * charData.hits.length)];
-      if (newCombo >= 3) hitMsg += ` (Combo x${newCombo}!)`;
+      if (newCombo >= 3) {
+        hitMsg += ` (Combo x${newCombo}!)`;
+      }
       setMessage(hitMsg);
-      if (autoNextEnabled) {
-        cooldownUntilRef.current = Date.now() + AUTO_NEXT_WAIT_MS;
-        if (autoNextTimerRef.current) window.clearTimeout(autoNextTimerRef.current);
-        autoNextTimerRef.current = window.setTimeout(() => {
-          autoNextTimerRef.current = null;
-          nextQuestion();
-        }, AUTO_NEXT_WAIT_MS);
-      }
+
+      recordResult(input, true);
     } else {
-      if (wrongMarkTimerRef.current) {
-        window.clearTimeout(wrongMarkTimerRef.current);
-      }
+      // Incorrect
       setResultMark('wrong');
-      if (isSecondaryQuest) {
-        setShowSecondaryHint(false);
-        setShowSecondaryExplanation(true);
-      }
-      wrongMarkTimerRef.current = window.setTimeout(() => {
-        setResultMark(null);
-        wrongMarkTimerRef.current = null;
-      }, WRONG_MARK_WAIT_MS);
       setCombo(0);
       const charData = CHARACTERS[character];
       setMessage(charData.misses[Math.floor(Math.random() * charData.misses.length)]);
-    }
-
-    if (isQuadraticRootsQuestion) {
-      clearQuadraticFractionAutoMoveTimer(0);
-      clearQuadraticFractionAutoMoveTimer(1);
-      setQuadraticAnswers(["", ""]);
-      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
-      setQuadraticActiveIndex(0);
-    } else {
-      clearFractionAutoMoveTimer();
+      
       setInput('');
-      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
     }
   };
-
-  const keypadAnswerKind: AnswerFormat["kind"] = isQuadraticRootsQuestion
-    ? "pair"
-    : (currentType?.answer_format.kind ?? "int");
-  const canUseKeyToken = (token: string) => {
-    if (/^\d$/.test(token)) return true;
-    if (token === "-") return true;
-    if (token === ".") return true;
-    if (token === "/") return true;
-    if (isHighSchoolQuest && (HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS as readonly string[]).includes(token)) return true;
-    return false;
-  };
-  const renderKeyLabel = (token: string): ReactNode => {
-    if (token === "/") return "分数";
-    if (token === ".") return "小数点";
-    if (token === "+") return "プラス";
-    if (token === "+/-") return "+/-";
-    if (token === "^") return "指数";
-    if (token === "()") return "（）";
-    if (token === "x") return <InlineMath math="x" renderError={() => <span>x</span>} />;
-    if (token === "-") {
-      return (
-        <span className="inline-flex flex-col items-center leading-[0.9]">
-          <span>マイ</span>
-          <span>ナス</span>
-        </span>
-      );
-    }
-    return token;
-  };
-  const isValidAnswerText = (text: string, kind: AnswerFormat["kind"]) => {
-    const t = text.trim();
-    if (!t) return false;
-    if (kind === "int" || kind === "pair") return /^-?\d+$/.test(t);
-    if (kind === "dec") return /^-?\d+(\.\d+)?$/.test(t);
-    if (kind === "frac") return /^-?\d+\/-?\d+$/.test(t);
-    return true;
-  };
-  const canSubmitCurrentAnswer = isQuadraticRootsQuestion
-    ? (
-      ((quadraticFractionInputs[0].enabled ? isFractionEditorReady(quadraticFractionInputs[0]) : isValidAnswerText(quadraticAnswers[0], "pair")) &&
-        (quadraticFractionInputs[1].enabled ? isFractionEditorReady(quadraticFractionInputs[1]) : isValidAnswerText(quadraticAnswers[1], "pair"))) ||
-      (quadraticAnswers[0].trim().length > 0 && quadraticAnswers[1].trim().length > 0 &&
-        (quadraticAnswers[0].includes("/") || quadraticAnswers[1].includes("/")))
-    )
-    : (
-      (fractionInput.enabled ? isFractionEditorReady(fractionInput) : isValidAnswerText(input, keypadAnswerKind)) ||
-      (keypadAnswerKind !== "frac" && input.trim().length > 0 && input.includes("/"))
-    );
-  const skipFromExplanation = () => {
-    if (status !== "playing" || !currentItem) return;
-    setQuestionResults((prev) => ({
-      ...prev,
-      [itemIndex]: {
-        prompt: currentItem.prompt,
-        promptTex: currentItem.prompt_tex,
-        userAnswer: "",
-        correct: false,
-        correctAnswer: currentItem.answer,
-        everWrong: false,
-        skipped: true
-      }
-    }));
-    setPracticeResult(null);
-    setResultMark(null);
-    setShowSecondaryExplanation(false);
-    setShowSecondaryHint(false);
-    nextQuestion();
-  };
-  const keypadDigitTopTokens = DIGIT_KEYPAD_TOKENS.filter((token) => token !== "0");
-  const smallSymbolTokens: Array<(typeof SYMBOL_KEYPAD_TOKENS)[number]> = [".", "-", "/"];
-  const renderAnswerWithSuperscript = (text: string) => {
-    if (!text) return "\u2007";
-    if (!isHighSchoolQuest) return text;
-    const tex = toEquationTex(text).replace(/([A-Za-z0-9)])\^(-?\d+)/g, "$1^{$2}");
-    return (
-      <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
-        <InlineMath math={tex} renderError={() => <span>{text}</span>} />
-      </span>
-    );
-  };
-  const clearPlusMinusPressTimer = (state: PlusMinusPressState | null) => {
-    if (!state || state.longPressTimer === null) return;
-    window.clearTimeout(state.longPressTimer);
-    state.longPressTimer = null;
-  };
-  const detachPlusMinusWindowTracking = () => {
-    const handlers = plusMinusWindowHandlersRef.current;
-    if (!handlers) return;
-    window.removeEventListener("pointermove", handlers.move);
-    window.removeEventListener("pointerup", handlers.up);
-    window.removeEventListener("pointercancel", handlers.cancel);
-    plusMinusWindowHandlersRef.current = null;
-  };
-  const detachPlusMinusTouchTracking = () => {
-    const handlers = plusMinusTouchHandlersRef.current;
-    if (!handlers) return;
-    window.removeEventListener("touchmove", handlers.move);
-    window.removeEventListener("touchend", handlers.end);
-    window.removeEventListener("touchcancel", handlers.cancel);
-    plusMinusTouchHandlersRef.current = null;
-  };
-  const resolvePlusMinusTokenFromDelta = (deltaY: number) =>
-    deltaY < PLUS_MINUS_POPUP_SWITCH_PX ? "+" as const : "-" as const;
-  const resetPlusMinusInputState = (skipDetach = false) => {
-    clearPlusMinusPressTimer(plusMinusPressRef.current);
-    const active = plusMinusPressRef.current;
-    if (active?.triggerButton && active.triggerButton.hasPointerCapture(active.pointerId)) {
-      active.triggerButton.releasePointerCapture(active.pointerId);
-    }
-    plusMinusPressRef.current = null;
-    if (!skipDetach) detachPlusMinusWindowTracking();
-    if (!skipDetach) detachPlusMinusTouchTracking();
-    setPlusMinusPopupOpen(false);
-    setPlusMinusCandidate(null);
-    setPlusMinusPopupAnchor(null);
-  };
-  const finalizePlusMinusPress = (
-    event: Pick<PointerEvent, "pointerId" | "clientY"> | null,
-    cancelled: boolean
-  ) => {
-    const active = plusMinusPressRef.current;
-    if (!active) {
-      resetPlusMinusInputState();
-      return;
-    }
-    if (active.settled) {
-      resetPlusMinusInputState();
-      return;
-    }
-    if (event && event.pointerId !== active.pointerId) return;
-    active.settled = true;
-    if (event) {
-      active.currentY = event.clientY;
-    }
-    const deltaY = active.currentY - active.startY;
-    const movedBeyondTap = Math.abs(deltaY) > PLUS_MINUS_TAP_DEADZONE_PX;
-    const token = cancelled
-      ? null
-      : (movedBeyondTap ? resolvePlusMinusTokenFromDelta(deltaY) : "+" as const);
-    resetPlusMinusInputState();
-    if (token) handleInput(token);
-  };
-  const attachPlusMinusWindowTracking = () => {
-    detachPlusMinusWindowTracking();
-    const move = (event: PointerEvent) => {
-      const active = plusMinusPressRef.current;
-      if (!active || active.pointerId !== event.pointerId || active.settled) return;
-      active.currentY = event.clientY;
-      if (!active.longPressed) return;
-      setPlusMinusCandidate(resolvePlusMinusTokenFromDelta(active.currentY - active.startY));
-      event.preventDefault();
-    };
-    const up = (event: PointerEvent) => {
-      finalizePlusMinusPress(event, false);
-    };
-    const cancel = (event: PointerEvent) => {
-      finalizePlusMinusPress(event, true);
-    };
-    plusMinusWindowHandlersRef.current = { move, up, cancel };
-    window.addEventListener("pointermove", move, { passive: false });
-    window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", cancel);
-  };
-  const findTouchById = (touches: TouchList, id: number) => {
-    for (let i = 0; i < touches.length; i += 1) {
-      if (touches[i].identifier === id) return touches[i];
-    }
-    return null;
-  };
-  const attachPlusMinusTouchTracking = () => {
-    detachPlusMinusTouchTracking();
-    const move = (event: TouchEvent) => {
-      const active = plusMinusPressRef.current;
-      if (!active || active.settled) return;
-      const touch = findTouchById(event.touches, active.pointerId) ?? findTouchById(event.changedTouches, active.pointerId);
-      if (!touch) return;
-      active.currentY = touch.clientY;
-      if (active.longPressed) {
-        setPlusMinusCandidate(resolvePlusMinusTokenFromDelta(active.currentY - active.startY));
-      }
-      event.preventDefault();
-    };
-    const end = (event: TouchEvent) => {
-      const active = plusMinusPressRef.current;
-      if (!active || active.settled) return;
-      const touch = findTouchById(event.changedTouches, active.pointerId);
-      if (!touch) return;
-      finalizePlusMinusPress({ pointerId: active.pointerId, clientY: touch.clientY }, false);
-    };
-    const cancel = (event: TouchEvent) => {
-      const active = plusMinusPressRef.current;
-      if (!active || active.settled) return;
-      const touch = findTouchById(event.changedTouches, active.pointerId);
-      if (!touch) return;
-      finalizePlusMinusPress({ pointerId: active.pointerId, clientY: touch.clientY }, true);
-    };
-    plusMinusTouchHandlersRef.current = { move, end, cancel };
-    window.addEventListener("touchmove", move, { passive: false });
-    window.addEventListener("touchend", end);
-    window.addEventListener("touchcancel", cancel);
-  };
-  const handlePlusMinusFlickStart = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (status !== "playing" || isStarting) return;
-    e.preventDefault();
-    resetPlusMinusInputState();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const rect = e.currentTarget.getBoundingClientRect();
-    const state: PlusMinusPressState = {
-      pointerId: e.pointerId,
-      startY: e.clientY,
-      currentY: e.clientY,
-      longPressed: false,
-      settled: false,
-      longPressTimer: null,
-      triggerButton: e.currentTarget
-    };
-    attachPlusMinusWindowTracking();
-    state.longPressTimer = window.setTimeout(() => {
-      const active = plusMinusPressRef.current;
-      if (!active || active.pointerId !== e.pointerId) return;
-      active.longPressed = true;
-      active.longPressTimer = null;
-      const candidate = resolvePlusMinusTokenFromDelta(active.currentY - active.startY);
-      setPlusMinusPopupAnchor({ left: rect.left + rect.width / 2, top: rect.top - 72 });
-      setPlusMinusPopupOpen(true);
-      setPlusMinusCandidate(candidate);
-    }, PLUS_MINUS_LONG_PRESS_MS);
-    plusMinusPressRef.current = state;
-  };
-  const handlePlusMinusTouchStart = (e: React.TouchEvent<HTMLButtonElement>) => {
-    if (status !== "playing" || isStarting) return;
-    const touch = e.changedTouches[0];
-    if (!touch) return;
-    e.preventDefault();
-    resetPlusMinusInputState();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const state: PlusMinusPressState = {
-      pointerId: touch.identifier,
-      startY: touch.clientY,
-      currentY: touch.clientY,
-      longPressed: false,
-      settled: false,
-      longPressTimer: null,
-      triggerButton: e.currentTarget
-    };
-    attachPlusMinusTouchTracking();
-    state.longPressTimer = window.setTimeout(() => {
-      const active = plusMinusPressRef.current;
-      if (!active || active.pointerId !== touch.identifier) return;
-      active.longPressed = true;
-      active.longPressTimer = null;
-      const candidate = resolvePlusMinusTokenFromDelta(active.currentY - active.startY);
-      setPlusMinusPopupAnchor({ left: rect.left + rect.width / 2, top: rect.top - 72 });
-      setPlusMinusPopupOpen(true);
-      setPlusMinusCandidate(candidate);
-    }, PLUS_MINUS_LONG_PRESS_MS);
-    plusMinusPressRef.current = state;
-  };
-  const handlePlusMinusFlickEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (status !== "playing" || isStarting) return;
-    finalizePlusMinusPress({ pointerId: e.pointerId, clientY: e.clientY }, false);
-  };
-  const handlePlusMinusFlickCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
-    finalizePlusMinusPress({ pointerId: e.pointerId, clientY: e.clientY }, true);
-  };
-  useEffect(() => {
-    resetPlusMinusInputState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemIndex, currentType?.type_id, status]);
-  useEffect(
-    () => () => {
-      resetPlusMinusInputState();
-    },
-    []
-  );
-
-  const resultOverlay = resultMark ? (
-    <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
-      {resultMark === "correct" ? (
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 120 120"
-          className="h-24 w-24 sm:h-28 sm:w-28 text-red-700 drop-shadow-[0_3px_0_rgba(0,0,0,0.28)]"
-        >
-          <path
-            d="M16 61 C18 30, 48 10, 82 17 C108 24, 114 69, 93 93 C66 116, 23 102, 16 61"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="10"
-            strokeLinecap="round"
-          />
-          <path
-            d="M20 60 C23 35, 47 20, 74 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4"
-            strokeLinecap="round"
-            opacity="0.62"
-          />
-        </svg>
-      ) : (
-        <div className="relative flex items-center justify-center">
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 120 120"
-            className="h-24 w-24 sm:h-28 sm:w-28 text-red-700 drop-shadow-[0_3px_0_rgba(0,0,0,0.28)]"
-          >
-            <path
-              d="M20 22 L100 96"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="11"
-              strokeLinecap="round"
-            />
-            <path
-              d="M97 20 L26 99"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="11"
-              strokeLinecap="round"
-            />
-            <path
-              d="M30 34 L86 84"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="4"
-              strokeLinecap="round"
-              opacity="0.5"
-            />
-          </svg>
-        </div>
-      )}
-    </div>
-  ) : null;
 
 
   const toggleCharacter = () => {
@@ -3424,10 +2269,6 @@ function QuestPageInner() {
       }));
 
       if (verdict.ok) {
-        if (wrongMarkTimerRef.current) {
-          window.clearTimeout(wrongMarkTimerRef.current);
-          wrongMarkTimerRef.current = null;
-        }
         setResultMark('correct');
         const newCombo = combo + 1;
         setCombo(newCombo);
@@ -3448,18 +2289,7 @@ function QuestPageInner() {
           }, AUTO_NEXT_WAIT_MS);
         }
       } else {
-        if (wrongMarkTimerRef.current) {
-          window.clearTimeout(wrongMarkTimerRef.current);
-        }
         setResultMark('wrong');
-        if (isSecondaryQuest) {
-          setShowSecondaryHint(false);
-          setShowSecondaryExplanation(true);
-        }
-        wrongMarkTimerRef.current = window.setTimeout(() => {
-          setResultMark(null);
-          wrongMarkTimerRef.current = null;
-        }, WRONG_MARK_WAIT_MS);
         setCombo(0);
       }
     }
@@ -3546,181 +2376,7 @@ function QuestPageInner() {
       runInference();
     }, nextDelay);
   };
-  const memoLogicalWidth = Math.ceil((memoCanvasSize.width / MIN_MEMO_ZOOM) * MEMO_WORKSPACE_SCALE) + OUTER_MARGIN * 2;
-  const memoLogicalHeight = Math.ceil((memoCanvasSize.height / MIN_MEMO_ZOOM) * MEMO_WORKSPACE_SCALE) + OUTER_MARGIN * 2;
-  const memoOffsetX = memoCanvasSize.width / 2 - (memoLogicalWidth * calcZoom) / 2 + calcPan.x;
-  const memoOffsetY = memoCanvasSize.height / 2 - (memoLogicalHeight * calcZoom) / 2 + calcPan.y;
-  const memoDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-    Math.hypot(a.x - b.x, a.y - b.y);
-  const memoMidpoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
-    x: (a.x + b.x) / 2,
-    y: (a.y + b.y) / 2
-  });
-  const getMemoLogicalPoint = (clientX: number, clientY: number): MemoPoint | null => {
-    const host = drawAreaRef.current;
-    if (!host) return null;
-    const rect = host.getBoundingClientRect();
-    const x = (clientX - rect.left - memoOffsetX) / calcZoom;
-    const y = (clientY - rect.top - memoOffsetY) / calcZoom;
-    return {
-      x: clamp(x, 0, memoLogicalWidth),
-      y: clamp(y, 0, memoLogicalHeight)
-    };
-  };
-  const drawMemoCanvas = () => {
-    const canvas = memoCanvasRef.current;
-    if (!canvas) return;
-    const dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
-    const width = Math.max(1, Math.floor(memoCanvasSize.width));
-    const height = Math.max(1, Math.floor(memoCanvasSize.height));
-    const pixelWidth = Math.max(1, Math.floor(width * dpr));
-    const pixelHeight = Math.max(1, Math.floor(height * dpr));
-    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
-      canvas.width = pixelWidth;
-      canvas.height = pixelHeight;
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-    }
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, width, height);
-    ctx.save();
-    ctx.translate(memoOffsetX, memoOffsetY);
-    ctx.scale(calcZoom, calcZoom);
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = MEMO_BRUSH_WIDTH;
-    const drawStroke = (stroke: MemoStroke) => {
-      if (stroke.points.length === 0) return;
-      ctx.beginPath();
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (let i = 1; i < stroke.points.length; i++) {
-        const p = stroke.points[i];
-        ctx.lineTo(p.x, p.y);
-      }
-      if (stroke.points.length === 1) {
-        const p = stroke.points[0];
-        ctx.lineTo(p.x + 0.01, p.y + 0.01);
-      }
-      ctx.stroke();
-    };
-    memoStrokesRef.current.forEach(drawStroke);
-    if (memoActiveStrokeRef.current) {
-      drawStroke(memoActiveStrokeRef.current);
-    }
-    ctx.restore();
-  };
-  const scheduleMemoRedraw = () => {
-    if (memoDrawRafRef.current) return;
-    memoDrawRafRef.current = window.requestAnimationFrame(() => {
-      memoDrawRafRef.current = null;
-      drawMemoCanvas();
-    });
-  };
-  const clearMemo = () => {
-    memoActiveStrokeRef.current = null;
-    memoActivePointerIdRef.current = null;
-    memoStrokesRef.current = [];
-    setCalcPan({ x: 0, y: 0 });
-    setMemoRedoStack([]);
-    setMemoStrokes([]);
-    drawMemoCanvas();
-  };
-  const undoMemo = () => {
-    const current = memoStrokesRef.current;
-    if (current.length === 0) return;
-    const next = current.slice(0, -1);
-    const last = current[current.length - 1];
-    memoStrokesRef.current = next;
-    setMemoRedoStack((redo) => [...redo, last]);
-    setMemoStrokes(next);
-    drawMemoCanvas();
-  };
-  const handleMemoPointerDown = (e: any) => {
-    if (e.pointerType === "touch") {
-      e.preventDefault();
-      memoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (memoPointersRef.current.size === 2) {
-        const [p1, p2] = [...memoPointersRef.current.values()];
-        if (!p1 || !p2) return;
-        if (memoActiveStrokeRef.current?.points.length) {
-          const stroke = memoActiveStrokeRef.current;
-          memoActiveStrokeRef.current = null;
-          memoActivePointerIdRef.current = null;
-          memoStrokesRef.current = [...memoStrokesRef.current, stroke];
-          setMemoStrokes(memoStrokesRef.current);
-        }
-        memoPinchStartRef.current = {
-          distance: Math.max(1, memoDistance(p1, p2)),
-          zoom: calcZoom,
-          mid: memoMidpoint(p1, p2),
-          pan: calcPan
-        };
-        setIsPinchingMemo(true);
-        drawMemoCanvas();
-        return;
-      }
-      if (memoPointersRef.current.size > 1) return;
-    }
-    if (isPinchingMemo) return;
-    const point = getMemoLogicalPoint(e.clientX, e.clientY);
-    if (!point) return;
-    memoActivePointerIdRef.current = e.pointerId;
-    memoActiveStrokeRef.current = { points: [point] };
-    setMemoRedoStack([]);
-    drawMemoCanvas();
-  };
-  const handleMemoPointerMove = (e: any) => {
-    if (e.pointerType === "touch" && memoPointersRef.current.has(e.pointerId)) {
-      memoPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    }
-    if (memoPointersRef.current.size >= 2 && memoPinchStartRef.current) {
-      e.preventDefault();
-      const [p1, p2] = [...memoPointersRef.current.values()];
-      if (!p1 || !p2) return;
-      const dist = Math.max(1, memoDistance(p1, p2));
-      const mid = memoMidpoint(p1, p2);
-      const start = memoPinchStartRef.current;
-      const zoomRatio = dist / start.distance;
-      const nextZoom = clamp(start.zoom * zoomRatio, MIN_MEMO_ZOOM, MAX_MEMO_ZOOM);
-      const nextPan = {
-        x: start.pan.x + (mid.x - start.mid.x),
-        y: start.pan.y + (mid.y - start.mid.y)
-      };
-      setCalcZoom(nextZoom);
-      setCalcPan(nextPan);
-      scheduleMemoRedraw();
-      return;
-    }
-    if (memoActivePointerIdRef.current !== e.pointerId) return;
-    const point = getMemoLogicalPoint(e.clientX, e.clientY);
-    if (!point || !memoActiveStrokeRef.current) return;
-    memoActiveStrokeRef.current.points.push(point);
-    drawMemoCanvas();
-  };
-  const handleMemoPointerEnd = (e: any) => {
-    if (e.pointerType === "touch") {
-      memoPointersRef.current.delete(e.pointerId);
-    }
-    if (memoActivePointerIdRef.current === e.pointerId && memoActiveStrokeRef.current) {
-      const stroke = memoActiveStrokeRef.current;
-      if (stroke.points.length > 0) {
-        memoStrokesRef.current = [...memoStrokesRef.current, stroke];
-        setMemoStrokes(memoStrokesRef.current);
-      }
-      memoActiveStrokeRef.current = null;
-      memoActivePointerIdRef.current = null;
-      drawMemoCanvas();
-    }
-    if (memoPointersRef.current.size < 2) {
-      memoPinchStartRef.current = null;
-      setIsPinchingMemo(false);
-    }
-  };
+  const drawCanvasSize = visibleCanvasSize + OUTER_MARGIN * 2;
 
   const runAutoDrawTest = async (poolOverride?: string[]) => {
     const canvas = getDrawingCanvas(canvasRef.current);
@@ -4044,260 +2700,14 @@ function QuestPageInner() {
       
       {/* Input Mode Toggle removed */}
 
-      {status === "playing" && (
-        <div className="fixed left-1/2 top-2 z-40 w-full max-w-md -translate-x-1/2 px-4">
-          {selectedPath && (
-            <div className="w-full relative">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowGradeTypePicker((prev) => !prev);
-                  if (!showGradeTypePicker) {
-                    setExpandedGradePicker(true);
-                    setExpandedGradeList(false);
-                    setExpandedProblemPicker(true);
-                  }
-                }}
-                className="w-full bg-white border-2 border-slate-200 rounded-2xl px-3 py-2 text-[11px] font-bold text-slate-700 text-left hover:bg-slate-50"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate">{selectedPath.gradeName} / {selectedPath.typeName}</span>
-                  <span className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] text-slate-500">問題を選ぶ</span>
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-300 bg-slate-100 text-slate-600 shadow-sm">
-                      {showGradeTypePicker ? "▲" : "▼"}
-                    </span>
-                  </span>
-                </div>
-              </button>
-              {showGradeTypePicker && (
-                <div className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg p-1">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedGradePicker((prev) => !prev)}
-                    className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
-                  >
-                    <span>学年</span>
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
-                      {expandedGradePicker ? "▲" : "▼"}
-                    </span>
-                  </button>
-                  {expandedGradePicker && (
-                    <div className="mt-1 px-1">
-                      <button
-                        type="button"
-                        onClick={() => setExpandedGradeList((prev) => !prev)}
-                        className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                      >
-                        <span className="truncate">{pendingGradeName}</span>
-                        <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
-                          {expandedGradeList ? "▲" : "▼"}
-                        </span>
-                      </button>
-                      {expandedGradeList && (
-                        <div className="mt-1 space-y-1">
-                          {gradeOptions.map((grade) => {
-                            const isPickedGrade = grade.gradeId === pickerGradeId;
-                            return (
-                              <button
-                                key={grade.gradeId}
-                                type="button"
-                                onClick={() => {
-                                  setPendingGradeId(grade.gradeId);
-                                  setExpandedGradeList(false);
-                                }}
-                                className={`w-full text-left rounded-md px-2 py-1.5 text-[10px] font-bold border ${
-                                  isPickedGrade
-                                    ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                                }`}
-                              >
-                                {grade.gradeName}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <div className="mt-2 border-t border-slate-200 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedProblemPicker((prev) => !prev)}
-                      className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
-                    >
-                      <span>問題</span>
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-slate-500">
-                        {expandedProblemPicker ? "▲" : "▼"}
-                      </span>
-                    </button>
-                    {expandedProblemPicker && (
-                      <div className="mt-1 space-y-1 px-1">
-                        {pickerGradeTypes.map((option) => {
-                          const isCurrent = option.typeId === currentType?.type_id;
-                          return (
-                            <button
-                              key={option.typeId}
-                              type="button"
-                              onClick={() => {
-                                setShowGradeTypePicker(false);
-                                if (isCurrent) return;
-                                router.push(`/quest?type=${encodeURIComponent(option.typeId)}`);
-                              }}
-                              className={`w-full text-left rounded-lg px-2 py-2 text-[11px] ${
-                                isCurrent
-                                  ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                                  : "text-slate-700 hover:bg-slate-50"
-                              }`}
-                            >
-                              <div className="font-bold truncate">{option.typeName}</div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {currentItem && currentType && (
-            <div className="bg-slate-50/95 backdrop-blur-sm py-1">
-            <div
-              ref={currentCardRef}
-              className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 py-4 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] h-[200px] sm:h-[185px] flex items-center justify-center"
-            >
-              <div className="pointer-events-none absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_12%_20%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_70%,rgba(255,255,255,0.10),transparent_34%),repeating-linear-gradient(12deg,rgba(255,255,255,0.05)_0px,rgba(255,255,255,0.05)_2px,transparent_2px,transparent_8px)]" />
-              {combo >= 2 && (
-                <div className="pointer-events-none absolute top-2 right-2 -rotate-12 rounded-md border border-yellow-200/70 bg-yellow-300/90 px-2 py-0.5 text-[10px] sm:text-xs font-black tracking-wide text-emerald-950 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
-                  {combo} COMBO!
-                </div>
-              )}
-              <div className="pointer-events-none absolute bottom-0 left-3 flex items-end gap-2">
-                <div aria-label="board-eraser" className="h-6 w-12 rounded-md border border-amber-900 bg-gradient-to-b from-amber-200 to-amber-500 shadow-[0_2px_0_rgba(0,0,0,0.28)]" />
-                <div className="flex items-end gap-1">
-                  <div aria-label="board-chalk-white" className="h-2.5 w-7 rounded-full border border-slate-300 bg-white shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
-                  <div aria-label="board-chalk-pink" className="h-2.5 w-6 rounded-full border border-pink-300 bg-pink-100 shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
-                  <div aria-label="board-chalk-blue" className="h-2.5 w-6 rounded-full border border-sky-300 bg-sky-100 shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={nextQuestion}
-                disabled={status !== "playing" || isStarting}
-                className="absolute bottom-3 right-3 z-20 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs sm:text-sm font-bold text-emerald-900 shadow-[0_2px_0_rgba(0,0,0,0.25)] active:translate-y-[1px] disabled:bg-slate-300 disabled:text-slate-500"
-              >
-                {uiText.nextQuestion}
-              </button>
-              <div
-                ref={qaRowRef}
-                className={
-                  useSingleLineQa
-                    ? "relative z-10 w-full flex items-center justify-start gap-2 sm:gap-3"
-                    : "relative z-10 w-full flex flex-col justify-center gap-1 sm:gap-2"
-                }
-              >
-                <div
-                  ref={qaPromptRef}
-                  style={isSecondaryQuest ? { fontSize: `${qaPromptFontPx}px` } : undefined}
-                  className={
-                    useSingleLineQa
-                      ? "min-w-0 w-auto max-w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
-                      : "min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
-                  }
-                >
-                  <span ref={qaPromptContentRef} className="inline-block align-middle">
-                    {renderPrompt(currentItem, currentType?.type_id, currentType?.display_name ?? currentType?.type_name)}
-                  </span>
-                </div>
-                {isQuadraticRootsQuestion ? (
-                  <div
-                    ref={qaAnswerRef}
-                    className={
-                      useSingleLineQa
-                        ? "w-auto shrink-0 flex items-center gap-2 overflow-x-auto whitespace-nowrap"
-                        : "w-full sm:w-auto flex items-center gap-2 overflow-x-auto whitespace-nowrap"
-                    }
-                    style={useSingleLineQa ? undefined : { marginLeft: `${qaAnswerOffsetPx}px` }}
-                  >
-                    <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
-                      <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100" style={isSecondaryQuest ? { fontSize: `${Math.max(18, qaAnswerFontPx - 6)}px` } : undefined}>x1 =</span>
-                      <button
-                        type="button"
-                        onClick={() => setQuadraticActiveIndex(0)}
-                        aria-label="recognized-answer-1"
-                        className={`${quadraticFractionInputs[0].enabled ? "w-[98px] sm:w-[116px] h-[64px] sm:h-[76px] text-[18px] sm:text-[22px]" : "w-[72px] sm:w-[84px] h-[48px] sm:h-[56px] text-[22px] sm:text-[26px]"} shrink-0 px-2 sm:px-3 rounded-xl border-2 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
-                          quadraticActiveIndex === 0 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
-                        }`}
-                        style={{
-                          opacity: quadraticFractionInputs[0].enabled ? 1 : (quadraticAnswers[0] ? 1 : 0.35),
-                          fontSize: isSecondaryQuest ? `${qaAnswerFontPx}px` : undefined
-                        }}
-                      >
-                        {quadraticFractionInputs[0].enabled
-                          ? renderFractionEditorValue(quadraticFractionInputs[0])
-                          : renderAnswerWithSuperscript(quadraticAnswers[0])}
-                      </button>
-                      <span className="text-[20px] sm:text-[24px] font-bold text-emerald-100" style={isSecondaryQuest ? { fontSize: `${Math.max(18, qaAnswerFontPx - 6)}px` } : undefined}>x2 =</span>
-                      <button
-                        type="button"
-                        onClick={() => setQuadraticActiveIndex(1)}
-                        aria-label="recognized-answer-2"
-                        className={`${quadraticFractionInputs[1].enabled ? "w-[98px] sm:w-[116px] h-[64px] sm:h-[76px] text-[18px] sm:text-[22px]" : "w-[72px] sm:w-[84px] h-[48px] sm:h-[56px] text-[22px] sm:text-[26px]"} shrink-0 px-2 sm:px-3 rounded-xl border-2 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center ${
-                          quadraticActiveIndex === 1 ? "border-emerald-300 bg-emerald-100 text-emerald-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"
-                        }`}
-                        style={{
-                          opacity: quadraticFractionInputs[1].enabled ? 1 : (quadraticAnswers[1] ? 1 : 0.35),
-                          fontSize: isSecondaryQuest ? `${qaAnswerFontPx}px` : undefined
-                        }}
-                      >
-                        {quadraticFractionInputs[1].enabled
-                          ? renderFractionEditorValue(quadraticFractionInputs[1])
-                          : renderAnswerWithSuperscript(quadraticAnswers[1])}
-                      </button>
-                      {resultOverlay}
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    ref={qaAnswerRef}
-                    className={
-                      useSingleLineQa
-                        ? "relative w-auto shrink-0 flex items-center gap-2 overflow-visible"
-                        : "relative w-full sm:w-auto flex items-center gap-2 overflow-visible"
-                    }
-                    style={useSingleLineQa ? undefined : { marginLeft: `${qaAnswerOffsetPx}px` }}
-                  >
-                    <div ref={qaAnswerContentRef} className="relative inline-flex items-center gap-2 overflow-visible">
-                      {isSecondaryQuest ? (
-                        <span className="text-[24px] sm:text-[30px] leading-none font-extrabold text-emerald-100" style={isSecondaryQuest ? { fontSize: `${qaAnswerFontPx}px` } : undefined}>=</span>
-                      ) : null}
-                      <div className={`relative overflow-visible ${fractionInput.enabled ? "w-[190px] sm:w-[220px]" : "w-[150px] sm:w-[180px]"}`}>
-                        <div
-                          aria-label="recognized-answer"
-                          className={`${fractionInput.enabled ? "w-[190px] sm:w-[220px] h-[74px] sm:h-[84px] text-[20px] sm:text-[24px]" : "w-[150px] sm:w-[180px] h-[56px] sm:h-[64px] text-[26px] sm:text-[30px]"} shrink-0 max-w-full px-2 sm:px-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-900 font-extrabold text-center overflow-x-auto whitespace-nowrap flex items-center justify-center`}
-                          style={{
-                            opacity: fractionInput.enabled ? 1 : (displayedAnswer ? 1 : 0.35),
-                            fontSize: isSecondaryQuest ? `${qaAnswerFontPx}px` : undefined
-                          }}
-                        >
-                          {fractionInput.enabled
-                            ? renderFractionEditorValue(fractionInput)
-                            : renderAnswerWithSuperscript(displayedAnswer)}
-                        </div>
-                        {resultOverlay}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            </div>
-          )}
-        </div>
-      )}
-      {status === "playing" && (
-        <div aria-hidden="true" className="h-[292px] sm:h-[276px]" />
+      {status === 'playing' && selectedPath && (
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          className="w-full bg-white border-2 border-slate-200 rounded-2xl px-4 py-3 text-base font-extrabold text-slate-700 text-left hover:bg-slate-50"
+        >
+          {selectedPath.gradeName} / {selectedPath.typeName}
+        </button>
       )}
       {/* Center: Character & Message */} 
       <div className="flex flex-col items-center space-y-3 my-2 flex-1 justify-start w-full">
@@ -4313,7 +2723,6 @@ function QuestPageInner() {
             <div className="mt-5 space-y-2 max-h-[28vh] overflow-y-auto rounded-2xl bg-white/90 p-3 text-left">
               {clearResults.map(([index, r]) => {
                 const finalWrong = r.everWrong === true;
-                const skipped = r.skipped === true;
                 const displayedUserAnswer = finalWrong
                   ? (r.firstWrongAnswer ?? r.userAnswer)
                   : r.userAnswer;
@@ -4321,7 +2730,7 @@ function QuestPageInner() {
                   <div
                     key={index}
                     className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
-                      skipped ? 'border-amber-200 bg-amber-50' : (finalWrong ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50')
+                      finalWrong ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'
                     }`}
                   >
                     <div className="font-bold text-slate-700">
@@ -4342,7 +2751,10 @@ function QuestPageInner() {
                     <div className="flex items-center gap-2 font-bold text-right">
                       <span className="text-slate-600">{uiText.yourAnswer}:</span>
                       <span className="text-slate-600">
-                        {skipped ? "スキップ" : (displayedUserAnswer ? renderMaybeMath(displayedUserAnswer) : "?")}
+                        {displayedUserAnswer ? renderMaybeMath(displayedUserAnswer) : "?"}
+                      </span>
+                      <span className={finalWrong ? 'text-red-600' : 'text-green-600'}>
+                        {finalWrong ? '✕' : '◯'}
                       </span>
                     </div>
                   </div>
@@ -4389,350 +2801,364 @@ function QuestPageInner() {
               )}
             </div>
           </div>
-        ) : status === 'blocked' ? (
-          <div className="w-full text-center rounded-2xl border border-red-200 bg-red-50 px-4 py-6 shadow-sm">
-            <div className="text-base font-black text-red-700">出題を準備できませんでした</div>
-            <div className="mt-2 text-sm text-red-700">
-              {quizBuildError ?? "このタイプは一時的に出題候補不足です。別タイプを選ぶか、時間をおいて再試行してください。"}
-            </div>
-            {stockShortages.length > 0 && (
-              <div className="mt-3 rounded-lg border border-red-200 bg-white/70 px-3 py-2 text-left">
-                <div className="text-xs font-bold text-red-700">候補不足タイプ一覧</div>
-                <ul className="mt-1 space-y-1 text-xs text-red-700">
-                  {stockShortages.slice(0, 8).map((item) => (
-                    <li key={item.typeId}>
-                      {item.typeName} ({item.typeId}): {item.count}題 / 理由 {describeStockReason(item.reason)}
-                      {item.reasonDetail ? ` (${item.reasonDetail})` : ""}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div className="mt-4 space-y-2">
-              <button
-                type="button"
-                onClick={() => setRetryNonce((prev) => prev + 1)}
-                className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white font-bold"
-              >
-                もう一度ためす
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/")}
-                className="w-full px-4 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold"
-              >
-                トップへ戻る
-              </button>
-            </div>
-          </div>
         ) : (
           <>
-            {stockShortages.length > 0 && (
-              <div className="w-full mb-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-left">
-                <div className="text-xs font-bold text-amber-800">候補不足タイプ一覧</div>
-                {activePickMeta && (
-                  <div className="mt-1 text-[11px] text-amber-700">
-                    抽出: 要求 {activePickMeta.requested} / 有効候補 {activePickMeta.availableAfterDedupe} / 取得 {activePickMeta.picked}
-                  </div>
-                )}
-                <ul className="mt-1 space-y-1 text-xs text-amber-800">
-                  {stockShortages.slice(0, 8).map((item) => (
-                    <li key={item.typeId}>
-                      {item.typeName} ({item.typeId}): {item.count}題 / 理由 {describeStockReason(item.reason)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {process.env.NODE_ENV !== "production" && (
-              <div className="w-full mb-2 rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-left">
-                <div className="text-xs font-bold text-sky-800">DEV診断: Lv/type/stock</div>
-                <div className="mt-1 space-y-0.5 text-[11px] text-sky-900">
-                  <div>表示: {currentType?.display_name ?? currentType?.type_name ?? "-"}</div>
-                  <div>type_id: {currentType?.type_id ?? "-"}</div>
-                  <div>pattern_id: {currentType?.generation_params?.pattern_id ?? "-"}</div>
-                  <div>stock.count: {activeStockInfo?.count ?? 0}</div>
-                  <div>stock.reason: {activeStockInfo?.reason ?? "-"}</div>
-                  <div>stock.reason_detail: {activeStockInfo?.reasonDetail ?? "-"}</div>
-                  <div>stock.unique: {activeStockInfo?.uniqueCount ?? 0}</div>
-                  <div>stock.expanded: {activeStockInfo?.expandedCount ?? 0}</div>
-                  <div>pick: {activePickMeta?.picked ?? 0} / {activePickMeta?.requested ?? quizSize}</div>
+            <div className="w-full bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[48vh] overflow-y-auto">
+              {quizItems.length === 0 ? (
+                <div className="text-slate-500 text-center">
+                  {emptyMessage}
                 </div>
-              </div>
-            )}
-            {(quizItems.length === 0 || !currentItem) && (
-              <div className="w-full text-slate-500 text-center">
-                {quizItems.length === 0 ? emptyMessage : uiText.selectType}
-              </div>
-            )}
-
-            {currentAid && (
-              isSecondaryQuest ? (
-                <section className="w-full">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowSecondaryHint((prev) => !prev)}
-                      className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-left text-base font-bold text-indigo-700"
-                    >
-                      {showSecondaryHint ? "ヒントを隠す" : "ヒントを見る"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowSecondaryExplanation((prev) => !prev)}
-                      className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left text-base font-bold text-violet-700"
-                    >
-                      {showSecondaryExplanation ? "解説を隠す" : "解説を見る"}
-                    </button>
-                  </div>
-                  {showSecondaryHint && (
-                    <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
-                      <div className="text-sm font-bold text-amber-700">ヒント</div>
-                      {currentAid.hintLines && currentAid.hintLines.length > 0 ? (
-                        <ul className="mt-0.5 list-none space-y-1 pl-0 text-base font-semibold text-slate-800">
-                          {currentAid.hintLines.map((line, idx) => (
-                            <li key={`hint-line-${idx}`} className="leading-7">
-                              {line.kind === "tex" ? <InlineMath math={line.value} /> : line.value}
-                            </li>
-                          ))}
-                        </ul>
+              ) : currentItem ? (
+                <div className="flex flex-col gap-3">
+                  <div
+                    ref={currentCardRef}
+                    className="rounded-2xl border-4 border-indigo-200 bg-white px-6 py-5 text-indigo-900 text-2xl font-black shadow-md"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                      <div className="min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold">
+                        {renderPrompt(currentItem)}
+                      </div>
+                      {isQuadraticRootsQuestion ? (
+                        <div className="w-full sm:w-auto flex items-center gap-2 flex-wrap">
+                          <span className="text-[20px] sm:text-[24px] font-bold text-slate-500">x1 =</span>
+                          <button
+                            type="button"
+                            onClick={() => setQuadraticActiveIndex(0)}
+                            aria-label="recognized-answer-1"
+                            className={`w-[130px] sm:w-[150px] h-[48px] sm:h-[56px] px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end ${
+                              quadraticActiveIndex === 0 ? "border-indigo-500 bg-indigo-50" : "border-[#111]"
+                            }`}
+                            style={{ opacity: quadraticAnswers[0] ? 1 : 0.35 }}
+                          >
+                            {quadraticAnswers[0] || "\u2007"}
+                          </button>
+                          <span className="text-[20px] sm:text-[24px] font-bold text-slate-500">x2 =</span>
+                          <button
+                            type="button"
+                            onClick={() => setQuadraticActiveIndex(1)}
+                            aria-label="recognized-answer-2"
+                            className={`w-[130px] sm:w-[150px] h-[48px] sm:h-[56px] px-3 rounded-xl border-2 text-[22px] sm:text-[26px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end ${
+                              quadraticActiveIndex === 1 ? "border-indigo-500 bg-indigo-50" : "border-[#111]"
+                            }`}
+                            style={{ opacity: quadraticAnswers[1] ? 1 : 0.35 }}
+                          >
+                            {quadraticAnswers[1] || "\u2007"}
+                          </button>
+                        </div>
                       ) : (
-                        <div className="text-base font-semibold text-slate-800">{currentAid.hint}</div>
+                        <div className="w-full sm:w-auto flex items-center gap-2">
+                          <span className="text-[26px] sm:text-[30px] font-bold text-slate-500">=</span>
+                          <div
+                            aria-label="recognized-answer"
+                            className="w-full sm:w-auto sm:min-w-[170px] max-w-full h-[56px] sm:h-[64px] px-3 sm:px-4 rounded-xl border-2 border-[#111] text-[26px] sm:text-[30px] font-extrabold text-right overflow-x-auto whitespace-nowrap flex items-center justify-end"
+                            style={{ opacity: displayedAnswer ? 1 : 0.35 }}
+                          >
+                            {displayedAnswer || "\u2007"}
+                          </div>
+                        </div>
                       )}
                     </div>
-                  )}
-                  {showSecondaryExplanation && (
-                    <div className="mt-2">
-                      <SecondaryExplanationPanel
-                        aid={currentAid}
-                        onNext={skipFromExplanation}
-                        nextLabel={uiText.nextQuestion}
-                        showNextButton
-                      />
-                    </div>
-                  )}
-                </section>
-              ) : (
-                isHighSchoolQuest ? (
-                  <section className="w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowHighSchoolHint((prev) => !prev)}
-                      className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-bold text-amber-800 text-left hover:bg-amber-50"
-                    >
-                      {showHighSchoolHint ? "ヒントを閉じる" : "ヒントを見る"}
-                    </button>
-                    {showHighSchoolHint && (
-                      <div className="mt-2">
-                        <SecondaryExplanationPanel aid={currentAid} />
+                    {practiceResult && (
+                      <div className="mt-2 flex justify-end">
+                        <div
+                          className={`text-xs font-bold ${
+                            practiceResult.ok ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          {practiceResult.ok ? uiText.correct : uiText.incorrect}
+                        </div>
                       </div>
                     )}
-                  </section>
-                ) : (
-                  <SecondaryExplanationPanel aid={currentAid} />
-                )
-              )
-            )}
-
-            <section className="w-full rounded-2xl border border-slate-200 bg-white/90 p-2 shadow-md">
-              <div className="mb-2 flex items-center justify-between text-sm font-bold text-slate-800">
-                <span>計算メモ（2本指ピンチで縮小）</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={undoMemo}
-                    className="px-2 py-1 rounded-md bg-slate-100 text-slate-700"
-                  >
-                    1つ戻る
-                  </button>
-                  <button
-                    type="button"
-                    onClick={clearMemo}
-                    className="px-2 py-1 rounded-md bg-slate-700 text-white"
-                  >
-                    メモ消去
-                  </button>
+                  </div>
+                  {nextItem && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-[28px] leading-tight text-slate-500 opacity-35">
+                      {renderPrompt(nextItem)}
+                    </div>
+                  )}
                 </div>
-              </div>
-              {shouldShowElementaryExplanation && currentElementaryAid && (
-                <ElementaryExplanationPanel
-                  aid={currentElementaryAid}
-                  onNext={nextQuestion}
-                  nextLabel={uiText.nextQuestion}
-                  disabled={status !== "playing" || isStarting}
-                />
+              ) : (
+                <div className="text-slate-500 text-center">{uiText.selectType}</div>
               )}
-              <div ref={memoCanvasHostRef} className="relative h-[40vh] min-h-[260px] w-full">
-                <div
-                  ref={drawAreaRef}
-                  data-testid="calc-memo-area"
-                  className="relative h-full w-full overflow-hidden bg-white"
-                  style={{
-                    touchAction: "none",
-                    userSelect: "none",
-                    WebkitUserSelect: "none",
-                    WebkitTouchCallout: "none",
-                    WebkitTapHighlightColor: "transparent"
-                  }}
-                  onContextMenu={(e) => e.preventDefault()}
-                  onDragStart={(e) => e.preventDefault()}
-                  onPointerDown={handleMemoPointerDown}
-                  onPointerMove={handleMemoPointerMove}
-                  onPointerUp={handleMemoPointerEnd}
-                  onPointerCancel={handleMemoPointerEnd}
-                  onPointerLeave={handleMemoPointerEnd}
-                >
-                  <canvas
-                    ref={memoCanvasRef}
-                    className="block h-full w-full select-none"
-                    aria-label="calc-memo-canvas"
-                    draggable={false}
-                  />
-                </div>
+            </div>
+
+            {/* Combo Indicator */}
+            {combo >= 2 && (
+              <div className="text-yellow-500 font-black text-xl animate-pulse">
+                {combo} COMBO!
               </div>
-            </section>
+            )}
           </>
         )}
       </div>
 
-      {/* Bottom: Input + Calc Memo */}
-      {status === 'playing' && (
-        <div className="w-full pt-2 pb-3 sticky bottom-0 bg-slate-50/95 backdrop-blur-sm z-20 space-y-2">
-          <div className="w-full space-y-1 pb-1">
-            <div className="w-full flex items-stretch gap-2">
-              {isHighSchoolQuest ? (
-                <div className="flex-1 grid grid-cols-5 grid-rows-4 gap-1">
-                  {[
-                    "1", "2", "3", "()", "",
-                    "4", "5", "6", "x", "",
-                    "7", "8", "9", "+/-", "",
-                    "0", "/", "^", ".", ""
-                  ].map((token, index) => {
-                    if (!token) return <div key={`hs-spacer-${index}`} className="h-9 w-full" />;
-                    return (
-                      <button
-                        key={`hs-${token}-${index}`}
-                        onClick={() => {
-                          if (token === "+/-") return;
-                          handleInput(token);
-                        }}
-                        onPointerDown={token === "+/-" ? handlePlusMinusFlickStart : undefined}
-                        onPointerUp={token === "+/-" ? handlePlusMinusFlickEnd : undefined}
-                        onPointerCancel={token === "+/-" ? handlePlusMinusFlickCancel : undefined}
-                        onTouchStart={token === "+/-" ? handlePlusMinusTouchStart : undefined}
-                        disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken(token)}
-                        className={`
-                          relative overflow-visible w-full font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
-                          ${token === "+/-" ? "h-10 rounded-lg text-[13px] tracking-wide mx-1" : "h-9 rounded-md text-[11px]"}
-                          ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                          ${token === "+/-" && plusMinusPopupOpen && plusMinusCandidate === "-" ? "bg-rose-50 text-rose-700 border-rose-300" : ""}
-                        `}
-                        style={token === "+/-" ? { touchAction: "none" } : undefined}
-                      >
-                        {renderKeyLabel(token)}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex-1 grid grid-cols-3 grid-rows-4 gap-1.5">
-                  {keypadDigitTopTokens.map((token) => (
-                    <button
-                      key={token}
-                      onClick={() => handleInput(token)}
-                      disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken(token)}
-                      className={`
-                        h-11 w-full rounded-lg text-base font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
-                        ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                      `}
-                    >
-                      {renderKeyLabel(token)}
-                    </button>
-                  ))}
+      {/* Bottom: Input Area */}
+      {status === 'playing' && (inputMode === 'numpad' ? (
+        <div className="w-full grid grid-cols-3 gap-3 pb-4">
+          {[7, 8, 9, 4, 5, 6, 1, 2, 3, 0].map((num) => (
+            <button
+              key={num}
+              onClick={() => handleInput(num.toString())}
+              disabled={status !== 'playing' || isStarting}
+              className={`
+                h-16 rounded-xl text-2xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all
+                ${num === 0 ? 'col-span-1' : ''}
+                bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50
+              `}
+            >
+              {num}
+            </button>
+          ))}
+          
+          {/* Delete Button */}
+          <button
+            onClick={handleDelete}
+            disabled={status !== 'playing' || isStarting}
+            className="h-16 rounded-xl text-xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all bg-red-100 text-red-600 border-2 border-red-200 hover:bg-red-200 flex items-center justify-center"
+          >
+            ⌫
+          </button>
+
+          {/* Attack/Enter Button */}
+          <button
+            onClick={handleAttack}
+            disabled={status !== 'playing' || input === '' || isStarting}
+            className="h-16 rounded-xl text-xl font-bold shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] transition-all bg-indigo-500 text-white border-2 border-indigo-600 hover:bg-indigo-600 flex items-center justify-center"
+          >
+            Attack!
+          </button>
+        </div>
+      ) : (
+        <div className="w-full flex flex-col items-center gap-4 pb-4">
+          <div className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 flex-wrap overflow-x-auto text-sm font-bold text-slate-700">
+              <button
+                onClick={() => runInference()}
+                disabled={isRecognizing || isStarting}
+                className="h-14 px-6 rounded-xl bg-indigo-600 text-white text-lg font-black shadow-[0_4px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[4px] disabled:opacity-60"
+              >
+                {uiText.judge}
+              </button>
+              <button
+                onClick={nextQuestion}
+                disabled={status !== 'playing' || isStarting}
+                className="h-10 px-4 rounded-lg bg-slate-700 text-white"
+              >
+                {uiText.nextQuestion}
+              </button>
+              <button
+                onClick={handleResetAnswer}
+                disabled={status !== 'playing' || isRecognizing}
+                className="h-10 px-4 rounded-lg bg-slate-700 text-white"
+              >
+                {uiText.reset}
+              </button>
+              <button
+                onClick={() => setSettingsOpen((v) => !v)}
+                className="ml-auto h-10 px-3 rounded-lg bg-slate-200 text-slate-700"
+              >
+                ⚙︎
+              </button>
+            </div>
+            {settingsOpen && (
+              <div className="mt-2 text-[11px] text-slate-600 space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
-                    onClick={() => handleInput("0")}
-                    disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken("0")}
-                    className={`
-                      h-11 w-full rounded-lg text-base font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
-                      ${canUseKeyToken("0") ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                    `}
+                    onClick={() => setInkFirstMode((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-full ${
+                      inkFirstMode ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
+                    }`}
                   >
-                    {renderKeyLabel("0")}
+                    Ink-first: {inkFirstMode ? "ON" : "OFF"}
                   </button>
-                  <div className="col-span-2 h-11 grid grid-cols-3 gap-1">
-                    {smallSymbolTokens.map((token) => (
-                      <button
-                        key={token}
-                        onClick={() => handleInput(token)}
-                        disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken(token)}
-                        className={`
-                          h-full w-full rounded-md text-[11px] font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
-                          ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                        `}
-                      >
-                        {renderKeyLabel(token)}
-                      </button>
-                    ))}
+                  <button
+                    onClick={() => setAutoJudgeEnabled((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-full ${
+                      autoJudgeEnabled ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    AUTO: {autoJudgeEnabled ? "ON" : "OFF"}
+                  </button>
+                  <button
+                    onClick={() => setAutoNextEnabled((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-full ${
+                      autoNextEnabled ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    NEXT: {autoNextEnabled ? "ON" : "OFF"}
+                  </button>
+                  <button
+                    onClick={() => setShowRecognitionGuides((prev) => !prev)}
+                    className={`px-2 py-0.5 rounded-full ${
+                      showRecognitionGuides ? "bg-green-500 text-white" : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    ガイド: {showRecognitionGuides ? "ON" : "OFF"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    data-testid="auto-draw-test"
+                    onClick={() => {
+                      void runAutoDrawTest();
+                    }}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    AutoDraw Test
+                  </button>
+                  <button
+                    data-testid="auto-draw-batch"
+                    onClick={() =>
+                      runAutoDrawBatchTest(
+                        100,
+                        ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+                        "Batch100"
+                      )
+                    }
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    Batch100
+                  </button>
+                  <button
+                    onClick={() => runAutoDrawDecimalBatchTest(100, "BatchDec100")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    BatchDec100
+                  </button>
+                  <button
+                    data-testid="auto-draw-frac-batch"
+                    onClick={() => runAutoDrawFractionBatchTest(100, "BatchFrac100")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    BatchFrac100
+                  </button>
+                  <button
+                    data-testid="auto-draw-mixed-batch"
+                    onClick={() => runAutoDrawMixedBatchTest(100, "BatchMixed100")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    BatchMixed100
+                  </button>
+                  <button
+                    onClick={() =>
+                      runAutoDrawBatchTest(
+                        500,
+                        ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+                        "Batch500"
+                      )
+                    }
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    Batch500
+                  </button>
+                  <button
+                    onClick={() => runAutoDrawBatchTest(200, ["0", "8"], "Batch08")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    Batch08
+                  </button>
+                  <button
+                    onClick={() => runAutoDrawBatchTest(200, ["4", "8", "9"], "Batch489")}
+                    className="px-3 py-0.5 rounded-md bg-slate-700 text-white"
+                  >
+                    Batch489
+                  </button>
+                </div>
+                {showRecognitionGuides && lastAutoDrawExpected && <div>AutoDraw正解: {lastAutoDrawExpected}</div>}
+                {showRecognitionGuides && autoDrawBatchSummary && <div>{autoDrawBatchSummary}</div>}
+              </div>
+            )}
+          </div>
+          <div ref={drawAreaRef} className="w-full">
+            <div
+              onPointerDown={handleDrawStart}
+              onPointerUp={handleDrawEnd}
+              onPointerLeave={handleDrawEnd}
+              onPointerCancel={handleDrawEnd}
+              onTouchStart={handleDrawStart}
+              onTouchEnd={handleDrawEnd}
+              onMouseDown={handleDrawStart}
+              onMouseUp={handleDrawEnd}
+              className="relative mx-auto overflow-visible"
+              style={{ width: visibleCanvasSize, height: visibleCanvasSize }}
+            >
+              <CanvasDraw
+                ref={canvasRef}
+                hideGrid={true}
+                brushRadius={3.2}
+                lazyRadius={0}
+                immediateLoading
+                brushColor="#000000"
+                backgroundColor="#ffffff"
+                canvasWidth={drawCanvasSize}
+                canvasHeight={drawCanvasSize}
+                className="absolute shadow-lg"
+                style={{ left: -OUTER_MARGIN, top: -OUTER_MARGIN }}
+                disabled={status !== 'playing'}
+                onChange={handleCanvasChange}
+              />
+              <div className="pointer-events-none absolute inset-0 rounded-xl border-2 border-slate-300" />
+              {startPopup && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
+                  <div className="px-6 py-3 rounded-full bg-white text-indigo-700 font-black text-2xl shadow-lg">
+                    {startPopup === 'ready' ? 'Ready!' : 'Go!'}
                   </div>
                 </div>
               )}
-              <div className="w-[92px] grid grid-cols-1 grid-rows-[44px_88px_36px] gap-1.5">
-                <button
-                  onClick={handleDelete}
-                  disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation}
-                  className="h-full w-full rounded-lg text-sm font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-red-100 text-red-600 border border-red-200 hover:bg-red-200 flex items-center justify-center"
-                >
-                  ⌫
-                </button>
-                <button
-                  onClick={handleAttack}
-                  disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canSubmitCurrentAnswer}
-                  className="h-full w-full rounded-lg text-base font-black shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all bg-indigo-600 text-white border border-indigo-700 hover:bg-indigo-700 flex items-center justify-center"
-                >
-                  {uiText.judge}
-                </button>
-                <button
-                  type="button"
-                  onClick={endLearningSession}
-                  disabled={sessionActionLoading}
-                  className="h-full w-full rounded-md text-xs font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-emerald-600 text-white border border-emerald-700 hover:bg-emerald-700 disabled:bg-slate-300 flex items-center justify-center"
-                >
-                  おわり
-                </button>
-              </div>
             </div>
           </div>
+          {showRecognitionGuides && previewImages.length > 0 && (
+            <div className="w-full flex justify-end">
+              <div className="text-xs text-slate-500 text-right">
+                入力(28x28)
+                <div className="mt-1 grid grid-cols-2 gap-2 justify-end">
+                  {[0, 1, 2, 3].map((idx) => (
+                    <canvas
+                      key={idx}
+                      width={28}
+                      height={28}
+                      className="border border-slate-200 bg-black"
+                      style={{ width: 56, height: 56, imageRendering: 'pixelated' }}
+                      ref={(el) => {
+                        if (!el) return;
+                        const ctx = el.getContext('2d');
+                        if (!ctx) return;
+                        ctx.clearRect(0, 0, 28, 28);
+                        if (previewImages[idx]) {
+                          ctx.putImageData(previewImages[idx], 0, 0);
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      ))}
 
       {status === 'playing' && (
-        <section className="w-full pb-1 space-y-1">
+        <section className="w-full pb-4 space-y-2">
+          <button
+            type="button"
+            onClick={endLearningSession}
+            disabled={sessionActionLoading}
+            className="w-full px-4 py-3 rounded-xl bg-emerald-600 text-white font-black text-base shadow disabled:bg-slate-300"
+          >
+            {uiText.endWithReport}
+          </button>
           {!studentId && (
-            <div className="text-[10px] text-right text-slate-600 bg-white/90 border border-slate-200 rounded px-2 py-1">
+            <div className="text-xs text-slate-600">
               保護者設定が未保存のためレポート配信はできません。
             </div>
           )}
           {sessionMailStatus && (
-            <div className="text-[10px] text-right text-emerald-700 font-semibold bg-emerald-50/95 border border-emerald-200 rounded px-2 py-1">{sessionMailStatus}</div>
+            <div className="text-xs text-emerald-700 font-semibold">{sessionMailStatus}</div>
           )}
           {sessionError && (
-            <div className="text-[10px] text-right text-red-700 bg-red-50/95 border border-red-200 rounded px-2 py-1">{sessionError}</div>
+            <div className="text-xs text-red-700">{sessionError}</div>
           )}
         </section>
       )}
-      {plusMinusPopupOpen && plusMinusPopupAnchor && typeof document !== "undefined"
-        ? createPortal(
-          <div
-            className="pointer-events-none fixed z-[120] inline-flex w-[52px] -translate-x-1/2 flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-xl"
-            style={{ left: plusMinusPopupAnchor.left, top: plusMinusPopupAnchor.top }}
-            aria-hidden="true"
-          >
-            <div className={`flex h-8 items-center justify-center text-sm font-bold ${plusMinusCandidate === "+" ? "bg-emerald-100 text-emerald-800" : "bg-white text-slate-700"}`}>+</div>
-            <div className={`flex h-8 items-center justify-center text-sm font-bold border-t border-slate-200 ${plusMinusCandidate === "-" ? "bg-rose-100 text-rose-700" : "bg-white text-slate-700"}`}>-</div>
-          </div>,
-          document.body
-        )
-        : null}
 
     </main>
   );

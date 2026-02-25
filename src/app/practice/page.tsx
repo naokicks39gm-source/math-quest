@@ -10,6 +10,8 @@ import {
   TypeDef
 } from "@/lib/elementaryContent";
 import { getCatalogGrades } from "@/lib/gradeCatalog";
+import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
+import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
 
 const gcd = (a: number, b: number) => {
   let x = Math.abs(a);
@@ -124,6 +126,16 @@ export default function PracticePage() {
     if (!selectedType || selectedType.example_items.length === 0) return null;
     return selectedType.example_items[itemIndex % selectedType.example_items.length];
   }, [selectedType, itemIndex]);
+  const currentAid = useMemo(
+    () =>
+      getSecondaryLearningAid({
+        gradeId: selectedType?.type_id.split(".")[0] ?? "",
+        typeId: selectedType?.type_id,
+        patternId: selectedType?.generation_params?.pattern_id,
+        answer: currentItem?.answer
+      }),
+    [selectedType?.type_id, selectedType?.generation_params?.pattern_id, currentItem?.answer]
+  );
 
   const handleSelectType = (type: TypeDef) => {
     setSelectedType(type);
@@ -148,31 +160,24 @@ export default function PracticePage() {
     <main className="min-h-screen bg-slate-50 text-slate-900 p-6">
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-[320px_1fr] gap-6">
         <aside className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <h1 className="text-lg font-bold mb-4">学年 → カテゴリ → タイプ</h1>
+          <h1 className="text-lg font-bold mb-4">学年 → 問題</h1>
           <div className="space-y-4 max-h-[70vh] overflow-y-auto">
             {grades.map((grade) => (
               <div key={grade.grade_id}>
                 <div className="font-bold text-slate-700">{grade.grade_name}</div>
-                <div className="mt-2 space-y-2">
-                  {grade.categories.map((cat) => (
-                    <div key={cat.category_id} className="pl-2">
-                      <div className="text-sm font-semibold text-slate-600">{cat.category_name}</div>
-                      <div className="mt-1 space-y-1">
-                        {cat.types.map((type) => (
-                          <button
-                            key={type.type_id}
-                            onClick={() => handleSelectType(type)}
-                            className={`block w-full text-left text-sm rounded-md px-2 py-1 transition ${
-                              selectedType?.type_id === type.type_id
-                                ? "bg-indigo-100 text-indigo-700"
-                                : "hover:bg-slate-100 text-slate-700"
-                            }`}
-                          >
-                            {type.display_name ?? type.type_name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                <div className="mt-2 pl-2 space-y-1">
+                  {grade.categories.flatMap((cat) => cat.types).map((type) => (
+                    <button
+                      key={type.type_id}
+                      onClick={() => handleSelectType(type)}
+                      className={`block w-full text-left text-sm rounded-md px-2 py-1 transition ${
+                        selectedType?.type_id === type.type_id
+                          ? "bg-indigo-100 text-indigo-700"
+                          : "hover:bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {type.display_name ?? type.type_name}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -192,6 +197,12 @@ export default function PracticePage() {
                 <div className="text-sm text-slate-500 mb-1">問題</div>
                 <div className="text-xl font-bold">{renderPrompt(currentItem)}</div>
               </div>
+
+              {currentAid && (
+                <div className="mb-6">
+                  <SecondaryExplanationPanel aid={currentAid} />
+                </div>
+              )}
 
               <div className="flex flex-col md:flex-row gap-3 items-start md:items-end">
                 <div className="w-full md:w-2/3">

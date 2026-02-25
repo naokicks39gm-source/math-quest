@@ -13,6 +13,7 @@ export default function Home() {
 
   const [gradeId, setGradeId] = useState(grades[0]?.grade_id ?? "");
   const [typeId, setTypeId] = useState("");
+  const [mounted, setMounted] = useState(false);
 
   const grade = useMemo(() => {
     return grades.find((g) => g.grade_id === gradeId) ?? null;
@@ -27,6 +28,10 @@ export default function Home() {
       }))
     );
   }, [grade]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const savedTypeId = typeof window !== "undefined" ? localStorage.getItem(LS_LAST_TYPE_ID) : null;
@@ -52,48 +57,61 @@ export default function Home() {
     const selected = problems.find((problem) => problem.type_id === typeId);
     if (!selected) return;
     localStorage.setItem(LS_LAST_TYPE_ID, typeId);
-    const url = `/quest?type=${encodeURIComponent(typeId)}&category=${encodeURIComponent(selected.category_id)}`;
+    const run = Date.now().toString(36);
+    const url = `/quest?type=${encodeURIComponent(typeId)}&category=${encodeURIComponent(selected.category_id)}&run=${encodeURIComponent(run)}`;
     router.push(url);
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-6">
-      <div className="w-full max-w-3xl space-y-5">
-        <section className="w-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
+    <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-100 via-slate-200 to-slate-100 text-slate-900 flex items-center justify-center p-6">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-70 bg-[radial-gradient(circle_at_12%_14%,rgba(148,163,184,0.22),transparent_38%),radial-gradient(circle_at_88%_82%,rgba(148,163,184,0.18),transparent_36%),repeating-linear-gradient(135deg,rgba(148,163,184,0.06)_0px,rgba(148,163,184,0.06)_1px,transparent_1px,transparent_10px)]"
+      />
+      <div className="relative z-10 w-full max-w-3xl space-y-5">
+        <section className="w-full bg-white/90 border border-slate-300/80 rounded-2xl p-6 shadow-[0_10px_30px_rgba(15,23,42,0.10)] backdrop-blur-sm space-y-3">
           <h1 className="text-2xl font-black text-slate-900">Math Quest</h1>
           <div className="font-semibold text-slate-800">学習の選択と開始</div>
 
           <label className="block text-sm font-bold text-slate-700">
             学年
-            <select
-              className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
-              value={gradeId}
-              onChange={(e) => {
-                setGradeId(e.target.value);
-                setTypeId("");
-              }}
-            >
-              {grades.map((g) => (
-                <option key={g.grade_id} value={g.grade_id}>
-                  {g.grade_name}
-                </option>
-              ))}
-            </select>
+            {mounted ? (
+              <select
+                className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
+                value={gradeId}
+                onChange={(e) => {
+                  setGradeId(e.target.value);
+                  setTypeId("");
+                }}
+              >
+                {grades.map((g) => (
+                  <option key={g.grade_id} value={g.grade_id}>
+                    {g.grade_name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="mt-1 h-10 w-full border border-slate-300 rounded-md bg-slate-100" />
+            )}
           </label>
 
           <label className="block text-sm font-bold text-slate-700">
             問題
-            <select
-              className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
-              value={typeId}
-              onChange={(e) => setTypeId(e.target.value)}
-            >
-              {problems.map((t) => (
-                <option key={t.type_id} value={t.type_id}>
-                  {t.display_name ?? t.type_name}
-                </option>
-              ))}
-            </select>
+            {mounted ? (
+              <select
+                className="mt-1 w-full border border-slate-300 rounded-md px-3 py-2"
+                value={typeId}
+                onChange={(e) => setTypeId(e.target.value)}
+              >
+                {problems.map((t) => (
+                  <option key={t.type_id} value={t.type_id}>
+                    {t.display_name ?? t.type_name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="mt-1 h-10 w-full border border-slate-300 rounded-md bg-slate-100" />
+            )}
           </label>
 
           <div className="flex flex-wrap gap-2">
@@ -112,7 +130,7 @@ export default function Home() {
           </p>
         </section>
 
-        <section className="w-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
+        <section className="w-full bg-white/88 border border-slate-300/75 rounded-2xl p-6 shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-sm space-y-3">
           <div className="font-semibold text-slate-800">保護者レポート設定</div>
           <button
             type="button"

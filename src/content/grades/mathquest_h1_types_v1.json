@@ -343,16 +343,19 @@
               },
               "example_items": [
                 {
-                  "prompt": "x^2-5x+6=0 の解(小さい順) =",
-                  "answer": "2,3"
+                  "prompt": "x^2+x-6=0",
+                  "answer": "-3,2",
+                  "prompt_tex": "x^{2}+x-6=0"
                 },
                 {
-                  "prompt": "x^2-9=0 の解(小さい順) =",
-                  "answer": "-3,3"
+                  "prompt": "x^2+x-6=0",
+                  "answer": "-3,2",
+                  "prompt_tex": "x^2 + x - 6 = 0"
                 },
                 {
-                  "prompt": "x^2+x-6=0 の解(小さい順) =",
-                  "answer": "-3,2"
+                  "prompt": "x^2+x-6=0",
+                  "answer": "-3,2",
+                  "prompt_tex": "x^{2}+x-6 = 0"
                 }
               ]
             }

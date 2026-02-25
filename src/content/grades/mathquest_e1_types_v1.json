@@ -308,6 +308,132 @@
                   "prompt_tex": "77 - 8 ="
                 }
               ]
+            },
+            {
+              "type_id": "E1.NA.SUB.SUB_2D_2D_NO",
+              "type_name": "ひき算（2けた-2けた）",
+              "school": "E1",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_2D_2D_NO",
+                "a_digits": 2,
+                "b_digits": 2,
+                "borrow": false
+              },
+              "example_items": [
+                {
+                  "prompt": "87 - 45 =",
+                  "answer": "42",
+                  "prompt_tex": "87 - 45 ="
+                },
+                {
+                  "prompt": "76 - 33 =",
+                  "answer": "43",
+                  "prompt_tex": "76 - 33 ="
+                },
+                {
+                  "prompt": "94 - 52 =",
+                  "answer": "42",
+                  "prompt_tex": "94 - 52 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E1.NA.SUB.SUB_2D_2D_YES",
+              "type_name": "ひき算（2けた-2けた）",
+              "school": "E1",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_2D_2D_YES",
+                "a_digits": 2,
+                "b_digits": 2,
+                "borrow": true
+              },
+              "example_items": [
+                {
+                  "prompt": "52 - 37 =",
+                  "answer": "15",
+                  "prompt_tex": "52 - 37 ="
+                },
+                {
+                  "prompt": "61 - 48 =",
+                  "answer": "13",
+                  "prompt_tex": "61 - 48 ="
+                },
+                {
+                  "prompt": "70 - 56 =",
+                  "answer": "14",
+                  "prompt_tex": "70 - 56 ="
+                }
+              ]
+            },
+            {
+              "type_id": "E1.NA.SUB.SUB_2D_2D_ANY",
+              "type_name": "ひき算（2けた-2けた）",
+              "school": "E1",
+              "curriculum_label": "整数の減法",
+              "display_mapping": {
+                "domain": "NA",
+                "subdomain": "SUB"
+              },
+              "answer_format": {
+                "kind": "int"
+              },
+              "grading": {
+                "kind": "int",
+                "normalize": {
+                  "trim": true
+                }
+              },
+              "generation_params": {
+                "pattern_id": "SUB_2D_2D_ANY",
+                "a_digits": 2,
+                "b_digits": 2,
+                "borrow": null
+              },
+              "example_items": [
+                {
+                  "prompt": "83 - 41 =",
+                  "answer": "42",
+                  "prompt_tex": "83 - 41 ="
+                },
+                {
+                  "prompt": "64 - 29 =",
+                  "answer": "35",
+                  "prompt_tex": "64 - 29 ="
+                },
+                {
+                  "prompt": "90 - 27 =",
+                  "answer": "63",
+                  "prompt_tex": "90 - 27 ="
+                }
+              ]
             }
           ]
         },

@@ -16,6 +16,7 @@ test("top page has learning start controls and guardian link", () => {
   assert.doesNotMatch(source, /全学年まとめてはじめる/);
   assert.match(source, /保護者レポート設定ページへ/);
   assert.match(source, /router\.push\("\/guardian"\)/);
+  assert.match(source, /&run=\$\{encodeURIComponent\(run\)\}/);
 });
 
 test("guardian page is settings-only", () => {
