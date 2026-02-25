@@ -12,6 +12,16 @@ test("quest top picker uses one problem button with grade and problem sections",
   assert.match(source, /<span>問題<\/span>/);
   assert.match(source, /const gradeOptions = useMemo/);
   assert.match(source, /const pickerGradeTypes = useMemo/);
+  assert.match(source, /const currentGradeOptionRef = useRef<HTMLButtonElement \| null>\(null\);/);
+  assert.match(source, /const currentProblemOptionRef = useRef<HTMLButtonElement \| null>\(null\);/);
+  assert.match(source, /const problemOptionsScrollRef = useRef<HTMLDivElement \| null>\(null\);/);
+  assert.match(source, /currentProblemOptionRef\.current\.scrollIntoView\(\{ block: "start", inline: "nearest" \}\)/);
+  assert.match(source, /problemOptionsScrollRef\.current\.scrollTop = 0/);
+  assert.match(source, /currentGradeOptionRef\.current\?\.scrollIntoView\(\{ block: "start", inline: "nearest" \}\)/);
+  assert.match(source, /ref=\{isPickedGrade \? currentGradeOptionRef : null\}/);
+  assert.match(source, /ref=\{isCurrent \? currentProblemOptionRef : null\}/);
+  assert.match(source, /ref=\{problemOptionsScrollRef\}/);
+  assert.match(source, /pickerGradeTypes\.map\(\(option\) =>/);
   assert.match(source, /flatMap\(\(category\) =>/);
 });
 
