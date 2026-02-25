@@ -64,6 +64,14 @@ test("NUM patterns have deterministic fallback generation", () => {
   assert.equal(source.includes("どちらが大きい？"), true);
 });
 
+test("DIV_EQUAL_SHARE_BASIC has deterministic fallback generation and strategy mapping", () => {
+  assert.equal(source.includes('if (patternId === "DIV_EQUAL_SHARE_BASIC")'), true);
+  assert.equal(source.includes("for (let people = 2; people <= 9"), true);
+  assert.equal(source.includes("for (let each = 2; each <= 9"), true);
+  assert.equal(source.includes('prompt: `${total}こを ${people}人で おなじかずに わけると 1人なんこ？`'), true);
+  assert.equal(source.includes("DIV_EQUAL_SHARE_BASIC: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),"), true);
+});
+
 test("MIXED_TO_20 has deterministic fallback generation and strategy mapping", () => {
   assert.equal(source.includes('if (patternId === "MIXED_TO_20")'), true);
   assert.equal(source.includes("const addPairs: Array<[number, number]> = [];"), true);
@@ -117,4 +125,41 @@ test("E2 2-digit-1-digit stock applies final range guard", () => {
   assert.equal(source.includes("const filterE2Sub2D1DRange ="), true);
   assert.equal(source.includes("if (!isE2Sub2D1DType(typeId)) return entries;"), true);
   assert.equal(source.includes("unique = filterE2Sub2D1DRange(unique, type.type_id);"), true);
+});
+
+test("E2 2-digit+2-digit no-carry stock filters out carry cases", () => {
+  assert.equal(source.includes("const isE2Add2D2DNoType ="), true);
+  assert.equal(source.includes("const filterE2Add2D2DNoNoCarry ="), true);
+  assert.equal(source.includes("if (!isE2Add2D2DNoType(typeId)) return entries;"), true);
+  assert.equal(source.includes("const onesNoCarry = (a % 10) + (b % 10) < 10;"), true);
+  assert.equal(source.includes("const tensNoCarry = Math.floor(a / 10) + Math.floor(b / 10) < 10;"), true);
+  assert.equal(source.includes("if (!onesNoCarry || !tensNoCarry) return false;"), true);
+  assert.equal(source.includes("if (answer > 99) return false;"), true);
+  assert.equal(source.includes("unique = filterE2Add2D2DNoNoCarry(unique, type.type_id);"), true);
+});
+
+test("stock fallback add no-carry uses all-column carry detection", () => {
+  assert.equal(source.includes("const hasAnyColumnCarry = (a: number, b: number) => {"), true);
+  assert.equal(source.includes("const carry = hasAnyColumnCarry(a, b);"), true);
+  assert.equal(source.includes("if (needsNo && carry) continue;"), true);
+});
+
+test("E2 multiplication dan/mix fallback keeps left operand aligned with type", () => {
+  assert.equal(source.includes("const mulDan = patternId.match(/MUL_1D_1D_DAN_(\\d)$/);"), true);
+  assert.equal(source.includes("const mulMix = patternId.match(/MUL_1D_1D_MIX_(\\d)_(\\d)$/);"), true);
+  assert.equal(source.includes("if (isMul && mulDan) {"), true);
+  assert.equal(source.includes("prompt: `${dan} × ${right} =`"), true);
+  assert.equal(source.includes("if (isMul && mulMix) {"), true);
+  assert.equal(source.includes("const left = mixMin + ((attempts - 1) % width);"), true);
+  assert.equal(source.includes("prompt: `${left} × ${right} =`"), true);
+});
+
+test("E2 multiplication dan/mix stock applies final guard filter", () => {
+  assert.equal(source.includes("const getE2MulDanFromTypeId ="), true);
+  assert.equal(source.includes("const getE2MulMixRangeFromTypeId ="), true);
+  assert.equal(source.includes("const filterE2MulDanMixRange ="), true);
+  assert.equal(source.includes("if (dan !== null) {"), true);
+  assert.equal(source.includes("return left === dan && right >= 1 && right <= 9;"), true);
+  assert.equal(source.includes("return left >= mixRange.min && left <= mixRange.max && right >= 1 && right <= 9;"), true);
+  assert.equal(source.includes("unique = filterE2MulDanMixRange(unique, type.type_id);"), true);
 });

@@ -66,12 +66,26 @@ const normalizeExpr = (input: string) => {
   return input.replace(/\s+/g, "").replace(/×/g, "*");
 };
 
-const renderPrompt = (item: ExampleItem) => {
+const trimTrailingEquationEquals = (text: string) => text.replace(/\s*[=＝]\s*$/u, "");
+const ensureTrailingEquationEquals = (text: string) => {
+  const trimmed = text.trim();
+  if (!trimmed) return trimmed;
+  return /[=＝]\s*$/u.test(trimmed) ? trimmed : `${trimmed} =`;
+};
+const shouldForceEqualsForElementaryE2Plus = (typeId?: string) =>
+  Boolean(typeId && /^E[2-6]\./.test(typeId));
+
+const renderPrompt = (item: ExampleItem, typeId?: string) => {
+  const forceEquals = shouldForceEqualsForElementaryE2Plus(typeId);
   const tex = item.prompt_tex?.trim();
+  const displayPrompt = forceEquals
+    ? ensureTrailingEquationEquals(trimTrailingEquationEquals(item.prompt))
+    : item.prompt;
   if (tex) {
-    return <InlineMath math={tex} renderError={() => <span>{item.prompt}</span>} />;
+    const displayTex = forceEquals ? ensureTrailingEquationEquals(trimTrailingEquationEquals(tex)) : tex;
+    return <InlineMath math={displayTex} renderError={() => <span>{displayPrompt}</span>} />;
   }
-  return <span>{item.prompt}</span>;
+  return <span>{displayPrompt}</span>;
 };
 
 const judgeAnswer = (userInput: string, answer: string, format: AnswerFormat) => {
@@ -195,7 +209,7 @@ export default function PracticePage() {
             <>
               <div className="mb-6">
                 <div className="text-sm text-slate-500 mb-1">問題</div>
-                <div className="text-xl font-bold">{renderPrompt(currentItem)}</div>
+                <div className="text-xl font-bold">{renderPrompt(currentItem, selectedType?.type_id)}</div>
               </div>
 
               {currentAid && (

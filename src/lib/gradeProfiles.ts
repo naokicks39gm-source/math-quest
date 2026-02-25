@@ -220,15 +220,15 @@ const profiles: Record<string, GradeProfile> = {
         { prompt: "8 × 6 =", answer: "48" },
         { prompt: "9 × 4 =", answer: "36" }
       ]),
-      intType("E2.NA.MUL.MUL_1D_1D_MIX_1_9", "かけ算（1けた×1けた・1〜9の段混合）", "MUL_1D_1D_MIX_1_9", [
+      intType("E2.NA.MUL.MUL_1D_1D_MIX_1_9", "かけざん９９テスト", "MUL_1D_1D_MIX_1_9", [
         { prompt: "3 × 9 =", answer: "27" },
         { prompt: "6 × 7 =", answer: "42" },
         { prompt: "8 × 5 =", answer: "40" }
       ]),
       intType("E2.NA.DIV.DIV_EQUAL_SHARE_BASIC", "わり算（等分の概念）", "DIV_EQUAL_SHARE_BASIC", [
-        { prompt: "12こを 3人で 同じ数に分けると 1人何こ？", answer: "4" },
-        { prompt: "10こを 2人で 同じ数に分けると 1人何こ？", answer: "5" },
-        { prompt: "15こを 5人で 同じ数に分けると 1人何こ？", answer: "3" }
+        { prompt: "12こを 3人で おなじかずに わけると 1人なんこ？", answer: "4" },
+        { prompt: "10こを 2人で おなじかずに わけると 1人なんこ？", answer: "5" },
+        { prompt: "15こを 5人で おなじかずに わけると 1人なんこ？", answer: "3" }
       ])
     ],
     orderedTypeIds: [

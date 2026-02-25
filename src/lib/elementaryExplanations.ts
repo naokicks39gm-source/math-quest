@@ -8,7 +8,7 @@ export type ColumnStoryFrame = {
   line?: boolean;
   partial?: string;
   digitAdjustments?: Array<{ offsetFromRight: number; label: "+1" | "-1" | "+10" }>;
-  focusPlace?: "ones" | "next";
+  focusPlace?: "ones" | "tens" | "hundreds";
 };
 
 export type ElementaryVisual = {
@@ -16,6 +16,8 @@ export type ElementaryVisual = {
   left?: number;
   right?: number;
   result?: number;
+  groupSize?: number;
+  groupedTotal?: number;
   showTenBundle?: boolean;
   top?: number;
   bottom?: number;
@@ -29,6 +31,9 @@ export type ElementaryLearningAid = {
   steps: string[];
   conclusion: string;
   numberingStyle?: "decimal" | "circled";
+  useBulletList?: boolean;
+  leadText?: string;
+  tableRows?: Array<{ expr: string; goro: string }>;
   embedAnswerInSteps?: boolean;
   cleanAnswerText?: string;
   visual?: ElementaryVisual;
@@ -79,6 +84,109 @@ const stripDecimal = (value: number) => {
 
 const formatNumber = (value: number) => stripDecimal(value);
 const E1_FOUNDATION_PATTERNS = new Set(["NUM_COMPARE_UP_TO_20", "NUM_DECOMP_10", "NUM_COMP_10"]);
+const E2_DAN_PATTERN_RE = /^MUL_1D_1D_DAN_([1-9])$/;
+
+const E2_DAN_GORO: Record<number, string[]> = {
+  1: [
+    "1×1＝1　いんいちがいち",
+    "1×2＝2　いんにがに",
+    "1×3＝3　いんさんがさん",
+    "1×4＝4　いんしがよん",
+    "1×5＝5　いんごがご",
+    "1×6＝6　いんろくがろく",
+    "1×7＝7　いんしちがなな",
+    "1×8＝8　いんはちがはち",
+    "1×9＝9　いんくがきゅう"
+  ],
+  2: [
+    "2×1＝2　にいちがに",
+    "2×2＝4　ににんがし",
+    "2×3＝6　にさんがろく",
+    "2×4＝8　にしがはち",
+    "2×5＝10　にごじゅう",
+    "2×6＝12　にろくじゅうに",
+    "2×7＝14　にしちじゅうし",
+    "2×8＝16　にはちじゅうろく",
+    "2×9＝18　にくじゅうはち"
+  ],
+  3: [
+    "3×1＝3　さんいちがさん",
+    "3×2＝6　さんにがろく",
+    "3×3＝9　さんざんがきゅう",
+    "3×4＝12　さんしじゅうに",
+    "3×5＝15　さんごじゅうご",
+    "3×6＝18　さぶろくじゅうはち",
+    "3×7＝21　さんしちにじゅういち",
+    "3×8＝24　さんぱにじゅうし",
+    "3×9＝27　さんくにじゅうしち"
+  ],
+  4: [
+    "4×1＝4　しいちがし",
+    "4×2＝8　しにがはち",
+    "4×3＝12　しさんじゅうに",
+    "4×4＝16　ししじゅうろく",
+    "4×5＝20　しごにじゅう",
+    "4×6＝24　しろくにじゅうし",
+    "4×7＝28　ししちにじゅうはち",
+    "4×8＝32　しはさんじゅうに",
+    "4×9＝36　しくさんじゅうろく"
+  ],
+  5: [
+    "5×1＝5　ごいちがご",
+    "5×2＝10　ごにじゅう",
+    "5×3＝15　ごさんじゅうご",
+    "5×4＝20　ごしにじゅう",
+    "5×5＝25　ごごにじゅうご",
+    "5×6＝30　ごろくさんじゅう",
+    "5×7＝35　ごしちさんじゅうご",
+    "5×8＝40　ごはしじゅう",
+    "5×9＝45　ごっくしじゅうご"
+  ],
+  6: [
+    "6×1＝6　ろくいちがろく",
+    "6×2＝12　ろくにじゅうに",
+    "6×3＝18　ろくさんじゅうはち",
+    "6×4＝24　ろくしにじゅうよん",
+    "6×5＝30　ろくごさんじゅう",
+    "6×6＝36　ろくろくさんじゅうろく",
+    "6×7＝42　ろくしちしじゅうに",
+    "6×8＝48　ろくはしじゅうはち",
+    "6×9＝54　ろっくごじゅうし"
+  ],
+  7: [
+    "7×1＝7　しちいちがしち",
+    "7×2＝14　しちにじゅうし",
+    "7×3＝21　しちさんにじゅういち",
+    "7×4＝28　しちしにじゅうはち",
+    "7×5＝35　しちごさんじゅうご",
+    "7×6＝42　しちろくしじゅうに",
+    "7×7＝49　しちしちしじゅうく",
+    "7×8＝56　しちはちごじゅうろく",
+    "7×9＝63　しちくろくじゅうさん"
+  ],
+  8: [
+    "8×1＝8　はちいちがはち",
+    "8×2＝16　はちにじゅうろく",
+    "8×3＝24　はちさんにじゅうし",
+    "8×4＝32　はちしさんじゅうに",
+    "8×5＝40　はちごしじゅう",
+    "8×6＝48　はちろくしじゅうはち",
+    "8×7＝56　はちしちごじゅうろく",
+    "8×8＝64　はっぱろくじゅうし",
+    "8×9＝72　はっくしちじゅうに"
+  ],
+  9: [
+    "9×1＝9　くいちがく",
+    "9×2＝18　くにじゅうはち",
+    "9×3＝27　くさんにじゅうしち",
+    "9×4＝36　くしさんじゅうろく",
+    "9×5＝45　くごしじゅうご",
+    "9×6＝54　くろくごじゅうし",
+    "9×7＝63　くしちろくじゅうさん",
+    "9×8＝72　くはしちじゅうに",
+    "9×9＝81　くくはちじゅういち"
+  ]
+};
 
 const normalizeAnswerText = (raw: string) =>
   String(raw)
@@ -210,6 +318,60 @@ const buildColumnStoryFrames = (left: number, right: number, operator: "+" | "-"
   };
 
   const digitAdjustments = collectDigitAdjustments();
+  const maxIntDigits = Math.max(String(intLeft).length, String(intRight).length, String(Math.trunc(Math.abs(result))).length);
+  const subtractionBorrowPlaces = new Set<number>();
+  if (operator === "-") {
+    const scale = 10 ** decimalPlaces;
+    const lhs = Math.round(absLeft * scale);
+    const rhs = Math.round(absRight * scale);
+    const maxLen = Math.max(String(lhs).length, String(rhs).length) + 1;
+    let borrow = 0;
+    for (let place = 0; place < maxLen; place += 1) {
+      const base = 10 ** place;
+      const d1 = Math.floor(lhs / base) % 10;
+      const d2 = Math.floor(rhs / base) % 10;
+      const lhsAfterBorrow = d1 - borrow;
+      if (lhsAfterBorrow < d2) {
+        subtractionBorrowPlaces.add(place);
+        borrow = 1;
+      } else {
+        borrow = 0;
+      }
+    }
+  }
+
+  const selectFrameAdjustments = (place: "ones" | "tens" | "hundreds") => {
+    if (operator === "+") {
+      const carryTargetOffset = place === "ones" ? 1 : place === "tens" ? 2 : 3;
+      // Show only the carry that impacts the current frame:
+      // ones frame -> +1 on tens, tens frame -> +1 on hundreds.
+      return digitAdjustments.filter((adj) => adj.label === "+1" && adj.offsetFromRight === carryTargetOffset);
+    }
+    if (operator === "-") {
+      const currentPlace = place === "ones" ? 0 : place === "tens" ? 1 : 2;
+      const frameMarks: Array<{ offsetFromRight: number; label: "+1" | "-1" | "+10" }> = [];
+
+      // If the previous place borrowed, current place has already become -1.
+      if (currentPlace > 0 && subtractionBorrowPlaces.has(currentPlace - 1)) {
+        frameMarks.push({ offsetFromRight: currentPlace, label: "-1" });
+      }
+      // Borrow that happens while solving the current place.
+      if (subtractionBorrowPlaces.has(currentPlace)) {
+        frameMarks.push({ offsetFromRight: currentPlace + 1, label: "-1" });
+        frameMarks.push({ offsetFromRight: currentPlace, label: "+10" });
+      }
+      return frameMarks;
+    }
+    return digitAdjustments;
+  };
+
+  const buildPartialByPlace = (place: 0 | 1 | 2) => {
+    const absResult = Math.abs(Math.trunc(result));
+    const mod = 10 ** (place + 1);
+    const part = absResult % mod;
+    if (place === 0) return String(part);
+    return String(part).padStart(place + 1, "0");
+  };
 
   const frames: ColumnStoryFrame[] = [];
 
@@ -246,19 +408,42 @@ const buildColumnStoryFrames = (left: number, right: number, operator: "+" | "-"
       operator,
       line: true,
       partial: String(ones),
-      digitAdjustments,
+      digitAdjustments: selectFrameAdjustments("ones"),
       focusPlace: "ones"
     });
-    frames.push({
-      title: "つぎのくらい",
-      top: formatAligned(absLeft),
-      bottom: formatAligned(absRight),
-      operator,
-      line: true,
-      partial: formatNumber(result),
-      digitAdjustments,
-      focusPlace: "next"
-    });
+    if (maxIntDigits >= 3 && decimalPlaces === 0) {
+      frames.push({
+        title: "10のくらい",
+        top: formatAligned(absLeft),
+        bottom: formatAligned(absRight),
+        operator,
+        line: true,
+        partial: buildPartialByPlace(1),
+        digitAdjustments: selectFrameAdjustments("tens"),
+        focusPlace: "tens"
+      });
+      frames.push({
+        title: "100のくらい",
+        top: formatAligned(absLeft),
+        bottom: formatAligned(absRight),
+        operator,
+        line: true,
+        partial: formatNumber(result),
+        digitAdjustments: selectFrameAdjustments("hundreds"),
+        focusPlace: "hundreds"
+      });
+    } else {
+      frames.push({
+        title: "10のくらい",
+        top: formatAligned(absLeft),
+        bottom: formatAligned(absRight),
+        operator,
+        line: true,
+        partial: formatNumber(result),
+        digitAdjustments: selectFrameAdjustments("tens"),
+        focusPlace: "tens"
+      });
+    }
   } else if (operator === "×") {
     frames.push({
       title: "かける",
@@ -394,10 +579,92 @@ const buildNumComp10Aid = (left: number, right: number): ElementaryLearningAid =
   };
 };
 
+const buildEqualShareAbacusAid = (total: number, people: number): ElementaryLearningAid => {
+  if (people <= 0) return buildSimpleAid();
+  const each = total / people;
+  const answerText = formatNumber(each);
+  return {
+    kind: "abacus",
+    title: "おはじきでわける",
+    steps: [],
+    leadText: `${total}こ${people}人にわける`,
+    conclusion: answerText,
+    cleanAnswerText: answerText,
+    visual: {
+      mode: "abacus",
+      left: total,
+      right: people,
+      result: each,
+      groupSize: people,
+      groupedTotal: total,
+      operator: "÷"
+    }
+  };
+};
+
+const getDanFromPattern = (patternId?: string) => {
+  const match = (patternId ?? "").match(E2_DAN_PATTERN_RE);
+  return match ? Number(match[1]) : null;
+};
+
+const isE2Mul99Type = (typeId?: string, patternId?: string) => {
+  if (!typeId?.startsWith("E2.NA.MUL.MUL_1D_1D_")) return false;
+  if (!patternId) return false;
+  return /^MUL_1D_1D_(DAN_[1-9]|MIX_1_3|MIX_4_6|MIX_7_9|MIX_1_9)$/u.test(patternId);
+};
+
+const resolveDanFromPrompt = (prompt?: string) => {
+  const parsed = parseFirstTwoNumbers(prompt ?? "");
+  if (!parsed) return null;
+  if (parsed.left >= 1 && parsed.left <= 9) return parsed.left;
+  if (parsed.right >= 1 && parsed.right <= 9) return parsed.right;
+  return null;
+};
+
+const parseDanGoroLine = (line: string) => {
+  const parts = line.trim().split(/\s+/u);
+  const expr = parts.shift() ?? "";
+  const goro = parts.join(" ");
+  return { expr, goro };
+};
+
+const buildE2DanGoroAid = (dan: number, prompt?: string): ElementaryLearningAid => {
+  const lines = E2_DAN_GORO[dan] ?? [];
+  const tableRows = lines.map((line) => parseDanGoroLine(line));
+  const parsed = parseFirstTwoNumbers(prompt ?? "");
+  const currentIndex =
+    parsed && parsed.left === dan && parsed.right >= 1 && parsed.right <= 9
+      ? parsed.right - 1
+      : null;
+  const currentRow = currentIndex !== null ? tableRows[currentIndex] : null;
+  const leadText =
+    currentRow && currentRow.expr
+      ? `いまの もんだい: ${currentRow.expr}${currentRow.goro ? ` ${currentRow.goro}` : ""}`
+      : undefined;
+  return {
+    kind: "simple",
+    title: `${dan}のだん ごろあわせ`,
+    steps: [],
+    leadText,
+    tableRows,
+    conclusion: "こえに だして おぼえよう",
+    cleanAnswerText: "こえに だして おぼえよう",
+    embedAnswerInSteps: true,
+    visual: {
+      mode: "simple"
+    }
+  };
+};
+
 export const getElementaryLearningAid = ({ gradeId, typeId, patternId, prompt, aDigits, bDigits }: ElementaryAidParams): ElementaryLearningAid | null => {
   if (!isElementaryGrade(gradeId)) return null;
   const finalize = (aid: ElementaryLearningAid) =>
     shouldUseCircledNumbering(gradeId, patternId) ? applyCircledStyle(aid) : aid;
+
+  const dan = getDanFromPattern(patternId) ?? resolveDanFromPrompt(prompt);
+  if (gradeId === "E2" && dan !== null && isE2Mul99Type(typeId, patternId)) {
+    return buildE2DanGoroAid(dan, prompt);
+  }
 
   if (patternId === "NUM_COMPARE_UP_TO_20") {
     const parsed = parseFirstTwoNumbers(prompt ?? "");
@@ -415,6 +682,13 @@ export const getElementaryLearningAid = ({ gradeId, typeId, patternId, prompt, a
     const parsed = parseFirstTwoNumbers(prompt ?? "");
     if (!parsed) return finalize(buildSimpleAid());
     return finalize(buildNumComp10Aid(parsed.left, parsed.right));
+  }
+
+  if (patternId === "DIV_EQUAL_SHARE_BASIC") {
+    const parsed = parseFirstTwoNumbers(prompt ?? "");
+    if (!parsed) return buildSimpleAid();
+    // Keep E2-22 explanation in custom visual mode without circled-step conversion.
+    return buildEqualShareAbacusAid(Math.abs(parsed.left), Math.abs(parsed.right));
   }
 
   if (!isColumnPattern(typeId, patternId)) {

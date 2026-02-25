@@ -106,8 +106,17 @@ const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
 const LS_STUDENT_ID = "mq:studentId";
 const DEFAULT_TOTAL_QUESTIONS = 5;
 const E1_SUMMARY_TYPE_ID = "E1.NA.MIX.MIXED_TO_20";
-const getTargetQuestionCount = (typeId?: string) =>
-  typeId === E1_SUMMARY_TYPE_ID ? 10 : DEFAULT_TOTAL_QUESTIONS;
+const E2_DAN_MUL_TYPE_RE = /^E2\.NA\.MUL\.MUL_1D_1D_DAN_[1-9]$/;
+const E2_MIX_TEN_TYPE_RE = /^E2\.NA\.MUL\.MUL_1D_1D_MIX_(1_3|4_6|7_9)$/;
+const E2_MIX_99_TEST_TYPE_ID = "E2.NA.MUL.MUL_1D_1D_MIX_1_9";
+const getTargetQuestionCount = (typeId?: string) => {
+  if (!typeId) return DEFAULT_TOTAL_QUESTIONS;
+  if (typeId === E2_MIX_99_TEST_TYPE_ID) return 20;
+  if (E2_DAN_MUL_TYPE_RE.test(typeId)) return 9;
+  if (E2_MIX_TEN_TYPE_RE.test(typeId)) return 10;
+  if (typeId === E1_SUMMARY_TYPE_ID) return 10;
+  return DEFAULT_TOTAL_QUESTIONS;
+};
 const QUESTION_POOL_SIZE = 50;
 const OUTER_MARGIN = 8;
 const DEFAULT_VISIBLE_CANVAS_SIZE = 300;
@@ -125,6 +134,11 @@ export const getAutoJudgeDelayMs = (digits: number) => {
 };
 
 const trimTrailingEquationEquals = (text: string) => text.replace(/\s*[=＝]\s*$/u, "");
+const ensureTrailingEquationEquals = (text: string) => {
+  const trimmed = text.trim();
+  if (!trimmed) return trimmed;
+  return /[=＝]\s*$/u.test(trimmed) ? trimmed : `${trimmed} =`;
+};
 
 const shouldKeepEqualsForE13Plus = (typeId?: string, typeLabel?: string) => {
   if (!typeId?.startsWith("E1.")) return false;
@@ -133,9 +147,13 @@ const shouldKeepEqualsForE13Plus = (typeId?: string, typeLabel?: string) => {
   return Number(m[1]) >= 3;
 };
 
-const formatPrompt = (prompt: string, keepEquals = false) => {
+const shouldForceEqualsForElementaryE2Plus = (typeId?: string) =>
+  Boolean(typeId && /^E[2-6]\./.test(typeId));
+
+const formatPrompt = (prompt: string, keepEquals = false, forceEquals = false) => {
   const cleaned = prompt.replace(/を計算しなさい。$/g, "");
-  return keepEquals ? cleaned.trim() : trimTrailingEquationEquals(cleaned);
+  const base = keepEquals ? cleaned.trim() : trimTrailingEquationEquals(cleaned);
+  return forceEquals ? ensureTrailingEquationEquals(base) : base;
 };
 
 const MIXED_FRACTION_TYPE_IDS = new Set<string>([
@@ -327,20 +345,26 @@ const renderPromptWithSlotBox = (text: string): ReactNode | null => {
 
 const renderPrompt = (item: ExampleItem, typeId?: string, typeLabel?: string) => {
   const keepEquals = shouldKeepEqualsForE13Plus(typeId, typeLabel);
+  const forceEquals = shouldForceEqualsForElementaryE2Plus(typeId);
+  if (typeId === "E2.NA.DIV.DIV_EQUAL_SHARE_BASIC") {
+    const text = formatPrompt(item.prompt, keepEquals, false).replace(/1人/u, "\n1人");
+    return <span className="inline-block whitespace-pre-line break-words leading-tight">{text}</span>;
+  }
   if (typeId === "E1.NA.NUM.NUM_DECOMP_10") {
     const custom = renderNumDecompPrompt(item.prompt);
     if (custom) return custom;
   }
   const tex = item.prompt_tex?.trim();
   if (tex) {
-    const displayTex = keepEquals ? tex : trimTrailingEquationEquals(tex);
+    const displayTexRaw = keepEquals ? tex : trimTrailingEquationEquals(tex);
+    const displayTex = forceEquals ? ensureTrailingEquationEquals(displayTexRaw) : displayTexRaw;
     return (
       <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
-        <InlineMath math={toEquationTex(displayTex)} renderError={() => <span>{formatPrompt(item.prompt, keepEquals)}</span>} />
+        <InlineMath math={toEquationTex(displayTex)} renderError={() => <span>{formatPrompt(item.prompt, keepEquals, forceEquals)}</span>} />
       </span>
     );
   }
-  const formattedPrompt = formatPrompt(item.prompt, keepEquals);
+  const formattedPrompt = formatPrompt(item.prompt, keepEquals, forceEquals);
   const slotPrompt = renderPromptWithSlotBox(formattedPrompt);
   if (slotPrompt) return slotPrompt;
   return renderMaybeMath(formattedPrompt);
@@ -1650,6 +1674,7 @@ function QuestPageInner() {
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
   const [showSecondaryHint, setShowSecondaryHint] = useState(false);
   const [showSecondaryExplanation, setShowSecondaryExplanation] = useState(false);
+  const [showElementaryExplanation, setShowElementaryExplanation] = useState(false);
   const [memoStrokes, setMemoStrokes] = useState<MemoStroke[]>([]);
   const [memoRedoStack, setMemoRedoStack] = useState<MemoStroke[]>([]);
   const memoStrokesRef = useRef<MemoStroke[]>([]);
@@ -1851,6 +1876,7 @@ function QuestPageInner() {
   const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
   const isSecondaryQuest = /^(J1|J2|J3|H1|H2|H3)$/.test(currentGradeId);
   const isHighSchoolQuest = /^(H1|H2|H3)$/.test(currentGradeId);
+  const isE2EqualShareType = currentType?.type_id === "E2.NA.DIV.DIV_EQUAL_SHARE_BASIC";
 
   useEffect(() => {
     const row = qaRowRef.current;
@@ -1874,11 +1900,13 @@ function QuestPageInner() {
       const buffer = 10;
 
       if (!isSecondaryQuest) {
-        const size = measure(QA_PROMPT_FONT_STEPS[2], QA_ANSWER_FONT_STEPS[2]);
-        const singleLine = size.promptWidth + size.answerWidth + gap + buffer <= available;
+        const promptFont = isE2EqualShareType ? 20 : QA_PROMPT_FONT_STEPS[2];
+        const answerFont = QA_ANSWER_FONT_STEPS[2];
+        const size = measure(promptFont, answerFont);
+        const singleLine = isE2EqualShareType ? false : size.promptWidth + size.answerWidth + gap + buffer <= available;
         setUseSingleLineQa(singleLine);
-        setQaPromptFontPx(QA_PROMPT_FONT_STEPS[2]);
-        setQaAnswerFontPx(QA_ANSWER_FONT_STEPS[2]);
+        setQaPromptFontPx(promptFont);
+        setQaAnswerFontPx(answerFont);
         setQaAnswerOffsetPx(0);
         return;
       }
@@ -1925,7 +1953,8 @@ function QuestPageInner() {
     itemIndex,
     input,
     quadraticAnswers,
-    isSecondaryQuest
+    isSecondaryQuest,
+    isE2EqualShareType
   ]);
 
   useEffect(() => {
@@ -2350,6 +2379,7 @@ function QuestPageInner() {
   useEffect(() => {
     setShowSecondaryHint(false);
     setShowSecondaryExplanation(false);
+    setShowElementaryExplanation(false);
   }, [currentType?.type_id, itemIndex]);
   useEffect(() => {
     setShowGradeTypePicker(false);
@@ -2375,11 +2405,17 @@ function QuestPageInner() {
     return () => window.cancelAnimationFrame(raf);
   }, [showGradeTypePicker, expandedGradeList, pickerGradeId]);
   const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
+  const isElementaryQuest = isElementaryGrade(currentGradeId);
   const shouldShowElementaryExplanation =
     status === "playing" &&
-    isElementaryGrade(currentGradeId) &&
+    isElementaryQuest &&
     practiceResult?.ok === false &&
     Boolean(currentElementaryAid);
+  const shouldRenderElementaryExplanationPanel =
+    status === "playing" &&
+    isElementaryQuest &&
+    Boolean(currentElementaryAid) &&
+    (showElementaryExplanation || shouldShowElementaryExplanation);
   const totalQuizQuestions = Math.max(1, Math.min(targetQuestionCount, quizItems.length || targetQuestionCount));
   const uiText = isEarlyElementary
     ? {
@@ -4224,14 +4260,19 @@ function QuestPageInner() {
               >
                 <div
                   ref={qaPromptRef}
-                  style={isSecondaryQuest ? { fontSize: `${qaPromptFontPx}px` } : undefined}
+                  style={(isSecondaryQuest || isE2EqualShareType) ? { fontSize: `${qaPromptFontPx}px` } : undefined}
                   className={
                     useSingleLineQa
                       ? "min-w-0 w-auto max-w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
-                      : "min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
+                      : isE2EqualShareType
+                        ? "min-w-0 w-full whitespace-normal break-words text-[20px] sm:text-[24px] leading-tight font-extrabold text-emerald-50"
+                        : "min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
                   }
                 >
-                  <span ref={qaPromptContentRef} className="inline-block align-middle">
+                  <span
+                    ref={qaPromptContentRef}
+                    className={isE2EqualShareType ? "block whitespace-normal break-words align-middle" : "inline-block align-middle"}
+                  >
                     {renderPrompt(currentItem, currentType?.type_id, currentType?.display_name ?? currentType?.type_name)}
                   </span>
                 </div>
@@ -4491,7 +4532,7 @@ function QuestPageInner() {
               </div>
             )}
 
-            {currentAid && (
+            {(currentAid || (isElementaryQuest && currentElementaryAid)) && (
               isSecondaryQuest ? (
                 <section className="w-full">
                   <div className="grid grid-cols-2 gap-2">
@@ -4537,6 +4578,16 @@ function QuestPageInner() {
                     </div>
                   )}
                 </section>
+              ) : isElementaryQuest && currentElementaryAid ? (
+                <section className="w-full">
+                  <button
+                    type="button"
+                    onClick={() => setShowElementaryExplanation((prev) => !prev)}
+                    className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left text-base font-bold text-emerald-700"
+                  >
+                    {showElementaryExplanation ? "解説を隠す" : "解説を見る"}
+                  </button>
+                </section>
               ) : (
                 isHighSchoolQuest ? (
                   <section className="w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
@@ -4579,7 +4630,7 @@ function QuestPageInner() {
                   </button>
                 </div>
               </div>
-              {shouldShowElementaryExplanation && currentElementaryAid && (
+              {shouldRenderElementaryExplanationPanel && currentElementaryAid && (
                 <ElementaryExplanationPanel
                   aid={currentElementaryAid}
                   onNext={nextQuestion}

@@ -171,6 +171,20 @@ const makeIntEntry = (type: TypeDef, a: number, op: string, b: number, answer: n
   }
 });
 
+const hasAnyColumnCarry = (a: number, b: number) => {
+  let x = Math.abs(Math.trunc(a));
+  let y = Math.abs(Math.trunc(b));
+  let carry = 0;
+  while (x > 0 || y > 0) {
+    const digitSum = (x % 10) + (y % 10) + carry;
+    if (digitSum >= 10) return true;
+    carry = 0;
+    x = Math.floor(x / 10);
+    y = Math.floor(y / 10);
+  }
+  return false;
+};
+
 const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, used: Set<string>) => {
   const out: QuestEntry[] = [];
   const isE1Add2D1DYes = type.type_id === "E1.NA.ADD.ADD_2D_1D_YES" && patternId === "ADD_2D_1D_YES";
@@ -180,6 +194,7 @@ const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, use
   const isE2Add2D1DNo = type.type_id === "E2.NA.ADD.ADD_2D_1D_NO";
   const isE2Add2D1DYes = type.type_id === "E2.NA.ADD.ADD_2D_1D_YES";
   const isE2Add2D1D = isE2Add2D1DNo || isE2Add2D1DYes;
+  const isE2Add2D2DNo = type.type_id === "E2.NA.ADD.ADD_2D_2D_NO";
   const isE2Sub2D1DNo = type.type_id === "E2.NA.SUB.SUB_2D_1D_NO";
   const isE2Sub2D1DYes = type.type_id === "E2.NA.SUB.SUB_2D_1D_YES";
   const isE2Sub2D1D = isE2Sub2D1DNo || isE2Sub2D1DYes;
@@ -214,6 +229,7 @@ const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, use
     let a = randInt(minByDigits(aDigits), maxByDigits(aDigits));
     let b = randInt(minByDigits(bDigits), maxByDigits(bDigits));
     if (isMul && mulDan) {
+      // E2の段別タイプは左辺を段番号で固定する（n × b）
       a = Number(mulDan[1]);
       b = randInt(1, 9);
     } else if (isMul && mulMix) {
@@ -227,12 +243,19 @@ const generateAddSubMul = (type: TypeDef, patternId: string, needed: number, use
     if ((isE2Add2D1D || isE2Sub2D1D) && (b < 1 || b > 9)) continue;
     if (limitOperandsTo20 && (a > 20 || b > 20)) continue;
     if (isAdd) {
-      const hasCarry = (a % 10) + (b % 10) >= 10;
+      const hasCarry = hasAnyColumnCarry(a, b);
       if (carry === true && !hasCarry) continue;
       if (carry === false && hasCarry) continue;
+      if (isE2Add2D1DNo && hasCarry) continue;
+      if (isE2Add2D1DYes && !hasCarry) continue;
       const sum = a + b;
       if (isE1Add2D1DYes && sum > 99) continue;
       if (isE2Add2D1D && sum > 99) continue;
+      if (isE2Add2D2DNo) {
+        const tensNoCarry = Math.floor(a / 10) + Math.floor(b / 10) < 10;
+        if (!tensNoCarry) continue;
+        if (sum > 99) continue;
+      }
       if (limitAnswerTo20 && sum > 20) continue;
       pushEntry(out, used, makeIntEntry(type, a, "+", b, sum));
       continue;
@@ -266,7 +289,7 @@ const generateDivision = (type: TypeDef, patternId: string, needed: number, used
       const item: QuestEntry = {
         type,
         item: {
-          prompt: `${total}こを ${people}人で 同じ数に分けると 1人何こ？`,
+          prompt: `${total}こを ${people}人で おなじかずに わけると 1人なんこ？`,
           answer: String(each)
         }
       };

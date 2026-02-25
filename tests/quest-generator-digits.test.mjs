@@ -48,3 +48,17 @@ test("E2 2-digit-1-digit generator enforces 20..98 and 1..9 operands", () => {
   assert.equal(source.includes("if ((isE2Add2D1D || isE2Sub2D1D) && (a < 20 || a > 98)) continue;"), true);
   assert.equal(source.includes("if ((isE2Add2D1D || isE2Sub2D1D) && (b < 1 || b > 9)) continue;"), true);
 });
+
+test("E2 2-digit+2-digit no-carry generator blocks both ones and tens carry", () => {
+  assert.equal(source.includes("const isE2Add2D2DNo = type.type_id === \"E2.NA.ADD.ADD_2D_2D_NO\";"), true);
+  assert.equal(source.includes("if (isE2Add2D2DNo) {"), true);
+  assert.equal(source.includes("const tensNoCarry = Math.floor(a / 10) + Math.floor(b / 10) < 10;"), true);
+  assert.equal(source.includes("if (!tensNoCarry) continue;"), true);
+  assert.equal(source.includes("if (sum > 99) continue;"), true);
+});
+
+test("E3 3-digit+3-digit no-carry uses all-column carry detection", () => {
+  assert.equal(source.includes("const hasAnyColumnCarry = (a: number, b: number) => {"), true);
+  assert.equal(source.includes("const hasCarry = hasAnyColumnCarry(a, b);"), true);
+  assert.equal(source.includes("if (carry === false && hasCarry) continue;"), true);
+});

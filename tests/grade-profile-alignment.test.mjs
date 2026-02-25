@@ -36,6 +36,7 @@ test("grade profile defines concept tags and synthetic IDs for E1-E6 alignment",
   assert.match(source, /SUB_2D_1D_E2_YES/);
   assert.match(source, /E2\.NA\.MUL\.MUL_1D_1D_DAN_9/);
   assert.match(source, /E2\.NA\.MUL\.MUL_1D_1D_MIX_1_9/);
+  assert.match(source, /"かけざん９９テスト"/);
   assert.doesNotMatch(source, /E2\.NA\.MUL\.MUL_1D_1D",/);
   assert.match(source, /E2\.NA\.DIV\.DIV_EQUAL_SHARE_BASIC/);
   assert.match(source, /E3\.NA\.MUL\.MUL_2D_1D_NO/);

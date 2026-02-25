@@ -124,6 +124,20 @@ const parseDigitsFromPattern = (patternId: string) => {
   return { a: Number(match[1]), b: Number(match[2]) };
 };
 
+const hasAnyColumnCarry = (a: number, b: number) => {
+  let x = Math.abs(Math.trunc(a));
+  let y = Math.abs(Math.trunc(b));
+  let carry = 0;
+  while (x > 0 || y > 0) {
+    const digitSum = (x % 10) + (y % 10) + carry;
+    if (digitSum >= 10) return true;
+    carry = 0;
+    x = Math.floor(x / 10);
+    y = Math.floor(y / 10);
+  }
+  return false;
+};
+
 const isE1Phase7To10Type = (typeId: string) =>
   typeId === "E1.NA.ADD.ADD_2D_1D_NO" ||
   typeId === "E1.NA.ADD.ADD_2D_1D_YES" ||
@@ -144,9 +158,23 @@ const isE2Add2D1DType = (typeId: string) =>
   typeId === "E2.NA.ADD.ADD_2D_1D_NO" ||
   typeId === "E2.NA.ADD.ADD_2D_1D_YES";
 
+const isE2Add2D2DNoType = (typeId: string) =>
+  typeId === "E2.NA.ADD.ADD_2D_2D_NO";
+
 const isE2Sub2D1DType = (typeId: string) =>
   typeId === "E2.NA.SUB.SUB_2D_1D_NO" ||
   typeId === "E2.NA.SUB.SUB_2D_1D_YES";
+
+const getE2MulDanFromTypeId = (typeId: string) => {
+  const match = typeId.match(/^E2\.NA\.MUL\.MUL_1D_1D_DAN_(\d)$/);
+  return match ? Number(match[1]) : null;
+};
+
+const getE2MulMixRangeFromTypeId = (typeId: string) => {
+  const match = typeId.match(/^E2\.NA\.MUL\.MUL_1D_1D_MIX_(\d)_(\d)$/);
+  if (!match) return null;
+  return { min: Number(match[1]), max: Number(match[2]) };
+};
 
 const minByDigits = (d: number) => 10 ** Math.max(0, d - 1);
 const maxByDigits = (d: number) => 10 ** d - 1;
@@ -182,6 +210,22 @@ const buildDeterministicAdd1D1D = (type: TypeDef, patternId: string) => {
 };
 
 const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCount: number) => {
+  if (patternId === "DIV_EQUAL_SHARE_BASIC") {
+    const out: QuestEntry[] = [];
+    for (let people = 2; people <= 9 && out.length < targetCount; people += 1) {
+      for (let each = 2; each <= 9 && out.length < targetCount; each += 1) {
+        const total = people * each;
+        out.push({
+          type,
+          item: {
+            prompt: `${total}こを ${people}人で おなじかずに わけると 1人なんこ？`,
+            answer: String(each)
+          }
+        });
+      }
+    }
+    return out;
+  }
   if (patternId.startsWith("ADD_1D_1D_")) {
     return buildDeterministicAdd1D1D(type, patternId).slice(0, targetCount);
   }
@@ -523,6 +567,8 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
   const isAdd = patternId.startsWith("ADD_");
   const isSub = patternId.startsWith("SUB_");
   const isMul = patternId.startsWith("MUL_");
+  const mulDan = patternId.match(/MUL_1D_1D_DAN_(\d)$/);
+  const mulMix = patternId.match(/MUL_1D_1D_MIX_(\d)_(\d)$/);
   const needsNo = patternId.endsWith("_NO");
   const needsYes = patternId.endsWith("_YES");
   const limitOperandsTo20 =
@@ -538,10 +584,31 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
     attempts += 1;
     const a = minByDigits(aDigits) + Math.floor(Math.random() * (maxByDigits(aDigits) - minByDigits(aDigits) + 1));
     const b = minByDigits(bDigits) + Math.floor(Math.random() * (maxByDigits(bDigits) - minByDigits(bDigits) + 1));
+    if (isMul && mulDan) {
+      const dan = Number(mulDan[1]);
+      const right = ((attempts - 1) % 9) + 1;
+      out.push({
+        type,
+        item: { prompt: `${dan} × ${right} =`, prompt_tex: `${dan} × ${right} =`, answer: String(dan * right) }
+      });
+      continue;
+    }
+    if (isMul && mulMix) {
+      const mixMin = Number(mulMix[1]);
+      const mixMax = Number(mulMix[2]);
+      const width = Math.max(1, mixMax - mixMin + 1);
+      const left = mixMin + ((attempts - 1) % width);
+      const right = Math.floor((attempts - 1) / width) % 9 + 1;
+      out.push({
+        type,
+        item: { prompt: `${left} × ${right} =`, prompt_tex: `${left} × ${right} =`, answer: String(left * right) }
+      });
+      continue;
+    }
     if (limitOperandsTo20 && (a > 20 || b > 20)) continue;
     if ((limitE2Add2D1DRange || limitE2Sub2D1DRange) && (a < 20 || a > 98 || b < 1 || b > 9)) continue;
     if (isAdd) {
-      const carry = (a % 10) + (b % 10) >= 10;
+      const carry = hasAnyColumnCarry(a, b);
       if (needsNo && carry) continue;
       if (needsYes && !carry) continue;
       const sum = a + b;
@@ -637,6 +704,43 @@ const filterE2Sub2D1DRange = (entries: QuestEntry[], typeId: string) => {
   });
 };
 
+const filterE2Add2D2DNoNoCarry = (entries: QuestEntry[], typeId: string) => {
+  if (!isE2Add2D2DNoType(typeId)) return entries;
+  return entries.filter((entry) => {
+    const prompt = entry.item.prompt_tex ?? entry.item.prompt;
+    const nums = String(prompt).match(/\d+(?:\.\d+)?/g) ?? [];
+    if (nums.length < 2) return false;
+    const a = Number(nums[0]);
+    const b = Number(nums[1]);
+    const answer = Number(entry.item.answer);
+    if (!(Number.isFinite(a) && Number.isFinite(b) && Number.isFinite(answer))) return false;
+    const onesNoCarry = (a % 10) + (b % 10) < 10;
+    const tensNoCarry = Math.floor(a / 10) + Math.floor(b / 10) < 10;
+    if (!onesNoCarry || !tensNoCarry) return false;
+    if (answer > 99) return false;
+    return true;
+  });
+};
+
+const filterE2MulDanMixRange = (entries: QuestEntry[], typeId: string) => {
+  const dan = getE2MulDanFromTypeId(typeId);
+  const mixRange = getE2MulMixRangeFromTypeId(typeId);
+  if (dan === null && !mixRange) return entries;
+  return entries.filter((entry) => {
+    const prompt = entry.item.prompt_tex ?? entry.item.prompt;
+    const nums = String(prompt).match(/\d+/g) ?? [];
+    if (nums.length < 2) return false;
+    const left = Number(nums[0]);
+    const right = Number(nums[1]);
+    if (!Number.isFinite(left) || !Number.isFinite(right)) return false;
+    if (dan !== null) {
+      return left === dan && right >= 1 && right <= 9;
+    }
+    if (!mixRange) return false;
+    return left >= mixRange.min && left <= mixRange.max && right >= 1 && right <= 9;
+  });
+};
+
 const getGradeIdFromTypeId = (typeId: string) => typeId.split(".")[0] ?? "";
 
 const isFrozenElementaryGrade = (gradeId: string) => /^(E1|E2|E3|E4)$/.test(gradeId);
@@ -687,6 +791,7 @@ const STOCK_STRATEGIES: Record<string, StockGenerationStrategy> = {
   NUM_DECOMP_10: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),
   NUM_COMP_10: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),
   MIXED_TO_20: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),
+  DIV_EQUAL_SHARE_BASIC: (type, patternId, targetCount) => buildPatternFallbackEntries(type, patternId, targetCount),
   FACTOR_GCF: (type, _patternId, targetCount) => generateFactorGcfEntries(type, targetCount),
   FACTOR_DIFF_SQ: (type, _patternId, targetCount) => generateFactorDiffSqEntries(type, targetCount),
   FACTOR_PERF_SQ: (type, _patternId, targetCount) => generateFactorPerfSqEntries(type, targetCount),
@@ -761,7 +866,9 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
   unique = filterE1Add2D1DYesToTwoDigits(unique, type.type_id, hasPattern ? patternId : undefined);
   unique = filterE1Phase7To10To20Range(unique, type.type_id);
   unique = filterE2Add2D1DRange(unique, type.type_id);
+  unique = filterE2Add2D2DNoNoCarry(unique, type.type_id);
   unique = filterE2Sub2D1DRange(unique, type.type_id);
+  unique = filterE2MulDanMixRange(unique, type.type_id);
   const ordered = reorderAvoidAdjacentSameFamily(shuffle(unique).map(normalizeJ1IntEntry)).slice(0, targetCount);
   const entries = uniqueByPromptAndEquivalent(ordered).slice(0, targetCount);
   const reason = entries.length >= targetCount
