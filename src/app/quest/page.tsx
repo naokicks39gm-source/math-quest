@@ -1561,6 +1561,9 @@ function QuestPageInner() {
   const qaPromptContentRef = useRef<HTMLSpanElement | null>(null);
   const qaAnswerRef = useRef<HTMLDivElement | null>(null);
   const qaAnswerContentRef = useRef<HTMLDivElement | null>(null);
+  const currentGradeOptionRef = useRef<HTMLButtonElement | null>(null);
+  const currentProblemOptionRef = useRef<HTMLButtonElement | null>(null);
+  const problemOptionsScrollRef = useRef<HTMLDivElement | null>(null);
   const memoCanvasHostRef = useRef<HTMLDivElement | null>(null);
   const [isModelReady, setIsModelReady] = useState(false); // New state for model readiness
   const [is2DigitModelReady, setIs2DigitModelReady] = useState(false);
@@ -2351,6 +2354,26 @@ function QuestPageInner() {
   useEffect(() => {
     setShowGradeTypePicker(false);
   }, [currentType?.type_id, status]);
+  useEffect(() => {
+    if (!showGradeTypePicker || !expandedProblemPicker) return;
+    const raf = window.requestAnimationFrame(() => {
+      if (currentProblemOptionRef.current) {
+        currentProblemOptionRef.current.scrollIntoView({ block: "start", inline: "nearest" });
+        return;
+      }
+      if (problemOptionsScrollRef.current) {
+        problemOptionsScrollRef.current.scrollTop = 0;
+      }
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [showGradeTypePicker, expandedProblemPicker, currentType?.type_id, pickerGradeId]);
+  useEffect(() => {
+    if (!showGradeTypePicker || !expandedGradeList) return;
+    const raf = window.requestAnimationFrame(() => {
+      currentGradeOptionRef.current?.scrollIntoView({ block: "start", inline: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [showGradeTypePicker, expandedGradeList, pickerGradeId]);
   const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
   const shouldShowElementaryExplanation =
     status === "playing" &&
@@ -4101,6 +4124,7 @@ function QuestPageInner() {
                             return (
                               <button
                                 key={grade.gradeId}
+                                ref={isPickedGrade ? currentGradeOptionRef : null}
                                 type="button"
                                 onClick={() => {
                                   setPendingGradeId(grade.gradeId);
@@ -4132,12 +4156,13 @@ function QuestPageInner() {
                       </span>
                     </button>
                     {expandedProblemPicker && (
-                      <div className="mt-1 space-y-1 px-1">
+                      <div ref={problemOptionsScrollRef} className="mt-1 space-y-1 px-1">
                         {pickerGradeTypes.map((option) => {
                           const isCurrent = option.typeId === currentType?.type_id;
                           return (
                             <button
                               key={option.typeId}
+                              ref={isCurrent ? currentProblemOptionRef : null}
                               type="button"
                               onClick={() => {
                                 setShowGradeTypePicker(false);
