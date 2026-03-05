@@ -160,5 +160,5 @@ test("secondary explanation path remains in quest page", () => {
   assert.match(pageSource, /isHighSchoolQuest \?/);
   assert.match(pageSource, /ヒントを閉じる/);
   assert.match(pageSource, /\{showHighSchoolHint && \(/);
-  assert.match(pageSource, /<SecondaryExplanationPanel aid=\{currentAid\} \/>/);
+  assert.match(pageSource, /<SecondaryExplanationPanel aid=\{currentAid!?\} \/>/);
 });

@@ -43,3 +43,16 @@ Record every branch sync run, including no-incident runs, to prevent repeated op
 - log_path: local operation run (Codex execution log)
 - pre_sha: 36cd5eb
 - post_sha: pending commit
+
+### 2026-03-05 17:20:19 JST
+- datetime_jst: 2026-03-05 17:20:19 JST
+- result: success
+- failed_stage: none
+- one_line_cause: restored pre-worktree structure on main via non-destructive revert and stabilized one quest assertion
+- impacted_branches: main
+- impacted_files_or_scope: revert of monorepo migration commit + test assertion compatibility
+- prevention_action: keep rollback via revert only, create backup tag before rollback, and validate check/lint/typecheck before push
+- preflight_check_next_time: verify target backup tag and current HEAD, then run full verification gates before sharing
+- log_path: local operation run (Codex execution log)
+- pre_sha: a58f436
+- post_sha: pending
