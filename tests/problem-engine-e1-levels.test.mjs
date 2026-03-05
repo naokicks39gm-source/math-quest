@@ -16,15 +16,22 @@ test("E1 level adapter defines E1-1..E1-12 and fixed-count generator", () => {
   assert.equal(source.includes("export const isE1LevelId"), true);
   assert.equal(source.includes("export const generateE1LevelProblems"), true);
   assert.equal(source.includes("count = 5"), true);
+  assert.equal(source.includes('title: "10のぶんかい"'), true);
+  assert.equal(source.includes('title: "10のごうせい"'), true);
+  assert.equal(source.includes('title: "2けた - 1けた（繰り下がりあり）"'), true);
+  assert.equal(source.includes('title: "1年生のまとめ"'), true);
 });
 
 test("E1 level adapter keeps required numeric constraints", () => {
-  assert.equal(source.includes("a + b <= 5"), false);
+  assert.equal(source.includes('const E1_EXISTING_BORROW_TYPE_ID = "E1.NA.SUB.SUB_2D_1D_YES";'), true);
+  assert.equal(source.includes("buildTypeStock(existingType"), true);
+  assert.equal(source.includes("pickUniqueQuizFromStock(stock.entries, count)"), true);
+  assert.equal(source.includes("memo_explanation: parsed ? explanationSub(parsed.left, parsed.right) : entry.item.prompt"), true);
   assert.equal(source.includes("if (levelId === \"E1-6\")"), true);
   assert.equal(source.includes("if (levelId === \"E1-7\")"), true);
   assert.equal(source.includes("if (levelId === \"E1-8\")"), true);
   assert.equal(source.includes("if (levelId === \"E1-9\")"), true);
   assert.equal(source.includes("if (levelId === \"E1-10\")"), true);
   assert.equal(source.includes("if (levelId === \"E1-11\")"), true);
+  assert.equal(source.includes("return generateSummaryProblem();"), true);
 });
-

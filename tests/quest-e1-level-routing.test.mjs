@@ -11,10 +11,15 @@ test("quest page supports levelId route for E1 adapter", () => {
   assert.equal(source.includes("const levelFromQuery"), true);
   assert.equal(source.includes("if (levelFromQuery)"), true);
   assert.equal(source.includes("generateE1LevelProblems(levelFromQuery, quizSize)"), true);
+  assert.equal(source.includes('numberingStyle: "circled"'), true);
+  assert.equal(source.includes('const hasTrailingFormula = splitIndex >= 0 && /=|>|−/u.test'), true);
 });
 
 test("quest picker exposes E1 level options and routes by levelId", () => {
   assert.equal(source.includes("E1_LEVEL_OPTIONS"), true);
   assert.equal(source.includes("router.push(`/quest?levelId=${encodeURIComponent(option.levelId)}`)"), true);
+  assert.equal(source.includes("typeName: `Lv:${entry.levelId} ${entry.title}`"), true);
+  assert.equal(source.includes("return levelOptions;"), true);
+  assert.equal(source.includes("typeName: option ? `Lv:${option.levelId} ${option.title}` : `Lv:${levelFromQuery}`"), true);
+  assert.equal(source.includes('if (text[index] === "□") return true;'), true);
 });
-
