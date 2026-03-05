@@ -6,7 +6,7 @@ import path from "node:path";
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 test("quest page exposes fraction TeX helpers for integer and exponent fractions", () => {
-  const source = read("src/app/quest/page.tsx");
+  const source = read("apps/web/src/app/quest/page.tsx");
   assert.match(source, /const trimTrailingEquationEquals = \(text: string\) =>/);
   assert.match(source, /const ensureTrailingEquationEquals = \(text: string\) =>/);
   assert.match(source, /const shouldForceEqualsForElementaryE2Plus = \(typeId\?: string\) =>/);
@@ -22,7 +22,7 @@ test("quest page exposes fraction TeX helpers for integer and exponent fractions
 });
 
 test("quest prompt and clear list use shared math rendering path", () => {
-  const source = read("src/app/quest/page.tsx");
+  const source = read("apps/web/src/app/quest/page.tsx");
   assert.match(source, /const keepEquals = shouldKeepEqualsForE13Plus\(typeId, typeLabel\);/);
   assert.match(source, /const forceEquals = shouldForceEqualsForElementaryE2Plus\(typeId\);/);
   assert.match(source, /const displayTexRaw = keepEquals \? tex : trimTrailingEquationEquals\(tex\);/);
@@ -35,7 +35,7 @@ test("quest prompt and clear list use shared math rendering path", () => {
 });
 
 test("quest card uses responsive layout to avoid answer overflow", () => {
-  const source = read("src/app/quest/page.tsx");
+  const source = read("apps/web/src/app/quest/page.tsx");
   assert.match(source, /const \[useSingleLineQa, setUseSingleLineQa\] = useState\(false\)/);
   assert.match(source, /const \[qaAnswerOffsetPx, setQaAnswerOffsetPx\] = useState\(0\)/);
   assert.match(source, /const \[qaPromptFontPx, setQaPromptFontPx\] = useState<number>\(QA_PROMPT_FONT_STEPS\[0\]\)/);
@@ -56,7 +56,7 @@ test("quest card uses responsive layout to avoid answer overflow", () => {
 });
 
 test("fraction handwriting path remains available", () => {
-  const source = read("src/app/quest-handwrite-legacy/page.tsx");
+  const source = read("apps/web/src/app/quest-handwrite-legacy/page.tsx");
   assert.match(source, /const recognizeFractionFromCanvas/);
   assert.match(source, /forceFractionRecognitionRef/);
   assert.match(source, /runAutoDrawFractionBatchTest/);

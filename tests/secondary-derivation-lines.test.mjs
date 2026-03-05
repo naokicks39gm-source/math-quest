@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-const source = fs.readFileSync(path.join(process.cwd(), "src/lib/secondaryExplanations.ts"), "utf8");
-const pageSource = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
+const source = fs.readFileSync(path.join(process.cwd(), "apps/web/src/lib/secondaryExplanations.ts"), "utf8");
+const pageSource = fs.readFileSync(path.join(process.cwd(), "apps/web/src/app/quest/page.tsx"), "utf8");
 
 test("secondary derivation builder covers major pattern families", () => {
   assert.match(source, /patternId\.startsWith\("INT_"\)/);

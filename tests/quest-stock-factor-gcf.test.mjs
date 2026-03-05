@@ -4,10 +4,10 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const stockSource = fs.readFileSync(path.join(root, "src/lib/questStockFactory.ts"), "utf8");
-const gcfGeneratorSource = fs.readFileSync(path.join(root, "src/lib/questGenerators/factorGcf.ts"), "utf8");
-const secondaryExprSource = fs.readFileSync(path.join(root, "src/lib/questGenerators/secondaryExpr.ts"), "utf8");
-const h1Source = fs.readFileSync(path.join(root, "src/content/grades/mathquest_h1_types_v1.json"), "utf8");
+const stockSource = fs.readFileSync(path.join(root, "apps/web/src/lib/questStockFactory.ts"), "utf8");
+const gcfGeneratorSource = fs.readFileSync(path.join(root, "apps/web/src/lib/questGenerators/factorGcf.ts"), "utf8");
+const secondaryExprSource = fs.readFileSync(path.join(root, "apps/web/src/lib/questGenerators/secondaryExpr.ts"), "utf8");
+const h1Source = fs.readFileSync(path.join(root, "apps/web/src/content/grades/mathquest_h1_types_v1.json"), "utf8");
 
 test("stock factory wires factorization strategies", () => {
   assert.equal(stockSource.includes("generateFactorGcfEntries"), true);

@@ -6,7 +6,7 @@ import path from "node:path";
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 test("top page has learning start controls and guardian link", () => {
-  const source = read("src/app/page.tsx");
+  const source = read("apps/web/src/app/page.tsx");
   assert.match(source, /学習の選択と開始/);
   assert.match(source, /問題/);
   assert.match(source, /スタート！/);
@@ -20,7 +20,7 @@ test("top page has learning start controls and guardian link", () => {
 });
 
 test("guardian page is settings-only", () => {
-  const source = read("src/app/guardian/page.tsx");
+  const source = read("apps/web/src/app/guardian/page.tsx");
   assert.match(source, /保護者レポート設定/);
   assert.match(source, /保存/);
   assert.doesNotMatch(source, /選択した学習ではじめる/);
@@ -30,7 +30,7 @@ test("guardian page is settings-only", () => {
 });
 
 test("quest page reads localStorage keys and auto-session logic", () => {
-  const source = read("src/app/quest/page.tsx");
+  const source = read("apps/web/src/app/quest/page.tsx");
   assert.match(source, /mq:activeSessionId/);
   assert.match(source, /mq:studentId/);
   assert.match(source, /const ensureActiveSession/);
@@ -41,7 +41,7 @@ test("quest page reads localStorage keys and auto-session logic", () => {
 });
 
 test("guardian report mail includes required sections", () => {
-  const source = read("src/lib/server/report.ts");
+  const source = read("apps/web/src/lib/server/report.ts");
   assert.match(source, /1\. 学習時間/);
   assert.match(source, /2\. 解いたカテゴリ/);
   assert.match(source, /fullPathName/);
@@ -51,7 +51,7 @@ test("guardian report mail includes required sections", () => {
 });
 
 test("db exposes report helper accessors and session report table", () => {
-  const source = read("src/lib/server/db.ts");
+  const source = read("apps/web/src/lib/server/db.ts");
   assert.match(source, /export const getSessionAnswers/);
   assert.match(source, /export const getSessionById/);
   assert.match(source, /export const getRecentCompletedSessions/);
@@ -60,7 +60,7 @@ test("db exposes report helper accessors and session report table", () => {
 });
 
 test("mail sending is abstracted behind provider", () => {
-  const source = read("src/lib/server/sessionService.ts");
+  const source = read("apps/web/src/lib/server/sessionService.ts");
   assert.match(source, /getMailProvider/);
   assert.match(source, /provider\.send/);
 });

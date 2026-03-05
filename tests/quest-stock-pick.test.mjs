@@ -4,11 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 
 const source = fs.readFileSync(
-  path.join(process.cwd(), "src/lib/questStockFactory.ts"),
+  path.join(process.cwd(), "apps/web/src/lib/questStockFactory.ts"),
   "utf8"
 );
 const questSource = fs.readFileSync(
-  path.join(process.cwd(), "src/app/quest/page.tsx"),
+  path.join(process.cwd(), "apps/web/src/app/quest/page.tsx"),
   "utf8"
 );
 

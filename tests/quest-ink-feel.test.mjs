@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-const questSource = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
-const hsKeypadSource = fs.readFileSync(path.join(process.cwd(), "src/components/keypad/HighSchoolKeypad.tsx"), "utf8");
-const legacySource = fs.readFileSync(path.join(process.cwd(), "src/app/quest-handwrite-legacy/page.tsx"), "utf8");
+const questSource = fs.readFileSync(path.join(process.cwd(), "apps/web/src/app/quest/page.tsx"), "utf8");
+const hsKeypadSource = fs.readFileSync(path.join(process.cwd(), "packages/keypad/HighSchoolKeypad.tsx"), "utf8");
+const legacySource = fs.readFileSync(path.join(process.cwd(), "apps/web/src/app/quest-handwrite-legacy/page.tsx"), "utf8");
 
 test("quest uses keypad answer flow and calc memo canvas", () => {
   assert.equal(questSource.includes("numpad"), true);

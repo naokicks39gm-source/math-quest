@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-const questPath = path.join(process.cwd(), "src/app/quest/page.tsx");
+const questPath = path.join(process.cwd(), "apps/web/src/app/quest/page.tsx");
 const source = fs.readFileSync(questPath, "utf8");
 
 test("quest uses random pool questions and next-level navigation", () => {

@@ -4,13 +4,13 @@ import fs from "node:fs";
 import path from "node:path";
 
 const readJson = (p) => JSON.parse(fs.readFileSync(path.join(process.cwd(), p), "utf8"));
-const sourcePath = path.join(process.cwd(), "src/lib/secondaryExplanations.ts");
+const sourcePath = path.join(process.cwd(), "apps/web/src/lib/secondaryExplanations.ts");
 const source = fs.readFileSync(sourcePath, "utf8");
-const panelPath = path.join(process.cwd(), "src/components/SecondaryExplanationPanel.tsx");
+const panelPath = path.join(process.cwd(), "apps/web/src/components/SecondaryExplanationPanel.tsx");
 const panelSource = fs.readFileSync(panelPath, "utf8");
 
 const gradeFiles = ["j1", "j2", "j3", "h1", "h2", "h3"].map(
-  (id) => `src/content/grades/mathquest_${id}_types_v1.json`
+  (id) => `apps/web/src/content/grades/mathquest_${id}_types_v1.json`
 );
 
 const getSecondaryPatternsFromData = () => {

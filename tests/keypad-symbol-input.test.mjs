@@ -5,13 +5,13 @@ import path from "node:path";
 
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
-const pageSource = read("src/app/quest/page.tsx");
-const baseSource = read("src/components/keypad/BaseMathKeypad.ts");
-const layoutSource = read("src/components/keypad/KeypadLayout.ts");
-const baseTsxSource = read("src/components/keypad/BaseMathKeypad.tsx");
-const elemSource = read("src/components/keypad/ElementaryKeypad.tsx");
-const juniorSource = read("src/components/keypad/JuniorKeypad.tsx");
-const hsSource = read("src/components/keypad/HighSchoolKeypad.tsx");
+const pageSource = read("apps/web/src/app/quest/page.tsx");
+const baseSource = read("packages/keypad/BaseMathKeypad.ts");
+const layoutSource = read("packages/keypad/KeypadLayout.ts");
+const baseTsxSource = read("packages/keypad/BaseMathKeypad.tsx");
+const elemSource = read("packages/keypad/ElementaryKeypad.tsx");
+const juniorSource = read("packages/keypad/JuniorKeypad.tsx");
+const hsSource = read("packages/keypad/HighSchoolKeypad.tsx");
 
 test("math keypad layout is 4x5 with right-side action column", () => {
   assert.match(layoutSource, /export const KEYPAD_LAYOUT = \[/);
