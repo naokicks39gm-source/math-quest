@@ -3,94 +3,49 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-const pageSource = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
-const keypadSource = fs.readFileSync(path.join(process.cwd(), "src/components/Keypad.tsx"), "utf8");
+const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
-test("quest keypad includes symbol keys and compact sizing", () => {
-  assert.match(pageSource, /if \(token === "\/"\) return "分数";/);
-  assert.match(pageSource, /if \(token === "\."\) return "小数点";/);
-  assert.match(pageSource, /if \(token === "-"\)/);
-  assert.match(pageSource, /<span>マイ<\/span>/);
-  assert.match(pageSource, /<span>ナス<\/span>/);
-  assert.match(pageSource, /<Keypad/);
-  assert.match(pageSource, /mode=\{isHighSchoolQuest \? "highschool" : "junior"\}/);
-  assert.match(pageSource, /judgeLabel=\{uiText\.judge\}/);
-  assert.match(pageSource, /endLabel="おわり"/);
-  assert.match(keypadSource, /const COMMON_KEYPAD_LAYOUT = \[/);
-  assert.match(keypadSource, /"1", "2", "3", "\(\)", ""/);
-  assert.match(keypadSource, /"4", "5", "6", "x", ""/);
-  assert.match(keypadSource, /"7", "8", "9", "\+\/-", ""/);
-  assert.match(keypadSource, /"0", "\/", "\^", "\.", ""/);
-  assert.match(keypadSource, /w-full flex items-stretch gap-2/);
-  assert.match(keypadSource, /grid-cols-5 grid-rows-4 gap-1/);
-  assert.match(keypadSource, /w-\[92px\] grid grid-cols-1 grid-rows-\[44px_88px_36px\] gap-1\.5/);
-  assert.match(keypadSource, /h-full w-full rounded-lg text-base font-black/);
-  assert.match(keypadSource, /h-full w-full rounded-md text-xs font-bold/);
-  assert.doesNotMatch(pageSource, /fixed right-3 bottom-3 z-30/);
+const pageSource = read("src/app/quest/page.tsx");
+const baseSource = read("src/components/keypad/BaseMathKeypad.ts");
+const elemSource = read("src/components/keypad/ElementaryKeypad.tsx");
+const juniorSource = read("src/components/keypad/JuniorKeypad.tsx");
+const hsSource = read("src/components/keypad/HighSchoolKeypad.tsx");
+
+test("math keypad layout is 4x5 with right-side action column", () => {
+  assert.match(baseSource, /export const KEYPAD_LAYOUT = \[/);
+  assert.match(baseSource, /"1", "2", "3", "\(\)",/);
+  assert.match(baseSource, /"4", "5", "6", "var",/);
+  assert.match(baseSource, /"7", "8", "9", "\+\/-",/);
+  assert.match(baseSource, /"0", "frac", "pow", "\.",/);
+  assert.match(baseSource, /"abs", "sqrt", "log", "pi"/);
+  assert.match(elemSource, /grid-cols-4 grid-rows-5/);
+  assert.match(hsSource, /grid-cols-4 grid-rows-5/);
+  assert.match(elemSource, /onClick=\{onDelete\}/);
+  assert.match(elemSource, /onClick=\{onJudge\}/);
+  assert.match(elemSource, /onClick=\{onEnd\}/);
 });
 
-test("keypad token guard supports int dec frac rules", () => {
-  assert.match(pageSource, /const canUseKeyToken = \(token: string\) =>/);
-  assert.match(pageSource, /if \(token === "\."\) return true/);
-  assert.match(pageSource, /if \(token === "\/"\) return true/);
-  assert.match(pageSource, /if \(token === "-"\) return true/);
-  assert.match(pageSource, /if \(isHighSchoolQuest && \(HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS as readonly string\[\]\)\.includes\(token\)\) return true;/);
-  assert.match(pageSource, /const isValidAnswerText = \(text: string, kind: AnswerFormat\["kind"\]\) =>/);
-  assert.match(pageSource, /kind === "dec"/);
-  assert.match(pageSource, /kind === "frac"/);
-  assert.match(pageSource, /keypadAnswerKind !== "frac" && input\.trim\(\)\.length > 0 && input\.includes\("\/"\)/);
+test("grade-specific enabled tokens are defined", () => {
+  assert.match(baseSource, /elementary: new Set<MathKeypadToken>\(\["var", "\+\/-", "frac", "pow", "abs", "sqrt", "log", "pi"\]\)/);
+  assert.match(baseSource, /junior: new Set<MathKeypadToken>\(\["abs", "sqrt", "log", "pi"\]\)/);
+  assert.match(baseSource, /highschool: new Set<MathKeypadToken>\(\[\]\)/);
+  assert.match(baseSource, /elementary: "h-14 text-lg rounded-lg"/);
+  assert.match(baseSource, /junior: "h-10 text-sm rounded-md"/);
+  assert.match(baseSource, /highschool: "h-9 text-xs rounded-md"/);
 });
 
-test("high-school keypad adds four expression keys with compact layout", () => {
-  assert.match(pageSource, /const HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS = \["\(\)", "x", "\^", "\+\/-"\] as const;/);
-  assert.match(pageSource, /const PLUS_MINUS_LONG_PRESS_MS = 220;/);
-  assert.match(pageSource, /const PLUS_MINUS_POPUP_SWITCH_PX = 0;/);
-  assert.match(pageSource, /const PLUS_MINUS_TAP_DEADZONE_PX = 6;/);
-  assert.match(pageSource, /const isHighSchoolQuest = \/\^\(H1\|H2\|H3\)\$\/\.test\(currentGradeId\);/);
-  assert.match(pageSource, /if \(token === "\+"\) return "プラス";/);
-  assert.match(pageSource, /if \(token === "\+\/-"\)/);
-  assert.match(pageSource, /if \(token === "\+\/-"\) return "\+\/-";/);
-  assert.match(pageSource, /if \(token === "\^"\) return "指数";/);
-  assert.match(pageSource, /if \(token === "\(\)"\) return "（）";/);
-  assert.match(pageSource, /if \(token === "x"\) return <InlineMath math="x" renderError=\{\(\) => <span>x<\/span>\} \/>;/);
-  assert.match(keypadSource, /grid-cols-5 grid-rows-4 gap-1/);
-  assert.match(keypadSource, /onPointerDown=\{isPlusMinus && plusMinusSupportsGesture \? onPlusMinusPointerDown : undefined\}/);
-  assert.match(keypadSource, /onPointerUp=\{isPlusMinus && plusMinusSupportsGesture \? onPlusMinusPointerUp : undefined\}/);
-  assert.match(keypadSource, /onPointerCancel=\{isPlusMinus && plusMinusSupportsGesture \? onPlusMinusPointerCancel : undefined\}/);
-  assert.match(keypadSource, /onTouchStart=\{isPlusMinus && plusMinusSupportsGesture \? onPlusMinusTouchStart : undefined\}/);
-  assert.match(keypadSource, /style=\{isPlusMinus && plusMinusSupportsGesture \? \{ touchAction: "none" \} : undefined\}/);
-  assert.match(keypadSource, /isPlusMinus \? "h-10 rounded-lg text-\[13px\] tracking-wide mx-1" : "h-9 rounded-md text-\[11px\]"/);
-  assert.match(pageSource, /const detachPlusMinusWindowTracking = \(\) =>/);
-  assert.match(pageSource, /const detachPlusMinusTouchTracking = \(\) =>/);
-  assert.match(pageSource, /window\.addEventListener\("pointermove", move, \{ passive: false \}\);/);
-  assert.match(pageSource, /window\.addEventListener\("pointerup", up\);/);
-  assert.match(pageSource, /window\.addEventListener\("pointercancel", cancel\);/);
-  assert.match(pageSource, /window\.addEventListener\("touchmove", move, \{ passive: false \}\);/);
-  assert.match(pageSource, /window\.addEventListener\("touchend", end\);/);
-  assert.match(pageSource, /window\.addEventListener\("touchcancel", cancel\);/);
-  assert.match(pageSource, /const handlePlusMinusTouchStart = \(e: React\.TouchEvent<HTMLButtonElement>\) =>/);
-  assert.match(pageSource, /e\.currentTarget\.setPointerCapture\(e\.pointerId\);/);
-  assert.match(pageSource, /if \(active\?\.triggerButton && active\.triggerButton\.hasPointerCapture\(active\.pointerId\)\) \{/);
-  assert.match(pageSource, /active\.triggerButton\.releasePointerCapture\(active\.pointerId\);/);
-  assert.match(pageSource, /const \[plusMinusPopupOpen, setPlusMinusPopupOpen\] = useState\(false\);/);
-  assert.match(pageSource, /const \[plusMinusCandidate, setPlusMinusCandidate\] = useState<"\+" \| "-" \| null>\(null\);/);
-  assert.match(pageSource, /const \[plusMinusPopupAnchor, setPlusMinusPopupAnchor\] = useState<\{ left: number; top: number \} \| null>\(null\);/);
-  assert.match(pageSource, /const resolvePlusMinusTokenFromDelta = \(deltaY: number\) =>/);
-  assert.match(pageSource, /const renderAnswerWithSuperscript = \(text: string\) =>/);
-  assert.match(pageSource, /const tex = toEquationTex\(text\)\.replace\(\/\(\[A-Za-z0-9\)\]\)\\\^\(-\?\\d\+\)\/g, "\$1\^\{\$2\}"\);/);
-  assert.match(pageSource, /<InlineMath math=\{tex\} renderError=\{\(\) => <span>\{text\}<\/span>\} \/>/);
-  assert.match(pageSource, /if \(token === "\+"\) \{/);
-  assert.match(pageSource, /if \(token === "-"\) \{/);
-  assert.match(pageSource, /if \(!isHighSchoolQuest\) return text\.length === 0;/);
-  assert.match(pageSource, /return \/\[\\dx\)\]\$\/\.test\(text\);/);
-  assert.match(pageSource, /if \(token === "x"\) \{/);
-  assert.match(pageSource, /if \(text\.length === 0\) return true;/);
-  assert.match(pageSource, /const movedBeyondTap = Math\.abs\(deltaY\) > PLUS_MINUS_TAP_DEADZONE_PX;/);
-  assert.match(pageSource, /: \(movedBeyondTap \? resolvePlusMinusTokenFromDelta\(deltaY\) : "\+" as const\);/);
-  assert.match(pageSource, /setPlusMinusPopupOpen\(true\);/);
-  assert.match(pageSource, /createPortal\(/);
-  assert.match(pageSource, /style=\{\{ left: plusMinusPopupAnchor\.left, top: plusMinusPopupAnchor\.top \}\}/);
-  assert.match(pageSource, /plusMinusCandidate === "\+"/);
-  assert.match(pageSource, /plusMinusCandidate === "-"/);
-  assert.match(pageSource, /num === "\(\)" \? `\$\{prev\}\(\)` : `\$\{prev\}\$\{num\}`/);
+test("junior and highschool use gesture handlers for +/- and variable popup", () => {
+  assert.match(hsSource, /const VARIABLE_CHOICES = \["x", "y", "a"\] as const;/);
+  assert.match(hsSource, /const resolveVariableCandidate = \(deltaY: number\)/);
+  assert.match(hsSource, /onPointerDown=\{isPlus \? handlePlusDown : isVar \? handleVarDown : undefined\}/);
+  assert.match(hsSource, /onTouchStart=\{isPlus \? handlePlusTouchStart : isVar \? handleVarTouchStart : undefined\}/);
+  assert.match(hsSource, /createPortal\(/);
+  assert.match(juniorSource, /SecondaryMathKeypad mode="junior"/);
+});
+
+test("quest page switches keypad by grade", () => {
+  assert.match(pageSource, /const isJuniorQuest = \/\^\(J1\|J2\|J3\)\$\/\.test\(currentGradeId\);/);
+  assert.match(pageSource, /<HighSchoolKeypad/);
+  assert.match(pageSource, /<JuniorKeypad/);
+  assert.match(pageSource, /<ElementaryKeypad/);
 });

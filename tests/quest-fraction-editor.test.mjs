@@ -14,7 +14,7 @@ test("quest defines fraction editor state and auto move delay", () => {
 });
 
 test("quest enters fraction edit mode from fraction key and uses numerator-first flow", () => {
-  assert.match(source, /if \(num === "\/"\)/);
+  assert.match(source, /if \(normalizedToken === "\/"\)/);
   assert.match(source, /setFractionInput\(\(prev\) => \(prev\.enabled \? prev : \{ enabled: true, num: "", den: "", part: "num" \}\)\);/);
   assert.match(source, /setQuadraticFractionInputs\(\(prev\) => \{/);
   assert.match(source, /part: "num"/);
@@ -33,4 +33,3 @@ test("fraction handwriting and rendering paths remain present", () => {
   assert.match(source, /const renderMaybeMath = \(text: string\): ReactNode =>/);
   assert.match(source, /const recognizeFractionFromCanvas/);
 });
-

@@ -16,7 +16,9 @@ import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
 import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
 import ElementaryExplanationPanel from "@/components/ElementaryExplanationPanel";
 import { getElementaryLearningAid, isElementaryGrade } from "@/lib/elementaryExplanations";
-import Keypad from "@/components/Keypad";
+import ElementaryKeypad from "@/components/keypad/ElementaryKeypad";
+import JuniorKeypad from "@/components/keypad/JuniorKeypad";
+import HighSchoolKeypad from "@/components/keypad/HighSchoolKeypad";
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -1874,6 +1876,7 @@ function QuestPageInner() {
   const currentType = currentEntry?.type ?? selectedType;
   const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
   const isSecondaryQuest = /^(J1|J2|J3|H1|H2|H3)$/.test(currentGradeId);
+  const isJuniorQuest = /^(J1|J2|J3)$/.test(currentGradeId);
   const isHighSchoolQuest = /^(H1|H2|H3)$/.test(currentGradeId);
   const isE2EqualShareType = currentType?.type_id === "E2.NA.DIV.DIV_EQUAL_SHARE_BASIC";
 
@@ -2629,10 +2632,20 @@ function QuestPageInner() {
   const handleInput = (num: string) => {
     if (status !== 'playing' || isStarting || isAnswerLockedByExplanation) return;
     const currentText = isQuadraticRootsQuestion ? quadraticAnswers[quadraticActiveIndex] : input;
-    const isDigit = /^\d$/.test(num);
+    const normalizedToken = (() => {
+      if (num === "frac") return "/";
+      if (num === "pow") return "^";
+      if (num === "var") return "x";
+      if (num === "abs") return "|x|";
+      if (num === "sqrt") return "sqrt(";
+      if (num === "log") return "log(";
+      if (num === "pi") return "π";
+      return num;
+    })();
+    const isDigit = /^\d$/.test(normalizedToken);
     const maxInputLength = isHighSchoolQuest ? 24 : 12;
 
-    if (num === "/") {
+    if (normalizedToken === "/") {
       if (isQuadraticRootsQuestion) {
         clearQuadraticFractionAutoMoveTimer(quadraticActiveIndex);
         setQuadraticFractionInputs((prev) => {
@@ -2658,13 +2671,13 @@ function QuestPageInner() {
     if (isQuadraticRootsQuestion && quadraticFractionInputs[quadraticActiveIndex].enabled) {
       const currentEditor = quadraticFractionInputs[quadraticActiveIndex];
       const currentPartValue = currentEditor.part === "num" ? currentEditor.num : currentEditor.den;
-      if (!isFractionPartTokenValid(currentPartValue, num)) return;
+      if (!isFractionPartTokenValid(currentPartValue, normalizedToken)) return;
       setQuadraticFractionInputs((prev) => {
         const target = prev[quadraticActiveIndex];
         const next: [FractionEditorState, FractionEditorState] = [prev[0], prev[1]];
         const part = target.part;
         const maxLen = isDigit ? 6 : 7;
-        const nextPartValue = `${part === "num" ? target.num : target.den}${num}`;
+        const nextPartValue = `${part === "num" ? target.num : target.den}${normalizedToken}`;
         if (nextPartValue.length > maxLen) return prev;
         next[quadraticActiveIndex] = {
           ...target,
@@ -2692,11 +2705,11 @@ function QuestPageInner() {
 
     if (!isQuadraticRootsQuestion && fractionInput.enabled) {
       const currentPartValue = fractionInput.part === "num" ? fractionInput.num : fractionInput.den;
-      if (!isFractionPartTokenValid(currentPartValue, num)) return;
+      if (!isFractionPartTokenValid(currentPartValue, normalizedToken)) return;
       setFractionInput((prev) => {
         const part = prev.part;
         const maxLen = isDigit ? 12 : 13;
-        const nextPartValue = `${part === "num" ? prev.num : prev.den}${num}`;
+        const nextPartValue = `${part === "num" ? prev.num : prev.den}${normalizedToken}`;
         if (nextPartValue.length > maxLen) return prev;
         return {
           ...prev,
@@ -2721,9 +2734,9 @@ function QuestPageInner() {
     const canAppendToken = (text: string, token: string) => {
       if (/^\d$/.test(token)) return true;
       if (token === "-") {
-        if (!isHighSchoolQuest) return text.length === 0;
+        if (!isSecondaryQuest) return text.length === 0;
         if (text.length === 0) return true;
-        return /[\dx)]$/.test(text);
+        return /[\dxyapiπ)]$/.test(text);
       }
       if (token === ".") {
         if (text.includes(".")) return false;
@@ -2731,44 +2744,47 @@ function QuestPageInner() {
         return true;
       }
       if (token === "+") {
-        if (!isHighSchoolQuest) return false;
+        if (!isSecondaryQuest) return false;
         if (text.length === 0) return false;
-        return /[\dx)]$/.test(text);
+        return /[\dxyapiπ)]$/.test(text);
       }
-      if (token === "x") {
-        if (!isHighSchoolQuest) return false;
+      if (/^[xya]$/.test(token)) {
+        if (!isSecondaryQuest) return false;
         if (text.length === 0) return true;
-        if (/[x^(/]$/.test(text)) return false;
+        if (/[xya^(/]$/.test(text)) return false;
         return true;
       }
       if (token === "^") {
-        if (!isHighSchoolQuest) return false;
+        if (!isSecondaryQuest) return false;
         if (text.length === 0) return false;
-        return /[\dx)]$/.test(text);
+        return /[\dxyapiπ)]$/.test(text);
       }
       if (token === "()") {
-        if (!isHighSchoolQuest) return false;
+        if (!isSecondaryQuest) return false;
         if (text.endsWith("^")) return false;
         return true;
       }
+      if (token === "|x|") return isHighSchoolQuest;
+      if (token === "sqrt(" || token === "log(") return isHighSchoolQuest;
+      if (token === "π") return isHighSchoolQuest;
       if (token === "+/-") return false;
       return false;
     };
-    if (!canAppendToken(currentText, num)) return;
+    if (!canAppendToken(currentText, normalizedToken)) return;
 
     if (isQuadraticRootsQuestion) {
       setQuadraticAnswers((prev) => {
         const next: [string, string] = [...prev] as [string, string];
         const maxLen = isDigit ? 6 : (isHighSchoolQuest ? 24 : 7);
         if (next[quadraticActiveIndex].length >= maxLen) return prev;
-        next[quadraticActiveIndex] = num === "()" ? `${next[quadraticActiveIndex]}()` : `${next[quadraticActiveIndex]}${num}`;
+        next[quadraticActiveIndex] = normalizedToken === "()" ? `${next[quadraticActiveIndex]}()` : `${next[quadraticActiveIndex]}${normalizedToken}`;
         return next;
       });
       setResultMark(null);
       return;
     }
     if (input.length >= maxInputLength) return;
-    setInput((prev) => (num === "()" ? `${prev}()` : `${prev}${num}`));
+    setInput((prev) => (normalizedToken === "()" ? `${prev}()` : `${prev}${normalizedToken}`));
     setResultMark(null);
   };
 
@@ -2928,7 +2944,12 @@ function QuestPageInner() {
     if (token === "-") return true;
     if (token === ".") return true;
     if (token === "/") return true;
-    if (isHighSchoolQuest && (HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS as readonly string[]).includes(token)) return true;
+    if (token === "+") return isSecondaryQuest;
+    if (token === "^") return isSecondaryQuest;
+    if (token === "()") return isSecondaryQuest;
+    if (/^[xya]$/.test(token)) return isSecondaryQuest;
+    if (token === "|x|" || token === "sqrt(" || token === "log(" || token === "π") return isHighSchoolQuest;
+    if (isSecondaryQuest && (HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS as readonly string[]).includes(token)) return true;
     return false;
   };
   const renderKeyLabel = (token: string): ReactNode => {
@@ -4671,28 +4692,52 @@ function QuestPageInner() {
       {/* Bottom: Input + Calc Memo */}
       {status === 'playing' && (
         <div className="w-full pt-2 pb-3 sticky bottom-0 bg-slate-50/95 backdrop-blur-sm z-20 space-y-2">
-          <Keypad
-            mode={isHighSchoolQuest ? "highschool" : "junior"}
-            isPlaying={status === "playing"}
-            isStarting={isStarting}
-            isAnswerLocked={isAnswerLockedByExplanation}
-            canSubmit={canSubmitCurrentAnswer}
-            canUseKeyToken={canUseKeyToken}
-            renderKeyLabel={renderKeyLabel}
-            onInput={handleInput}
-            onDelete={handleDelete}
-            onJudge={handleAttack}
-            onEnd={endLearningSession}
-            onPlusMinusPointerDown={handlePlusMinusFlickStart}
-            onPlusMinusPointerUp={handlePlusMinusFlickEnd}
-            onPlusMinusPointerCancel={handlePlusMinusFlickCancel}
-            onPlusMinusTouchStart={handlePlusMinusTouchStart}
-            plusMinusPopupOpen={plusMinusPopupOpen}
-            plusMinusCandidate={plusMinusCandidate}
-            judgeLabel={uiText.judge}
-            endLabel="おわり"
-            endDisabled={sessionActionLoading}
-          />
+          {isHighSchoolQuest ? (
+            <HighSchoolKeypad
+              isPlaying={status === "playing"}
+              isStarting={isStarting}
+              isAnswerLocked={isAnswerLockedByExplanation}
+              canSubmit={canSubmitCurrentAnswer}
+              canUseKeyToken={canUseKeyToken}
+              onInput={handleInput}
+              onDelete={handleDelete}
+              onJudge={handleAttack}
+              onEnd={endLearningSession}
+              judgeLabel={uiText.judge}
+              endLabel="おわり"
+              endDisabled={sessionActionLoading}
+            />
+          ) : isJuniorQuest ? (
+            <JuniorKeypad
+              isPlaying={status === "playing"}
+              isStarting={isStarting}
+              isAnswerLocked={isAnswerLockedByExplanation}
+              canSubmit={canSubmitCurrentAnswer}
+              canUseKeyToken={canUseKeyToken}
+              onInput={handleInput}
+              onDelete={handleDelete}
+              onJudge={handleAttack}
+              onEnd={endLearningSession}
+              judgeLabel={uiText.judge}
+              endLabel="おわり"
+              endDisabled={sessionActionLoading}
+            />
+          ) : (
+            <ElementaryKeypad
+              isPlaying={status === "playing"}
+              isStarting={isStarting}
+              isAnswerLocked={isAnswerLockedByExplanation}
+              canSubmit={canSubmitCurrentAnswer}
+              canUseKeyToken={canUseKeyToken}
+              onInput={handleInput}
+              onDelete={handleDelete}
+              onJudge={handleAttack}
+              onEnd={endLearningSession}
+              judgeLabel={uiText.judge}
+              endLabel="おわり"
+              endDisabled={sessionActionLoading}
+            />
+          )}
         </div>
       )}
 

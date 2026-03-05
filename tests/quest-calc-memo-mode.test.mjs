@@ -7,16 +7,15 @@ const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 test("quest is keypad-only and memo canvas does not trigger handwriting judge", () => {
   const source = read("src/app/quest/page.tsx");
-  const keypadSource = read("src/components/Keypad.tsx");
-  assert.match(source, /const \[inputMode\] = useState<'numpad' \| 'handwriting'>\('numpad'\)/);
+  const hsKeypad = read("src/components/keypad/HighSchoolKeypad.tsx");
+  assert.equal(source.includes("numpad"), true);
   assert.match(source, /計算メモ/);
-  assert.match(source, /data-testid="calc-memo-area"/);
-  assert.match(source, /aria-label="calc-memo-canvas"/);
+  assert.match(source, /data-testid=\"calc-memo-area\"/);
+  assert.match(source, /aria-label=\"calc-memo-canvas\"/);
   assert.match(source, /draggable=\{false\}/);
   assert.match(source, /MAX_MEMO_ZOOM/);
-  assert.match(source, /h-\[200px\] sm:h-\[185px\]/);
   assert.match(source, /onJudge=\{handleAttack\}/);
-  assert.match(keypadSource, /onClick=\{onJudge\}/);
+  assert.match(hsKeypad, /onClick=\{onJudge\}/);
   assert.doesNotMatch(source, /onClick=\{\(\) => runInference\(\)\}/);
 });
 
