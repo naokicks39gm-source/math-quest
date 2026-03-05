@@ -21,6 +21,16 @@ export type TypeDef = {
   type_name: string;
   display_name?: string;
   concept_tags?: string[];
+  generation_params?: {
+    pattern_id?: string;
+    a_digits?: number;
+    b_digits?: number;
+    carry?: string;
+    borrow?: string;
+    quotient_digits?: number;
+    decimal_places?: number;
+    [key: string]: string | number | boolean | null | undefined;
+  };
   answer_format: AnswerFormat;
   example_items: ExampleItem[];
 };
