@@ -112,3 +112,18 @@ Record every branch sync run, including no-incident runs, to prevent repeated op
 - post_sha: 3c58d72
 - stash_id: stash@{0} (problem-config-588ab18-prep-20260305-173618)
 - verify: make check=pass, lint=pass, typecheck=pass, fraction_tex_tests=pass
+
+### 2026-03-05 17:51:18 JST
+- datetime_jst: 2026-03-05 17:51:18 JST
+- result: success
+- failed_stage: none
+- one_line_cause: restored noon baseline (36cd5eb) on quest/problem paths and applied minimal compatibility patch for current checks
+- impacted_branches: main
+- impacted_files_or_scope: src/app/quest/page.tsx, src/lib/problem/generation.ts, src/lib/problem/grading.ts, src/lib/problem/index.ts
+- prevention_action: when restoring to historical baseline, run full check suite and apply compatibility-only patches if current checks require newer adapters
+- preflight_check_next_time: stash dirty state, restore scoped files, verify changed file list before commit
+- log_path: local operation run (Codex execution log)
+- pre_sha: b25b687
+- post_sha: 41b12ec
+- stash_id: stash@{0} (noon-restore-prep-20260305-174742)
+- verify: make check=pass, lint=pass, typecheck=pass, fraction_tex_tests=pass
