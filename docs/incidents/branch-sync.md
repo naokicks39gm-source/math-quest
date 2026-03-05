@@ -30,3 +30,16 @@ Record every branch sync run, including no-incident runs, to prevent repeated op
 - log_path: /Users/awakawanaoki/.codex/skills/branch-sync/logs/branch-sync-20260301-201929.log
 - pre_sha: 588ab18 (all targets)
 - post_sha: 588ab18 (all targets)
+
+### 2026-03-05 15:27:43 JST
+- datetime_jst: 2026-03-05 15:27:43 JST
+- result: success
+- failed_stage: none
+- one_line_cause: no incident (safe structure migration completed)
+- impacted_branches: main,elementary,junior,highschool
+- impacted_files_or_scope: branch/worktree structure, routing scaffolding, keypad/problem module layout
+- prevention_action: enforce merge-main-only rule and keep legacy codex branches read-only
+- preflight_check_next_time: ensure main clean/stashed, create backup tag, verify worktree-branch mapping first
+- log_path: local operation run (Codex execution log)
+- pre_sha: 36cd5eb
+- post_sha: pending commit

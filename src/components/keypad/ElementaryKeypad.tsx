@@ -1,11 +1,11 @@
 import {
   KEYPAD_LAYOUT,
-  KEY_LABELS,
   isTokenEnabledForMode,
   keypadKeySizeClass,
   keypadRightColumnClass,
   resolveMathKeypadToken
 } from "./BaseMathKeypad";
+import { KEY_LABELS } from "./KeypadLayout";
 
 type Props = {
   isPlaying: boolean;

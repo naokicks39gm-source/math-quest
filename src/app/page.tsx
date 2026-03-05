@@ -131,6 +131,15 @@ export default function Home() {
         </section>
 
         <section className="w-full bg-white/88 border border-slate-300/75 rounded-2xl p-6 shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-sm space-y-3">
+          <div className="font-semibold text-slate-800">学年別ページ</div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button type="button" onClick={() => router.push("/elementary")} className="w-full py-2 rounded-lg font-bold text-white bg-emerald-600">小学校</button>
+            <button type="button" onClick={() => router.push("/junior")} className="w-full py-2 rounded-lg font-bold text-white bg-amber-600">中学校</button>
+            <button type="button" onClick={() => router.push("/highschool")} className="w-full py-2 rounded-lg font-bold text-white bg-slate-800">高校</button>
+          </div>
+        </section>
+
+        <section className="w-full bg-white/88 border border-slate-300/75 rounded-2xl p-6 shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-sm space-y-3">
           <div className="font-semibold text-slate-800">保護者レポート設定</div>
           <button
             type="button"

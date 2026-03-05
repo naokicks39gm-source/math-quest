@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent, TouchEvent as ReactTouchEvent } from "react";
 import {
   KEYPAD_LAYOUT,
-  KEY_LABELS,
   isTokenEnabledForMode,
   keypadKeySizeClass,
   keypadRightColumnClass,
@@ -11,6 +10,7 @@ import {
   type MathKeypadMode,
   type MathKeypadToken
 } from "./BaseMathKeypad";
+import { KEY_LABELS } from "./KeypadLayout";
 
 type SecondaryMode = "junior" | "highschool";
 

@@ -7,17 +7,19 @@ const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 const pageSource = read("src/app/quest/page.tsx");
 const baseSource = read("src/components/keypad/BaseMathKeypad.ts");
+const layoutSource = read("src/components/keypad/KeypadLayout.ts");
+const baseTsxSource = read("src/components/keypad/BaseMathKeypad.tsx");
 const elemSource = read("src/components/keypad/ElementaryKeypad.tsx");
 const juniorSource = read("src/components/keypad/JuniorKeypad.tsx");
 const hsSource = read("src/components/keypad/HighSchoolKeypad.tsx");
 
 test("math keypad layout is 4x5 with right-side action column", () => {
-  assert.match(baseSource, /export const KEYPAD_LAYOUT = \[/);
-  assert.match(baseSource, /"1", "2", "3", "\(\)",/);
-  assert.match(baseSource, /"4", "5", "6", "var",/);
-  assert.match(baseSource, /"7", "8", "9", "\+\/-",/);
-  assert.match(baseSource, /"0", "frac", "pow", "\.",/);
-  assert.match(baseSource, /"abs", "sqrt", "log", "pi"/);
+  assert.match(layoutSource, /export const KEYPAD_LAYOUT = \[/);
+  assert.match(layoutSource, /"1", "2", "3", "\(\)",/);
+  assert.match(layoutSource, /"4", "5", "6", "var",/);
+  assert.match(layoutSource, /"7", "8", "9", "\+\/-",/);
+  assert.match(layoutSource, /"0", "frac", "pow", "\.",/);
+  assert.match(layoutSource, /"abs", "sqrt", "log", "pi"/);
   assert.match(elemSource, /grid-cols-4 grid-rows-5/);
   assert.match(hsSource, /grid-cols-4 grid-rows-5/);
   assert.match(elemSource, /onClick=\{onDelete\}/);
@@ -26,6 +28,7 @@ test("math keypad layout is 4x5 with right-side action column", () => {
 });
 
 test("grade-specific enabled tokens are defined", () => {
+  assert.match(baseTsxSource, /export \* from "\.\/BaseMathKeypad";/);
   assert.match(baseSource, /elementary: new Set<MathKeypadToken>\(\["var", "\+\/-", "frac", "pow", "abs", "sqrt", "log", "pi"\]\)/);
   assert.match(baseSource, /junior: new Set<MathKeypadToken>\(\["abs", "sqrt", "log", "pi"\]\)/);
   assert.match(baseSource, /highschool: new Set<MathKeypadToken>\(\[\]\)/);
