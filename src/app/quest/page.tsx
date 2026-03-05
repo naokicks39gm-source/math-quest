@@ -16,6 +16,7 @@ import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
 import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
 import ElementaryExplanationPanel from "@/components/ElementaryExplanationPanel";
 import { getElementaryLearningAid, isElementaryGrade } from "@/lib/elementaryExplanations";
+import Keypad from "@/components/Keypad";
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -390,8 +391,6 @@ const CHARACTERS = {
   }
 };
 
-const DIGIT_KEYPAD_TOKENS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
-const SYMBOL_KEYPAD_TOKENS = ["/", ".", "-"] as const;
 const HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS = ["()", "x", "^", "+/-"] as const;
 const PLUS_MINUS_LONG_PRESS_MS = 220;
 const PLUS_MINUS_POPUP_SWITCH_PX = 0;
@@ -2989,8 +2988,6 @@ function QuestPageInner() {
     setShowSecondaryHint(false);
     nextQuestion();
   };
-  const keypadDigitTopTokens = DIGIT_KEYPAD_TOKENS.filter((token) => token !== "0");
-  const smallSymbolTokens: Array<(typeof SYMBOL_KEYPAD_TOKENS)[number]> = [".", "-", "/"];
   const renderAnswerWithSuperscript = (text: string) => {
     if (!text) return "\u2007";
     if (!isHighSchoolQuest) return text;
@@ -4674,110 +4671,28 @@ function QuestPageInner() {
       {/* Bottom: Input + Calc Memo */}
       {status === 'playing' && (
         <div className="w-full pt-2 pb-3 sticky bottom-0 bg-slate-50/95 backdrop-blur-sm z-20 space-y-2">
-          <div className="w-full space-y-1 pb-1">
-            <div className="w-full flex items-stretch gap-2">
-              {isHighSchoolQuest ? (
-                <div className="flex-1 grid grid-cols-5 grid-rows-4 gap-1">
-                  {[
-                    "1", "2", "3", "()", "",
-                    "4", "5", "6", "x", "",
-                    "7", "8", "9", "+/-", "",
-                    "0", "/", "^", ".", ""
-                  ].map((token, index) => {
-                    if (!token) return <div key={`hs-spacer-${index}`} className="h-9 w-full" />;
-                    return (
-                      <button
-                        key={`hs-${token}-${index}`}
-                        onClick={() => {
-                          if (token === "+/-") return;
-                          handleInput(token);
-                        }}
-                        onPointerDown={token === "+/-" ? handlePlusMinusFlickStart : undefined}
-                        onPointerUp={token === "+/-" ? handlePlusMinusFlickEnd : undefined}
-                        onPointerCancel={token === "+/-" ? handlePlusMinusFlickCancel : undefined}
-                        onTouchStart={token === "+/-" ? handlePlusMinusTouchStart : undefined}
-                        disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken(token)}
-                        className={`
-                          relative overflow-visible w-full font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
-                          ${token === "+/-" ? "h-10 rounded-lg text-[13px] tracking-wide mx-1" : "h-9 rounded-md text-[11px]"}
-                          ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                          ${token === "+/-" && plusMinusPopupOpen && plusMinusCandidate === "-" ? "bg-rose-50 text-rose-700 border-rose-300" : ""}
-                        `}
-                        style={token === "+/-" ? { touchAction: "none" } : undefined}
-                      >
-                        {renderKeyLabel(token)}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex-1 grid grid-cols-3 grid-rows-4 gap-1.5">
-                  {keypadDigitTopTokens.map((token) => (
-                    <button
-                      key={token}
-                      onClick={() => handleInput(token)}
-                      disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken(token)}
-                      className={`
-                        h-11 w-full rounded-lg text-base font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
-                        ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                      `}
-                    >
-                      {renderKeyLabel(token)}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => handleInput("0")}
-                    disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken("0")}
-                    className={`
-                      h-11 w-full rounded-lg text-base font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
-                      ${canUseKeyToken("0") ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                    `}
-                  >
-                    {renderKeyLabel("0")}
-                  </button>
-                  <div className="col-span-2 h-11 grid grid-cols-3 gap-1">
-                    {smallSymbolTokens.map((token) => (
-                      <button
-                        key={token}
-                        onClick={() => handleInput(token)}
-                        disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canUseKeyToken(token)}
-                        className={`
-                          h-full w-full rounded-md text-[11px] font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
-                          ${canUseKeyToken(token) ? "bg-white text-slate-700 border-slate-200 hover:bg-slate-50" : "bg-slate-100 text-slate-400 border-slate-200"}
-                        `}
-                      >
-                        {renderKeyLabel(token)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="w-[92px] grid grid-cols-1 grid-rows-[44px_88px_36px] gap-1.5">
-                <button
-                  onClick={handleDelete}
-                  disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation}
-                  className="h-full w-full rounded-lg text-sm font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-red-100 text-red-600 border border-red-200 hover:bg-red-200 flex items-center justify-center"
-                >
-                  ⌫
-                </button>
-                <button
-                  onClick={handleAttack}
-                  disabled={status !== 'playing' || isStarting || isAnswerLockedByExplanation || !canSubmitCurrentAnswer}
-                  className="h-full w-full rounded-lg text-base font-black shadow-[0_3px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[3px] transition-all bg-indigo-600 text-white border border-indigo-700 hover:bg-indigo-700 flex items-center justify-center"
-                >
-                  {uiText.judge}
-                </button>
-                <button
-                  type="button"
-                  onClick={endLearningSession}
-                  disabled={sessionActionLoading}
-                  className="h-full w-full rounded-md text-xs font-bold shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all bg-emerald-600 text-white border border-emerald-700 hover:bg-emerald-700 disabled:bg-slate-300 flex items-center justify-center"
-                >
-                  おわり
-                </button>
-              </div>
-            </div>
-          </div>
+          <Keypad
+            mode={isHighSchoolQuest ? "highschool" : "junior"}
+            isPlaying={status === "playing"}
+            isStarting={isStarting}
+            isAnswerLocked={isAnswerLockedByExplanation}
+            canSubmit={canSubmitCurrentAnswer}
+            canUseKeyToken={canUseKeyToken}
+            renderKeyLabel={renderKeyLabel}
+            onInput={handleInput}
+            onDelete={handleDelete}
+            onJudge={handleAttack}
+            onEnd={endLearningSession}
+            onPlusMinusPointerDown={handlePlusMinusFlickStart}
+            onPlusMinusPointerUp={handlePlusMinusFlickEnd}
+            onPlusMinusPointerCancel={handlePlusMinusFlickCancel}
+            onPlusMinusTouchStart={handlePlusMinusTouchStart}
+            plusMinusPopupOpen={plusMinusPopupOpen}
+            plusMinusCandidate={plusMinusCandidate}
+            judgeLabel={uiText.judge}
+            endLabel="おわり"
+            endDisabled={sessionActionLoading}
+          />
         </div>
       )}
 

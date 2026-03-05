@@ -4,13 +4,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 const questSource = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
+const keypadSource = fs.readFileSync(path.join(process.cwd(), "src/components/Keypad.tsx"), "utf8");
 const legacySource = fs.readFileSync(path.join(process.cwd(), "src/app/quest-handwrite-legacy/page.tsx"), "utf8");
 
 test("quest uses keypad answer flow and calc memo canvas", () => {
   assert.match(questSource, /const \[inputMode\] = useState<'numpad' \| 'handwriting'>\('numpad'\)/);
   assert.match(questSource, /data-testid="calc-memo-area"/);
   assert.match(questSource, /計算メモ（2本指ピンチで縮小）/);
-  assert.match(questSource, /onClick=\{handleAttack\}/);
+  assert.match(questSource, /onJudge=\{handleAttack\}/);
+  assert.match(keypadSource, /onClick=\{onJudge\}/);
   assert.match(questSource, /onClick=\{undoMemo\}/);
   assert.match(questSource, /onClick=\{clearMemo\}/);
   assert.equal(questSource.includes("100%"), false);

@@ -4,11 +4,14 @@ import fs from "node:fs";
 import path from "node:path";
 
 const source = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
+const keypadSource = fs.readFileSync(path.join(process.cwd(), "src/components/Keypad.tsx"), "utf8");
 
 test("answer operations are locked while secondary explanation is open", () => {
   assert.match(source, /const isAnswerLockedByExplanation = isSecondaryQuest && showSecondaryExplanation/);
   assert.match(source, /if \(status !== 'playing' \|\| isStarting \|\| isAnswerLockedByExplanation\) return;/);
-  assert.match(source, /disabled=\{status !== 'playing' \|\| isStarting \|\| isAnswerLockedByExplanation \|\| !canSubmitCurrentAnswer\}/);
+  assert.match(source, /isAnswerLocked=\{isAnswerLockedByExplanation\}/);
+  assert.match(source, /canSubmit=\{canSubmitCurrentAnswer\}/);
+  assert.match(keypadSource, /disabled=\{isDisabledBase \|\| !canSubmit\}/);
   assert.match(source, /if \(isSecondaryQuest\) \{\s*setShowSecondaryHint\(false\);\s*setShowSecondaryExplanation\(true\);\s*\}/);
 });
 
