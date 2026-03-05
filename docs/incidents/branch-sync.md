@@ -69,3 +69,17 @@ Record every branch sync run, including no-incident runs, to prevent repeated op
 - log_path: local operation run (Codex execution log)
 - pre_sha: a58f436
 - post_sha: 6f8d195
+
+### 2026-03-05 17:31:22 JST
+- datetime_jst: 2026-03-05 17:31:22 JST
+- result: success
+- failed_stage: none
+- one_line_cause: restored problem data to previous edit point (60404df) with non-destructive commit flow
+- impacted_branches: main
+- impacted_files_or_scope: src/lib/elementaryContent.ts
+- prevention_action: always stash dirty worktree, tag before rollback, and isolate problem-data rollback to single file
+- preflight_check_next_time: record pre SHA and stash ID before rollback, then run check/lint/typecheck + fraction TeX tests
+- log_path: local operation run (Codex execution log)
+- pre_sha: e87d8b5
+- post_sha: e11e5a6
+- stash_id: stash@{0} (problem-data-rollback-prep-20260305-1727)
