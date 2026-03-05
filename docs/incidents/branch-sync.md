@@ -97,3 +97,18 @@ Record every branch sync run, including no-incident runs, to prevent repeated op
 - pre_sha: e87d8b5
 - post_sha: 143ce15
 - stash_restore: success (restored BaseMathKeypad.tsx deletion + keypad test edits)
+
+### 2026-03-05 17:38:03 JST
+- datetime_jst: 2026-03-05 17:38:03 JST
+- result: success
+- failed_stage: none
+- one_line_cause: problem configuration was restored to commit 588ab18 using single-file rollback
+- impacted_branches: main
+- impacted_files_or_scope: src/lib/elementaryContent.ts
+- prevention_action: keep rollback scope to one file and verify with check/lint/typecheck + fraction TeX tests
+- preflight_check_next_time: tag + stash first, verify only target file is staged before commit
+- log_path: local operation run (Codex execution log)
+- pre_sha: b0a529e
+- post_sha: 3c58d72
+- stash_id: stash@{0} (problem-config-588ab18-prep-20260305-173618)
+- verify: make check=pass, lint=pass, typecheck=pass, fraction_tex_tests=pass
