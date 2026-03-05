@@ -115,7 +115,6 @@ const E2_DAN_MUL_TYPE_RE = /^E2\.NA\.MUL\.MUL_1D_1D_DAN_[1-9]$/;
 const E2_MIX_TEN_TYPE_RE = /^E2\.NA\.MUL\.MUL_1D_1D_MIX_(1_3|4_6|7_9)$/;
 const E2_MIX_99_TEST_TYPE_ID = "E2.NA.MUL.MUL_1D_1D_MIX_1_9";
 const getTargetQuestionCount = (typeId?: string, levelId?: string) => {
-  if (levelId === "E1-12") return 10;
   if (levelId && isE1LevelId(levelId)) return DEFAULT_TOTAL_QUESTIONS;
   if (!typeId) return DEFAULT_TOTAL_QUESTIONS;
   if (typeId === E2_MIX_99_TEST_TYPE_ID) return 20;
@@ -148,35 +147,18 @@ const ensureTrailingEquationEquals = (text: string) => {
 };
 const buildMemoExplanationAid = (memoText?: string): ElementaryLearningAid | null => {
   if (!memoText) return null;
-  const lines = memoText
-    .split("\n")
-    .map((line) => line.replace(/\s+$/u, ""));
-  const steps: string[] = [];
-  let current: string[] = [];
-  for (const line of lines) {
-    if (/^[①②③④⑤⑥]\s/u.test(line)) {
-      if (current.length > 0) steps.push(current.join("\n").trim());
-      current = [line];
-      continue;
-    }
-    if (current.length === 0 && line.trim().length === 0) continue;
-    current.push(line);
-  }
-  if (current.length > 0) steps.push(current.join("\n").trim());
-  if (steps.length === 0) return null;
-  const lastStep = steps[steps.length - 1] ?? "";
-  const splitIndex = lastStep.lastIndexOf("\n\n");
-  const hasTrailingFormula = splitIndex >= 0 && /=|>|−/u.test(lastStep.slice(splitIndex + 2));
-  const conclusion = hasTrailingFormula ? lastStep.slice(splitIndex + 2).trim() : "";
-  const normalizedSteps = hasTrailingFormula
-    ? [...steps.slice(0, -1), lastStep.slice(0, splitIndex).trim()]
-    : steps;
+  const blocks = memoText
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
+  if (blocks.length === 0) return null;
+  const conclusion = blocks[blocks.length - 1] ?? "";
+  const steps = blocks.slice(0, -1).slice(0, 3);
   return {
     kind: "simple",
     title: "けいさんメモ",
-    steps: normalizedSteps,
-    conclusion,
-    numberingStyle: "circled"
+    steps: steps.length > 0 ? steps : [conclusion],
+    conclusion: steps.length > 0 ? conclusion : ""
   };
 };
 
@@ -346,12 +328,11 @@ const renderNumDecompPrompt = (prompt: string): ReactNode | null => {
   );
 };
 
-const SLOT_MARKER_PATTERN = /[?？□]/g;
+const SLOT_MARKER_PATTERN = /[?？]/g;
 const SLOT_LEFT_HINT_PATTERN = /[+\-×÷=＝とは]/;
 const SLOT_RIGHT_HINT_PATTERN = /[0-9０-９A-Za-zぁ-んァ-ヶ一-龯(（]/;
 
 const shouldRenderSlotMarker = (text: string, index: number) => {
-  if (text[index] === "□") return true;
   const prev = index > 0 ? text[index - 1] : "";
   const next = index + 1 < text.length ? text[index + 1] : "";
   if (next && SLOT_RIGHT_HINT_PATTERN.test(next)) return true;
@@ -374,7 +355,7 @@ const renderPromptWithSlotBox = (text: string): ReactNode | null => {
       <span
         key={`slot-box-${idx}`}
         aria-hidden
-        className="mx-[0.08em] inline-flex h-[1.32em] w-[1.32em] items-center justify-center rounded-[0.18em] border-[2.5px] border-emerald-100 align-[-0.06em]"
+        className="mx-[0.06em] inline-flex h-[1.12em] w-[1.12em] items-center justify-center rounded-[0.18em] border-2 border-emerald-100 align-[-0.04em]"
       />
     );
     last = idx + match[0].length;
@@ -2125,7 +2106,7 @@ function QuestPageInner() {
       return {
         gradeName: "小1",
         categoryName: "数と計算",
-        typeName: option ? `Lv:${option.levelId} ${option.title}` : `Lv:${levelFromQuery}`
+        typeName: option ? `${option.levelId} ${option.title}` : levelFromQuery
       };
     }
     if (!hasTypeQuery && !hasCategoryQuery) {
@@ -2472,9 +2453,9 @@ function QuestPageInner() {
     const levelOptions = E1_LEVEL_OPTIONS.map((entry) => ({
       kind: "level" as const,
       levelId: entry.levelId,
-      typeName: `Lv:${entry.levelId} ${entry.title}`
+      typeName: `${entry.levelId} ${entry.title}`
     }));
-    return levelOptions;
+    return [...levelOptions, ...base];
   }, [pickerGrade]);
   useEffect(() => {
     if (!currentGradeId) return;
@@ -2567,13 +2548,6 @@ function QuestPageInner() {
     });
   };
   const goToNextLevel = () => {
-    if (levelFromQuery) {
-      const currentIndex = E1_LEVEL_OPTIONS.findIndex((entry) => entry.levelId === levelFromQuery);
-      const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % E1_LEVEL_OPTIONS.length : 0;
-      const nextLevel = E1_LEVEL_OPTIONS[nextIndex];
-      router.push(`/quest?levelId=${encodeURIComponent(nextLevel.levelId)}`);
-      return;
-    }
     if (allTypePaths.length === 0) return;
     const currentTypeId = currentType?.type_id ?? selectedType?.type_id ?? "";
     const currentIndex = allTypePaths.findIndex((entry) => entry.typeId === currentTypeId);
