@@ -23,13 +23,7 @@ export type TypeDef = {
   concept_tags?: string[];
   generation_params?: {
     pattern_id?: string;
-    a_digits?: number;
-    b_digits?: number;
-    carry?: string;
-    borrow?: string;
-    quotient_digits?: number;
-    decimal_places?: number;
-    [key: string]: string | number | boolean | null | undefined;
+    [key: string]: unknown;
   };
   answer_format: AnswerFormat;
   example_items: ExampleItem[];
