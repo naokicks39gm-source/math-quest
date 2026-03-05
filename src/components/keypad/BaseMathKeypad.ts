@@ -1,27 +1,24 @@
-import { KEYPAD_LAYOUT, type MathKeypadToken } from "./KeypadLayout";
+import { KEYS } from "packages/keypad";
+import { KEYPAD_LAYOUT_BY_MODE, type MathKeypadToken } from "./KeypadLayout";
 
 export type MathKeypadMode = "elementary" | "junior" | "highschool";
 
-const DISABLED_TOKENS_BY_MODE: Record<MathKeypadMode, ReadonlySet<MathKeypadToken>> = {
-  elementary: new Set<MathKeypadToken>(["var", "+/-", "frac", "pow", "abs", "sqrt", "log", "pi"]),
-  junior: new Set<MathKeypadToken>(["abs", "sqrt", "log", "pi"]),
-  highschool: new Set<MathKeypadToken>([])
+const TOKENS_BY_MODE: Record<MathKeypadMode, ReadonlySet<MathKeypadToken>> = {
+  elementary: new Set<MathKeypadToken>(KEYPAD_LAYOUT_BY_MODE.elementary.flat()),
+  junior: new Set<MathKeypadToken>(KEYPAD_LAYOUT_BY_MODE.junior.flat()),
+  highschool: new Set<MathKeypadToken>(KEYPAD_LAYOUT_BY_MODE.highschool.flat())
 };
 
-export const isTokenEnabledForMode = (mode: MathKeypadMode, token: MathKeypadToken) =>
-  !DISABLED_TOKENS_BY_MODE[mode].has(token);
+export const isTokenEnabledForMode = (mode: MathKeypadMode, token: MathKeypadToken) => TOKENS_BY_MODE[mode].has(token);
 
 export const resolveMathKeypadToken = (
   token: MathKeypadToken,
-  variableToken: string
+  _variableToken: string
 ): string => {
-  if (token === "var") return variableToken;
-  if (token === "frac") return "/";
-  if (token === "pow") return "^";
-  if (token === "abs") return "|x|";
-  if (token === "sqrt") return "sqrt(";
-  if (token === "log") return "log(";
-  if (token === "pi") return "π";
+  if (token === KEYS.FRACTION) return "/";
+  if (token === KEYS.EXPONENT) return "^";
+  if (token === KEYS.DECIMAL) return ".";
+  if (token === KEYS.SQRT) return "sqrt(";
   return token;
 };
 
@@ -37,5 +34,5 @@ export const keypadRightColumnClass: Record<MathKeypadMode, string> = {
   highschool: "w-[92px] grid grid-cols-1 grid-rows-[36px_72px_36px] gap-1.5"
 };
 
-export { KEYPAD_LAYOUT };
+export { KEYPAD_LAYOUT_BY_MODE };
 export type { MathKeypadToken };

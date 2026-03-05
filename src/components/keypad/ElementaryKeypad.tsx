@@ -1,11 +1,11 @@
 import {
-  KEYPAD_LAYOUT,
-  isTokenEnabledForMode,
+  KEYPAD_LAYOUT_BY_MODE,
   keypadKeySizeClass,
   keypadRightColumnClass,
-  resolveMathKeypadToken
+  resolveMathKeypadToken,
+  type MathKeypadToken
 } from "./BaseMathKeypad";
-import { KEY_LABELS } from "./KeypadLayout";
+import { KEYS } from "packages/keypad";
 
 type Props = {
   isPlaying: boolean;
@@ -42,27 +42,36 @@ export default function ElementaryKeypad({
 
   return (
     <div className="w-full flex items-stretch gap-2">
-      <div className="flex-1 grid grid-cols-4 grid-rows-5 gap-1.5">
-        {KEYPAD_LAYOUT.map((token) => {
-          const enabled = isTokenEnabledForMode("elementary", token);
-          const resolved = resolveMathKeypadToken(token, "x");
-          const disabled = baseDisabled || !enabled || !canUseKeyToken(resolved);
-          return (
-            <button
-              key={token}
-              type="button"
-              onClick={() => onInput(resolved)}
-              disabled={disabled}
-              className={`
-                w-full font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
-                ${keySize}
-                ${disabled ? "bg-slate-100 text-slate-400 border-slate-200" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"}
-              `}
-            >
-              {KEY_LABELS[token]}
-            </button>
-          );
-        })}
+      <div className="flex-1 flex flex-col gap-1.5">
+        {KEYPAD_LAYOUT_BY_MODE.elementary.map((row, rowIndex) => (
+          <div
+            key={`row-${rowIndex}`}
+            className="grid gap-1.5"
+            style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}
+          >
+            {row.map((token, colIndex) => {
+              if (token === KEYS.DELETE) return null;
+              const typedToken = token as MathKeypadToken;
+              const resolved = resolveMathKeypadToken(typedToken, "x");
+              const disabled = baseDisabled || !canUseKeyToken(resolved);
+              return (
+                <button
+                  key={`${rowIndex}-${colIndex}-${token}`}
+                  type="button"
+                  onClick={() => onInput(resolved)}
+                  disabled={disabled}
+                  className={`
+                    w-full font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
+                    ${keySize}
+                    ${disabled ? "bg-slate-100 text-slate-400 border-slate-200" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"}
+                  `}
+                >
+                  {token}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </div>
       <div className={rightColumnClass}>
         <button
