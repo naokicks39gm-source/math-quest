@@ -83,3 +83,17 @@ Record every branch sync run, including no-incident runs, to prevent repeated op
 - pre_sha: e87d8b5
 - post_sha: e11e5a6
 - stash_id: stash@{0} (problem-data-rollback-prep-20260305-1727)
+
+### 2026-03-05 17:32:10 JST
+- datetime_jst: 2026-03-05 17:32:10 JST
+- result: success
+- failed_stage: none
+- one_line_cause: finalized rollback push and restored pre-existing local worktree changes from stash
+- impacted_branches: main
+- impacted_files_or_scope: docs/incidents/branch-sync.md (audit completion)
+- prevention_action: after push, always record final head SHA and stash restore result in ledger
+- preflight_check_next_time: verify stash pop result and keep restored local changes uncommitted
+- log_path: local operation run (Codex execution log)
+- pre_sha: e87d8b5
+- post_sha: 143ce15
+- stash_restore: success (restored BaseMathKeypad.tsx deletion + keypad test edits)
