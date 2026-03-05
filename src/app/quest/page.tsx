@@ -2826,6 +2826,10 @@ function QuestPageInner() {
         if (text === "" || text === "-") return false;
         return true;
       }
+      if (token === "×") {
+        if (text.length === 0) return false;
+        return /[\dxyapiπ)]$/.test(text);
+      }
       if (token === "+") {
         if (!isSecondaryQuest) return false;
         if (text.length === 0) return false;
@@ -3027,6 +3031,7 @@ function QuestPageInner() {
     if (token === "-") return true;
     if (token === ".") return true;
     if (token === "/") return true;
+    if (token === "×") return true;
     if (token === "+") return isSecondaryQuest;
     if (token === "^") return isSecondaryQuest;
     if (token === "()") return isSecondaryQuest;

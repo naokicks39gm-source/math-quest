@@ -9,7 +9,8 @@ const TOKENS_BY_MODE: Record<MathKeypadMode, ReadonlySet<MathKeypadToken>> = {
   highschool: new Set<MathKeypadToken>(KEYPAD_LAYOUT_BY_MODE.highschool.flat())
 };
 
-export const isTokenEnabledForMode = (mode: MathKeypadMode, token: MathKeypadToken) => TOKENS_BY_MODE[mode].has(token);
+export const isTokenEnabledForMode = (mode: MathKeypadMode, token: MathKeypadToken) =>
+  TOKENS_BY_MODE[mode].has(token);
 
 export const resolveMathKeypadToken = (
   token: MathKeypadToken,
