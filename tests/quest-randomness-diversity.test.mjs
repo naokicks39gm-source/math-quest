@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const source = fs.readFileSync(
-  path.join(process.cwd(), "apps/web/src/lib/questItemFactory.ts"),
+  path.join(process.cwd(), "src/lib/questItemFactory.ts"),
   "utf8"
 );
 

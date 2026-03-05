@@ -17,7 +17,7 @@ const gradeFiles = [
   "h1",
   "h2",
   "h3"
-].map((id) => `apps/web/src/content/grades/mathquest_${id}_types_v1.json`);
+].map((id) => `src/content/grades/mathquest_${id}_types_v1.json`);
 const raw = {
   grades: gradeFiles.flatMap((file) => readJson(file).grades ?? [])
 };
@@ -250,7 +250,7 @@ test("1-digit - 1-digit has a single type label", () => {
 });
 
 test("phase-based profile moves 2-digit - 2-digit from E1 to E2", () => {
-  const profileSource = fs.readFileSync(path.join(process.cwd(), "apps/web/src/lib/gradeProfiles.ts"), "utf8");
+  const profileSource = fs.readFileSync(path.join(process.cwd(), "src/lib/gradeProfiles.ts"), "utf8");
   const e1Block = profileSource.match(/E1:\s*\{[\s\S]*?\n\s*\},\n\s*E2:/)?.[0] ?? "";
   assert.equal(e1Block.includes('hasPrefix(p, "SUB_2D_2D")'), false);
   assert.match(profileSource, /E2\.NA\.SUB\.SUB_2D_2D_NO/);
@@ -271,7 +271,7 @@ test("E2 2-digit + 2-digit labels include carry condition information", () => {
 });
 
 test("E2 orderedTypeIds place 2-digit+1-digit before 2-digit+2-digit and 2-digit-1-digit before 2-digit-2-digit", () => {
-  const profileSource = fs.readFileSync(path.join(process.cwd(), "apps/web/src/lib/gradeProfiles.ts"), "utf8");
+  const profileSource = fs.readFileSync(path.join(process.cwd(), "src/lib/gradeProfiles.ts"), "utf8");
   const e2Block = profileSource.match(/E2:\s*\{[\s\S]*?\n\s*\},\n\s*E3:/)?.[0] ?? "";
   const add2d1dNo = e2Block.indexOf('"E2.NA.ADD.ADD_2D_1D_NO"');
   const add2d2dNo = e2Block.indexOf('"E2.NA.ADD.ADD_2D_2D_NO"');

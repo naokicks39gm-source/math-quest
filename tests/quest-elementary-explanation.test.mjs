@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-const pageSource = fs.readFileSync(path.join(process.cwd(), "apps/web/src/app/quest/page.tsx"), "utf8");
-const libSource = fs.readFileSync(path.join(process.cwd(), "apps/web/src/lib/elementaryExplanations.ts"), "utf8");
-const panelSource = fs.readFileSync(path.join(process.cwd(), "apps/web/src/components/ElementaryExplanationPanel.tsx"), "utf8");
+const pageSource = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
+const libSource = fs.readFileSync(path.join(process.cwd(), "src/lib/elementaryExplanations.ts"), "utf8");
+const panelSource = fs.readFileSync(path.join(process.cwd(), "src/components/ElementaryExplanationPanel.tsx"), "utf8");
 
 test("quest shows elementary explanation in memo area when elementary answer is wrong", () => {
   assert.match(pageSource, /import ElementaryExplanationPanel from "@\/components\/ElementaryExplanationPanel"/);
@@ -160,5 +160,5 @@ test("secondary explanation path remains in quest page", () => {
   assert.match(pageSource, /isHighSchoolQuest \?/);
   assert.match(pageSource, /ヒントを閉じる/);
   assert.match(pageSource, /\{showHighSchoolHint && \(/);
-  assert.match(pageSource, /<SecondaryExplanationPanel aid=\{currentAid!?\} \/>/);
+  assert.match(pageSource, /<SecondaryExplanationPanel aid=\{currentAid\} \/>/);
 });

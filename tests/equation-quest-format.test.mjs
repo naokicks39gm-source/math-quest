@@ -7,7 +7,7 @@ const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 test("quadratic roots examples are fixed to x^2+x-6=0 for H1-H3", () => {
   for (const gradeId of ["h1", "h2", "h3"]) {
-    const source = read(`apps/web/src/content/grades/mathquest_${gradeId}_types_v1.json`);
+    const source = read(`src/content/grades/mathquest_${gradeId}_types_v1.json`);
     assert.match(source, /"type_id":\s*"H\d\.AL\.EQ\.QUAD_ROOTS"/);
     assert.match(source, /"prompt":\s*"x\^2\+x-6=0"/);
     assert.doesNotMatch(source, /x\^2-5x\+6=0 の解\(小さい順\) =/);
@@ -17,7 +17,7 @@ test("quadratic roots examples are fixed to x^2+x-6=0 for H1-H3", () => {
 
 test("linear equation prompts keep x = notation in J2/J3", () => {
   for (const gradeId of ["j2", "j3"]) {
-    const source = read(`apps/web/src/content/grades/mathquest_${gradeId}_types_v1.json`);
+    const source = read(`src/content/grades/mathquest_${gradeId}_types_v1.json`);
     assert.match(source, /"type_id":\s*"J\d\.EQ\.LIN\.LIN_EQ"/);
     assert.match(source, /"prompt":\s*"2x \+ 3 = 11, x ="/);
     assert.match(source, /"prompt":\s*"5x - 10 = 0, x ="/);
@@ -26,7 +26,7 @@ test("linear equation prompts keep x = notation in J2/J3", () => {
 });
 
 test("grader supports pair answers with unordered quadratic root matching", () => {
-  const source = read("apps/web/src/lib/grader.ts");
+  const source = read("src/lib/grader.ts");
   assert.match(source, /const parseIntPair = \(input: string\): IntPair \| null =>/);
   assert.match(source, /const isQuadraticRootsPairType = \(typeId\?: string\)/);
   assert.match(source, /if \(format\.kind === "pair"\)/);
@@ -35,7 +35,7 @@ test("grader supports pair answers with unordered quadratic root matching", () =
 });
 
 test("quest page has dual answer slots for quadratic roots", () => {
-  const source = read("apps/web/src/app/quest/page.tsx");
+  const source = read("src/app/quest/page.tsx");
   assert.match(source, /const isQuadraticRootsType = \(typeId\?: string\) =>/);
   assert.match(source, /const \[quadraticAnswers, setQuadraticAnswers\] = useState<\[string, string\]>/);
   assert.match(source, /aria-label="recognized-answer-1"/);

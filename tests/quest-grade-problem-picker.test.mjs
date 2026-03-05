@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-const source = fs.readFileSync(path.join(process.cwd(), "apps/web/src/app/quest/page.tsx"), "utf8");
+const source = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
 
 test("quest top picker uses one problem button with grade and problem sections", () => {
   assert.match(source, /問題を選ぶ/);

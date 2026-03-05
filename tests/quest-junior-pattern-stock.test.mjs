@@ -4,13 +4,13 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const factorySource = fs.readFileSync(path.join(root, "apps/web/src/lib/questItemFactory.ts"), "utf8");
-const stockSource = fs.readFileSync(path.join(root, "apps/web/src/lib/questStockFactory.ts"), "utf8");
+const factorySource = fs.readFileSync(path.join(root, "src/lib/questItemFactory.ts"), "utf8");
+const stockSource = fs.readFileSync(path.join(root, "src/lib/questStockFactory.ts"), "utf8");
 
 const gradeFiles = [
-  "apps/web/src/content/grades/mathquest_j1_types_v1.json",
-  "apps/web/src/content/grades/mathquest_j2_types_v1.json",
-  "apps/web/src/content/grades/mathquest_j3_types_v1.json"
+  "src/content/grades/mathquest_j1_types_v1.json",
+  "src/content/grades/mathquest_j2_types_v1.json",
+  "src/content/grades/mathquest_j3_types_v1.json"
 ];
 
 const readJson = (p) => JSON.parse(fs.readFileSync(path.join(root, p), "utf8"));

@@ -6,7 +6,7 @@ import path from "node:path";
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 test("grader supports frac parsing and simplification rule by typeId", () => {
-  const source = read("apps/web/src/lib/grader.ts");
+  const source = read("src/lib/grader.ts");
   assert.match(source, /const parseImproperFraction/);
   assert.match(source, /const parseMixedFraction/);
   assert.match(source, /const reduceFraction/);
@@ -22,7 +22,7 @@ test("grader supports frac parsing and simplification rule by typeId", () => {
 });
 
 test("quest page has slash detection and passes typeId to grader", () => {
-  const source = read("apps/web/src/app/quest-handwrite-legacy/page.tsx");
+  const source = read("src/app/quest-handwrite-legacy/page.tsx");
   assert.match(source, /const isSlashComponent/);
   assert.match(source, /const getRecognitionRoi/);
   assert.match(source, /const binarizeCanvasInRoi/);

@@ -5,7 +5,7 @@ import path from "node:path";
 
 const readJson = (p) => JSON.parse(fs.readFileSync(path.join(process.cwd(), p), "utf8"));
 const gradeFiles = ["e1", "e2", "e3", "e4", "e5", "e6"].map(
-  (id) => `apps/web/src/content/grades/mathquest_${id}_types_v1.json`
+  (id) => `src/content/grades/mathquest_${id}_types_v1.json`
 );
 const raw = {
   grades: gradeFiles.flatMap((file) => readJson(file).grades ?? [])

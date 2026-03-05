@@ -4,11 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 
 const stockSource = fs.readFileSync(
-  path.join(process.cwd(), "apps/web/src/lib/questStockFactory.ts"),
+  path.join(process.cwd(), "src/lib/questStockFactory.ts"),
   "utf8"
 );
 const profileSource = fs.readFileSync(
-  path.join(process.cwd(), "apps/web/src/lib/gradeProfiles.ts"),
+  path.join(process.cwd(), "src/lib/gradeProfiles.ts"),
   "utf8"
 );
 

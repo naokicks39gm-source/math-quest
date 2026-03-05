@@ -4,10 +4,10 @@ import fs from "node:fs";
 import path from "node:path";
 
 const mustExist = [
-  "apps/web/src/app/api/guardian-contact/route.ts",
-  "apps/web/src/app/api/session/start/route.ts",
-  "apps/web/src/app/api/session/answer/route.ts",
-  "apps/web/src/app/api/session/end/route.ts"
+  "src/app/api/guardian-contact/route.ts",
+  "src/app/api/session/start/route.ts",
+  "src/app/api/session/answer/route.ts",
+  "src/app/api/session/end/route.ts"
 ];
 
 test("required api routes exist", () => {

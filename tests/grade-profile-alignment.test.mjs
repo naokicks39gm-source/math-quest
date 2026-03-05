@@ -6,7 +6,7 @@ import path from "node:path";
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 test("grade profile defines concept tags and synthetic IDs for E1-E6 alignment", () => {
-  const source = read("apps/web/src/lib/gradeProfiles.ts");
+  const source = read("src/lib/gradeProfiles.ts");
   assert.match(source, /number_sense/);
   assert.match(source, /place_value/);
   assert.match(source, /column_algorithm/);
@@ -59,20 +59,20 @@ test("grade profile defines concept tags and synthetic IDs for E1-E6 alignment",
 });
 
 test("catalog applies NA grade profile and concept tags", () => {
-  const catalogSource = read("apps/web/src/lib/gradeCatalog.ts");
+  const catalogSource = read("src/lib/gradeCatalog.ts");
   assert.match(catalogSource, /applyGradeProfileToNaTypes/);
   assert.match(catalogSource, /NUMBER_AND_CALCULATION_CATEGORY_ID = "NA"/);
   assert.match(catalogSource, /buildCrossGradeDedupeKey/);
   assert.match(catalogSource, /seenNaKeys/);
 
-  const typeSource = read("apps/web/src/lib/elementaryContent.ts");
+  const typeSource = read("src/lib/elementaryContent.ts");
   assert.match(typeSource, /concept_tags\?: string\[\]/);
   assert.doesNotMatch(typeSource, /number_range_label\?: string/);
   assert.doesNotMatch(typeSource, /display_subtitle\?: string/);
 });
 
 test("grade profile keeps difficulty order without focus sort or number range labels", () => {
-  const source = read("apps/web/src/lib/gradeProfiles.ts");
+  const source = read("src/lib/gradeProfiles.ts");
   assert.doesNotMatch(source, /sortByFocus/);
   assert.doesNotMatch(source, /focusPatternIds/);
   assert.doesNotMatch(source, /numberRangeLabel/);

@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-const pageSource = fs.readFileSync(path.join(process.cwd(), "apps/web/src/app/quest/page.tsx"), "utf8");
-const panelSource = fs.readFileSync(path.join(process.cwd(), "apps/web/src/components/SecondaryExplanationPanel.tsx"), "utf8");
+const pageSource = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
+const panelSource = fs.readFileSync(path.join(process.cwd(), "src/components/SecondaryExplanationPanel.tsx"), "utf8");
 
 test("secondary quest uses separate hint and explanation toggles", () => {
   assert.match(pageSource, /const \[showSecondaryHint, setShowSecondaryHint\] = useState\(false\)/);

@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 
-const source = fs.readFileSync(path.join(process.cwd(), "apps/web/src/app/quest/page.tsx"), "utf8");
-const hsKeypadSource = fs.readFileSync(path.join(process.cwd(), "packages/keypad/HighSchoolKeypad.tsx"), "utf8");
+const source = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
+const hsKeypadSource = fs.readFileSync(path.join(process.cwd(), "src/components/keypad/HighSchoolKeypad.tsx"), "utf8");
 
 test("answer operations are locked while secondary explanation is open", () => {
   assert.match(source, /const isAnswerLockedByExplanation = isSecondaryQuest && showSecondaryExplanation/);
