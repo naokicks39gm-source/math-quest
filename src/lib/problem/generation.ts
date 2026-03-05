@@ -1,6 +1,13 @@
 import type { TypeDef } from "@/lib/elementaryContent";
 import { buildTypeStock, pickUniqueQuizFromStock } from "@/lib/questStockFactory";
 import { buildUniqueQuestSet, type QuestEntry } from "@/lib/questItemFactory";
+export {
+  E1_LEVEL_OPTIONS,
+  generateE1LevelProblems,
+  isE1LevelId,
+  type E1LevelId,
+  type E1LevelOption
+} from "./e1LevelAdapter";
 
 export type ProblemEntry = QuestEntry;
 
