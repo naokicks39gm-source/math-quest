@@ -21,10 +21,6 @@ export type TypeDef = {
   type_name: string;
   display_name?: string;
   concept_tags?: string[];
-  generation_params?: {
-    pattern_id?: string;
-    [key: string]: unknown;
-  };
   answer_format: AnswerFormat;
   example_items: ExampleItem[];
 };
