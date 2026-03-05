@@ -24,13 +24,13 @@ export const resolveMathKeypadToken = (
 };
 
 export const keypadKeySizeClass: Record<MathKeypadMode, string> = {
-  elementary: "h-14 text-lg rounded-lg",
+  elementary: "h-[90px] text-2xl rounded-none",
   junior: "h-10 text-sm rounded-md",
   highschool: "h-9 text-xs rounded-md"
 };
 
 export const keypadRightColumnClass: Record<MathKeypadMode, string> = {
-  elementary: "w-[104px] grid grid-cols-1 grid-rows-[56px_112px_56px] gap-1.5",
+  elementary: "w-[120px] grid grid-cols-1 grid-rows-[90px_180px_90px] gap-0",
   junior: "w-[92px] grid grid-cols-1 grid-rows-[40px_80px_40px] gap-1.5",
   highschool: "w-[92px] grid grid-cols-1 grid-rows-[36px_72px_36px] gap-1.5"
 };

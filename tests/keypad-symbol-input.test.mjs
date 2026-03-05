@@ -19,7 +19,10 @@ const packageIndexSource = read("packages/keypad/index.ts");
 test("packages/keypad exposes shared keys and grade layouts", () => {
   assert.equal(packageKeySource.includes("export const KEYS = {"), true);
   assert.equal(packageKeySource.includes('PLUS_MINUS: "+/-"'), true);
-  assert.equal(packageKeySource.includes('VAR: "VAR"'), true);
+  assert.equal(packageKeySource.includes('VAR: "x / 他"'), true);
+  assert.equal(packageKeySource.includes("export const VARIABLE_SYMBOLS = ["), true);
+  assert.equal(packageKeySource.includes('"m"'), true);
+  assert.equal(packageKeySource.includes('"n"'), true);
   assert.equal(packageKeySource.includes("var:"), false);
 
   assert.equal(elementaryLayoutSource.includes("export const ELEMENTARY_KEYPAD = ["), true);
@@ -52,7 +55,7 @@ test("component layer reads grade-specific layouts", () => {
   assert.equal(baseSource.includes('if (token === KEYS.SQRT) return "sqrt(";'), true);
 
   assert.equal(elemSource.includes("KEYPAD_LAYOUT_BY_MODE.elementary.map("), true);
-  assert.equal(elemSource.includes("className=\"grid grid-cols-4 gap-1.5\""), true);
+  assert.equal(elemSource.includes("className=\"grid grid-cols-3 gap-0\""), true);
   assert.equal(hsSource.includes('mode === "junior" ? JUNIOR_KEYPAD : HIGH_KEYPAD'), true);
   assert.equal(juniorSource.includes('SecondaryMathKeypad mode="junior"'), true);
 });
@@ -60,6 +63,9 @@ test("component layer reads grade-specific layouts", () => {
 test("highschool keypad keeps plus-minus gesture and adds VAR flick", () => {
   assert.equal(hsSource.includes("const PLUS_MINUS_SWITCH_PX = 0;"), true);
   assert.equal(hsSource.includes("const resolveVarToken"), true);
+  assert.equal(hsSource.includes('return deltaX > 0 ? "b" : "a";'), true);
+  assert.equal(hsSource.includes('return deltaY < 0 ? "y" : "n";'), true);
+  assert.equal(hsSource.includes("active.longPressed = true;"), true);
   assert.equal(hsSource.includes("onPointerDown={isPlus ? handlePlusDown : isVar ? handleVarDown : undefined}"), true);
   assert.equal(hsSource.includes("onTouchStart={isPlus ? handlePlusTouchStart : isVar ? handleVarTouchStart : undefined}"), true);
   assert.equal(hsSource.includes("setVarCandidate"), true);
@@ -74,4 +80,12 @@ test("quest page switches keypad by grade", () => {
   assert.equal(pageSource.includes("<HighSchoolKeypad"), true);
   assert.equal(pageSource.includes("<JuniorKeypad"), true);
   assert.equal(pageSource.includes("<ElementaryKeypad"), true);
+});
+
+test("quest page allows chained variable symbols and delete helper", () => {
+  assert.equal(pageSource.includes('import { VARIABLE_SYMBOLS } from "packages/keypad";'), true);
+  assert.equal(pageSource.includes("const appendInput = (symbol: string) => {"), true);
+  assert.equal(pageSource.includes("const deleteInput = () => {"), true);
+  assert.equal(pageSource.includes("if ((VARIABLE_SYMBOLS as readonly string[]).includes(normalizedToken))"), true);
+  assert.equal(pageSource.includes("if ((VARIABLE_SYMBOLS as readonly string[]).includes(token)) return isSecondaryQuest;"), true);
 });

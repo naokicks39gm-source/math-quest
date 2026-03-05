@@ -33,6 +33,7 @@ type PressState = {
   startY: number;
   currentX: number;
   currentY: number;
+  longPressed: boolean;
   settled: boolean;
   longPressTimer: number | null;
   triggerButton: HTMLButtonElement | null;
@@ -52,27 +53,14 @@ const clearPressTimer = (state: PressState | null) => {
   state.longPressTimer = null;
 };
 
-const resolveVarToken = (deltaX: number, deltaY: number): "x" | "y" | "n" | "a" | "b" | "m" | null => {
+const resolveVarToken = (deltaX: number, deltaY: number): "x" | "y" | "n" | "a" | "b" => {
   const moved = Math.hypot(deltaX, deltaY) > VAR_DEADZONE;
   if (!moved) return "x";
 
   const absX = Math.abs(deltaX);
   const absY = Math.abs(deltaY);
-
-  const isNortheastDiagonal =
-    deltaX > VAR_DEADZONE &&
-    deltaY < -VAR_DEADZONE &&
-    absX > VAR_DEADZONE &&
-    absY > VAR_DEADZONE &&
-    Math.abs(absX - absY) <= Math.max(absX, absY) * 0.5;
-
-  if (isNortheastDiagonal) return "m";
-
-  const isOtherDiagonal = absX > VAR_DEADZONE && absY > VAR_DEADZONE;
-  if (isOtherDiagonal) return null;
-
-  if (absX >= absY) return deltaX > 0 ? "n" : "a";
-  return deltaY < 0 ? "y" : "b";
+  if (absX >= absY) return deltaX > 0 ? "b" : "a";
+  return deltaY < 0 ? "y" : "n";
 };
 
 export function SecondaryMathKeypad({
@@ -202,7 +190,8 @@ export function SecondaryMathKeypad({
     }
     const deltaX = active.currentX - active.startX;
     const deltaY = active.currentY - active.startY;
-    const token = cancelled ? null : resolveVarToken(deltaX, deltaY);
+    const moved = Math.hypot(deltaX, deltaY) > VAR_DEADZONE;
+    const token = cancelled ? null : (active.longPressed && !moved ? "m" : resolveVarToken(deltaX, deltaY));
     resetVarState();
     if (!token) return;
     onInput(token);
@@ -233,7 +222,10 @@ export function SecondaryMathKeypad({
       if (!active) return;
       active.currentX = e.clientX;
       active.currentY = e.clientY;
-      setVarCandidate(resolveVarToken(e.clientX - active.startX, e.clientY - active.startY));
+      const deltaX = e.clientX - active.startX;
+      const deltaY = e.clientY - active.startY;
+      const moved = Math.hypot(deltaX, deltaY) > VAR_DEADZONE;
+      setVarCandidate(active.longPressed && !moved ? "m" : resolveVarToken(deltaX, deltaY));
       if (varPopupOpen) e.preventDefault();
     };
     const up = (e: PointerEvent) => finishVarPress(e, false);
@@ -273,7 +265,10 @@ export function SecondaryMathKeypad({
       if (!touch) return;
       active.currentX = touch.clientX;
       active.currentY = touch.clientY;
-      setVarCandidate(resolveVarToken(touch.clientX - active.startX, touch.clientY - active.startY));
+      const deltaX = touch.clientX - active.startX;
+      const deltaY = touch.clientY - active.startY;
+      const moved = Math.hypot(deltaX, deltaY) > VAR_DEADZONE;
+      setVarCandidate(active.longPressed && !moved ? "m" : resolveVarToken(deltaX, deltaY));
       if (varPopupOpen) e.preventDefault();
     };
     const end = () => finishVarPress(null, false);
@@ -296,6 +291,7 @@ export function SecondaryMathKeypad({
       startY: e.clientY,
       currentX: e.clientX,
       currentY: e.clientY,
+      longPressed: false,
       settled: false,
       longPressTimer: null,
       triggerButton: button
@@ -323,6 +319,7 @@ export function SecondaryMathKeypad({
       startY: e.clientY,
       currentX: e.clientX,
       currentY: e.clientY,
+      longPressed: false,
       settled: false,
       longPressTimer: null,
       triggerButton: button
@@ -330,8 +327,9 @@ export function SecondaryMathKeypad({
     state.longPressTimer = window.setTimeout(() => {
       const active = varPressRef.current;
       if (!active || active.settled || active.pointerId !== state.pointerId) return;
+      active.longPressed = true;
       setVarPopupOpen(true);
-      setVarCandidate("x");
+      setVarCandidate("m");
       const rect = button.getBoundingClientRect();
       setVarAnchor({ left: rect.left + rect.width / 2, top: rect.top - 14 });
     }, LONG_PRESS_MS);
@@ -351,6 +349,7 @@ export function SecondaryMathKeypad({
       startY: touch.clientY,
       currentX: touch.clientX,
       currentY: touch.clientY,
+      longPressed: false,
       settled: false,
       longPressTimer: null,
       triggerButton: button
@@ -379,6 +378,7 @@ export function SecondaryMathKeypad({
       startY: touch.clientY,
       currentX: touch.clientX,
       currentY: touch.clientY,
+      longPressed: false,
       settled: false,
       longPressTimer: null,
       triggerButton: button
@@ -386,8 +386,9 @@ export function SecondaryMathKeypad({
     state.longPressTimer = window.setTimeout(() => {
       const active = varPressRef.current;
       if (!active || active.settled || active.pointerId !== state.pointerId) return;
+      active.longPressed = true;
       setVarPopupOpen(true);
-      setVarCandidate("x");
+      setVarCandidate("m");
       const rect = button.getBoundingClientRect();
       setVarAnchor({ left: rect.left + rect.width / 2, top: rect.top - 14 });
     }, LONG_PRESS_MS);
@@ -505,11 +506,11 @@ export function SecondaryMathKeypad({
           >
             <div className="relative h-20 w-20 text-xs font-bold text-slate-700">
               <div className={`absolute left-1/2 top-0 -translate-x-1/2 rounded px-1 ${varCandidate === "y" ? "bg-cyan-100 text-cyan-800" : ""}`}>y</div>
-              <div className={`absolute right-0 top-1/2 -translate-y-1/2 rounded px-1 ${varCandidate === "n" ? "bg-cyan-100 text-cyan-800" : ""}`}>n</div>
+              <div className={`absolute right-0 top-1/2 -translate-y-1/2 rounded px-1 ${varCandidate === "b" ? "bg-cyan-100 text-cyan-800" : ""}`}>b</div>
               <div className={`absolute left-0 top-1/2 -translate-y-1/2 rounded px-1 ${varCandidate === "a" ? "bg-cyan-100 text-cyan-800" : ""}`}>a</div>
-              <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 rounded px-1 ${varCandidate === "b" ? "bg-cyan-100 text-cyan-800" : ""}`}>b</div>
-              <div className={`absolute right-1 top-1 rounded px-1 ${varCandidate === "m" ? "bg-cyan-100 text-cyan-800" : ""}`}>m</div>
+              <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 rounded px-1 ${varCandidate === "n" ? "bg-cyan-100 text-cyan-800" : ""}`}>n</div>
               <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full px-2 py-1 ${varCandidate === "x" ? "bg-cyan-100 text-cyan-800" : "bg-slate-100 text-slate-700"}`}>x</div>
+              <div className={`absolute right-1 top-1 rounded px-1 ${varCandidate === "m" ? "bg-cyan-100 text-cyan-800" : ""}`}>m</div>
             </div>
           </div>,
           document.body

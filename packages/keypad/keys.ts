@@ -13,7 +13,7 @@ export const KEYS = {
   PAREN: "()",
   MUL: "×",
   PLUS_MINUS: "+/-",
-  VAR: "VAR",
+  VAR: "x / 他",
 
   FRACTION: "分数",
   EXPONENT: "指数",
@@ -29,5 +29,14 @@ export const KEYS = {
   JUDGE: "判定",
   END: "おわり"
 } as const;
+
+export const VARIABLE_SYMBOLS = [
+  "x",
+  "y",
+  "a",
+  "b",
+  "m",
+  "n"
+] as const;
 
 export type KeypadKey = (typeof KEYS)[keyof typeof KEYS];

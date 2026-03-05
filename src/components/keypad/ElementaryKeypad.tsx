@@ -38,18 +38,16 @@ export default function ElementaryKeypad({
   const baseDisabled = !isPlaying || isStarting || isAnswerLocked;
   const keySize = keypadKeySizeClass.elementary;
   const rightColumnClass = keypadRightColumnClass.elementary;
-  const GRID_COLUMNS = 4;
 
   return (
     <div className="w-full flex items-stretch gap-2">
-      <div className="flex-1 flex flex-col gap-1.5">
+      <div className="flex-1 flex flex-col gap-0">
         {KEYPAD_LAYOUT_BY_MODE.elementary.map((row, rowIndex) => (
-          <div key={`row-${rowIndex}`} className="grid grid-cols-4 gap-1.5">
+          <div key={`row-${rowIndex}`} className="grid grid-cols-3 gap-0">
             {row.map((token, colIndex) => {
               const typedToken = token as MathKeypadToken;
               const resolved = resolveMathKeypadToken(typedToken, "x");
               const disabled = baseDisabled || !canUseKeyToken(resolved);
-              const isNumber = /^[0-9]$/.test(token);
               return (
                 <button
                   key={`${rowIndex}-${colIndex}-${token}`}
@@ -59,7 +57,6 @@ export default function ElementaryKeypad({
                   className={`
                     w-full font-bold leading-tight shadow-[0_2px_0_0_rgba(0,0,0,0.2)] active:shadow-none active:translate-y-[2px] transition-all border
                     ${keySize}
-                    ${isNumber ? "text-2xl" : ""}
                     ${disabled ? "bg-slate-100 text-slate-400 border-slate-200" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"}
                   `}
                 >
@@ -67,9 +64,6 @@ export default function ElementaryKeypad({
                 </button>
               );
             })}
-            {Array.from({ length: Math.max(0, GRID_COLUMNS - row.length) }).map((_, fillerIndex) => (
-              <div key={`filler-${rowIndex}-${fillerIndex}`} aria-hidden="true" className="h-14 rounded-lg bg-slate-100/40 border border-transparent" />
-            ))}
           </div>
         ))}
       </div>

@@ -20,6 +20,7 @@ import { getElementaryLearningAid, isElementaryGrade, type ElementaryLearningAid
 import ElementaryKeypad from "@/components/keypad/ElementaryKeypad";
 import JuniorKeypad from "@/components/keypad/JuniorKeypad";
 import HighSchoolKeypad from "@/components/keypad/HighSchoolKeypad";
+import { VARIABLE_SYMBOLS } from "packages/keypad";
 import {
   loadMnistModel,
   loadMnist2DigitModel,
@@ -2819,7 +2820,7 @@ function QuestPageInner() {
       if (token === "-") {
         if (!isSecondaryQuest) return text.length === 0;
         if (text.length === 0) return true;
-        return /[\dxyapiπ)]$/.test(text);
+        return /[\dxyabmnpiπ)]$/.test(text);
       }
       if (token === ".") {
         if (text.includes(".")) return false;
@@ -2828,23 +2829,23 @@ function QuestPageInner() {
       }
       if (token === "×") {
         if (text.length === 0) return false;
-        return /[\dxyapiπ)]$/.test(text);
+        return /[\dxyabmnpiπ)]$/.test(text);
       }
       if (token === "+") {
         if (!isSecondaryQuest) return false;
         if (text.length === 0) return false;
-        return /[\dxyapiπ)]$/.test(text);
+        return /[\dxyabmnpiπ)]$/.test(text);
       }
-      if (/^[xya]$/.test(token)) {
+      if ((VARIABLE_SYMBOLS as readonly string[]).includes(token)) {
         if (!isSecondaryQuest) return false;
         if (text.length === 0) return true;
-        if (/[xya^(/]$/.test(text)) return false;
+        if (/[\^(/]$/.test(text)) return false;
         return true;
       }
       if (token === "^") {
         if (!isSecondaryQuest) return false;
         if (text.length === 0) return false;
-        return /[\dxyapiπ)]$/.test(text);
+        return /[\dxyabmnpiπ)]$/.test(text);
       }
       if (token === "()") {
         if (!isSecondaryQuest) return false;
@@ -2870,8 +2871,15 @@ function QuestPageInner() {
       setResultMark(null);
       return;
     }
+    const appendInput = (symbol: string) => {
+      setInput((prev) => prev + symbol);
+    };
     if (input.length >= maxInputLength) return;
-    setInput((prev) => (normalizedToken === "()" ? `${prev}()` : `${prev}${normalizedToken}`));
+    if ((VARIABLE_SYMBOLS as readonly string[]).includes(normalizedToken)) {
+      appendInput(normalizedToken);
+    } else {
+      appendInput(normalizedToken === "()" ? "()" : normalizedToken);
+    }
     setResultMark(null);
   };
 
@@ -2922,7 +2930,10 @@ function QuestPageInner() {
       setResultMark(null);
       return;
     }
-    setInput(prev => prev.slice(0, -1));
+    const deleteInput = () => {
+      setInput((prev) => prev.slice(0, -1));
+    };
+    deleteInput();
     setResultMark(null);
   };
 
@@ -3035,7 +3046,7 @@ function QuestPageInner() {
     if (token === "+") return isSecondaryQuest;
     if (token === "^") return isSecondaryQuest;
     if (token === "()") return isSecondaryQuest;
-    if (/^[xya]$/.test(token)) return isSecondaryQuest;
+    if ((VARIABLE_SYMBOLS as readonly string[]).includes(token)) return isSecondaryQuest;
     if (token === "|x|" || token === "sqrt(" || token === "log(" || token === "π") return isHighSchoolQuest;
     if (isSecondaryQuest && (HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS as readonly string[]).includes(token)) return true;
     return false;
