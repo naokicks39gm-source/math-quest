@@ -12,10 +12,11 @@ import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getCatalogGrades } from '@/lib/gradeCatalog';
 import { entryEquivalentKey, entryPromptKey } from '@/lib/questItemFactory';
 import { buildStocksForTypes, pickUniqueQuizFromStock, type PickMeta, type TypeStockResult } from "@/lib/questStockFactory";
+import { E1_LEVEL_OPTIONS, generateE1LevelProblems, isE1LevelId, type E1LevelId } from "@/lib/problem";
 import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
 import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
 import ElementaryExplanationPanel from "@/components/ElementaryExplanationPanel";
-import { getElementaryLearningAid, isElementaryGrade } from "@/lib/elementaryExplanations";
+import { getElementaryLearningAid, isElementaryGrade, type ElementaryLearningAid } from "@/lib/elementaryExplanations";
 import ElementaryKeypad from "@/components/keypad/ElementaryKeypad";
 import JuniorKeypad from "@/components/keypad/JuniorKeypad";
 import HighSchoolKeypad from "@/components/keypad/HighSchoolKeypad";
@@ -41,6 +42,7 @@ type ExampleItem = {
   prompt: string;
   prompt_tex?: string;
   answer: string;
+  memo_explanation?: string;
 };
 
 type TypeDef = {
@@ -112,7 +114,8 @@ const E1_SUMMARY_TYPE_ID = "E1.NA.MIX.MIXED_TO_20";
 const E2_DAN_MUL_TYPE_RE = /^E2\.NA\.MUL\.MUL_1D_1D_DAN_[1-9]$/;
 const E2_MIX_TEN_TYPE_RE = /^E2\.NA\.MUL\.MUL_1D_1D_MIX_(1_3|4_6|7_9)$/;
 const E2_MIX_99_TEST_TYPE_ID = "E2.NA.MUL.MUL_1D_1D_MIX_1_9";
-const getTargetQuestionCount = (typeId?: string) => {
+const getTargetQuestionCount = (typeId?: string, levelId?: string) => {
+  if (levelId && isE1LevelId(levelId)) return DEFAULT_TOTAL_QUESTIONS;
   if (!typeId) return DEFAULT_TOTAL_QUESTIONS;
   if (typeId === E2_MIX_99_TEST_TYPE_ID) return 20;
   if (E2_DAN_MUL_TYPE_RE.test(typeId)) return 9;
@@ -141,6 +144,22 @@ const ensureTrailingEquationEquals = (text: string) => {
   const trimmed = text.trim();
   if (!trimmed) return trimmed;
   return /[=＝]\s*$/u.test(trimmed) ? trimmed : `${trimmed} =`;
+};
+const buildMemoExplanationAid = (memoText?: string): ElementaryLearningAid | null => {
+  if (!memoText) return null;
+  const blocks = memoText
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
+  if (blocks.length === 0) return null;
+  const conclusion = blocks[blocks.length - 1] ?? "";
+  const steps = blocks.slice(0, -1).slice(0, 3);
+  return {
+    kind: "simple",
+    title: "けいさんメモ",
+    steps: steps.length > 0 ? steps : [conclusion],
+    conclusion: steps.length > 0 ? conclusion : ""
+  };
 };
 
 const shouldKeepEqualsForE13Plus = (typeId?: string, typeLabel?: string) => {
@@ -1556,6 +1575,8 @@ function QuestPageInner() {
   const params = useSearchParams();
   const typeFromQuery = (params.get("type") ?? "").trim();
   const categoryFromQuery = params.get("category");
+  const rawLevelFromQuery = (params.get("levelId") ?? "").trim();
+  const levelFromQuery: E1LevelId | "" = isE1LevelId(rawLevelFromQuery) ? rawLevelFromQuery : "";
   const [combo, setCombo] = useState(0);
   const [question, setQuestion] = useState<Question | null>(null);
   const [history, setHistory] = useState<Array<{ id: number; text: string }>>([]);
@@ -1634,6 +1655,7 @@ function QuestPageInner() {
   );
   const defaultType = grades[0]?.categories[0]?.types[0] ?? null;
   const [selectedType, setSelectedType] = useState<TypeDef | null>(defaultType);
+  const lastSelectionSyncKeyRef = useRef<string | null>(null);
   const [itemIndex, setItemIndex] = useState(0);
   const [practiceResult, setPracticeResult] = useState<{ ok: boolean; correctAnswer: string } | null>(null);
   const [lastAutoDrawExpected, setLastAutoDrawExpected] = useState("");
@@ -2009,6 +2031,28 @@ function QuestPageInner() {
 
 
   useEffect(() => {
+    const applySelection = (nextType: TypeDef, key: string) => {
+      if (lastSelectionSyncKeyRef.current === key) return;
+      lastSelectionSyncKeyRef.current = key;
+      clearAllFractionAutoMoveTimers();
+      setSelectedType(nextType);
+      setItemIndex(0);
+      setPracticeResult(null);
+      setResultMark(null);
+      setInput("");
+      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
+      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
+      canvasRef.current?.clear();
+    };
+
+    if (levelFromQuery) {
+      const seeded = generateE1LevelProblems(levelFromQuery, 1)[0];
+      if (seeded?.type) {
+        applySelection(seeded.type as TypeDef, `level:${levelFromQuery}:${seeded.type.type_id}`);
+        return;
+      }
+    }
+
     let found: TypeDef | null = null;
     if (typeFromQuery) {
       for (const g of grades) {
@@ -2023,15 +2067,7 @@ function QuestPageInner() {
       }
     }
     if (found) {
-      clearAllFractionAutoMoveTimers();
-      setSelectedType(found);
-      setItemIndex(0);
-      setPracticeResult(null);
-      setResultMark(null);
-      setInput("");
-      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
-      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
-      canvasRef.current?.clear();
+      applySelection(found, `type:${found.type_id}`);
       return;
     }
     if (categoryFromQuery) {
@@ -2039,22 +2075,14 @@ function QuestPageInner() {
         .flatMap((g) => g.categories)
         .find((c) => c.category_id === categoryFromQuery);
       if (category && category.types[0]) {
-        clearAllFractionAutoMoveTimers();
-        setSelectedType(category.types[0]);
-        setItemIndex(0);
-        setPracticeResult(null);
-        setResultMark(null);
-        setInput("");
-        setFractionInput({ ...EMPTY_FRACTION_EDITOR });
-        setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
-        canvasRef.current?.clear();
+        applySelection(category.types[0], `category:${category.category_id}:${category.types[0].type_id}`);
         return;
       }
     }
     if (!selectedType && defaultType) {
-      setSelectedType(defaultType);
+      applySelection(defaultType, `default:${defaultType.type_id}`);
     }
-  }, [typeFromQuery, categoryFromQuery, grades, selectedType, defaultType]);
+  }, [levelFromQuery, typeFromQuery, categoryFromQuery, grades, selectedType, defaultType]);
 
   const categoryContext = useMemo(() => {
     if (!categoryFromQuery) return null;
@@ -2068,10 +2096,19 @@ function QuestPageInner() {
     return null;
   }, [categoryFromQuery, grades]);
 
+  const hasLevelQuery = Boolean(levelFromQuery);
   const hasTypeQuery = Boolean(typeFromQuery);
   const hasCategoryQuery = Boolean(categoryFromQuery);
 
   const selectedPath = (() => {
+    if (hasLevelQuery) {
+      const option = E1_LEVEL_OPTIONS.find((entry) => entry.levelId === levelFromQuery);
+      return {
+        gradeName: "小1",
+        categoryName: "数と計算",
+        typeName: option ? `${option.levelId} ${option.title}` : levelFromQuery
+      };
+    }
     if (!hasTypeQuery && !hasCategoryQuery) {
       return {
         gradeName: "全学年",
@@ -2144,9 +2181,14 @@ function QuestPageInner() {
     [grades]
   );
   const targetStockTypes = useMemo(() => {
+    if (hasLevelQuery) return [];
     if (hasTypeQuery) {
       const byQuery = typeCatalog.find((entry) => entry.typeId === typeFromQuery);
-      return byQuery ? [byQuery] : [];
+      // Keep rendering even when an old/invalid type query is provided.
+      if (byQuery) return [byQuery];
+      const bySelected =
+        selectedType ? typeCatalog.find((entry) => entry.typeId === selectedType.type_id) : null;
+      return bySelected ? [bySelected] : typeCatalog;
     }
     if (hasCategoryQuery && categoryContext) {
       return categoryContext.category.types.map((type) => ({
@@ -2158,10 +2200,16 @@ function QuestPageInner() {
       }));
     }
     return typeCatalog;
-  }, [hasTypeQuery, hasCategoryQuery, typeFromQuery, selectedType, categoryContext, typeCatalog]);
+  }, [hasLevelQuery, hasTypeQuery, hasCategoryQuery, typeFromQuery, selectedType, categoryContext, typeCatalog]);
 
   useEffect(() => {
     setStockReady(false);
+    if (hasLevelQuery) {
+      setTypeStocks(new Map());
+      setStockShortages([]);
+      setStockReady(true);
+      return;
+    }
     const stocks = buildStocksForTypes(
       targetStockTypes.map((entry) => entry.type),
       QUESTION_POOL_SIZE
@@ -2183,7 +2231,7 @@ function QuestPageInner() {
     setTypeStocks(stocks);
     setStockShortages(shortages);
     setStockReady(true);
-  }, [targetStockTypes, retryNonce]);
+  }, [hasLevelQuery, targetStockTypes, retryNonce]);
 
   const activeTypeId = useMemo(() => {
     if (hasTypeQuery && typeFromQuery) {
@@ -2201,8 +2249,8 @@ function QuestPageInner() {
     [activeTypeId, typeStocks]
   );
   const targetQuestionCount = useMemo(
-    () => getTargetQuestionCount(activeTypeId),
-    [activeTypeId]
+    () => getTargetQuestionCount(activeTypeId, levelFromQuery || undefined),
+    [activeTypeId, levelFromQuery]
   );
   const quizSize = Math.min(targetQuestionCount, QUESTION_POOL_SIZE);
   const dedupeQuestSet = (set: QuestEntry[]) => {
@@ -2240,6 +2288,33 @@ function QuestPageInner() {
   };
   useEffect(() => {
     clearAllFractionAutoMoveTimers();
+    if (levelFromQuery) {
+      const generated = dedupeQuestSet(generateE1LevelProblems(levelFromQuery, quizSize) as QuestEntry[]);
+      if (generated.length < 1) {
+        setQuizItems([]);
+        setItemIndex(0);
+        setQuestionResults({});
+        setStatus("blocked");
+        setQuizBuildError("このレベルは一時的に出題候補不足です。別レベルを選ぶか、時間をおいて再試行してください。");
+        return;
+      }
+      setActivePickMeta(null);
+      setQuizItems(generated);
+      setItemIndex(0);
+      setQuestionResults({});
+      setStatus("playing");
+      setQuizBuildError(null);
+      setMessage("Battle Start!");
+      setPracticeResult(null);
+      setResultMark(null);
+      setRecognizedNumber(null);
+      setInput("");
+      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
+      setQuadraticAnswers(["", ""]);
+      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
+      setQuadraticActiveIndex(0);
+      return;
+    }
     if (!stockReady) {
       setQuizItems([]);
       setItemIndex(0);
@@ -2314,7 +2389,7 @@ function QuestPageInner() {
     setQuadraticAnswers(["", ""]);
     setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
     setQuadraticActiveIndex(0);
-  }, [stockReady, typeStocks, activeTypeId, quizSize, retryNonce]);
+  }, [levelFromQuery, stockReady, typeStocks, activeTypeId, quizSize, retryNonce]);
 
   const currentAid = useMemo(
     () =>
@@ -2330,6 +2405,7 @@ function QuestPageInner() {
   );
   const currentElementaryAid = useMemo(
     () =>
+      buildMemoExplanationAid(currentItem?.memo_explanation) ??
       getElementaryLearningAid({
         gradeId: currentType?.type_id.split(".")[0] ?? "",
         typeId: currentType?.type_id,
@@ -2339,6 +2415,7 @@ function QuestPageInner() {
         bDigits: currentType?.generation_params?.b_digits
       }),
     [
+      currentItem?.memo_explanation,
       currentType?.type_id,
       currentType?.generation_params?.pattern_id,
       currentType?.generation_params?.a_digits,
@@ -2364,16 +2441,22 @@ function QuestPageInner() {
     () => grades.find((grade) => grade.grade_id === pickerGradeId) ?? null,
     [grades, pickerGradeId]
   );
-  const pickerGradeTypes = useMemo(
-    () =>
-      (pickerGrade?.categories ?? []).flatMap((category) =>
-        category.types.map((type) => ({
-          typeId: type.type_id,
-          typeName: type.display_name ?? type.type_name ?? type.type_id
-        }))
-      ),
-    [pickerGrade]
-  );
+  const pickerGradeTypes = useMemo(() => {
+    const base = (pickerGrade?.categories ?? []).flatMap((category) =>
+      category.types.map((type) => ({
+        kind: "type" as const,
+        typeId: type.type_id,
+        typeName: type.display_name ?? type.type_name ?? type.type_id
+      }))
+    );
+    if (pickerGrade?.grade_id !== "E1") return base;
+    const levelOptions = E1_LEVEL_OPTIONS.map((entry) => ({
+      kind: "level" as const,
+      levelId: entry.levelId,
+      typeName: `${entry.levelId} ${entry.title}`
+    }));
+    return [...levelOptions, ...base];
+  }, [pickerGrade]);
   useEffect(() => {
     if (!currentGradeId) return;
     setPendingGradeId((prev) => (prev === currentGradeId ? prev : currentGradeId));
@@ -2398,7 +2481,7 @@ function QuestPageInner() {
       }
     });
     return () => window.cancelAnimationFrame(raf);
-  }, [showGradeTypePicker, expandedProblemPicker, currentType?.type_id, pickerGradeId]);
+  }, [showGradeTypePicker, expandedProblemPicker, currentType?.type_id, pickerGradeId, levelFromQuery]);
   useEffect(() => {
     if (!showGradeTypePicker || !expandedGradeList) return;
     const raf = window.requestAnimationFrame(() => {
@@ -4212,15 +4295,23 @@ function QuestPageInner() {
                     {expandedProblemPicker && (
                       <div ref={problemOptionsScrollRef} className="mt-1 space-y-1 px-1">
                         {pickerGradeTypes.map((option) => {
-                          const isCurrent = option.typeId === currentType?.type_id;
+                          const optionKey = option.kind === "level" ? option.levelId : option.typeId;
+                          const isCurrent =
+                            option.kind === "level"
+                              ? levelFromQuery === option.levelId
+                              : option.typeId === currentType?.type_id;
                           return (
                             <button
-                              key={option.typeId}
+                              key={optionKey}
                               ref={isCurrent ? currentProblemOptionRef : null}
                               type="button"
                               onClick={() => {
                                 setShowGradeTypePicker(false);
                                 if (isCurrent) return;
+                                if (option.kind === "level") {
+                                  router.push(`/quest?levelId=${encodeURIComponent(option.levelId)}`);
+                                  return;
+                                }
                                 router.push(`/quest?type=${encodeURIComponent(option.typeId)}`);
                               }}
                               className={`w-full text-left rounded-lg px-2 py-2 text-[11px] ${
