@@ -1,7 +1,7 @@
-import { KEYS } from "packages/keypad";
-import { KEYPAD_LAYOUT_BY_MODE, type MathKeypadToken } from "./KeypadLayout";
+import { KEYPAD_LAYOUT_BY_MODE, KEYS, type KeypadKey } from "packages/keypad";
 
 export type MathKeypadMode = "elementary" | "junior" | "highschool";
+export type MathKeypadToken = KeypadKey;
 
 const TOKENS_BY_MODE: Record<MathKeypadMode, ReadonlySet<MathKeypadToken>> = {
   elementary: new Set<MathKeypadToken>(KEYPAD_LAYOUT_BY_MODE.elementary.flat()),
@@ -15,6 +15,7 @@ export const resolveMathKeypadToken = (
   token: MathKeypadToken,
   _variableToken: string
 ): string => {
+  if (token === KEYS.VAR) return "x";
   if (token === KEYS.FRACTION) return "/";
   if (token === KEYS.EXPONENT) return "^";
   if (token === KEYS.DECIMAL) return ".";
@@ -35,4 +36,3 @@ export const keypadRightColumnClass: Record<MathKeypadMode, string> = {
 };
 
 export { KEYPAD_LAYOUT_BY_MODE };
-export type { MathKeypadToken };

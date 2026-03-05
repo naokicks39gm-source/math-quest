@@ -13,6 +13,7 @@ export const KEYS = {
   PAREN: "()",
   MUL: "×",
   PLUS_MINUS: "+/-",
+  VAR: "VAR",
 
   FRACTION: "分数",
   EXPONENT: "指数",
