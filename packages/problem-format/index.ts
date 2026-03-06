@@ -1,3 +1,4 @@
+export * from "packages/problem-engine";
 export { buildDslEntriesForType, generateDslArtifactsForType } from "packages/problem-format/engine";
 export { evaluateExpression, formatEvaluationValue } from "packages/problem-format/expressionEvaluator";
 export { getCurriculumByLevel, getPatternByGradeAndId, resolveGradeBucketFromTypeId } from "packages/problem-format/registry";

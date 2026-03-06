@@ -12,7 +12,7 @@ import {
   generateFactorTrinomEntries
 } from "@/lib/questGenerators/factorGcf";
 import { generateExpRulesEntries, generateQuadRootsEntries, remixSecondaryExprFromSeed } from "@/lib/questGenerators/secondaryExpr";
-import { buildDslEntriesForType } from "packages/problem-format";
+import { buildDslEntriesForType } from "packages/problem-engine";
 
 type AnswerFormat = {
   kind: "int" | "dec" | "frac" | "pair" | "expr";

@@ -8,6 +8,9 @@ const read = (target) => fs.readFileSync(path.join(root, target), "utf8");
 const readJson = (target) => JSON.parse(read(target));
 
 test("problem-format package entry points exist", () => {
+  assert.equal(fs.existsSync(path.join(root, "packages/problem-engine/index.ts")), true);
+  assert.equal(fs.existsSync(path.join(root, "packages/problem-engine/dsl-engine.ts")), true);
+  assert.equal(fs.existsSync(path.join(root, "packages/problem-engine/adapters.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-format/index.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-format/engine.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-format/schema.ts")), true);
@@ -39,9 +42,21 @@ test("curriculum mapping files exist", () => {
 
 test("quest stock factory uses DSL-first path with legacy fallback remaining", () => {
   const source = read("src/lib/questStockFactory.ts");
-  assert.equal(source.includes('import { buildDslEntriesForType } from "packages/problem-format";'), true);
+  assert.equal(source.includes('import { buildDslEntriesForType } from "packages/problem-engine";'), true);
   assert.equal(source.includes("const dslEntries = hasPattern ? buildDslEntriesForType(normalizedType, patternId, targetCount) : [];"), true);
   assert.equal(source.includes("if (dslEntries.length > 0) {"), true);
   assert.equal(source.includes("const strategy = hasPattern ? STOCK_STRATEGIES[patternId] : undefined;"), true);
   assert.equal(source.includes("buildPatternFallbackEntries"), true);
+});
+
+test("problem-engine exposes unified generator API", () => {
+  const source = read("packages/problem-engine/dsl-engine.ts");
+  assert.equal(source.includes("export type VariableRule"), true);
+  assert.equal(source.includes("export type Pattern"), true);
+  assert.equal(source.includes("export type GeneratedProblem"), true);
+  assert.equal(source.includes("export const generateProblem"), true);
+  assert.equal(source.includes("export const generateStock"), true);
+  assert.equal(source.includes("export const pickQuiz"), true);
+  assert.equal(source.includes("const maxAttempts = Math.max(target * 40, 200);"), true);
+  assert.equal(source.includes("const key = `${generated.problem}::${generated.answer}`;"), true);
 });
