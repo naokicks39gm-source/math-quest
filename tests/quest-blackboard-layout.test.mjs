@@ -34,12 +34,13 @@ test("quest current card uses blackboard-themed classes", () => {
 test("quest answer layout keeps right offset and quadratic row", () => {
   const source = read("src/app/quest/page.tsx");
   assert.match(source, /const qaAnswerOffsetPx = 0;/);
-  assert.match(source, /const isE1CompareLevel =/);
+  assert.match(source, /const isE1TwoLineQuestionLevel =/);
   assert.match(source, /levelFromQuery === "E1-1"/);
+  assert.match(source, /levelFromQuery === "E1-3"/);
   assert.match(source, /style=\{useSingleLineQa \? undefined : \{ marginLeft: `\$\{qaAnswerOffsetPx\}px` \}\}/);
   assert.match(source, /w-full sm:w-auto flex items-center gap-2 overflow-x-auto whitespace-nowrap/);
   assert.match(source, /w-full sm:w-auto flex items-center gap-2 overflow-visible/);
-  assert.match(source, /!isSecondaryQuest && !isE2EqualShareType && !isE1CompareLevel/);
+  assert.match(source, /!isSecondaryQuest && !isE2EqualShareType && !isE1TwoLineQuestionLevel/);
   assert.match(source, /"min-w-0 w-full whitespace-normal break-words text-\[28px\] sm:text-\[32px\] leading-tight font-extrabold text-emerald-50"/);
   assert.match(source, /\{isSecondaryQuest \? \(\s*<span className="text-\[24px\] sm:text-\[30px\] leading-none font-extrabold text-emerald-100"[\s\S]*>=<\/span>/);
   assert.doesNotMatch(source, /recognized-answer-1"[\s\S]*flex-wrap/);

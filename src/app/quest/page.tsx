@@ -402,7 +402,7 @@ const renderPromptWithSlotBox = (text: string): ReactNode | null => {
       <span
         key={`slot-box-${idx}`}
         aria-hidden
-        className="mx-[0.08em] inline-flex h-[1.32em] w-[1.32em] items-center justify-center rounded-[0.18em] border-[2.5px] border-emerald-100 align-[-0.06em]"
+        className="mx-[0.08em] inline-flex h-[0.98em] w-[0.98em] items-center justify-center rounded-[0.16em] border-2 border-emerald-100 align-[-0.04em]"
       />
     );
     last = idx + match[0].length;
@@ -1946,10 +1946,14 @@ function QuestPageInner() {
   const isJuniorQuest = /^(J1|J2|J3)$/.test(currentGradeId);
   const isHighSchoolQuest = /^(H1|H2|H3)$/.test(currentGradeId);
   const isE2EqualShareType = currentType?.type_id === "E2.NA.DIV.DIV_EQUAL_SHARE_BASIC";
-  const isE1CompareLevel =
+  const isE1TwoLineQuestionLevel =
     levelFromQuery === "E1-1" ||
-    Boolean(currentType?.display_name?.startsWith("Lv:E1-1 "));
-  const useSingleLineQa = !isSecondaryQuest && !isE2EqualShareType && !isE1CompareLevel;
+    levelFromQuery === "E1-3" ||
+    Boolean(
+      currentType?.display_name?.startsWith("Lv:E1-1 ") ||
+      currentType?.display_name?.startsWith("Lv:E1-3 ")
+    );
+  const useSingleLineQa = !isSecondaryQuest && !isE2EqualShareType && !isE1TwoLineQuestionLevel;
   const qaAnswerOffsetPx = 0;
   const qaPromptFontPx = isE2EqualShareType ? 20 : isSecondaryQuest ? QA_PROMPT_FONT_STEPS[0] : QA_PROMPT_FONT_STEPS[2];
   const qaAnswerFontPx = isSecondaryQuest ? QA_ANSWER_FONT_STEPS[0] : QA_ANSWER_FONT_STEPS[2];
@@ -4426,7 +4430,7 @@ function QuestPageInner() {
                   className={
                     useSingleLineQa
                       ? "min-w-0 w-auto max-w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
-                      : isE1CompareLevel
+                      : isE1TwoLineQuestionLevel
                         ? "min-w-0 w-full whitespace-normal break-words text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
                         : isE2EqualShareType
                         ? "min-w-0 w-full whitespace-normal break-words text-[20px] sm:text-[24px] leading-tight font-extrabold text-emerald-50"
@@ -4435,7 +4439,7 @@ function QuestPageInner() {
                 >
                   <span
                     ref={qaPromptContentRef}
-                    className={isE2EqualShareType || isE1CompareLevel ? "block whitespace-normal break-words align-middle" : "inline-block align-middle"}
+                    className={isE2EqualShareType || isE1TwoLineQuestionLevel ? "block whitespace-normal break-words align-middle" : "inline-block align-middle"}
                   >
                     {renderPrompt(currentItem, currentType?.type_id, currentType?.display_name ?? currentType?.type_name)}
                   </span>

@@ -25,6 +25,7 @@ test("quest prompt and clear list use shared math rendering path", () => {
   const source = read("src/app/quest/page.tsx");
   assert.match(source, /const keepEquals = shouldKeepEqualsForE13Plus\(typeId, typeLabel\);/);
   assert.match(source, /const forceEquals = shouldForceEqualsForElementaryE2Plus\(typeId\);/);
+  assert.match(source, /className="mx-\[0\.08em\] inline-flex h-\[0\.98em\] w-\[0\.98em\] items-center justify-center rounded-\[0\.16em\] border-2 border-emerald-100 align-\[-0\.04em\]"/);
   assert.match(source, /const displayTexRaw = keepEquals \? tex : trimTrailingEquationEquals\(tex\);/);
   assert.match(source, /const displayTex = forceEquals \? ensureTrailingEquationEquals\(displayTexRaw\) : displayTexRaw;/);
   assert.match(source, /toEquationTex\(trimTrailingEquationEquals\(r\.promptTex\.trim\(\)\)\)/);
@@ -38,7 +39,7 @@ test("quest card uses responsive layout to avoid answer overflow", () => {
   const source = read("src/app/quest/page.tsx");
   assert.match(source, /const QA_PROMPT_FONT_STEPS = \[32, 30, 28, 26, 24\] as const;/);
   assert.match(source, /const QA_ANSWER_FONT_STEPS = \[30, 28, 26, 24\] as const;/);
-  assert.match(source, /const useSingleLineQa = !isSecondaryQuest && !isE2EqualShareType && !isE1CompareLevel;/);
+  assert.match(source, /const useSingleLineQa = !isSecondaryQuest && !isE2EqualShareType && !isE1TwoLineQuestionLevel;/);
   assert.match(source, /const qaAnswerOffsetPx = 0;/);
   assert.match(source, /const qaPromptFontPx = isE2EqualShareType \? 20 : isSecondaryQuest \? QA_PROMPT_FONT_STEPS\[0\] : QA_PROMPT_FONT_STEPS\[2\];/);
   assert.match(source, /const qaAnswerFontPx = isSecondaryQuest \? QA_ANSWER_FONT_STEPS\[0\] : QA_ANSWER_FONT_STEPS\[2\];/);
