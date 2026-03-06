@@ -6,6 +6,10 @@ export { validatePatternSchema } from "packages/problem-format/schema";
 export { renderTemplate, renderTemplateLines } from "packages/problem-format/templateRenderer";
 export { generateVariables } from "packages/problem-format/variableGenerator";
 export type {
+  SkillPracticeProblem,
+  SkillPracticeResponse
+} from "packages/problem-format/skillPracticeResponse";
+export type {
   DslBuildOptions,
   PatternArtifact,
   PatternSpec,
