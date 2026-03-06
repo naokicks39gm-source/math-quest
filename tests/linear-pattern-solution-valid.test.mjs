@@ -31,25 +31,12 @@ const loadProblemEngineModules = async () => {
   const expressionEvaluatorSource = path.join(root, "packages/problem-format/expressionEvaluator.ts");
   const minimalDslSource = path.join(root, "packages/problem-engine/minimal-dsl.ts");
   const dslEngineSource = path.join(root, "packages/problem-engine/dsl-engine.ts");
-  const adaptersSource = path.join(root, "packages/problem-engine/adapters.ts");
+  const catalogSource = path.join(root, "packages/problem-engine/catalog.ts");
 
   const expressionEvaluatorOutput = path.join(tempDir, "expressionEvaluator.mjs");
   const minimalDslOutput = path.join(tempDir, "minimal-dsl.mjs");
   const dslEngineOutput = path.join(tempDir, "dsl-engine.mjs");
-  const adaptersOutput = path.join(tempDir, "adapters.mjs");
-  const registryStubOutput = path.join(tempDir, "registry-stub.mjs");
-  const schemaStubOutput = path.join(tempDir, "schema-stub.mjs");
-
-  fs.writeFileSync(
-    registryStubOutput,
-    "export const getPatternByGradeAndId = () => undefined;\nexport const resolveGradeBucketFromTypeId = () => undefined;\n",
-    "utf8"
-  );
-  fs.writeFileSync(
-    schemaStubOutput,
-    "export const validatePatternSchema = () => ({ ok: false, errors: [] });\n",
-    "utf8"
-  );
+  const catalogOutput = path.join(tempDir, "catalog.mjs");
 
   await transpileTsModule(expressionEvaluatorSource, expressionEvaluatorOutput);
   await transpileTsModule(minimalDslSource, minimalDslOutput, [
@@ -59,13 +46,11 @@ const loadProblemEngineModules = async () => {
     ['from "packages/problem-format/expressionEvaluator"', 'from "./expressionEvaluator.mjs"'],
     ['from "packages/problem-engine/minimal-dsl"', 'from "./minimal-dsl.mjs"']
   ]);
-  await transpileTsModule(adaptersSource, adaptersOutput, [
-    ['from "packages/problem-format/registry"', 'from "./registry-stub.mjs"'],
-    ['from "packages/problem-format/schema"', 'from "./schema-stub.mjs"'],
+  await transpileTsModule(catalogSource, catalogOutput, [
     ['from "packages/problem-engine/dsl-engine"', 'from "./dsl-engine.mjs"']
   ]);
 
-  const adapters = await import(`${pathToFileURL(adaptersOutput).href}?t=${Date.now()}`);
+  const adapters = await import(`${pathToFileURL(catalogOutput).href}?t=${Date.now()}`);
   const dslEngine = await import(`${pathToFileURL(dslEngineOutput).href}?t=${Date.now()}`);
   return { adapters, dslEngine };
 };

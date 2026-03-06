@@ -147,11 +147,11 @@ const loadMinimalDslModule = async () => {
 test("minimal DSL exports are appended without changing existing engine API", () => {
   const engineSource = read("packages/problem-engine/dsl-engine.ts");
   const indexSource = read("packages/problem-engine/index.ts");
-  const adapterSource = read("packages/problem-engine/adapters.ts");
+  const catalogSource = read("packages/problem-engine/catalog.ts");
   assert.equal(engineSource.includes('parsePatternDSL as parsePatternDSLMinimal'), true);
   assert.equal(engineSource.includes('generateMinimalProblem'), true);
   assert.equal(indexSource.includes('generateMinimalProblems'), true);
-  assert.equal(adapterSource.includes("export const toMinimalPatternDsl"), true);
+  assert.equal(catalogSource.includes("export const toMinimalPatternDsl"), true);
 });
 
 test("minimal DSL can generate a problem from the smallest pattern shape", async () => {
