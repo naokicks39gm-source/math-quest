@@ -101,3 +101,27 @@ export const buildDslEntriesForType = (
     }
   }));
 };
+
+type LegacyMinimalDslPatternInput = {
+  pattern_id: string;
+  problem_template: string;
+  variables: Record<string, { min?: number; max?: number; choices?: number[] }>;
+  answer_expression: string;
+  constraint?: string;
+};
+
+export const toMinimalPatternDsl = (
+  pattern: LegacyMinimalDslPatternInput
+): import("packages/problem-engine/minimal-dsl").PatternDSL => {
+  const variables = Object.fromEntries(
+    Object.entries(pattern.variables).map(([key, rule]) => [key, toRange(rule)])
+  ) as Record<string, [number, number]>;
+
+  return {
+    key: pattern.pattern_id,
+    template: pattern.problem_template,
+    variables,
+    constraints: pattern.constraint ? [pattern.constraint] : undefined,
+    answer: pattern.answer_expression
+  };
+};

@@ -87,5 +87,165 @@ test("GeneratedProblem supports optional extension fields", () => {
   const source = read("packages/problem-engine/dsl-engine.ts");
   assert.equal(source.includes("patternKey: pattern.key"), true);
   assert.equal(source.includes("variables: vars"), true);
+  assert.equal(source.includes("variableRanges?: Record<string, Range>;"), true);
+  assert.equal(source.includes("variableRanges: pattern.variables,"), true);
   assert.equal(source.includes("source: \"pattern-dsl\""), true);
+});
+
+test("constraints and template follow strict generation rules", () => {
+  const source = read("packages/problem-engine/dsl-engine.ts");
+  assert.equal(source.includes("const context = Object.fromEntries("), true);
+  assert.equal(source.includes("const result = evaluateExpression(constraint, context);"), true);
+  assert.equal(source.includes("for (let attempts = 0; attempts < MAX_CONSTRAINT_ATTEMPTS; attempts += 1) {"), true);
+  assert.equal(source.includes("if (evaluateConstraints(pattern, vars)) {"), true);
+  assert.equal(source.includes("throw new Error(\"DSL template variable not defined\");"), true);
+  assert.equal(source.includes("vars[name] = randomInt(range[0], range[1]);"), true);
+});
+
+const transpileTsModule = async (sourcePath, outputPath, replacements = []) => {
+  const tsModule = await import("typescript");
+  const ts = tsModule.default ?? tsModule;
+  let source = fs.readFileSync(sourcePath, "utf8");
+  for (const [from, to] of replacements) {
+    source = source.replaceAll(from, to);
+  }
+  const transpiled = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.ES2020,
+      target: ts.ScriptTarget.ES2020
+    },
+    fileName: path.basename(sourcePath)
+  });
+  fs.writeFileSync(outputPath, transpiled.outputText, "utf8");
+};
+
+const loadMinimalDslModule = async () => {
+  const os = await import("node:os");
+  const { pathToFileURL } = await import("node:url");
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "problem-engine-minimal-dsl-"));
+  const evaluatorSource = path.join(root, "packages/problem-format/expressionEvaluator.ts");
+  const minimalDslSource = path.join(root, "packages/problem-engine/minimal-dsl.ts");
+  const evaluatorOutput = path.join(tempDir, "expressionEvaluator.mjs");
+  const minimalDslOutput = path.join(tempDir, "minimal-dsl.mjs");
+
+  await transpileTsModule(evaluatorSource, evaluatorOutput);
+  await transpileTsModule(minimalDslSource, minimalDslOutput, [
+    ['from "packages/problem-format/expressionEvaluator"', 'from "./expressionEvaluator.mjs"']
+  ]);
+
+  return import(`${pathToFileURL(minimalDslOutput).href}?t=${Date.now()}`);
+};
+
+test("minimal DSL exports are appended without changing existing engine API", () => {
+  const engineSource = read("packages/problem-engine/dsl-engine.ts");
+  const indexSource = read("packages/problem-engine/index.ts");
+  const adapterSource = read("packages/problem-engine/adapters.ts");
+  assert.equal(engineSource.includes('parsePatternDSL as parsePatternDSLMinimal'), true);
+  assert.equal(engineSource.includes('generateMinimalProblem'), true);
+  assert.equal(indexSource.includes('generateMinimalProblems'), true);
+  assert.equal(adapterSource.includes("export const toMinimalPatternDsl"), true);
+});
+
+test("minimal DSL can generate a problem from the smallest pattern shape", async () => {
+  const minimalDsl = await loadMinimalDslModule();
+  const pattern = {
+    key: "ADD_BASIC",
+    template: "{a} + {b} =",
+    variables: {
+      a: [1, 1],
+      b: [2, 2]
+    },
+    answer: "a + b"
+  };
+
+  const generated = minimalDsl.generateMinimalProblem(pattern);
+  assert.equal(generated.question, "1 + 2 =");
+  assert.equal(generated.answer, "3");
+  assert.equal(generated.patternKey, "ADD_BASIC");
+  assert.deepEqual(generated.variables, { a: 1, b: 2 });
+  assert.deepEqual(generated.variableRanges, pattern.variables);
+  assert.deepEqual(generated.meta, { source: "pattern-dsl" });
+});
+
+test("minimal DSL generateMinimalProblems keeps n-count behavior", async () => {
+  const minimalDsl = await loadMinimalDslModule();
+  const pattern = {
+    key: "ADD_REPEAT",
+    template: "{a} + {b} =",
+    variables: {
+      a: [1, 1],
+      b: [1, 1]
+    },
+    answer: "a + b"
+  };
+
+  const generated = minimalDsl.generateMinimalProblems(pattern, 3);
+  assert.equal(generated.length, 3);
+  for (const item of generated) {
+    assert.equal(item.question, "1 + 1 =");
+    assert.equal(item.answer, "2");
+    assert.deepEqual(item.variableRanges, pattern.variables);
+  }
+});
+
+test("minimal DSL renderTemplate throws when a template variable is undefined", async () => {
+  const minimalDsl = await loadMinimalDslModule();
+  assert.throws(
+    () => minimalDsl.renderTemplate("x = {missing}", { a: 1 }),
+    /DSL template variable not defined/
+  );
+  assert.throws(
+    () => minimalDsl.renderTemplate("x = {a + b}", { a: 1, b: 2 }),
+    /DSL template variable not defined/
+  );
+});
+
+test("minimal DSL regenerates variables until constraints are satisfied", async () => {
+  const minimalDsl = await loadMinimalDslModule();
+  const originalRandom = Math.random;
+  const sequence = [0, 0, 0.99, 0];
+  let index = 0;
+
+  Math.random = () => {
+    const next = sequence[index] ?? sequence[sequence.length - 1];
+    index += 1;
+    return next;
+  };
+
+  try {
+    const generated = minimalDsl.generateMinimalProblem({
+      key: "RETRY_CONSTRAINT",
+      template: "{a},{b}",
+      variables: {
+        a: [1, 2],
+        b: [1, 2]
+      },
+      constraints: ["a > b"],
+      answer: "a - b"
+    });
+
+    assert.equal(index >= 4, true);
+    assert.deepEqual(generated.variables, { a: 2, b: 1 });
+    assert.equal(generated.question, "2,1");
+    assert.equal(generated.answer, "1");
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test("minimal DSL keeps variableRanges in GeneratedProblem", async () => {
+  const minimalDsl = await loadMinimalDslModule();
+  const pattern = {
+    key: "RANGE_KEEP",
+    template: "{x}",
+    variables: {
+      x: [4, 7]
+    },
+    answer: "x"
+  };
+
+  const generated = minimalDsl.generateMinimalProblem(pattern);
+  assert.deepEqual(generated.variableRanges, {
+    x: [4, 7]
+  });
 });

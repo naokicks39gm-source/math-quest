@@ -10,17 +10,17 @@ export type PatternDSL = {
   answer: string;
 };
 
-export type Pattern = PatternDSL;
-
 export type GeneratedProblem = {
   id: string;
   question: string;
   answer: string;
   patternKey?: string;
   variables?: Record<string, number>;
-  variableRanges?: Record<string, Range>;
+  variableRanges?: Record<string, [number, number]>;
   meta?: Record<string, unknown>;
 };
+
+const MAX_CONSTRAINT_ATTEMPTS = 500;
 
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -29,6 +29,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export const parsePatternDSL = (raw: unknown): PatternDSL => {
   if (!isRecord(raw)) throw new Error("pattern must be an object");
+
   const key = raw.key;
   const template = raw.template;
   const variablesRaw = raw.variables;
@@ -48,6 +49,7 @@ export const parsePatternDSL = (raw: unknown): PatternDSL => {
     if (!Array.isArray(rangeRaw) || rangeRaw.length !== 2) {
       throw new Error(`pattern.variables.${name} must be [min,max]`);
     }
+
     const min = Number(rangeRaw[0]);
     const max = Number(rangeRaw[1]);
     if (!Number.isFinite(min) || !Number.isFinite(max)) {
@@ -56,6 +58,7 @@ export const parsePatternDSL = (raw: unknown): PatternDSL => {
     if (min > max) {
       throw new Error(`pattern.variables.${name} has invalid range`);
     }
+
     variables[name] = [Math.trunc(min), Math.trunc(max)];
   }
 
@@ -67,19 +70,6 @@ export const parsePatternDSL = (raw: unknown): PatternDSL => {
     answer
   };
 };
-
-export const renderTemplate = (template: string, vars: Record<string, number>) =>
-  template.replace(/\{([^}]+)\}/gu, (_whole, expr: string) => {
-    const normalized = expr.trim();
-    if (!/^[A-Za-z_]\w*$/u.test(normalized)) {
-      throw new Error("DSL template variable not defined");
-    }
-    const value = vars[normalized];
-    if (value === undefined) {
-      throw new Error("DSL template variable not defined");
-    }
-    return String(value);
-  });
 
 export const generateVariables = (pattern: PatternDSL): Record<string, number> => {
   const vars: Record<string, number> = {};
@@ -93,8 +83,8 @@ export const evaluateConstraints = (pattern: PatternDSL, vars: Record<string, nu
   const context = Object.fromEntries(
     Object.keys(pattern.variables).map((key) => [key, Number(vars[key])])
   ) as Record<string, number>;
-  const constraints = pattern.constraints ?? [];
-  for (const constraint of constraints) {
+
+  for (const constraint of pattern.constraints ?? []) {
     const result = evaluateExpression(constraint, context);
     if (typeof result === "boolean") {
       if (!result) return false;
@@ -102,18 +92,33 @@ export const evaluateConstraints = (pattern: PatternDSL, vars: Record<string, nu
     }
     if (result === 0) return false;
   }
+
   return true;
 };
+
+export const renderTemplate = (template: string, vars: Record<string, number>) =>
+  template.replace(/\{([^}]+)\}/gu, (_whole, expr: string) => {
+    const key = expr.trim();
+    if (!/^[A-Za-z_]\w*$/u.test(key)) {
+      throw new Error("DSL template variable not defined");
+    }
+
+    const value = vars[key];
+    if (value === undefined) {
+      throw new Error("DSL template variable not defined");
+    }
+
+    return String(value);
+  });
 
 export const evaluateAnswer = (answerExpr: string, vars: Record<string, number>) =>
   formatEvaluationValue(evaluateExpression(answerExpr, vars));
 
-const MAX_CONSTRAINT_ATTEMPTS = 500;
-
-export const generateProblem = (rawPattern: PatternDSL): GeneratedProblem => {
+export const generateMinimalProblem = (rawPattern: PatternDSL): GeneratedProblem => {
   const pattern = parsePatternDSL(rawPattern);
   let vars: Record<string, number> = {};
   let matched = false;
+
   for (let attempts = 0; attempts < MAX_CONSTRAINT_ATTEMPTS; attempts += 1) {
     vars = generateVariables(pattern);
     if (evaluateConstraints(pattern, vars)) {
@@ -121,16 +126,16 @@ export const generateProblem = (rawPattern: PatternDSL): GeneratedProblem => {
       break;
     }
   }
+
   if (!matched) {
     throw new Error(`Unable to satisfy constraints for pattern: ${pattern.key}`);
   }
 
   const question = renderTemplate(pattern.template, vars);
   const answer = evaluateAnswer(pattern.answer, vars);
-  const id = `${pattern.key}:${question}:${answer}`;
 
   return {
-    id,
+    id: `${pattern.key}:${question}:${answer}`,
     question,
     answer,
     patternKey: pattern.key,
@@ -142,27 +147,14 @@ export const generateProblem = (rawPattern: PatternDSL): GeneratedProblem => {
   };
 };
 
-export const generateProblems = (pattern: PatternDSL, n: number): GeneratedProblem[] => {
+export const generateMinimalProblems = (pattern: PatternDSL, n: number): GeneratedProblem[] => {
   const parsed = parsePatternDSL(pattern);
   const count = Math.max(0, Math.trunc(n));
   const problems: GeneratedProblem[] = [];
+
   for (let i = 0; i < count; i += 1) {
-    problems.push(generateProblem(parsed));
+    problems.push(generateMinimalProblem(parsed));
   }
+
   return problems;
 };
-
-export type {
-  Range as MinimalRange,
-  PatternDSL as MinimalPatternDSL,
-  GeneratedProblem as MinimalGeneratedProblem
-} from "packages/problem-engine/minimal-dsl";
-export {
-  parsePatternDSL as parsePatternDSLMinimal,
-  generateVariables as generateVariablesMinimal,
-  evaluateConstraints as evaluateConstraintsMinimal,
-  renderTemplate as renderTemplateMinimal,
-  evaluateAnswer as evaluateAnswerMinimal,
-  generateMinimalProblem,
-  generateMinimalProblems
-} from "packages/problem-engine/minimal-dsl";
