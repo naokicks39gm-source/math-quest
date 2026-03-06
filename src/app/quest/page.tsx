@@ -12,7 +12,16 @@ import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getCatalogGrades } from '@/lib/gradeCatalog';
 import { entryEquivalentKey, entryPromptKey } from '@/lib/questItemFactory';
 import { buildStocksForTypes, pickUniqueQuizFromStock, type PickMeta, type TypeStockResult } from "@/lib/questStockFactory";
-import { E1_LEVEL_OPTIONS, generateE1LevelProblems, isE1LevelId, type E1LevelId } from "@/lib/problem";
+import {
+  E1_LEVEL_OPTIONS,
+  J1_LEVEL_OPTIONS,
+  generateE1LevelProblems,
+  generateJ1LevelProblems,
+  isE1LevelId,
+  isJ1LevelId,
+  type E1LevelId,
+  type J1LevelId
+} from "@/lib/problem";
 import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
 import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
 import ElementaryExplanationPanel from "@/components/ElementaryExplanationPanel";
@@ -115,9 +124,19 @@ const E1_SUMMARY_TYPE_ID = "E1.NA.MIX.MIXED_TO_20";
 const E2_DAN_MUL_TYPE_RE = /^E2\.NA\.MUL\.MUL_1D_1D_DAN_[1-9]$/;
 const E2_MIX_TEN_TYPE_RE = /^E2\.NA\.MUL\.MUL_1D_1D_MIX_(1_3|4_6|7_9)$/;
 const E2_MIX_99_TEST_TYPE_ID = "E2.NA.MUL.MUL_1D_1D_MIX_1_9";
+type QuestLevelId = E1LevelId | J1LevelId;
+type QuestLevelInfo = { gradeId: "E1" | "J1"; levelId: QuestLevelId };
+
+const resolveQuestLevelInfo = (rawLevelId: string): QuestLevelInfo | null => {
+  if (isE1LevelId(rawLevelId)) return { gradeId: "E1", levelId: rawLevelId };
+  if (isJ1LevelId(rawLevelId)) return { gradeId: "J1", levelId: rawLevelId };
+  return null;
+};
+
 const getTargetQuestionCount = (typeId?: string, levelId?: string) => {
   if (levelId === "E1-12") return 10;
   if (levelId && isE1LevelId(levelId)) return DEFAULT_TOTAL_QUESTIONS;
+  if (levelId && isJ1LevelId(levelId)) return 1;
   if (!typeId) return DEFAULT_TOTAL_QUESTIONS;
   if (typeId === E2_MIX_99_TEST_TYPE_ID) return 20;
   if (E2_DAN_MUL_TYPE_RE.test(typeId)) return 9;
@@ -1596,7 +1615,9 @@ function QuestPageInner() {
   const typeFromQuery = (params.get("type") ?? "").trim();
   const categoryFromQuery = params.get("category");
   const rawLevelFromQuery = (params.get("levelId") ?? "").trim();
-  const levelFromQuery: E1LevelId | "" = isE1LevelId(rawLevelFromQuery) ? rawLevelFromQuery : "";
+  const levelInfo = useMemo(() => resolveQuestLevelInfo(rawLevelFromQuery), [rawLevelFromQuery]);
+  const levelGradeId = levelInfo?.gradeId ?? "";
+  const levelFromQuery: QuestLevelId | "" = levelInfo?.levelId ?? "";
   const [combo, setCombo] = useState(0);
   const [question, setQuestion] = useState<Question | null>(null);
   const [history, setHistory] = useState<Array<{ id: number; text: string }>>([]);
@@ -1701,10 +1722,6 @@ function QuestPageInner() {
   const [memoCanvasSize, setMemoCanvasSize] = useState({ width: DEFAULT_VISIBLE_CANVAS_SIZE, height: DEFAULT_VISIBLE_CANVAS_SIZE });
   const [calcZoom, setCalcZoom] = useState(1);
   const [calcPan, setCalcPan] = useState({ x: 0, y: 0 });
-  const [useSingleLineQa, setUseSingleLineQa] = useState(false);
-  const [qaAnswerOffsetPx, setQaAnswerOffsetPx] = useState(0);
-  const [qaPromptFontPx, setQaPromptFontPx] = useState<number>(QA_PROMPT_FONT_STEPS[0]);
-  const [qaAnswerFontPx, setQaAnswerFontPx] = useState<number>(QA_ANSWER_FONT_STEPS[0]);
   const [showGradeTypePicker, setShowGradeTypePicker] = useState(false);
   const [expandedGradePicker, setExpandedGradePicker] = useState(true);
   const [expandedGradeList, setExpandedGradeList] = useState(false);
@@ -1921,85 +1938,10 @@ function QuestPageInner() {
   const isJuniorQuest = /^(J1|J2|J3)$/.test(currentGradeId);
   const isHighSchoolQuest = /^(H1|H2|H3)$/.test(currentGradeId);
   const isE2EqualShareType = currentType?.type_id === "E2.NA.DIV.DIV_EQUAL_SHARE_BASIC";
-
-  useEffect(() => {
-    const row = qaRowRef.current;
-    const prompt = qaPromptRef.current;
-    const promptContent = qaPromptContentRef.current;
-    const answer = qaAnswerRef.current;
-    const answerContent = qaAnswerContentRef.current;
-    if (!row || !prompt || !answer || !answerContent || status !== "playing" || !quizItems[itemIndex]) return;
-
-    const updateLayout = () => {
-      const available = row.clientWidth;
-      if (available <= 0) return;
-      const measure = (promptFontPx: number, answerFontPx: number) => {
-        prompt.style.fontSize = `${promptFontPx}px`;
-        answer.style.fontSize = `${answerFontPx}px`;
-        const promptWidth = promptContent?.scrollWidth ?? prompt.scrollWidth;
-        const answerWidth = answerContent.scrollWidth;
-        return { promptWidth, answerWidth };
-      };
-      const gap = 10;
-      const buffer = 10;
-
-      if (!isSecondaryQuest) {
-        const promptFont = isE2EqualShareType ? 20 : QA_PROMPT_FONT_STEPS[2];
-        const answerFont = QA_ANSWER_FONT_STEPS[2];
-        const size = measure(promptFont, answerFont);
-        const singleLine = isE2EqualShareType ? false : size.promptWidth + size.answerWidth + gap + buffer <= available;
-        setUseSingleLineQa(singleLine);
-        setQaPromptFontPx(promptFont);
-        setQaAnswerFontPx(answerFont);
-        setQaAnswerOffsetPx(0);
-        return;
-      }
-
-      let fitStep: { prompt: number; answer: number } | null = null;
-      for (let i = 0; i < QA_PROMPT_FONT_STEPS.length; i += 1) {
-        const promptStep = QA_PROMPT_FONT_STEPS[i];
-        const answerStep = QA_ANSWER_FONT_STEPS[Math.min(i, QA_ANSWER_FONT_STEPS.length - 1)];
-        const size = measure(promptStep, answerStep);
-        if (size.promptWidth + size.answerWidth + gap + buffer <= available) {
-          fitStep = { prompt: promptStep, answer: answerStep };
-          break;
-        }
-      }
-
-      if (fitStep) {
-        setUseSingleLineQa(true);
-        setQaPromptFontPx(fitStep.prompt);
-        setQaAnswerFontPx(fitStep.answer);
-        setQaAnswerOffsetPx(0);
-      } else {
-        setUseSingleLineQa(false);
-        setQaPromptFontPx(QA_PROMPT_FONT_STEPS[0]);
-        setQaAnswerFontPx(QA_ANSWER_FONT_STEPS[0]);
-        setQaAnswerOffsetPx(0);
-      }
-    };
-
-    updateLayout();
-    const observer = new ResizeObserver(() => updateLayout());
-    observer.observe(row);
-    observer.observe(prompt);
-    observer.observe(answer);
-    if (promptContent) observer.observe(promptContent);
-    observer.observe(answerContent);
-    window.addEventListener("resize", updateLayout);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", updateLayout);
-    };
-  }, [
-    status,
-    quizItems,
-    itemIndex,
-    input,
-    quadraticAnswers,
-    isSecondaryQuest,
-    isE2EqualShareType
-  ]);
+  const useSingleLineQa = !isSecondaryQuest && !isE2EqualShareType;
+  const qaAnswerOffsetPx = 0;
+  const qaPromptFontPx = isE2EqualShareType ? 20 : isSecondaryQuest ? QA_PROMPT_FONT_STEPS[0] : QA_PROMPT_FONT_STEPS[2];
+  const qaAnswerFontPx = isSecondaryQuest ? QA_ANSWER_FONT_STEPS[0] : QA_ANSWER_FONT_STEPS[2];
 
   useEffect(() => {
     scheduleMemoRedraw();
@@ -2065,10 +2007,18 @@ function QuestPageInner() {
       canvasRef.current?.clear();
     };
 
-    if (levelFromQuery) {
-      const seeded = generateE1LevelProblems(levelFromQuery, 1)[0];
+    if (levelInfo?.gradeId === "E1") {
+      const seeded = generateE1LevelProblems(levelInfo.levelId as E1LevelId, 1)[0];
       if (seeded?.type) {
-        applySelection(seeded.type as TypeDef, `level:${levelFromQuery}:${seeded.type.type_id}`);
+        applySelection(seeded.type as TypeDef, `level:${levelInfo.levelId}:${seeded.type.type_id}`);
+        return;
+      }
+    }
+
+    if (levelInfo?.gradeId === "J1") {
+      const seeded = generateJ1LevelProblems(levelInfo.levelId as J1LevelId, 1)[0];
+      if (seeded?.type) {
+        applySelection(seeded.type as TypeDef, `level:${levelInfo.levelId}:${seeded.type.type_id}`);
         return;
       }
     }
@@ -2102,7 +2052,7 @@ function QuestPageInner() {
     if (!selectedType && defaultType) {
       applySelection(defaultType, `default:${defaultType.type_id}`);
     }
-  }, [levelFromQuery, typeFromQuery, categoryFromQuery, grades, selectedType, defaultType]);
+  }, [levelGradeId, levelFromQuery, typeFromQuery, categoryFromQuery, grades, selectedType, defaultType]);
 
   const categoryContext = useMemo(() => {
     if (!categoryFromQuery) return null;
@@ -2122,10 +2072,18 @@ function QuestPageInner() {
 
   const selectedPath = (() => {
     if (hasLevelQuery) {
-      const option = E1_LEVEL_OPTIONS.find((entry) => entry.levelId === levelFromQuery);
+      if (levelInfo?.gradeId === "E1") {
+        const option = E1_LEVEL_OPTIONS.find((entry) => entry.levelId === levelInfo.levelId);
+        return {
+          gradeName: "小1",
+          categoryName: "数と計算",
+          typeName: option ? `Lv:${option.levelId} ${option.title}` : `Lv:${levelInfo.levelId}`
+        };
+      }
+      const option = J1_LEVEL_OPTIONS.find((entry) => entry.levelId === levelInfo?.levelId);
       return {
-        gradeName: "小1",
-        categoryName: "数と計算",
+        gradeName: "中1",
+        categoryName: option?.categoryName ?? "中1カリキュラム",
         typeName: option ? `Lv:${option.levelId} ${option.title}` : `Lv:${levelFromQuery}`
       };
     }
@@ -2308,8 +2266,35 @@ function QuestPageInner() {
   };
   useEffect(() => {
     clearAllFractionAutoMoveTimers();
-    if (levelFromQuery) {
-      const generated = dedupeQuestSet(generateE1LevelProblems(levelFromQuery, quizSize) as QuestEntry[]);
+    if (levelInfo?.gradeId === "E1") {
+      const generated = dedupeQuestSet(generateE1LevelProblems(levelInfo.levelId as E1LevelId, quizSize) as QuestEntry[]);
+      if (generated.length < 1) {
+        setQuizItems([]);
+        setItemIndex(0);
+        setQuestionResults({});
+        setStatus("blocked");
+        setQuizBuildError("このレベルは一時的に出題候補不足です。別レベルを選ぶか、時間をおいて再試行してください。");
+        return;
+      }
+      setActivePickMeta(null);
+      setQuizItems(generated);
+      setItemIndex(0);
+      setQuestionResults({});
+      setStatus("playing");
+      setQuizBuildError(null);
+      setMessage("Battle Start!");
+      setPracticeResult(null);
+      setResultMark(null);
+      setRecognizedNumber(null);
+      setInput("");
+      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
+      setQuadraticAnswers(["", ""]);
+      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
+      setQuadraticActiveIndex(0);
+      return;
+    }
+    if (levelInfo?.gradeId === "J1") {
+      const generated = dedupeQuestSet(generateJ1LevelProblems(levelInfo.levelId as J1LevelId, quizSize) as QuestEntry[]);
       if (generated.length < 1) {
         setQuizItems([]);
         setItemIndex(0);
@@ -2409,7 +2394,7 @@ function QuestPageInner() {
     setQuadraticAnswers(["", ""]);
     setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
     setQuadraticActiveIndex(0);
-  }, [levelFromQuery, stockReady, typeStocks, activeTypeId, quizSize, retryNonce]);
+  }, [levelGradeId, levelFromQuery, stockReady, typeStocks, activeTypeId, quizSize, retryNonce]);
 
   const currentAid = useMemo(
     () =>
@@ -2469,13 +2454,21 @@ function QuestPageInner() {
         typeName: type.display_name ?? type.type_name ?? type.type_id
       }))
     );
-    if (pickerGrade?.grade_id !== "E1") return base;
-    const levelOptions = E1_LEVEL_OPTIONS.map((entry) => ({
-      kind: "level" as const,
-      levelId: entry.levelId,
-      typeName: `Lv:${entry.levelId} ${entry.title}`
-    }));
-    return levelOptions;
+    if (pickerGrade?.grade_id === "E1") {
+      return E1_LEVEL_OPTIONS.map((entry) => ({
+        kind: "level" as const,
+        levelId: entry.levelId,
+        typeName: `Lv:${entry.levelId} ${entry.title}`
+      }));
+    }
+    if (pickerGrade?.grade_id === "J1") {
+      return J1_LEVEL_OPTIONS.map((entry) => ({
+        kind: "level" as const,
+        levelId: entry.levelId,
+        typeName: `Lv:${entry.levelId} ${entry.title}`
+      }));
+    }
+    return base;
   }, [pickerGrade]);
   useEffect(() => {
     if (!currentGradeId) return;
@@ -2568,10 +2561,17 @@ function QuestPageInner() {
     });
   };
   const goToNextLevel = () => {
-    if (levelFromQuery) {
-      const currentIndex = E1_LEVEL_OPTIONS.findIndex((entry) => entry.levelId === levelFromQuery);
+    if (levelInfo?.gradeId === "E1") {
+      const currentIndex = E1_LEVEL_OPTIONS.findIndex((entry) => entry.levelId === levelInfo.levelId);
       const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % E1_LEVEL_OPTIONS.length : 0;
       const nextLevel = E1_LEVEL_OPTIONS[nextIndex];
+      router.push(`/quest?levelId=${encodeURIComponent(nextLevel.levelId)}`);
+      return;
+    }
+    if (levelInfo?.gradeId === "J1") {
+      const currentIndex = J1_LEVEL_OPTIONS.findIndex((entry) => entry.levelId === levelInfo.levelId);
+      const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % J1_LEVEL_OPTIONS.length : 0;
+      const nextLevel = J1_LEVEL_OPTIONS[nextIndex];
       router.push(`/quest?levelId=${encodeURIComponent(nextLevel.levelId)}`);
       return;
     }

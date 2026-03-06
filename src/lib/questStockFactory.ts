@@ -742,6 +742,7 @@ const filterE2MulDanMixRange = (entries: QuestEntry[], typeId: string) => {
 };
 
 const getGradeIdFromTypeId = (typeId: string) => typeId.split(".")[0] ?? "";
+const isJ1Grade = (gradeId: string) => Boolean(gradeId) && gradeId.startsWith("J1");
 
 const isFrozenElementaryGrade = (gradeId: string) => /^(E1|E2|E3|E4)$/.test(gradeId);
 
@@ -803,6 +804,7 @@ const STOCK_STRATEGIES: Record<string, StockGenerationStrategy> = {
 export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult => {
   const startedAt = Date.now();
   const seed = toQuestEntries(type);
+  const gradeId = getGradeIdFromTypeId(type.type_id);
   if (seed.length === 0) {
     return {
       typeId: type.type_id,
@@ -834,6 +836,43 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
   const normalizedSeed = normalizedType.example_items
     .map((item) => ({ item, type: normalizedType }))
     .map(normalizeJ1IntEntry);
+  if (isJ1Grade(gradeId)) {
+    const seedOnlyUnique = uniqueByPromptAndEquivalent(normalizedSeed);
+    const orderedSeedOnly = reorderAvoidAdjacentSameFamily(shuffle(seedOnlyUnique)).slice(0, targetCount);
+    const entries = uniqueByPromptAndEquivalent(orderedSeedOnly).slice(0, targetCount);
+    const reason = entries.length >= targetCount ? undefined : "INSUFFICIENT_GENERATABLE";
+    const reasonDetail: StockReasonDetail | undefined = reason ? "PARAM_RANGE_NARROW" : undefined;
+    const failureClass: StockFailureClass = entries.length >= Math.min(5, targetCount) ? "NONE" : "GEN_FAIL";
+    if (process.env.NODE_ENV !== "production") {
+      console.debug("[stock-build]", {
+        typeId: type.type_id,
+        patternId: hasPattern ? patternId : "",
+        seedCount: normalizedSeed.length,
+        expandedCount: normalizedSeed.length,
+        uniqueCount: seedOnlyUnique.length,
+        finalCount: entries.length,
+        reason,
+        reasonDetail,
+        failureClass,
+        j1SeedOnly: true,
+        buildMs: Date.now() - startedAt
+      });
+    }
+    return {
+      typeId: type.type_id,
+      patternId: hasPattern ? patternId : undefined,
+      entries,
+      count: entries.length,
+      target: targetCount,
+      reason,
+      reasonDetail,
+      failureClass,
+      expandedCount: normalizedSeed.length,
+      uniqueCount: seedOnlyUnique.length,
+      generatedCount: normalizedSeed.length,
+      buildMs: Date.now() - startedAt
+    };
+  }
   const expanded = expandEntriesToAtLeast(normalizedSeed, targetCount).map(normalizeJ1IntEntry);
   let unique = uniqueByPromptAndEquivalent(expanded);
   let reasonDetail: StockReasonDetail | undefined;
@@ -856,7 +895,6 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
     unique = uniqueByPromptAndEquivalent([...unique, ...fallbackEntries].map(normalizeJ1IntEntry));
   }
   if (unique.length < Math.min(5, targetCount)) {
-    const gradeId = getGradeIdFromTypeId(type.type_id);
     if (!isFrozenElementaryGrade(gradeId)) {
       // Keep non-frozen grades extensible via questItemFactory generators without altering displayed text.
       const reExpanded = expandEntriesToAtLeast(unique, Math.max(5, targetCount)).map(normalizeJ1IntEntry);

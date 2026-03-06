@@ -8,6 +8,13 @@ export {
   type E1LevelId,
   type E1LevelOption
 } from "./e1LevelAdapter";
+export {
+  J1_LEVEL_OPTIONS,
+  generateJ1LevelProblems,
+  isJ1LevelId,
+  type J1LevelId,
+  type J1LevelOption
+} from "./j1LevelAdapter";
 
 export type ProblemEntry = QuestEntry;
 

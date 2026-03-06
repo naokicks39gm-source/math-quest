@@ -301,6 +301,162 @@ const buildGenericExplanation = (
   };
 };
 
+const normalizeJ1PromptKey = (value?: string) =>
+  String(value ?? "")
+    .replace(/\s+/g, "")
+    .replace(/[{}]/g, "")
+    .trim();
+
+const buildJ1TemplateHintLines = (typeId?: string, prompt?: string): SecondaryLearningAid["hintLines"] | undefined => {
+  const key = normalizeJ1PromptKey(prompt);
+  if (typeId === "J1.AL.INT.INT_ADD") {
+    return [
+      { kind: "text", value: "1. 符号を見る" },
+      { kind: "text", value: "2. 符号ルールを決める" },
+      { kind: "text", value: "3. 符号を決めてから数を計算" }
+    ];
+  }
+  if (typeId === "J1.AL.INT.INT_SUB") {
+    return [
+      { kind: "text", value: "1. 引き算を足し算に直せるか見る" },
+      { kind: "text", value: "2. 符号を決める" },
+      { kind: "text", value: "3. 数を計算する" }
+    ];
+  }
+  if (typeId === "J1.AL.INT.INT_MUL") {
+    return [
+      { kind: "text", value: "1. 符号を確認" },
+      { kind: "text", value: "2. 数だけ計算" },
+      { kind: "text", value: "3. 最後に符号を付ける" }
+    ];
+  }
+  if (typeId === "J1.AL.INT.INT_DIV") {
+    return [
+      { kind: "text", value: "1. 符号を確認" },
+      { kind: "text", value: "2. 割り算をする" },
+      { kind: "text", value: "3. 必要なら逆数を使う" }
+    ];
+  }
+  if (typeId === "J1.AL.POW.POW_INT") {
+    if (key === "-4^2=") {
+      return [
+        { kind: "text", value: "1. 指数の部分を先に計算" },
+        { kind: "text", value: "2. 最後に前のマイナスを付ける" }
+      ];
+    }
+    return [
+      { kind: "text", value: "1. 同じ数を指数の回数だけかける" },
+      { kind: "text", value: "2. 括弧があるかを確認する" }
+    ];
+  }
+  if (typeId === "J1.AL.EXP.FACTOR_GCF") {
+    return [
+      { kind: "text", value: "x の項をまとめる" },
+      { kind: "text", value: "y の項をまとめる" },
+      { kind: "text", value: "z の項をまとめる" }
+    ];
+  }
+  if (typeId === "J1.AL.EXP.FACTOR_TRINOM" || typeId === "J1.AL.EXP.EXPAND") {
+    return [
+      { kind: "text", value: "1. 分配" },
+      { kind: "text", value: "2. 同類項" }
+    ];
+  }
+  if (typeId === "J1.EQ.LIN.LIN_EQ") {
+    return [
+      { kind: "text", value: "1. 分配があれば先に外す" },
+      { kind: "text", value: "2. 数を移項する" },
+      { kind: "text", value: "3. 係数で割る" }
+    ];
+  }
+  if (typeId === "J1.FN.LIN.LIN_FUNC_PARAMS") {
+    return [
+      { kind: "text", value: "1. 傾きは x の前の数" },
+      { kind: "text", value: "2. 切片は定数項" },
+      { kind: "text", value: "3. 点があれば代入して b を求める" }
+    ];
+  }
+  return undefined;
+};
+
+const buildJ1TemplateHint = (typeId?: string, prompt?: string, fallback?: string) => {
+  const lines = buildJ1TemplateHintLines(typeId, prompt);
+  if (!lines) return fallback ?? "";
+  return lines.map((line) => line.value).join("\n");
+};
+
+const buildJ1TemplateDerivationLines = (typeId?: string, prompt?: string, answer?: string) => {
+  const key = normalizeJ1PromptKey(prompt);
+  const answerText = answer?.trim() ?? "";
+  if (typeId === "J1.AL.INT.INT_ADD") {
+    if (key === "-4+(-6)=") return addHighlightsToLines([{ kind: "text", value: "-4 + (-6)" }, { kind: "text", value: "= -(4 + 6)" }, { kind: "text", value: "= -(10)" }, { kind: "text", value: "=-10" }]);
+    if (key === "8+(-3)=") return addHighlightsToLines([{ kind: "text", value: "8 + (-3)" }, { kind: "text", value: "= 8 - 3" }, { kind: "text", value: "= 5" }]);
+    if (key === "-7+5=") return addHighlightsToLines([{ kind: "text", value: "-7 + 5" }, { kind: "text", value: "= -(7 - 5)" }, { kind: "text", value: "= -(2)" }, { kind: "text", value: "=-2" }]);
+  }
+  if (typeId === "J1.AL.INT.INT_SUB") {
+    if (key === "6-(-3)=") return addHighlightsToLines([{ kind: "text", value: "6 - (-3)" }, { kind: "text", value: "= 6 + 3" }, { kind: "text", value: "= 9" }]);
+    if (key === "-4-3=") return addHighlightsToLines([{ kind: "text", value: "-4 - 3" }, { kind: "text", value: "= -(4 + 3)" }, { kind: "text", value: "= -(7)" }, { kind: "text", value: "=-7" }]);
+    if (key === "-5-(-2)=") return addHighlightsToLines([{ kind: "text", value: "-5 - (-2)" }, { kind: "text", value: "= -5 + 2" }, { kind: "text", value: "= -(5 - 2)" }, { kind: "text", value: "=-3" }]);
+  }
+  if (typeId === "J1.AL.INT.INT_MUL") {
+    if (key === "(-3)×(-8)=") return addHighlightsToLines([{ kind: "text", value: "(-3) × (-8)" }, { kind: "text", value: "= (+)(3 × 8)" }, { kind: "text", value: "= 24" }]);
+    if (key === "(-2.5)×4=") return addHighlightsToLines([{ kind: "text", value: "(-2.5) × 4" }, { kind: "text", value: "= -(2.5 × 4)" }, { kind: "text", value: "= -(10)" }, { kind: "text", value: "=-10" }]);
+    if (key === "(-2/3)×3=") return addHighlightsToLines([{ kind: "text", value: "(-2/3) × 3" }, { kind: "text", value: "= -(2/3) × 3" }, { kind: "text", value: "= -(2×3)/3" }, { kind: "text", value: "=-2" }]);
+    if (key === "(-0.5)×(3/4)=") return addHighlightsToLines([{ kind: "text", value: "(-0.5) × (3/4)" }, { kind: "text", value: "= -(0.5 × 3/4)" }, { kind: "text", value: "= -((1/2) × 3/4)" }, { kind: "text", value: "=-3/8" }]);
+  }
+  if (typeId === "J1.AL.INT.INT_DIV") {
+    if (key === "24÷(-6)=") return addHighlightsToLines([{ kind: "text", value: "24 ÷ (-6)" }, { kind: "text", value: "= -(24 ÷ 6)" }, { kind: "text", value: "=-4" }]);
+    if (key === "-4.8÷2=") return addHighlightsToLines([{ kind: "text", value: "-4.8 ÷ 2" }, { kind: "text", value: "= -(4.8 ÷ 2)" }, { kind: "text", value: "=-2.4" }]);
+    if (key === "(-3/4)÷(1/2)=") return addHighlightsToLines([{ kind: "text", value: "(-3/4) ÷ (1/2)" }, { kind: "text", value: "= (-3/4) × (2/1)" }, { kind: "text", value: "= -(6/4)" }, { kind: "text", value: "=-3/2" }]);
+  }
+  if (typeId === "J1.AL.POW.POW_INT") {
+    if (key === "3^2=") return addHighlightsToLines([{ kind: "text", value: "3^2" }, { kind: "text", value: "= 3 × 3" }, { kind: "text", value: "= 9" }]);
+    if (key === "(-4)^2=") return addHighlightsToLines([{ kind: "text", value: "(-4)^2" }, { kind: "text", value: "= (-4) × (-4)" }, { kind: "text", value: "= 16" }]);
+    if (key === "-4^2=") return addHighlightsToLines([{ kind: "text", value: "-4^2" }, { kind: "text", value: "= -(4^2)" }, { kind: "text", value: "= -(4 × 4)" }, { kind: "text", value: "=-16" }]);
+  }
+  if (typeId === "J1.AL.EXP.FACTOR_GCF") {
+    return addHighlightsToLines([{ kind: "text", value: prompt ?? "" }, { kind: "text", value: "同じ文字どうしをまとめる" }, { kind: "text", value: `= ${answerText}` }]);
+  }
+  if (typeId === "J1.AL.EXP.FACTOR_TRINOM" || typeId === "J1.AL.EXP.EXPAND") {
+    return addHighlightsToLines([{ kind: "text", value: prompt ?? "" }, { kind: "text", value: "分配して展開する" }, { kind: "text", value: "同類項をまとめる" }, { kind: "text", value: `= ${answerText}` }]);
+  }
+  if (typeId === "J1.EQ.LIN.LIN_EQ") {
+    return addHighlightsToLines([{ kind: "text", value: prompt ?? "" }, { kind: "text", value: "分配して整理する" }, { kind: "text", value: "数を移項する" }, { kind: "text", value: "係数で割る" }, { kind: "text", value: `x = ${answerText}` }]);
+  }
+  if (typeId === "J1.FN.LIN.LIN_FUNC_PARAMS") {
+    return addHighlightsToLines([{ kind: "text", value: prompt ?? "" }, { kind: "text", value: "x の前の数を傾き a とみる" }, { kind: "text", value: "定数項または代入で b を決める" }, { kind: "text", value: `(a,b) = ${answerText}` }]);
+  }
+  return undefined;
+};
+
+const buildJ1TemplateExplanation = (
+  patternId: string,
+  answer?: string,
+  options?: { prompt?: string; promptTex?: string; typeId?: string }
+): ExplanationContent | null => {
+  if (!options?.typeId?.startsWith("J1.")) return null;
+  const derivationLines = buildJ1TemplateDerivationLines(options.typeId, options.prompt, answer);
+  const hintLines = buildJ1TemplateHintLines(options.typeId, options.prompt);
+  if (!derivationLines || !hintLines) return null;
+  return {
+    title: `${toMathName(patternId)}の解き方`,
+    point: hintLines.map((line) => line.value).join(" / "),
+    derivationLines,
+    steps: hintLines.map((line) => line.value),
+    table: {
+      headers: ["見る", "操作", "結果"],
+      rows: [
+        ["問題", "手順に沿って整理", "途中式"],
+        ["途中式", "計算", answer?.trim() ?? "答え"]
+      ]
+    },
+    diagramLines: [
+      "[問題] -> [ヒントどおりに整理] -> [計算] -> [答え]"
+    ],
+    conclusion: buildConclusion(answer)
+  };
+};
+
 const PATTERN_IDS = [
   "ARITH_SEQ",
   "CARD_PROB",
@@ -368,10 +524,15 @@ export const getSecondaryLearningAid = ({ gradeId, typeId, patternId, answer, pr
     { kind: "tex", value: String.raw`-\left(-\right)\to +` }
   ];
   const intAddSignRulesHint = intAddSignRulesLines.map((line) => line.value).join("\n");
+  const j1TemplateHint = buildJ1TemplateHint(typeId, prompt, patternId ? toHint(patternId) : "");
+  const j1TemplateHintLines = buildJ1TemplateHintLines(typeId, prompt);
+  const j1TemplateExplanation = patternId
+    ? buildJ1TemplateExplanation(patternId, answer, { prompt, promptTex, typeId })
+    : null;
   const resolveHint = (pid: string) =>
-    typeId === "J1.AL.INT.INT_ADD" && pid === "INT_ADD" ? intAddSignRulesHint : toHint(pid);
+    j1TemplateHintLines ? j1TemplateHint : typeId === "J1.AL.INT.INT_ADD" && pid === "INT_ADD" ? intAddSignRulesHint : toHint(pid);
   const resolveHintLines = (pid: string) =>
-    typeId === "J1.AL.INT.INT_ADD" && pid === "INT_ADD" ? intAddSignRulesLines : undefined;
+    j1TemplateHintLines ? j1TemplateHintLines : typeId === "J1.AL.INT.INT_ADD" && pid === "INT_ADD" ? intAddSignRulesLines : undefined;
 
   if (patternId && AID_BY_PATTERN.has(patternId)) {
     const aid = AID_BY_PATTERN.get(patternId);
@@ -380,7 +541,7 @@ export const getSecondaryLearningAid = ({ gradeId, typeId, patternId, answer, pr
       ...aid,
       hint: resolveHint(patternId),
       hintLines: resolveHintLines(patternId),
-      explanation: buildGenericExplanation(patternId, answer, { prompt, promptTex, typeId })
+      explanation: j1TemplateExplanation ?? buildGenericExplanation(patternId, answer, { prompt, promptTex, typeId })
     };
   }
 
@@ -388,7 +549,7 @@ export const getSecondaryLearningAid = ({ gradeId, typeId, patternId, answer, pr
     return {
       hint: resolveHint(patternId),
       hintLines: resolveHintLines(patternId),
-      explanation: buildGenericExplanation(patternId, answer, { prompt, promptTex, typeId })
+      explanation: j1TemplateExplanation ?? buildGenericExplanation(patternId, answer, { prompt, promptTex, typeId })
     };
   }
 

@@ -36,17 +36,12 @@ test("quest prompt and clear list use shared math rendering path", () => {
 
 test("quest card uses responsive layout to avoid answer overflow", () => {
   const source = read("src/app/quest/page.tsx");
-  assert.match(source, /const \[useSingleLineQa, setUseSingleLineQa\] = useState\(false\)/);
-  assert.match(source, /const \[qaAnswerOffsetPx, setQaAnswerOffsetPx\] = useState\(0\)/);
-  assert.match(source, /const \[qaPromptFontPx, setQaPromptFontPx\] = useState<number>\(QA_PROMPT_FONT_STEPS\[0\]\)/);
-  assert.match(source, /const \[qaAnswerFontPx, setQaAnswerFontPx\] = useState<number>\(QA_ANSWER_FONT_STEPS\[0\]\)/);
   assert.match(source, /const QA_PROMPT_FONT_STEPS = \[32, 30, 28, 26, 24\] as const;/);
   assert.match(source, /const QA_ANSWER_FONT_STEPS = \[30, 28, 26, 24\] as const;/);
-  assert.match(source, /if \(!isSecondaryQuest\) \{/);
-  assert.match(source, /for \(let i = 0; i < QA_PROMPT_FONT_STEPS\.length; i \+= 1\) \{/);
-  assert.match(source, /setUseSingleLineQa\(true\)/);
-  assert.match(source, /setUseSingleLineQa\(false\)/);
-  assert.match(source, /setQaAnswerOffsetPx\(0\)/);
+  assert.match(source, /const useSingleLineQa = !isSecondaryQuest && !isE2EqualShareType;/);
+  assert.match(source, /const qaAnswerOffsetPx = 0;/);
+  assert.match(source, /const qaPromptFontPx = isE2EqualShareType \? 20 : isSecondaryQuest \? QA_PROMPT_FONT_STEPS\[0\] : QA_PROMPT_FONT_STEPS\[2\];/);
+  assert.match(source, /const qaAnswerFontPx = isSecondaryQuest \? QA_ANSWER_FONT_STEPS\[0\] : QA_ANSWER_FONT_STEPS\[2\];/);
   assert.match(source, /useSingleLineQa[\s\S]*\? "relative z-10 w-full flex items-center justify-start gap-2 sm:gap-3"/);
   assert.match(source, /useSingleLineQa[\s\S]*: "relative z-10 w-full flex flex-col justify-center gap-1 sm:gap-2"/);
   assert.match(source, /style=\{\(isSecondaryQuest \|\| isE2EqualShareType\) \? \{ fontSize: `\$\{qaPromptFontPx\}px` \} : undefined\}/);
