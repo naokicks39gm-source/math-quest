@@ -1,96 +1,96 @@
 [
   {
-    "key": "E1-SUB-BASIC-01",
-    "template": "{a} - {b}",
-    "variables": {
-      "a": [
-        1,
-        10
-      ],
-      "b": [
-        0,
-        9
-      ]
-    },
-    "constraints": [
-      "a >= b"
-    ],
-    "answer": "a - b"
-  },
-  {
-    "key": "E1-SUB-BASIC-02",
-    "template": "{a} - {b}",
-    "variables": {
-      "a": [
-        5,
-        12
-      ],
-      "b": [
-        1,
-        9
-      ]
-    },
-    "constraints": [
-      "a >= b",
-      "a - b <= 9"
-    ],
-    "answer": "a - b"
-  },
-  {
-    "key": "E1-SUB-BASIC-03",
-    "template": "{a} - {b}",
-    "variables": {
-      "a": [
-        10,
-        18
-      ],
-      "b": [
-        1,
-        9
-      ]
-    },
-    "constraints": [
-      "a >= b",
-      "a % 10 >= b"
-    ],
-    "answer": "a - b"
-  },
-  {
-    "key": "E1-SUB-BASIC-04",
-    "template": "{a} - {b}",
-    "variables": {
-      "a": [
-        11,
-        19
-      ],
-      "b": [
-        1,
-        8
-      ]
-    },
-    "constraints": [
-      "a > b",
-      "a - b >= 2",
-      "a % 10 >= b"
-    ],
-    "answer": "a - b"
-  },
-  {
-    "key": "E1-SUB-BASIC-05",
+    "key": "E2-SUB-2D-01",
     "template": "{a} - {b}",
     "variables": {
       "a": [
         20,
-        29
+        99
       ],
       "b": [
-        1,
-        9
+        10,
+        49
       ]
     },
     "constraints": [
       "a > b",
-      "a % 10 >= b"
+      "a % 10 >= b % 10"
+    ],
+    "answer": "a - b"
+  },
+  {
+    "key": "E2-SUB-2D-02",
+    "template": "{a} - {b}",
+    "variables": {
+      "a": [
+        30,
+        99
+      ],
+      "b": [
+        10,
+        59
+      ]
+    },
+    "constraints": [
+      "a > b",
+      "a % 10 < b % 10"
+    ],
+    "answer": "a - b"
+  },
+  {
+    "key": "E2-SUB-2D-03",
+    "template": "{a} - {b}",
+    "variables": {
+      "a": [
+        40,
+        99
+      ],
+      "b": [
+        10,
+        39
+      ]
+    },
+    "constraints": [
+      "a - b >= 10",
+      "a > b"
+    ],
+    "answer": "a - b"
+  },
+  {
+    "key": "E2-SUB-2D-04",
+    "template": "{a} - {b}",
+    "variables": {
+      "a": [
+        50,
+        99
+      ],
+      "b": [
+        20,
+        59
+      ]
+    },
+    "constraints": [
+      "a - b <= 40",
+      "a > b"
+    ],
+    "answer": "a - b"
+  },
+  {
+    "key": "E2-SUB-2D-05",
+    "template": "{a} - {b}",
+    "variables": {
+      "a": [
+        21,
+        89
+      ],
+      "b": [
+        10,
+        79
+      ]
+    },
+    "constraints": [
+      "a > b",
+      "a % 10 == b % 10"
     ],
     "answer": "a - b"
   }

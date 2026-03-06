@@ -1,6 +1,6 @@
 [
   {
-    "key": "J1-LIN-BASIC-01",
+    "key": "J1-LIN-NEG-01",
     "template": "{a}x + {b} = {c}",
     "variables": {
       "a": [
@@ -8,16 +8,16 @@
         5
       ],
       "b": [
-        0,
-        9
+        -9,
+        -1
       ],
       "x": [
-        1,
-        9
+        -9,
+        -1
       ],
       "c": [
-        1,
-        60
+        -50,
+        30
       ]
     },
     "constraints": [
@@ -26,7 +26,7 @@
     "answer": "(c - b) / a"
   },
   {
-    "key": "J1-LIN-BASIC-02",
+    "key": "J1-LIN-NEG-02",
     "template": "{a}x - {b} = {c}",
     "variables": {
       "a": [
@@ -38,23 +38,48 @@
         9
       ],
       "x": [
-        2,
-        9
+        -9,
+        -1
       ],
       "c": [
-        1,
-        60
+        -60,
+        -1
       ]
     },
     "constraints": [
-      "c == a * x - b",
-      "c > 0"
+      "c == a * x - b"
     ],
     "answer": "(c + b) / a"
   },
   {
-    "key": "J1-LIN-BASIC-03",
-    "template": "{a}(x + {b}) = {c}",
+    "key": "J1-LIN-NEG-03",
+    "template": "-{a}x + {b} = {c}",
+    "variables": {
+      "a": [
+        1,
+        5
+      ],
+      "b": [
+        1,
+        9
+      ],
+      "x": [
+        -9,
+        -1
+      ],
+      "c": [
+        2,
+        60
+      ]
+    },
+    "constraints": [
+      "c == -a * x + b"
+    ],
+    "answer": "(b - c) / a"
+  },
+  {
+    "key": "J1-LIN-NEG-04",
+    "template": "{a}(x - {b}) = {c}",
     "variables": {
       "a": [
         2,
@@ -65,22 +90,22 @@
         5
       ],
       "x": [
-        1,
-        9
+        -9,
+        -1
       ],
       "c": [
-        6,
-        84
+        -84,
+        -2
       ]
     },
     "constraints": [
-      "c == a * (x + b)"
+      "c == a * (x - b)"
     ],
-    "answer": "c / a - b"
+    "answer": "c / a + b"
   },
   {
-    "key": "J1-LIN-BASIC-04",
-    "template": "x / {a} + {b} = {q} + {b}",
+    "key": "J1-LIN-NEG-05",
+    "template": "x / {a} - {b} = -{q} - {b}",
     "variables": {
       "a": [
         2,
@@ -96,36 +121,6 @@
       ]
     },
     "constraints": [],
-    "answer": "q * a"
-  },
-  {
-    "key": "J1-LIN-BASIC-05",
-    "template": "{a}x + {b} = {c} + {d}",
-    "variables": {
-      "a": [
-        1,
-        5
-      ],
-      "b": [
-        1,
-        9
-      ],
-      "c": [
-        1,
-        20
-      ],
-      "d": [
-        1,
-        20
-      ],
-      "x": [
-        1,
-        9
-      ]
-    },
-    "constraints": [
-      "c + d == a * x + b"
-    ],
-    "answer": "(c + d - b) / a"
+    "answer": "-q * a"
   }
 ]

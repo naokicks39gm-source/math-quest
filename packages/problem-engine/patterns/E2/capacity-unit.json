@@ -1,0 +1,70 @@
+[
+  {
+    "key": "E2-CAP-01",
+    "template": "{l}L = ?mL",
+    "variables": {
+      "l": [
+        1,
+        9
+      ]
+    },
+    "constraints": [],
+    "answer": "l * 1000"
+  },
+  {
+    "key": "E2-CAP-02",
+    "template": "{l}L {mlHundreds}00mL = ?mL",
+    "variables": {
+      "l": [
+        1,
+        4
+      ],
+      "mlHundreds": [
+        1,
+        9
+      ]
+    },
+    "constraints": [],
+    "answer": "l * 1000 + mlHundreds * 100"
+  },
+  {
+    "key": "E2-CAP-03",
+    "template": "{l}L {mlHundreds}00mL は全部で何mL",
+    "variables": {
+      "l": [
+        1,
+        4
+      ],
+      "mlHundreds": [
+        0,
+        9
+      ]
+    },
+    "constraints": [],
+    "answer": "l * 1000 + mlHundreds * 100"
+  },
+  {
+    "key": "E2-CAP-04",
+    "template": "{dl}dL = ?mL",
+    "variables": {
+      "dl": [
+        2,
+        18
+      ]
+    },
+    "constraints": [],
+    "answer": "dl * 100"
+  },
+  {
+    "key": "E2-CAP-05",
+    "template": "{l}L = ?dL",
+    "variables": {
+      "l": [
+        1,
+        7
+      ]
+    },
+    "constraints": [],
+    "answer": "l * 10"
+  }
+]

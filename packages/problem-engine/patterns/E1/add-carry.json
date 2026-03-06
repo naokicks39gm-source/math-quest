@@ -1,93 +1,96 @@
 [
   {
-    "key": "E1-ADD-BASIC-01",
+    "key": "E1-ADD-CARRY-01",
     "template": "{a} + {b}",
     "variables": {
       "a": [
-        1,
-        5
+        11,
+        18
       ],
       "b": [
-        1,
-        5
-      ]
-    },
-    "constraints": [
-      "a + b <= 6"
-    ],
-    "answer": "a + b"
-  },
-  {
-    "key": "E1-ADD-BASIC-02",
-    "template": "{a} + {b}",
-    "variables": {
-      "a": [
-        1,
-        9
-      ],
-      "b": [
-        1,
-        9
-      ]
-    },
-    "constraints": [
-      "a + b <= 10"
-    ],
-    "answer": "a + b"
-  },
-  {
-    "key": "E1-ADD-BASIC-03",
-    "template": "{a} + {b}",
-    "variables": {
-      "a": [
         2,
         9
-      ],
-      "b": [
-        1,
-        8
       ]
     },
     "constraints": [
-      "a >= b",
-      "a + b <= 10"
+      "a % 10 + b >= 10",
+      "a + b <= 20"
     ],
     "answer": "a + b"
   },
   {
-    "key": "E1-ADD-BASIC-04",
+    "key": "E1-ADD-CARRY-02",
     "template": "{a} + {b}",
     "variables": {
       "a": [
-        0,
-        9
+        12,
+        19
       ],
       "b": [
-        1,
-        9
-      ]
-    },
-    "constraints": [
-      "a + b <= 9"
-    ],
-    "answer": "a + b"
-  },
-  {
-    "key": "E1-ADD-BASIC-05",
-    "template": "{a} + {b}",
-    "variables": {
-      "a": [
         3,
         9
-      ],
-      "b": [
-        1,
-        6
       ]
     },
     "constraints": [
-      "a + b >= 8",
-      "a + b <= 10"
+      "a % 10 + b >= 10",
+      "a + b <= 25"
+    ],
+    "answer": "a + b"
+  },
+  {
+    "key": "E1-ADD-CARRY-03",
+    "template": "{a} + {b}",
+    "variables": {
+      "a": [
+        21,
+        28
+      ],
+      "b": [
+        2,
+        9
+      ]
+    },
+    "constraints": [
+      "a % 10 + b >= 10",
+      "a + b <= 30"
+    ],
+    "answer": "a + b"
+  },
+  {
+    "key": "E1-ADD-CARRY-04",
+    "template": "{a} + {b}",
+    "variables": {
+      "a": [
+        31,
+        38
+      ],
+      "b": [
+        2,
+        9
+      ]
+    },
+    "constraints": [
+      "a % 10 + b >= 10",
+      "a + b <= 40"
+    ],
+    "answer": "a + b"
+  },
+  {
+    "key": "E1-ADD-CARRY-05",
+    "template": "{a} + {b}",
+    "variables": {
+      "a": [
+        41,
+        48
+      ],
+      "b": [
+        2,
+        9
+      ]
+    },
+    "constraints": [
+      "a % 10 + b >= 10",
+      "a + b <= 50"
     ],
     "answer": "a + b"
   }

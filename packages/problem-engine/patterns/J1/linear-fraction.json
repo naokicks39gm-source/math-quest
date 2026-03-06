@@ -1,0 +1,67 @@
+[
+  {
+    "key": "J1-LIN-FRAC-01",
+    "template": "{n}/{d}x + {b} = {q} + {b}",
+    "variables": {
+      "n": [1, 4],
+      "d": [2, 9],
+      "b": [0, 9],
+      "q": [1, 9]
+    },
+    "constraints": [
+      "n < d"
+    ],
+    "answer": "q * d / n"
+  },
+  {
+    "key": "J1-LIN-FRAC-02",
+    "template": "{n}/{d}x - {b} = {q} - {b}",
+    "variables": {
+      "n": [1, 4],
+      "d": [2, 9],
+      "b": [1, 9],
+      "q": [1, 9]
+    },
+    "constraints": [
+      "n < d"
+    ],
+    "answer": "q * d / n"
+  },
+  {
+    "key": "J1-LIN-FRAC-03",
+    "template": "x / {d} + {b} = {q} + {b}",
+    "variables": {
+      "d": [2, 9],
+      "b": [1, 9],
+      "q": [1, 9]
+    },
+    "answer": "q * d"
+  },
+  {
+    "key": "J1-LIN-FRAC-04",
+    "template": "{n}/{d}(x + {b}) = {q}",
+    "variables": {
+      "n": [1, 4],
+      "d": [2, 5],
+      "b": [1, 5],
+      "q": [1, 9]
+    },
+    "constraints": [
+      "n < d"
+    ],
+    "answer": "q * d / n - b"
+  },
+  {
+    "key": "J1-LIN-FRAC-05",
+    "template": "{n}x / {d} = {q}",
+    "variables": {
+      "n": [1, 4],
+      "d": [2, 9],
+      "q": [1, 9]
+    },
+    "constraints": [
+      "n < d"
+    ],
+    "answer": "q * d / n"
+  }
+]

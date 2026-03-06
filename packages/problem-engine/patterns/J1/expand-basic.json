@@ -1,30 +1,102 @@
 [
   {
-    "key": "J1-EXP-01",
+    "key": "J1-EXP-BASIC-01",
     "template": "({a}x + {b})({c}x + {d}) の x^2 の係数",
     "variables": {
-      "a": [1, 9],
-      "b": [1, 9],
-      "c": [1, 9],
-      "d": [1, 9]
+      "a": [
+        1,
+        5
+      ],
+      "b": [
+        1,
+        9
+      ],
+      "c": [
+        1,
+        5
+      ],
+      "d": [
+        1,
+        9
+      ]
     },
     "constraints": [
-      "a * c <= 50"
+      "a * c <= 25"
     ],
     "answer": "a * c"
   },
   {
-    "key": "J1-EXP-02",
+    "key": "J1-EXP-BASIC-02",
     "template": "({a}x + {b})({c}x + {d}) の x の係数",
     "variables": {
-      "a": [1, 5],
-      "b": [1, 9],
-      "c": [1, 5],
-      "d": [1, 9]
+      "a": [
+        1,
+        5
+      ],
+      "b": [
+        1,
+        9
+      ],
+      "c": [
+        1,
+        5
+      ],
+      "d": [
+        1,
+        9
+      ]
     },
     "constraints": [
-      "a * d + b * c <= 50"
+      "a * d + b * c <= 40"
     ],
     "answer": "a * d + b * c"
+  },
+  {
+    "key": "J1-EXP-BASIC-03",
+    "template": "(x + {a})(x + {b}) の定数項",
+    "variables": {
+      "a": [
+        1,
+        9
+      ],
+      "b": [
+        1,
+        9
+      ]
+    },
+    "answer": "a * b"
+  },
+  {
+    "key": "J1-EXP-BASIC-04",
+    "template": "(x - {a})(x + {b}) の x の係数",
+    "variables": {
+      "a": [
+        1,
+        9
+      ],
+      "b": [
+        1,
+        9
+      ]
+    },
+    "answer": "b - a"
+  },
+  {
+    "key": "J1-EXP-BASIC-05",
+    "template": "({a}x + {b})^2 の x の係数",
+    "variables": {
+      "a": [
+        1,
+        5
+      ],
+      "b": [
+        1,
+        9
+      ]
+    },
+    "constraints": [
+      "2 * a * b <= 60"
+    ],
+    "answer": "2 * a * b"
   }
 ]

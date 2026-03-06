@@ -25,7 +25,7 @@ const transpileTsModule = async (sourcePath, outputPath, replacements = []) => {
 const loadProblemEngineModules = async () => {
   const os = await import("node:os");
   const { pathToFileURL } = await import("node:url");
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "pattern-catalog-"));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "pattern-quality-"));
 
   const expressionEvaluatorSource = path.join(root, "packages/problem-format/expressionEvaluator.ts");
   const minimalDslSource = path.join(root, "packages/problem-engine/minimal-dsl.ts");
@@ -69,64 +69,26 @@ const loadProblemEngineModules = async () => {
   return { adapters, dslEngine };
 };
 
-test("pattern catalogs exist under problem-engine", () => {
-  const catalogDir = path.join(root, "packages/problem-engine/patterns");
-  assert.equal(fs.existsSync(catalogDir), true);
-  for (const name of [
-    "E1/add-basic.json",
-    "E1/add-make10.json",
-    "E1/add-carry.json",
-    "E1/sub-basic.json",
-    "E1/sub-borrow.json",
-    "E1/mul-basic.json",
-    "E1/div-basic.json",
-    "E2/add-2digit.json",
-    "E2/sub-2digit.json",
-    "E2/mul-2digit.json",
-    "E2/div-2digit.json",
-    "E2/length-unit.json",
-    "E2/capacity-unit.json",
-    "J1/linear-basic.json",
-    "J1/linear-negative.json",
-    "J1/linear-fraction.json",
-    "J1/expand-basic.json",
-    "J1/factor-basic.json",
-    "H1/quadratic-basic.json",
-    "H1/quadratic-factorable.json",
-    "H1/discriminant-basic.json",
-    "H1/discriminant-roots.json"
-  ]) {
-    assert.equal(fs.existsSync(path.join(catalogDir, name)), true);
-  }
-});
-
-test("pattern catalog loader can load all patterns in a level directory", async () => {
-  const { adapters } = await loadProblemEngineModules();
-  const catalog = adapters.loadPatternCatalog("E1");
-  assert.equal(Array.isArray(catalog), true);
-  assert.equal(catalog.length >= 30, true);
-  assert.equal(catalog[0].key, "E1-ADD-BASIC-01");
-});
-
-test("loaded catalog entries follow minimal DSL shape", async () => {
-  const { adapters } = await loadProblemEngineModules();
-  const pattern = adapters.loadPatternCatalog("J1").find((entry) => entry.key === "J1-LIN-BASIC-01");
-  assert.notEqual(pattern, undefined);
-  assert.equal(typeof pattern.key, "string");
-  assert.equal(typeof pattern.template, "string");
-  assert.equal(typeof pattern.answer, "string");
-  assert.deepEqual(Object.keys(pattern.variables).sort(), ["a", "b", "c", "x"]);
-  assert.equal(Array.isArray(pattern.constraints), true);
-});
-
-test("generateProblems can generate questions from loaded catalog patterns", async () => {
+test("all catalog patterns generate valid problems and evaluable answers", async () => {
   const { adapters, dslEngine } = await loadProblemEngineModules();
-  const [pattern] = adapters.loadPatternCatalog("E1");
-  const generated = dslEngine.generateProblems(pattern, 3);
-  assert.equal(generated.length, 3);
-  for (const item of generated) {
-    assert.equal(typeof item.question, "string");
-    assert.equal(typeof item.answer, "string");
-    assert.equal(item.patternKey, pattern.key);
+  const gradeTypes = ["E1", "E2", "J1", "H1"];
+
+  for (const gradeType of gradeTypes) {
+    const patterns = adapters.loadPatternCatalog(gradeType);
+    assert.equal(patterns.length > 0, true, `${gradeType} must have patterns`);
+
+    for (const pattern of patterns) {
+      const generated = dslEngine.generateProblems(pattern, 100);
+      assert.equal(generated.length, 100, `${pattern.key} should generate 100 problems`);
+
+      for (const problem of generated) {
+        assert.equal(
+          dslEngine.evaluateConstraintsMinimal(pattern, problem.variables ?? {}),
+          true,
+          `${pattern.key} generated a constraint violation`
+        );
+        assert.doesNotThrow(() => dslEngine.evaluateAnswerMinimal(pattern.answer, problem.variables ?? {}), pattern.key);
+      }
+    }
   }
 });

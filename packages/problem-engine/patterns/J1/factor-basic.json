@@ -1,32 +1,51 @@
 [
   {
-    "key": "J1-FAC-01",
-    "template": "x^2 + {b}x + {c} を因数分解するとき、2数の和",
+    "key": "J1-FAC-BASIC-01",
+    "template": "(x + {p})(x + {q}) を見て、2数の和",
     "variables": {
       "p": [1, 9],
-      "q": [1, 9],
-      "b": [2, 18],
-      "c": [1, 81]
+      "q": [1, 9]
     },
-    "constraints": [
-      "b == p + q",
-      "c == p * q"
-    ],
     "answer": "p + q"
   },
   {
-    "key": "J1-FAC-02",
-    "template": "x^2 + {b}x + {c} を因数分解するとき、2数の積",
+    "key": "J1-FAC-BASIC-02",
+    "template": "(x + {p})(x + {q}) を見て、2数の積",
     "variables": {
       "p": [1, 9],
-      "q": [1, 9],
-      "b": [2, 18],
-      "c": [1, 81]
+      "q": [1, 9]
+    },
+    "answer": "p * q"
+  },
+  {
+    "key": "J1-FAC-BASIC-03",
+    "template": "(x - {p})(x - {q}) を見て、2数の和",
+    "variables": {
+      "p": [1, 9],
+      "q": [1, 9]
+    },
+    "answer": "p + q"
+  },
+  {
+    "key": "J1-FAC-BASIC-04",
+    "template": "(x + {p})(x - {q}) を見て、2数の差の絶対値",
+    "variables": {
+      "p": [1, 9],
+      "q": [1, 9]
     },
     "constraints": [
-      "b == p + q",
-      "c == p * q"
+      "p != q"
     ],
-    "answer": "p * q"
+    "answer": "abs(p - q)"
+  },
+  {
+    "key": "J1-FAC-BASIC-05",
+    "template": "{a}(x^2 + {m}x + {n}) で、かっこの中の x の係数",
+    "variables": {
+      "a": [2, 9],
+      "m": [1, 5],
+      "n": [1, 5]
+    },
+    "answer": "m"
   }
 ]

@@ -1,0 +1,27 @@
+[
+  {
+    "key": "E1-SUB-01",
+    "template": "{a} - {b}",
+    "variables": {
+      "a": [1, 10],
+      "b": [1, 10]
+    },
+    "constraints": [
+      "a >= b"
+    ],
+    "answer": "a - b"
+  },
+  {
+    "key": "E1-SUB-02",
+    "template": "{a} - {b}",
+    "variables": {
+      "a": [1, 20],
+      "b": [1, 20]
+    },
+    "constraints": [
+      "a >= b",
+      "a - b <= 20"
+    ],
+    "answer": "a - b"
+  }
+]

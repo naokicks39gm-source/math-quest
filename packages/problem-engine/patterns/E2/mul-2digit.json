@@ -1,0 +1,95 @@
+[
+  {
+    "key": "E2-MUL-2D-01",
+    "template": "{a} × {b}",
+    "variables": {
+      "a": [
+        10,
+        29
+      ],
+      "b": [
+        2,
+        4
+      ]
+    },
+    "constraints": [
+      "a * b <= 99"
+    ],
+    "answer": "a * b"
+  },
+  {
+    "key": "E2-MUL-2D-02",
+    "template": "{a} × {b}",
+    "variables": {
+      "a": [
+        10,
+        49
+      ],
+      "b": [
+        5,
+        9
+      ]
+    },
+    "constraints": [
+      "a % 10 == 0",
+      "a * b <= 450"
+    ],
+    "answer": "a * b"
+  },
+  {
+    "key": "E2-MUL-2D-03",
+    "template": "{a} × {b}",
+    "variables": {
+      "a": [
+        11,
+        25
+      ],
+      "b": [
+        3,
+        6
+      ]
+    },
+    "constraints": [
+      "a * b <= 120"
+    ],
+    "answer": "a * b"
+  },
+  {
+    "key": "E2-MUL-2D-04",
+    "template": "{a} × {b}",
+    "variables": {
+      "a": [
+        12,
+        39
+      ],
+      "b": [
+        2,
+        3
+      ]
+    },
+    "constraints": [
+      "a * b >= 40",
+      "a * b <= 117"
+    ],
+    "answer": "a * b"
+  },
+  {
+    "key": "E2-MUL-2D-05",
+    "template": "{a} × {b}",
+    "variables": {
+      "a": [
+        15,
+        45
+      ],
+      "b": [
+        2,
+        5
+      ]
+    },
+    "constraints": [
+      "a % 5 == 0",
+      "a * b <= 225"
+    ],
+    "answer": "a * b"
+  }
+]

@@ -1,0 +1,51 @@
+[
+  {
+    "key": "H1-QUAD-FACT-01",
+    "template": "(x + {p})(x + {q}) = 0 を見て、2数の和",
+    "variables": {
+      "p": [1, 9],
+      "q": [1, 9]
+    },
+    "answer": "p + q"
+  },
+  {
+    "key": "H1-QUAD-FACT-02",
+    "template": "(x + {p})(x + {q}) = 0 を見て、2数の積",
+    "variables": {
+      "p": [1, 9],
+      "q": [1, 9]
+    },
+    "answer": "p * q"
+  },
+  {
+    "key": "H1-QUAD-FACT-03",
+    "template": "(x - {p})(x - {q}) = 0 を見て、2数の和",
+    "variables": {
+      "p": [1, 9],
+      "q": [1, 9]
+    },
+    "answer": "p + q"
+  },
+  {
+    "key": "H1-QUAD-FACT-04",
+    "template": "{k}(x + {p})(x + {q}) = 0 を {k} で割った後の定数項",
+    "variables": {
+      "k": [2, 5],
+      "p": [1, 5],
+      "q": [1, 5]
+    },
+    "answer": "p * q"
+  },
+  {
+    "key": "H1-QUAD-FACT-05",
+    "template": "(x - {p})(x + {q}) = 0 を見て、2数の差の絶対値",
+    "variables": {
+      "p": [1, 9],
+      "q": [1, 9]
+    },
+    "constraints": [
+      "p != q"
+    ],
+    "answer": "abs(p - q)"
+  }
+]

@@ -1,29 +1,45 @@
 [
   {
-    "key": "E1-DIV-01",
-    "template": "{dividend} ÷ {divisor}",
+    "key": "E1-DIV-BASIC-01",
+    "template": "({divisor} × {q}) ÷ {divisor}",
     "variables": {
-      "dividend": [2, 81],
-      "divisor": [1, 9],
+      "divisor": [1, 5],
       "q": [1, 9]
     },
     "constraints": [
-      "dividend == divisor * q",
-      "dividend <= 81"
+      "divisor * q <= 45"
     ],
     "answer": "q"
   },
   {
-    "key": "E1-DIV-02",
-    "template": "{dividend} ÷ {divisor}",
+    "key": "E1-DIV-BASIC-02",
+    "template": "({divisor} × {q}) ÷ {divisor}",
     "variables": {
-      "dividend": [10, 100],
-      "divisor": [2, 10],
-      "q": [2, 10]
+      "divisor": [2, 9],
+      "q": [2, 9]
     },
     "constraints": [
-      "dividend == divisor * q",
-      "dividend <= 100"
+      "divisor * q <= 54"
+    ],
+    "answer": "q"
+  },
+  {
+    "key": "E1-DIV-BASIC-03",
+    "template": "{q}0 ÷ 10",
+    "variables": {
+      "q": [2, 9]
+    },
+    "answer": "q"
+  },
+  {
+    "key": "E1-DIV-BASIC-04",
+    "template": "({divisor} × {q}) ÷ {divisor}",
+    "variables": {
+      "divisor": [3, 9],
+      "q": [2, 9]
+    },
+    "constraints": [
+      "divisor * q <= 81"
     ],
     "answer": "q"
   }

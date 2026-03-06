@@ -1,0 +1,100 @@
+[
+  {
+    "key": "E2-DIV-2D-01",
+    "template": "({divisor} × {q}) ÷ {divisor}",
+    "variables": {
+      "divisor": [
+        2,
+        9
+      ],
+      "q": [
+        4,
+        12
+      ]
+    },
+    "constraints": [
+      "divisor * q >= 20",
+      "divisor * q <= 99"
+    ],
+    "answer": "q"
+  },
+  {
+    "key": "E2-DIV-2D-02",
+    "template": "({divisor} × {q}) ÷ {divisor}",
+    "variables": {
+      "divisor": [
+        3,
+        8
+      ],
+      "q": [
+        5,
+        15
+      ]
+    },
+    "constraints": [
+      "divisor * q >= 30",
+      "divisor * q <= 120"
+    ],
+    "answer": "q"
+  },
+  {
+    "key": "E2-DIV-2D-03",
+    "template": "({divisor} × {q}) ÷ {divisor}",
+    "variables": {
+      "divisor": [
+        4,
+        9
+      ],
+      "q": [
+        5,
+        18
+      ]
+    },
+    "constraints": [
+      "divisor * q >= 40",
+      "divisor * q <= 120",
+      "q <= 18"
+    ],
+    "answer": "q"
+  },
+  {
+    "key": "E2-DIV-2D-04",
+    "template": "({divisor} × {q}) ÷ {divisor}",
+    "variables": {
+      "divisor": [
+        2,
+        6
+      ],
+      "q": [
+        4,
+        20
+      ]
+    },
+    "constraints": [
+      "divisor * q >= 24",
+      "divisor * q <= 120",
+      "(divisor * q) % 10 != 0"
+    ],
+    "answer": "q"
+  },
+  {
+    "key": "E2-DIV-2D-05",
+    "template": "({divisor} × {q}) ÷ {divisor}",
+    "variables": {
+      "divisor": [
+        3,
+        9
+      ],
+      "q": [
+        4,
+        18
+      ]
+    },
+    "constraints": [
+      "divisor * q >= 36",
+      "divisor * q <= 120",
+      "q >= 6"
+    ],
+    "answer": "q"
+  }
+]

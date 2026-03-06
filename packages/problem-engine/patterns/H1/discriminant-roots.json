@@ -1,0 +1,110 @@
+[
+  {
+    "key": "H1-DISC-ROOTS-01",
+    "template": "{a}x^2 + {b}x + {c} = 0 の実数解の個数",
+    "variables": {
+      "a": [
+        1,
+        4
+      ],
+      "b": [
+        2,
+        12
+      ],
+      "c": [
+        1,
+        9
+      ]
+    },
+    "constraints": [
+      "b*b - 4*a*c > 0",
+      "b*b - 4*a*c <= 100"
+    ],
+    "answer": "2"
+  },
+  {
+    "key": "H1-DISC-ROOTS-02",
+    "template": "{a}x^2 + {b}x + {c} = 0 の実数解の個数",
+    "variables": {
+      "a": [
+        1,
+        4
+      ],
+      "b": [
+        2,
+        12
+      ],
+      "c": [
+        1,
+        9
+      ]
+    },
+    "constraints": [
+      "b*b - 4*a*c == 0"
+    ],
+    "answer": "1"
+  },
+  {
+    "key": "H1-DISC-ROOTS-03",
+    "template": "{a}x^2 + {b}x + {c} = 0 の実数解の個数",
+    "variables": {
+      "a": [
+        1,
+        4
+      ],
+      "b": [
+        1,
+        6
+      ],
+      "c": [
+        3,
+        12
+      ]
+    },
+    "constraints": [
+      "b*b - 4*a*c < 0"
+    ],
+    "answer": "0"
+  },
+  {
+    "key": "H1-DISC-ROOTS-04",
+    "template": "{a}x^2 - {b}x + {c} = 0 の実数解の個数",
+    "variables": {
+      "a": [
+        1,
+        4
+      ],
+      "b": [
+        2,
+        12
+      ],
+      "c": [
+        1,
+        9
+      ]
+    },
+    "constraints": [
+      "b*b - 4*a*c > 0",
+      "b*b - 4*a*c <= 100"
+    ],
+    "answer": "2"
+  },
+  {
+    "key": "H1-DISC-ROOTS-05",
+    "template": "x^2 + {b}x + {c} = 0 の実数解の個数",
+    "variables": {
+      "b": [
+        1,
+        6
+      ],
+      "c": [
+        3,
+        12
+      ]
+    },
+    "constraints": [
+      "b*b - 4*c < 0"
+    ],
+    "answer": "0"
+  }
+]

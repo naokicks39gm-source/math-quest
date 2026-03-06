@@ -1,0 +1,70 @@
+[
+  {
+    "key": "E2-LEN-01",
+    "template": "{m}m = ?cm",
+    "variables": {
+      "m": [
+        1,
+        9
+      ]
+    },
+    "constraints": [],
+    "answer": "m * 100"
+  },
+  {
+    "key": "E2-LEN-02",
+    "template": "{cm}cm = ?mm",
+    "variables": {
+      "cm": [
+        2,
+        25
+      ]
+    },
+    "constraints": [],
+    "answer": "cm * 10"
+  },
+  {
+    "key": "E2-LEN-03",
+    "template": "{m}m {cmTens}0cm = ?cm",
+    "variables": {
+      "m": [
+        1,
+        4
+      ],
+      "cmTens": [
+        1,
+        9
+      ]
+    },
+    "constraints": [],
+    "answer": "m * 100 + cmTens * 10"
+  },
+  {
+    "key": "E2-LEN-04",
+    "template": "{m}m {cmTens}0cm は全部で何cm",
+    "variables": {
+      "m": [
+        1,
+        4
+      ],
+      "cmTens": [
+        0,
+        9
+      ]
+    },
+    "constraints": [],
+    "answer": "m * 100 + cmTens * 10"
+  },
+  {
+    "key": "E2-LEN-05",
+    "template": "{km}km = ?m",
+    "variables": {
+      "km": [
+        1,
+        5
+      ]
+    },
+    "constraints": [],
+    "answer": "km * 1000"
+  }
+]

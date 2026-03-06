@@ -1,16 +1,111 @@
 [
   {
-    "key": "H1-DISC-01",
+    "key": "H1-DISC-BASIC-01",
     "template": "{a}x^2 + {b}x + {c} = 0 の判別式",
     "variables": {
-      "a": [1, 4],
-      "b": [1, 12],
-      "c": [1, 9]
+      "a": [
+        1,
+        4
+      ],
+      "b": [
+        1,
+        12
+      ],
+      "c": [
+        1,
+        9
+      ]
     },
     "constraints": [
       "b*b - 4*a*c >= 0",
       "b*b - 4*a*c <= 100"
     ],
     "answer": "b*b - 4*a*c"
+  },
+  {
+    "key": "H1-DISC-BASIC-02",
+    "template": "{a}x^2 - {b}x + {c} = 0 の判別式",
+    "variables": {
+      "a": [
+        1,
+        4
+      ],
+      "b": [
+        2,
+        14
+      ],
+      "c": [
+        1,
+        12
+      ]
+    },
+    "constraints": [
+      "b*b - 4*a*c >= 0",
+      "b*b - 4*a*c <= 120"
+    ],
+    "answer": "b*b - 4*a*c"
+  },
+  {
+    "key": "H1-DISC-BASIC-03",
+    "template": "x^2 + {b}x + {c} = 0 の判別式",
+    "variables": {
+      "b": [
+        2,
+        18
+      ],
+      "c": [
+        1,
+        20
+      ]
+    },
+    "constraints": [
+      "b*b - 4*c >= 0",
+      "b*b - 4*c <= 120"
+    ],
+    "answer": "b*b - 4*c"
+  },
+  {
+    "key": "H1-DISC-BASIC-04",
+    "template": "{a}x^2 + {b}x - {c} = 0 の判別式",
+    "variables": {
+      "a": [
+        1,
+        5
+      ],
+      "b": [
+        1,
+        10
+      ],
+      "c": [
+        1,
+        20
+      ]
+    },
+    "constraints": [
+      "b*b + 4*a*c <= 120"
+    ],
+    "answer": "b*b + 4*a*c"
+  },
+  {
+    "key": "H1-DISC-BASIC-05",
+    "template": "{a}x^2 - {b}x - {c} = 0 の判別式",
+    "variables": {
+      "a": [
+        1,
+        5
+      ],
+      "b": [
+        1,
+        10
+      ],
+      "c": [
+        1,
+        20
+      ]
+    },
+    "constraints": [
+      "b*b + 4*a*c <= 140"
+    ],
+    "answer": "b*b + 4*a*c"
   }
 ]

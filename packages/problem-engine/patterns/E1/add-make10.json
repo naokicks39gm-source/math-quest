@@ -1,93 +1,77 @@
 [
   {
-    "key": "E1-ADD-BASIC-01",
+    "key": "E1-ADD-MAKE10-01",
     "template": "{a} + {b}",
     "variables": {
       "a": [
-        1,
-        5
-      ],
-      "b": [
-        1,
-        5
-      ]
-    },
-    "constraints": [
-      "a + b <= 6"
-    ],
-    "answer": "a + b"
-  },
-  {
-    "key": "E1-ADD-BASIC-02",
-    "template": "{a} + {b}",
-    "variables": {
-      "a": [
-        1,
+        6,
         9
       ],
       "b": [
-        1,
-        9
-      ]
-    },
-    "constraints": [
-      "a + b <= 10"
-    ],
-    "answer": "a + b"
-  },
-  {
-    "key": "E1-ADD-BASIC-03",
-    "template": "{a} + {b}",
-    "variables": {
-      "a": [
         2,
         9
+      ]
+    },
+    "constraints": [
+      "a + b > 10",
+      "a + b <= 15"
+    ],
+    "answer": "a + b"
+  },
+  {
+    "key": "E1-ADD-MAKE10-02",
+    "template": "{a} + {b}",
+    "variables": {
+      "a": [
+        7,
+        9
       ],
       "b": [
-        1,
+        3,
+        9
+      ]
+    },
+    "constraints": [
+      "a + b >= 11",
+      "a + b <= 16"
+    ],
+    "answer": "a + b"
+  },
+  {
+    "key": "E1-ADD-MAKE10-03",
+    "template": "{a} + {b}",
+    "variables": {
+      "a": [
+        8,
+        9
+      ],
+      "b": [
+        2,
         8
       ]
     },
     "constraints": [
-      "a >= b",
-      "a + b <= 10"
+      "a + b >= 12",
+      "a + b <= 17"
     ],
     "answer": "a + b"
   },
   {
-    "key": "E1-ADD-BASIC-04",
+    "key": "E1-ADD-MAKE10-04",
     "template": "{a} + {b}",
     "variables": {
       "a": [
-        0,
+        5,
         9
       ],
       "b": [
-        1,
+        5,
         9
       ]
     },
     "constraints": [
-      "a + b <= 9"
-    ],
-    "answer": "a + b"
-  },
-  {
-    "key": "E1-ADD-BASIC-05",
-    "template": "{a} + {b}",
-    "variables": {
-      "a": [
-        3,
-        9
-      ],
-      "b": [
-        1,
-        6
-      ]
-    },
-    "constraints": [
-      "a + b >= 8",
-      "a + b <= 10"
+      "a + b >= 10",
+      "a + b <= 18"
     ],
     "answer": "a + b"
   }
