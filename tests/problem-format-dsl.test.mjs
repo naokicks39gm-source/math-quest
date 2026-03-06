@@ -64,7 +64,7 @@ test("problem-engine exposes unified generator API", () => {
   assert.equal(source.includes("question: string;"), true);
   assert.equal(source.includes("patternKey?: string;"), true);
   assert.equal(source.includes("variables?: Record<string, number>;"), true);
-  assert.equal(source.includes("meta?: Record<string, unknown>;"), true);
+  assert.equal(source.includes("difficulty?: number;"), true);
   assert.equal(source.includes("export const parsePatternDSL"), true);
   assert.equal(source.includes("export const generateVariables"), true);
   assert.equal(source.includes("export const evaluateConstraints"), true);
@@ -170,7 +170,9 @@ test("minimal DSL can generate a problem from the smallest pattern shape", async
   assert.equal(generated.patternKey, "ADD_BASIC");
   assert.deepEqual(generated.variables, { a: 1, b: 2 });
   assert.deepEqual(generated.variableRanges, pattern.variables);
-  assert.deepEqual(generated.meta, { source: "pattern-dsl" });
+  assert.equal(generated.meta?.source, "pattern-dsl");
+  assert.equal(typeof generated.meta?.difficulty, "number");
+  assert.equal(generated.meta.difficulty >= 1 && generated.meta.difficulty <= 5, true);
 });
 
 test("minimal DSL generateMinimalProblems keeps n-count behavior", async () => {

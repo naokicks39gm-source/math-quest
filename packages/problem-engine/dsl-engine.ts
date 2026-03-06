@@ -19,7 +19,10 @@ export type GeneratedProblem = {
   patternKey?: string;
   variables?: Record<string, number>;
   variableRanges?: Record<string, Range>;
-  meta?: Record<string, unknown>;
+  meta?: {
+    source?: string;
+    difficulty?: number;
+  };
 };
 
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -135,6 +138,21 @@ export const evaluateConstraints = (pattern: PatternDSL, vars: Record<string, nu
 export const evaluateAnswer = (answerExpr: string, vars: Record<string, number>) =>
   formatEvaluationValue(evaluateExpression(answerExpr, vars));
 
+export const computeDifficulty = (problem: GeneratedProblem): number => {
+  let score = 1;
+  const vars = Object.values(problem.variables ?? {});
+  const maxVar = Math.max(...vars.map((value) => Math.abs(value)), 0);
+
+  if (maxVar > 20) score += 1;
+  if (maxVar > 50) score += 1;
+
+  const question = problem.question;
+  if (question.includes("x")) score += 1;
+  if (question.includes("^2")) score += 1;
+
+  return Math.min(score, 5);
+};
+
 const MAX_CONSTRAINT_ATTEMPTS = 500;
 
 export const generateProblem = (rawPattern: PatternDSL): GeneratedProblem => {
@@ -155,6 +173,14 @@ export const generateProblem = (rawPattern: PatternDSL): GeneratedProblem => {
   const question = renderTemplate(pattern.template, vars);
   const answer = evaluateAnswer(pattern.answer, vars);
   const id = `${pattern.key}:${question}:${answer}`;
+  const difficulty = computeDifficulty({
+    id,
+    question,
+    answer,
+    patternKey: pattern.key,
+    variables: vars,
+    variableRanges: pattern.variables
+  });
 
   return {
     id,
@@ -164,7 +190,8 @@ export const generateProblem = (rawPattern: PatternDSL): GeneratedProblem => {
     variables: vars,
     variableRanges: pattern.variables,
     meta: {
-      source: "pattern-dsl"
+      source: "pattern-dsl",
+      difficulty
     }
   };
 };
