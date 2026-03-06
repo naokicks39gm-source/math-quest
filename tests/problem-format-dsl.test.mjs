@@ -14,6 +14,9 @@ test("problem-format package entry points exist", () => {
   assert.equal(fs.existsSync(path.join(root, "packages/problem-hint/index.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-hint/hint-generator.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-hint/hint-templates.ts")), true);
+  assert.equal(fs.existsSync(path.join(root, "packages/problem-explanation/index.ts")), true);
+  assert.equal(fs.existsSync(path.join(root, "packages/problem-explanation/explanation-generator.ts")), true);
+  assert.equal(fs.existsSync(path.join(root, "packages/problem-explanation/explanation-templates.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-format/index.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-format/engine.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-format/schema.ts")), true);
@@ -251,4 +254,48 @@ test("minimal DSL keeps variableRanges in GeneratedProblem", async () => {
   assert.deepEqual(generated.variableRanges, {
     x: [4, 7]
   });
+});
+
+test("minimal DSL derives c for J1 negative linear patterns before rendering and constraint evaluation", async () => {
+  const minimalDsl = await loadMinimalDslModule();
+  const pattern = {
+    key: "J1-LIN-NEG-01",
+    template: "{a}x + {b} = {c}",
+    variables: {
+      a: [2, 2],
+      b: [-3, -3],
+      x: [-4, -4]
+    },
+    constraints: ["c == a * x + b"],
+    answer: "x"
+  };
+
+  const generated = minimalDsl.generateMinimalProblem(pattern);
+
+  assert.equal(generated.variables.c, -11);
+  assert.equal(generated.question, "2x + -3 = -11");
+  assert.equal(generated.answer, "-4");
+  assert.equal(minimalDsl.evaluateConstraints(pattern, generated.variables), true);
+});
+
+test("minimal DSL derives c for grouped J1 negative linear patterns", async () => {
+  const minimalDsl = await loadMinimalDslModule();
+  const pattern = {
+    key: "J1-LIN-NEG-04",
+    template: "{a}(x - {b}) = {c}",
+    variables: {
+      a: [3, 3],
+      b: [2, 2],
+      x: [-5, -5]
+    },
+    constraints: ["c == a * (x - b)"],
+    answer: "x"
+  };
+
+  const generated = minimalDsl.generateMinimalProblem(pattern);
+
+  assert.equal(generated.variables.c, -21);
+  assert.equal(generated.question, "3(x - 2) = -21");
+  assert.equal(generated.answer, "-5");
+  assert.equal(minimalDsl.evaluateConstraints(pattern, generated.variables), true);
 });

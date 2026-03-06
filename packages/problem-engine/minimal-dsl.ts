@@ -23,6 +23,7 @@ export type GeneratedProblem = {
 const MAX_CONSTRAINT_ATTEMPTS = 500;
 
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+const hasFiniteValue = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -79,9 +80,35 @@ export const generateVariables = (pattern: PatternDSL): Record<string, number> =
   return vars;
 };
 
+const applyDerivedVariables = (pattern: PatternDSL, vars: Record<string, number>): Record<string, number> => {
+  if (!hasFiniteValue(vars.a) || !hasFiniteValue(vars.b) || !hasFiniteValue(vars.x)) {
+    return vars;
+  }
+
+  if (pattern.key === "J1-LIN-NEG-01") {
+    return { ...vars, c: vars.a * vars.x + vars.b };
+  }
+
+  if (pattern.key === "J1-LIN-NEG-02") {
+    return { ...vars, c: vars.a * vars.x - vars.b };
+  }
+
+  if (pattern.key === "J1-LIN-NEG-03") {
+    return { ...vars, c: -vars.a * vars.x + vars.b };
+  }
+
+  if (pattern.key === "J1-LIN-NEG-04") {
+    return { ...vars, c: vars.a * (vars.x - vars.b) };
+  }
+
+  return vars;
+};
+
 export const evaluateConstraints = (pattern: PatternDSL, vars: Record<string, number>) => {
   const context = Object.fromEntries(
-    Object.keys(pattern.variables).map((key) => [key, Number(vars[key])])
+    Object.entries(vars)
+      .filter(([, value]) => Number.isFinite(value))
+      .map(([key, value]) => [key, Number(value)])
   ) as Record<string, number>;
 
   for (const constraint of pattern.constraints ?? []) {
@@ -120,7 +147,7 @@ export const generateMinimalProblem = (rawPattern: PatternDSL): GeneratedProblem
   let matched = false;
 
   for (let attempts = 0; attempts < MAX_CONSTRAINT_ATTEMPTS; attempts += 1) {
-    vars = generateVariables(pattern);
+    vars = applyDerivedVariables(pattern, generateVariables(pattern));
     if (evaluateConstraints(pattern, vars)) {
       matched = true;
       break;

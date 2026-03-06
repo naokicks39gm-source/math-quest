@@ -14,16 +14,12 @@
       "x": [
         -9,
         -1
-      ],
-      "c": [
-        -50,
-        30
       ]
     },
     "constraints": [
       "c == a * x + b"
     ],
-    "answer": "(c - b) / a"
+    "answer": "x"
   },
   {
     "key": "J1-LIN-NEG-02",
@@ -40,16 +36,12 @@
       "x": [
         -9,
         -1
-      ],
-      "c": [
-        -60,
-        -1
       ]
     },
     "constraints": [
       "c == a * x - b"
     ],
-    "answer": "(c + b) / a"
+    "answer": "x"
   },
   {
     "key": "J1-LIN-NEG-03",
@@ -66,16 +58,12 @@
       "x": [
         -9,
         -1
-      ],
-      "c": [
-        2,
-        60
       ]
     },
     "constraints": [
       "c == -a * x + b"
     ],
-    "answer": "(b - c) / a"
+    "answer": "x"
   },
   {
     "key": "J1-LIN-NEG-04",
@@ -92,16 +80,12 @@
       "x": [
         -9,
         -1
-      ],
-      "c": [
-        -84,
-        -2
       ]
     },
     "constraints": [
       "c == a * (x - b)"
     ],
-    "answer": "c / a + b"
+    "answer": "x"
   },
   {
     "key": "J1-LIN-NEG-05",
