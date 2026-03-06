@@ -88,6 +88,22 @@ const applyDerivedVariables = (pattern: PatternDSL, vars: Record<string, number>
     return vars;
   }
 
+  if (pattern.key === "J1-LIN-BASIC-01") {
+    return { ...vars, c: vars.a * vars.x + vars.b };
+  }
+
+  if (pattern.key === "J1-LIN-BASIC-02") {
+    return { ...vars, c: vars.a * vars.x - vars.b };
+  }
+
+  if (pattern.key === "J1-LIN-BASIC-03") {
+    return { ...vars, c: vars.a * (vars.x + vars.b) };
+  }
+
+  if (pattern.key === "J1-LIN-BASIC-05" && hasFiniteValue(vars.c)) {
+    return { ...vars, d: vars.a * vars.x + vars.b - vars.c };
+  }
+
   if (pattern.key === "J1-LIN-NEG-01") {
     return { ...vars, c: vars.a * vars.x + vars.b };
   }

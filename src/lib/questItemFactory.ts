@@ -6,6 +6,7 @@ type ExampleItem = {
   prompt: string;
   prompt_tex?: string;
   answer: string;
+  difficulty?: number;
 };
 
 type GenerationParams = {

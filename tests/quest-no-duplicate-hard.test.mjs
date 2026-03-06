@@ -21,7 +21,7 @@ test("factory keeps strict mode only (no duplicate fallback)", () => {
 
 test("quest page uses stock-based selection and blocks when stock is empty", () => {
   assert.equal(questSource.includes("const stocks = buildStocksForTypes("), true);
-  assert.equal(questSource.includes("const firstPick = activeStock ? pickUniqueQuizFromStock(activeStock.entries, quizSize)"), true);
+  assert.equal(questSource.includes("pickUniqueQuizFromStock(activeStock.entries, quizSize, difficultyFromQuery)"), true);
   assert.equal(questSource.includes("if (hasDuplicateInSet(nextSet) && activeStock)"), true);
   assert.equal(questSource.includes("const sameGradeFallback = buildUniqueSetFromEntries(sameGradePool, quizSize);"), false);
   assert.equal(questSource.includes("const globalFallback = buildUniqueSetFromEntries(allCategoryItems, quizSize);"), false);

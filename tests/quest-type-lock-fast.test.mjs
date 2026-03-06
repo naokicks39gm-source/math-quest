@@ -15,7 +15,7 @@ const questSource = fs.readFileSync(
 test("quest page is type-locked and has no grade/global fallback", () => {
   assert.equal(questSource.includes("const byQuery = typeCatalog.find((entry) => entry.typeId === typeFromQuery);"), true);
   assert.equal(questSource.includes("const activeStock = activeTypeId ? typeStocks.get(activeTypeId) : undefined;"), true);
-  assert.equal(questSource.includes("pickUniqueQuizFromStock(activeStock.entries, quizSize)"), true);
+  assert.equal(questSource.includes("pickUniqueQuizFromStock(activeStock.entries, quizSize, difficultyFromQuery)"), true);
   assert.equal(questSource.includes("const sameGradePool = allCategoryItems.filter((entry) =>"), false);
   assert.equal(questSource.includes("const globalFallback = buildUniqueSetFromEntries(allCategoryItems, quizSize);"), false);
 });

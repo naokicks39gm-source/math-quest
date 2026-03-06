@@ -133,6 +133,14 @@ const resolveQuestLevelInfo = (rawLevelId: string): QuestLevelInfo | null => {
   return null;
 };
 
+const parseDifficulty = (value: string): number | undefined => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return undefined;
+  if (n < 1) return 1;
+  if (n > 5) return 5;
+  return Math.floor(n);
+};
+
 const getTargetQuestionCount = (typeId?: string, levelId?: string) => {
   if (levelId === "E1-12") return 10;
   if (levelId && isE1LevelId(levelId)) return DEFAULT_TOTAL_QUESTIONS;
@@ -1624,6 +1632,7 @@ function QuestPageInner() {
   const params = useSearchParams();
   const typeFromQuery = (params.get("type") ?? "").trim();
   const categoryFromQuery = params.get("category");
+  const difficultyFromQuery = parseDifficulty((params.get("difficulty") ?? "").trim());
   const rawLevelFromQuery = (params.get("levelId") ?? "").trim();
   const levelInfo = useMemo(() => resolveQuestLevelInfo(rawLevelFromQuery), [rawLevelFromQuery]);
   const levelGradeId = levelInfo?.gradeId ?? "";
@@ -2346,7 +2355,9 @@ function QuestPageInner() {
       return;
     }
     const activeStock = activeTypeId ? typeStocks.get(activeTypeId) : undefined;
-    const firstPick = activeStock ? pickUniqueQuizFromStock(activeStock.entries, quizSize) : { entries: [], meta: { requested: quizSize, availableBeforeDedupe: 0, availableAfterDedupe: 0, picked: 0, dedupedOutCount: 0, reason: "EMPTY" as const } };
+    const firstPick = activeStock
+      ? pickUniqueQuizFromStock(activeStock.entries, quizSize, difficultyFromQuery)
+      : { entries: [], meta: { requested: quizSize, availableBeforeDedupe: 0, availableAfterDedupe: 0, picked: 0, dedupedOutCount: 0, reason: "EMPTY" as const } };
     let nextSet = dedupeQuestSet(firstPick.entries);
     let pickMeta: PickMeta = firstPick.meta;
     if (hasDuplicateInSet(nextSet) && activeStock) {
@@ -2354,7 +2365,7 @@ function QuestPageInner() {
         // eslint-disable-next-line no-console
         console.debug("[quest-page] duplicate guard retry", { typeId: activeTypeId, firstMeta: firstPick.meta });
       }
-      const secondPick = pickUniqueQuizFromStock(activeStock.entries, quizSize);
+      const secondPick = pickUniqueQuizFromStock(activeStock.entries, quizSize, difficultyFromQuery);
       nextSet = dedupeQuestSet(secondPick.entries);
       pickMeta = hasDuplicateInSet(nextSet)
         ? { ...secondPick.meta, reason: "DUP_GUARD_FAILED" }
@@ -2411,7 +2422,7 @@ function QuestPageInner() {
     setQuadraticAnswers(["", ""]);
     setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
     setQuadraticActiveIndex(0);
-  }, [levelGradeId, levelFromQuery, stockReady, typeStocks, activeTypeId, quizSize, retryNonce]);
+  }, [levelGradeId, levelFromQuery, stockReady, typeStocks, activeTypeId, quizSize, retryNonce, difficultyFromQuery]);
 
   const currentAid = useMemo(
     () =>

@@ -32,11 +32,12 @@ export function pickQuizByDifficulty(
     return shuffle(stock, rng).slice(0, count);
   }
 
+  const target = normalizeDifficulty(targetDifficulty);
   const buckets = new Map<number, GeneratedProblem[]>();
 
   for (const problem of stock) {
     const difficulty = normalizeDifficulty(problem.meta?.difficulty);
-    const distance = Math.abs(difficulty - targetDifficulty);
+    const distance = Math.abs(difficulty - target);
     const bucket = buckets.get(distance);
     if (bucket) {
       bucket.push(problem);

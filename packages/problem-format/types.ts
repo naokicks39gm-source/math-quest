@@ -25,6 +25,7 @@ export type VariableMap = Record<string, number>;
 export type PatternArtifact = {
   prompt: string;
   answer: string;
+  difficulty?: number;
   hintLines: string[];
   explanationLines: string[];
 };
