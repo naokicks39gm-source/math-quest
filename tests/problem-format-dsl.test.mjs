@@ -55,8 +55,18 @@ test("problem-engine exposes unified generator API", () => {
   assert.equal(source.includes("export type Pattern"), true);
   assert.equal(source.includes("export type GeneratedProblem"), true);
   assert.equal(source.includes("export const generateProblem"), true);
-  assert.equal(source.includes("export const generateStock"), true);
-  assert.equal(source.includes("export const pickQuiz"), true);
-  assert.equal(source.includes("const maxAttempts = Math.max(target * 40, 200);"), true);
-  assert.equal(source.includes("const key = `${generated.problem}::${generated.answer}`;"), true);
+  assert.equal(source.includes("export const generateProblems"), true);
+  assert.equal(source.includes("export const generateStock"), false);
+  assert.equal(source.includes("export const pickQuiz"), false);
+  assert.equal(source.includes("shuffle("), false);
+  assert.equal(source.includes("new Set<string>()"), false);
+  assert.equal(source.includes("for (let i = 0; i < count; i += 1)"), true);
+  assert.equal(source.includes("problems.push(generateProblem(pattern));"), true);
+});
+
+test("problem-engine adapter uses fixed 200 raw generations and no dedupe", () => {
+  const source = read("packages/problem-engine/adapters.ts");
+  assert.equal(source.includes("generateProblems(validated.pattern, 200)"), true);
+  assert.equal(source.includes("uniqueArtifacts"), false);
+  assert.equal(source.includes("new Set<string>()"), false);
 });

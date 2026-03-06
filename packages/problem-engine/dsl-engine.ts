@@ -26,15 +26,6 @@ export type GeneratedProblem = {
 
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-const shuffle = <T,>(list: T[]) => {
-  const copied = [...list];
-  for (let i = copied.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copied[i], copied[j]] = [copied[j], copied[i]];
-  }
-  return copied;
-};
-
 const renderTemplate = (template: string, vars: Record<string, number>) =>
   template.replace(/\{([^}]+)\}/gu, (_whole, expr: string) => {
     const normalized = expr.trim();
@@ -109,21 +100,11 @@ export const generateProblem = (pattern: Pattern): GeneratedProblem => {
   };
 };
 
-export const generateStock = (pattern: Pattern, target = 50): GeneratedProblem[] => {
-  const stock: GeneratedProblem[] = [];
-  const seen = new Set<string>();
-  const maxAttempts = Math.max(target * 40, 200);
-
-  let attempts = 0;
-  while (stock.length < target && attempts < maxAttempts) {
-    attempts += 1;
-    const generated = generateProblem(pattern);
-    const key = `${generated.problem}::${generated.answer}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    stock.push(generated);
+export const generateProblems = (pattern: Pattern, n: number): GeneratedProblem[] => {
+  const count = Math.max(0, Math.trunc(n));
+  const problems: GeneratedProblem[] = [];
+  for (let i = 0; i < count; i += 1) {
+    problems.push(generateProblem(pattern));
   }
-  return stock;
+  return problems;
 };
-
-export const pickQuiz = (stock: GeneratedProblem[], size = 5) => shuffle(stock).slice(0, Math.max(0, size));

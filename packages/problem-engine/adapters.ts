@@ -1,7 +1,7 @@
 import { getPatternByGradeAndId, resolveGradeBucketFromTypeId } from "packages/problem-format/registry";
 import { validatePatternSchema } from "packages/problem-format/schema";
 import type { PatternArtifact } from "packages/problem-format/types";
-import { generateStock } from "packages/problem-engine/dsl-engine";
+import { generateProblems } from "packages/problem-engine/dsl-engine";
 
 type AnswerFormat = {
   kind: "int" | "dec" | "frac" | "pair" | "expr";
@@ -28,18 +28,6 @@ type QuestEntry = {
   type: TypeDef;
 };
 
-const uniqueArtifacts = (artifacts: PatternArtifact[]) => {
-  const seen = new Set<string>();
-  const out: PatternArtifact[] = [];
-  for (const artifact of artifacts) {
-    const key = `${artifact.prompt}::${artifact.answer}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(artifact);
-  }
-  return out;
-};
-
 export const generateDslArtifactsForType = (
   type: TypeDef,
   patternId: string,
@@ -52,13 +40,13 @@ export const generateDslArtifactsForType = (
   const validated = validatePatternSchema(pattern);
   if (!validated.ok) return [];
 
-  const generated = generateStock(validated.pattern, options.targetCount).map((item) => ({
+  const generated = generateProblems(validated.pattern, 200).map((item) => ({
     prompt: item.problem,
     answer: item.answer,
     hintLines: item.hints,
     explanationLines: item.explanation
   }));
-  return uniqueArtifacts(generated).slice(0, options.targetCount);
+  return generated.slice(0, options.targetCount);
 };
 
 export const buildDslEntriesForType = (type: TypeDef, patternId: string, targetCount: number): QuestEntry[] => {
