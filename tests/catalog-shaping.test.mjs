@@ -96,6 +96,27 @@ const getGradeIdFromTypeId = (typeId) => {
   return gradeId || "UNK";
 };
 
+const stripLessonPrefix = (value, lessonId) =>
+  value.replace(new RegExp(`^${lessonId}\\s+`, "u"), "").trim();
+
+const stripCategoryPrefix = (value, categoryId) =>
+  value.replace(new RegExp(`^${categoryId}\\s+`, "u"), "").trim();
+
+const getH1LessonId = (categoryId, typeName) => {
+  const match = typeName.match(/^(H1-\d+-\d+)\s+/u);
+  if (match) return match[1];
+  const suffixMatch = typeName.match(/^(\d+)\s+/u);
+  if (suffixMatch) return `${categoryId}-${suffixMatch[1]}`;
+  return categoryId;
+};
+
+const buildH1DisplayName = (categoryId, categoryName, typeName) => {
+  const lessonId = getH1LessonId(categoryId, typeName);
+  const categoryBase = stripCategoryPrefix(categoryName, categoryId);
+  const typeBase = stripLessonPrefix(typeName, lessonId);
+  return `Lv:${lessonId} ${categoryBase}（${typeBase}）`;
+};
+
 const buildCrossGradeDedupeKey = (type) => {
   const gp = type.generation_params ?? {};
   if (gp.pattern_id) {
@@ -181,6 +202,12 @@ const deriveCatalog = () => {
       const categories = grade.categories.map((category) => ({
         ...category,
         types: category.types.map((type) => {
+          if (grade.grade_id === "H1" && /^H1-\d+$/u.test(category.category_id)) {
+            return {
+              ...type,
+              display_name: buildH1DisplayName(category.category_id, category.category_name, type.type_name)
+            };
+          }
           const gradeId = getGradeIdFromTypeId(type.type_id) || grade.grade_id;
           const next = (gradeLevelCounters.get(gradeId) ?? 0) + 1;
           gradeLevelCounters.set(gradeId, next);
@@ -287,18 +314,48 @@ test("display names include Lv prefix and grade-local sequence numbers", () => {
   const catalog = deriveCatalog();
   for (const grade of catalog) {
     const indexes = [];
+    const h1LessonIds = [];
     for (const category of grade.categories) {
       for (const type of category.types) {
+        if (grade.grade_id === "H1") {
+          const m = (type.display_name ?? "").match(/^Lv:(H1-\d+-\d+)\s/u);
+          assert.ok(m, `display_name should start with H1 lesson Lv for ${type.type_id}`);
+          h1LessonIds.push(m[1]);
+          continue;
+        }
         const m = (type.display_name ?? "").match(/^Lv:([A-Z]\d)-(\d+)\s/);
         assert.ok(m, `display_name should start with Lv for ${type.type_id}`);
         assert.equal(m[1], grade.grade_id, `grade id in Lv prefix should match ${grade.grade_id}`);
         indexes.push(Number(m[2]));
       }
     }
+    if (grade.grade_id === "H1") {
+      assert.ok(h1LessonIds.includes("H1-1-1"));
+      assert.ok(h1LessonIds.includes("H1-15-50"));
+      assert.equal(new Set(h1LessonIds).size, h1LessonIds.length, "H1 lesson ids should be unique");
+      continue;
+    }
     const sorted = [...indexes].sort((a, b) => a - b);
     const expected = Array.from({ length: sorted.length }, (_, i) => i + 1);
     assert.deepEqual(sorted, expected, `Lv numbering should be contiguous within ${grade.grade_id}`);
   }
+});
+
+test("H1 display names use lesson id plus category and subtype", () => {
+  const catalog = deriveCatalog();
+  const h1 = catalog.find((grade) => grade.grade_id === "H1");
+  assert.ok(h1, "H1 grade must exist");
+  const byId = Object.fromEntries(
+    h1.categories.flatMap((category) => category.types.map((type) => [type.type_id, type]))
+  );
+  assert.equal(
+    byId["H1.AL.FACTOR.H1_1_1_COMMON_NUMERIC"].display_name,
+    "Lv:H1-1-1 因数分解（数の共通因数）"
+  );
+  assert.equal(
+    byId["H1.AL.EXPAND.H1_2_1_BINOMIAL_BASIC"].display_name,
+    "Lv:H1-2-1 展開公式（(x+a)(x+b) 基本）"
+  );
 });
 
 test("catalog excludes E1 time conversion and comparison types", () => {

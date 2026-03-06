@@ -16,6 +16,27 @@ const getGradeIdFromTypeId = (typeId: string) => {
   return gradeId || "UNK";
 };
 
+const stripLessonPrefix = (value: string, lessonId: string) =>
+  value.replace(new RegExp(`^${lessonId}\\s+`, "u"), "").trim();
+
+const stripCategoryPrefix = (value: string, categoryId: string) =>
+  value.replace(new RegExp(`^${categoryId}\\s+`, "u"), "").trim();
+
+const getH1LessonId = (categoryId: string, typeName: string) => {
+  const match = typeName.match(/^(H1-\d+-\d+)\s+/u);
+  if (match) return match[1];
+  const suffixMatch = typeName.match(/^(\d+)\s+/u);
+  if (suffixMatch) return `${categoryId}-${suffixMatch[1]}`;
+  return categoryId;
+};
+
+const buildH1DisplayName = (categoryId: string, categoryName: string, typeName: string) => {
+  const lessonId = getH1LessonId(categoryId, typeName);
+  const categoryBase = stripCategoryPrefix(categoryName, categoryId);
+  const typeBase = stripLessonPrefix(typeName, lessonId);
+  return `Lv:${lessonId} ${categoryBase}（${typeBase}）`;
+};
+
 const getConditionSuffix = (typeId: string): "NO" | "YES" | "ANY" | null => {
   const match = typeId.match(/_(NO|YES|ANY)$/);
   return match ? (match[1] as "NO" | "YES" | "ANY") : null;
@@ -187,6 +208,12 @@ export const getCatalogGrades = (): GradeDef[] => {
       const categories = grade.categories.map((category) => ({
         ...category,
         types: category.types.map((type) => {
+          if (grade.grade_id === "H1" && /^H1-\d+$/u.test(category.category_id)) {
+            return {
+              ...type,
+              display_name: buildH1DisplayName(category.category_id, category.category_name, type.type_name)
+            };
+          }
           const gradeIdFromType = getGradeIdFromTypeId(type.type_id) || grade.grade_id;
           const next = (gradeLevelCounters.get(gradeIdFromType) ?? 0) + 1;
           gradeLevelCounters.set(gradeIdFromType, next);
@@ -204,6 +231,22 @@ export const getCatalogGrades = (): GradeDef[] => {
 };
 
 export const findTypeByLevelLabel = (grades: GradeDef[], label: string) => {
+  const h1Match = label.match(/^Lv:(H1-\d+-\d+)\s/u);
+  if (h1Match) {
+    const lessonId = h1Match[1];
+    const grade = grades.find((g) => g.grade_id === "H1");
+    if (!grade) return null;
+    for (const category of grade.categories) {
+      const hit = category.types.find((type) => (type.display_name ?? "").startsWith(`Lv:${lessonId} `));
+      if (hit) {
+        return {
+          grade_id: "H1",
+          category_id: category.category_id,
+          type_id: hit.type_id
+        };
+      }
+    }
+  }
   const match = label.match(/^Lv:([A-Z]\d)-(\d+)\s/u);
   if (!match) return null;
   const gradeId = match[1];

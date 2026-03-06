@@ -15,6 +15,7 @@ const questSource = fs.readFileSync(
 test("grade catalog exposes Lv label resolver helpers", () => {
   assert.equal(gradeCatalogSource.includes("export const findTypeByLevelLabel"), true);
   assert.equal(gradeCatalogSource.includes("export const getTypeIdByLevelLabel"), true);
+  assert.equal(gradeCatalogSource.includes("label.match(/^Lv:(H1-\\d+-\\d+)\\s/u)"), true);
   assert.equal(gradeCatalogSource.includes("label.match(/^Lv:([A-Z]\\d)-(\\d+)\\s/u)"), true);
 });
 
@@ -25,4 +26,3 @@ test("quest page has dev-only type/stock diagnostic panel", () => {
   assert.equal(questSource.includes("stock.count:"), true);
   assert.equal(questSource.includes("stock.reason:"), true);
 });
-
