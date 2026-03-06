@@ -186,10 +186,18 @@ const buildMemoExplanationAid = (memoText?: string): ElementaryLearningAid | nul
   if (steps.length === 0) return null;
   const lastStep = steps[steps.length - 1] ?? "";
   const splitIndex = lastStep.lastIndexOf("\n\n");
-  const hasTrailingFormula = splitIndex >= 0 && /=|>|−/u.test(lastStep.slice(splitIndex + 2));
-  const conclusion = hasTrailingFormula ? lastStep.slice(splitIndex + 2).trim() : "";
-  const normalizedSteps = hasTrailingFormula
-    ? [...steps.slice(0, -1), lastStep.slice(0, splitIndex).trim()]
+  const trailingBlock = splitIndex >= 0 ? lastStep.slice(splitIndex + 2).trim() : "";
+  const conclusion =
+    trailingBlock ||
+    memoText
+      .trim()
+      .split(/\n\s*\n/u)
+      .map((block) => block.trim())
+      .filter((block) => block.length > 0)
+      .at(-1) ||
+    "";
+  const normalizedSteps = trailingBlock
+    ? [...steps.slice(0, -1), lastStep.slice(0, splitIndex).trim()].filter((step) => step.length > 0)
     : steps;
   return {
     kind: "simple",
@@ -1938,7 +1946,10 @@ function QuestPageInner() {
   const isJuniorQuest = /^(J1|J2|J3)$/.test(currentGradeId);
   const isHighSchoolQuest = /^(H1|H2|H3)$/.test(currentGradeId);
   const isE2EqualShareType = currentType?.type_id === "E2.NA.DIV.DIV_EQUAL_SHARE_BASIC";
-  const useSingleLineQa = !isSecondaryQuest && !isE2EqualShareType;
+  const isE1CompareLevel =
+    levelFromQuery === "E1-1" ||
+    Boolean(currentType?.display_name?.startsWith("Lv:E1-1 "));
+  const useSingleLineQa = !isSecondaryQuest && !isE2EqualShareType && !isE1CompareLevel;
   const qaAnswerOffsetPx = 0;
   const qaPromptFontPx = isE2EqualShareType ? 20 : isSecondaryQuest ? QA_PROMPT_FONT_STEPS[0] : QA_PROMPT_FONT_STEPS[2];
   const qaAnswerFontPx = isSecondaryQuest ? QA_ANSWER_FONT_STEPS[0] : QA_ANSWER_FONT_STEPS[2];
@@ -4415,14 +4426,16 @@ function QuestPageInner() {
                   className={
                     useSingleLineQa
                       ? "min-w-0 w-auto max-w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
-                      : isE2EqualShareType
+                      : isE1CompareLevel
+                        ? "min-w-0 w-full whitespace-normal break-words text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
+                        : isE2EqualShareType
                         ? "min-w-0 w-full whitespace-normal break-words text-[20px] sm:text-[24px] leading-tight font-extrabold text-emerald-50"
                         : "min-w-0 w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
                   }
                 >
                   <span
                     ref={qaPromptContentRef}
-                    className={isE2EqualShareType ? "block whitespace-normal break-words align-middle" : "inline-block align-middle"}
+                    className={isE2EqualShareType || isE1CompareLevel ? "block whitespace-normal break-words align-middle" : "inline-block align-middle"}
                   >
                     {renderPrompt(currentItem, currentType?.type_id, currentType?.display_name ?? currentType?.type_name)}
                   </span>

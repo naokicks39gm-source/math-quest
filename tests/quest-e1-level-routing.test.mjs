@@ -13,7 +13,8 @@ test("quest page supports levelId route for E1 adapter", () => {
   assert.equal(source.includes('if (levelInfo?.gradeId === "E1") {'), true);
   assert.equal(source.includes("generateE1LevelProblems(levelInfo.levelId as E1LevelId, quizSize)"), true);
   assert.equal(source.includes('numberingStyle: "circled"'), true);
-  assert.equal(source.includes('const hasTrailingFormula = splitIndex >= 0 && /=|>|−/u.test'), true);
+  assert.equal(source.includes("const trailingBlock = splitIndex >= 0 ? lastStep.slice(splitIndex + 2).trim() : \"\";"), true);
+  assert.equal(source.includes(".split(/\\n\\s*\\n/u)"), true);
 });
 
 test("quest picker exposes E1 level options and routes by levelId", () => {
@@ -24,4 +25,5 @@ test("quest picker exposes E1 level options and routes by levelId", () => {
   assert.equal(source.includes('gradeName: "小1"'), true);
   assert.equal(source.includes('categoryName: "数と計算"'), true);
   assert.equal(source.includes('if (text[index] === "□") return true;'), true);
+  assert.equal(source.includes('levelFromQuery === "E1-1"'), true);
 });
