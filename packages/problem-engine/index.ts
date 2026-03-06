@@ -1,4 +1,4 @@
-export { buildDslEntriesForType, generateDslArtifactsForType } from "packages/problem-engine/adapters";
+export { buildDslEntriesForType, generateDslArtifactsForType, loadPatternCatalog } from "packages/problem-engine/adapters";
 export {
   evaluateAnswer,
   evaluateConstraints,

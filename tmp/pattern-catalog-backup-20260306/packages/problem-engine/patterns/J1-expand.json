@@ -1,0 +1,30 @@
+[
+  {
+    "key": "J1-EXP-01",
+    "template": "({a}x + {b})({c}x + {d}) の x^2 の係数",
+    "variables": {
+      "a": [1, 9],
+      "b": [1, 9],
+      "c": [1, 9],
+      "d": [1, 9]
+    },
+    "constraints": [
+      "a * c <= 50"
+    ],
+    "answer": "a * c"
+  },
+  {
+    "key": "J1-EXP-02",
+    "template": "({a}x + {b})({c}x + {d}) の x の係数",
+    "variables": {
+      "a": [1, 5],
+      "b": [1, 9],
+      "c": [1, 5],
+      "d": [1, 9]
+    },
+    "constraints": [
+      "a * d + b * c <= 50"
+    ],
+    "answer": "a * d + b * c"
+  }
+]
