@@ -69,9 +69,9 @@ const explanationCompare = (left: number, right: number) =>
     [
       numberedStep(1, `${left}こ`, dotLines(left)),
       numberedStep(2, `${right}こ`, dotLines(right)),
-      numberedStep(3, "くらべる", `${right} > ${left}`)
+      numberedStep(3, "くらべる", `おおきいのは ${right}`)
     ],
-    `${right} > ${left}`
+    `おおきいのは ${right}`
   );
 
 const explanationComposeTen = (known: number, missing: number) =>
