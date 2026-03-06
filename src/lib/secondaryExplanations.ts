@@ -32,10 +32,10 @@ const SECONDARY_GRADE_RE = /^(J[1-3]|H[1-3])$/;
 
 const toMathName = (patternId: string) => {
   if (patternId.startsWith("INT_")) return "正負の数";
-  if (patternId.startsWith("FACTOR_") || patternId === "EXPAND" || patternId === "EXP_RULES") return "式の計算";
+  if (patternId.startsWith("FACTOR_") || patternId === "EXPAND" || patternId.startsWith("EXPAND_") || patternId === "EXP_RULES" || patternId.startsWith("EXP_RULES_")) return "式の計算";
   if (patternId === "POW_INT") return "指数";
   if (patternId === "SQRT_VAL") return "平方根";
-  if (patternId === "LIN_EQ" || patternId === "LIN_INEQ" || patternId === "SYS_EQ" || patternId === "QUAD_ROOTS") return "方程式";
+  if (patternId === "LIN_EQ" || patternId === "LIN_INEQ" || patternId === "SYS_EQ" || patternId === "QUAD_ROOTS" || patternId.startsWith("QUAD_ROOTS_")) return "方程式";
   if (patternId === "LIN_FUNC_PARAMS" || patternId === "QUAD_VERTEX" || patternId === "ARITH_SEQ" || patternId === "GEOM_SEQ") return "関数・数列";
   if (patternId.startsWith("TRIG_")) return "三角比";
   if (patternId.startsWith("DIFF_") || patternId === "DEF_INT") return "微分積分";
@@ -49,7 +49,7 @@ const toMathName = (patternId: string) => {
 const toHint = (patternId: string) => {
   const name = toMathName(patternId);
   if (patternId === "SYS_EQ") return "ヒント: 1つの文字を消去して、1文字の式にしてから解くと速いです。";
-  if (patternId === "QUAD_ROOTS") return "ヒント: 因数分解できる形を先に探し、できなければ公式を使います。";
+  if (patternId === "QUAD_ROOTS" || patternId.startsWith("QUAD_ROOTS_")) return "ヒント: 因数分解できる形を先に探し、できなければ公式を使います。";
   if (patternId.startsWith("TRIG_")) return "ヒント: まず単位円または三角比の基本値を思い出してから式に代入します。";
   if (patternId.startsWith("DIFF_") || patternId === "DEF_INT") return "ヒント: 公式を1つ決めて、どの項に適用するかを順に確認します。";
   if (patternId === "LOG_VAL") return "ヒント: 対数を指数の形に直すと見通しがよくなります。";
@@ -221,7 +221,7 @@ const buildDerivationLines = (
       { kind: "tex", value: String.raw`\text{2つの値をそろえて確認}` },
       { kind: "tex", value: String.raw`\text{解}=${answerText}` }
     ];
-  } else if (patternId === "QUAD_ROOTS") {
+  } else if (patternId === "QUAD_ROOTS" || patternId.startsWith("QUAD_ROOTS_")) {
     lines = [
       { kind: "tex", value: base },
       { kind: "tex", value: String.raw`\text{0になる形に整理}` },
@@ -229,7 +229,7 @@ const buildDerivationLines = (
       { kind: "tex", value: String.raw`\text{2つの解を確認}` },
       { kind: "tex", value: String.raw`\text{解}=${answerText}` }
     ];
-  } else if (patternId.startsWith("FACTOR_") || patternId === "EXPAND" || patternId === "EXP_RULES") {
+  } else if (patternId.startsWith("FACTOR_") || patternId === "EXPAND" || patternId.startsWith("EXPAND_") || patternId === "EXP_RULES" || patternId.startsWith("EXP_RULES_")) {
     lines = [
       { kind: "tex", value: base },
       { kind: "tex", value: String.raw`\text{公式に当てはめる形へ整理}` },
@@ -470,11 +470,92 @@ const PATTERN_IDS = [
   "DIFF_TRIG",
   "DOT_2D",
   "EXPAND",
+  "EXPAND_AXBX_BASIC",
+  "EXPAND_AXBX_COEFF",
+  "EXPAND_AXBX_NEGATIVE",
+  "EXPAND_BINOMIAL_BASIC",
+  "EXPAND_BINOMIAL_DECIMAL",
+  "EXPAND_BINOMIAL_FRACTION",
+  "EXPAND_BINOMIAL_LITERAL",
+  "EXPAND_BINOMIAL_MIXED_SIGN",
+  "EXPAND_BINOMIAL_NEGATIVE",
+  "EXPAND_CUBIC_APPLICATION",
+  "EXPAND_CUBIC_MINUS_BASIC",
+  "EXPAND_CUBIC_MINUS_COEFF",
+  "EXPAND_CUBIC_MINUS_DECIMAL",
+  "EXPAND_CUBIC_MINUS_FRACTION",
+  "EXPAND_CUBIC_MINUS_LITERAL",
+  "EXPAND_CUBIC_MINUS_NUMERIC",
+  "EXPAND_CUBIC_MIXED",
+  "EXPAND_CUBIC_PLUS_BASIC",
+  "EXPAND_CUBIC_PLUS_COEFF",
+  "EXPAND_CUBIC_PLUS_DECIMAL",
+  "EXPAND_CUBIC_PLUS_FRACTION",
+  "EXPAND_CUBIC_PLUS_LITERAL",
+  "EXPAND_CUBIC_PLUS_NUMERIC",
+  "EXPAND_DIFF_SQ_BASIC",
+  "EXPAND_DIFF_SQ_FRACTION",
+  "EXPAND_DIFF_SQ_LITERAL",
+  "EXPAND_GENERAL",
+  "EXPAND_QUAD_BASIC",
+  "EXPAND_QUAD_BOTH_LITERAL_COEFF",
+  "EXPAND_QUAD_COEFF",
+  "EXPAND_QUAD_COEFF_SORT",
+  "EXPAND_QUAD_COMPLEX_LIKE_TERMS",
+  "EXPAND_QUAD_DECIMAL_COEFF",
+  "EXPAND_QUAD_FRACTION_COEFF",
+  "EXPAND_QUAD_GENERAL",
+  "EXPAND_QUAD_LARGE_COEFF",
+  "EXPAND_QUAD_LIKE_TERMS",
+  "EXPAND_QUAD_LITERAL_COEFF",
+  "EXPAND_QUAD_LITERAL_MIXED",
+  "EXPAND_QUAD_NEG_COEFF",
+  "EXPAND_QUAD_SIGN",
+  "EXPAND_QUAD_SORTED",
+  "EXPAND_SQUARE_AXB_COEFF",
+  "EXPAND_SQUARE_MINUS_BASIC",
+  "EXPAND_SQUARE_PLUS_BASIC",
+  "EXPAND_SQUARE_PLUS_FRACTION",
   "EXP_RULES",
+  "EXP_RULES_COEFF",
+  "EXP_RULES_COLLECT",
+  "EXP_RULES_COLLECT_FRACTION",
+  "EXP_RULES_FRACTIONAL_EXP",
+  "EXP_RULES_FRACTIONAL_MEANING",
+  "EXP_RULES_FRACTIONAL_TO_ROOT",
+  "EXP_RULES_FRACTION_MIXED",
+  "EXP_RULES_GENERAL",
+  "EXP_RULES_MEANING",
+  "EXP_RULES_MIXED",
+  "EXP_RULES_NEGATIVE_BASE",
+  "EXP_RULES_NO_PAREN",
+  "EXP_RULES_POWER_OF_POWER",
+  "EXP_RULES_PRODUCT_POWER",
+  "EXP_RULES_QUOTIENT_POWER",
+  "EXP_RULES_SAME_BASE_DIV",
+  "EXP_RULES_SAME_BASE_MUL",
+  "FACTOR_COMMON_APPLICATION",
+  "FACTOR_COMMON_NUMERIC",
+  "FACTOR_COMMON_NUMERIC_VARIABLE",
+  "FACTOR_COMMON_VARIABLE",
   "FACTOR_DIFF_SQ",
+  "FACTOR_DIFF_SQ_BASIC",
+  "FACTOR_DIFF_SQ_COEFF",
+  "FACTOR_DIFF_SQ_FRACTION",
+  "FACTOR_DIFF_SQ_LITERAL",
   "FACTOR_GCF",
+  "FACTOR_MIX_COMMON_DIFF",
+  "FACTOR_MIX_COMMON_PERF",
+  "FACTOR_MIX_TRINOM",
   "FACTOR_PERF_SQ",
+  "FACTOR_PERF_SQ_BASIC",
+  "FACTOR_PERF_SQ_COEFF",
+  "FACTOR_PERF_SQ_LITERAL",
+  "FACTOR_PERF_SQ_NEG",
   "FACTOR_TRINOM",
+  "FACTOR_TRINOM_BASIC",
+  "FACTOR_TRINOM_COEFF",
+  "FACTOR_TRINOM_NEG",
   "GEOM_SEQ",
   "INT_ADD",
   "INT_DIV",
@@ -488,6 +569,30 @@ const PATTERN_IDS = [
   "POLY_ANGLE_SUM",
   "POW_INT",
   "QUAD_ROOTS",
+  "QUAD_ROOTS_FACTOR_APPLICATION",
+  "QUAD_ROOTS_FACTOR_BASIC",
+  "QUAD_ROOTS_FACTOR_BASIC_FACTOR",
+  "QUAD_ROOTS_FACTOR_BOTH_NEG",
+  "QUAD_ROOTS_FACTOR_COEFF",
+  "QUAD_ROOTS_FACTOR_COMMON",
+  "QUAD_ROOTS_FACTOR_DIFF_SQ",
+  "QUAD_ROOTS_FACTOR_FRACTION",
+  "QUAD_ROOTS_FACTOR_GENERAL",
+  "QUAD_ROOTS_FACTOR_NEG_MIX",
+  "QUAD_ROOTS_FACTOR_PERF_SQ",
+  "QUAD_ROOTS_FACTOR_SIGN",
+  "QUAD_ROOTS_SQ_BASIC",
+  "QUAD_ROOTS_SQ_COEFF",
+  "QUAD_ROOTS_SQ_COMPLETE",
+  "QUAD_ROOTS_SQ_DECIMAL",
+  "QUAD_ROOTS_SQ_FRACTION",
+  "QUAD_ROOTS_SQ_GENERAL",
+  "QUAD_ROOTS_SQ_IRRATIONAL",
+  "QUAD_ROOTS_SQ_NEGATIVE",
+  "QUAD_ROOTS_SQ_PAREN",
+  "QUAD_ROOTS_SQ_PAREN_NEG",
+  "QUAD_ROOTS_SQ_REARRANGED",
+  "QUAD_ROOTS_SQ_ROOT",
   "QUAD_VERTEX",
   "SQRT_VAL",
   "SYS_EQ",

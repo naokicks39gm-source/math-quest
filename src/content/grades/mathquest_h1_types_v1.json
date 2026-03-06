@@ -1,9 +1,8 @@
 {
   "version": "v2",
-  "generated_at": "2026-02-02T05:51:38.721Z",
+  "generated_at": "2026-03-06T07:40:00.661Z",
   "notes": [
-    "Merged from mathquest_all_grades_types_v1.json",
-    "システム数学（啓林館）の中学および高校（数学I〜III）の教科書を参考に、計算単元ごとの出題パターンを詳細に調査し、既存のタイプ構造を強化・拡張していきます。各タイプには複数の代表的例題（例：3〜5問）を含め、大学入試に必要な基礎力を網羅できる内容にします。完了後、従来形式で一覧提示・JSON出力もいたします。"
+    "H1 rebuilt as seed-only example catalog with fine-grained lesson groups."
   ],
   "grades": [
     {
@@ -11,1089 +10,1932 @@
       "grade_name": "高1",
       "categories": [
         {
-          "category_id": "AL",
-          "category_name": "数と式・方程式",
-          "curriculum_domain": "数学I/II/III：数と式・方程式",
+          "category_id": "H1-1",
+          "category_name": "H1-1 因数分解",
           "types": [
             {
-              "type_id": "H1.AL.EXP.FACTOR_GCF",
-              "type_name": "因数分解（共通因数）",
+              "type_id": "H1.AL.FACTOR.H1_1_1_COMMON_NUMERIC",
+              "type_name": "H1-1-1 数の共通因数",
               "school": "H1",
-              "curriculum_label": "数学I：数と式",
-              "display_mapping": {
-                "domain": "AL",
-                "subdomain": "EXP"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "expr",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "a",
-                  "y"
-                ]
-              },
-              "grading": {
-                "kind": "expr",
-                "normalize": {
-                  "trim": true,
-                  "remove_spaces": true,
-                  "engine": "mathjs",
-                  "vars": [
-                    "x",
-                    "a",
-                    "y"
-                  ]
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "FACTOR_GCF",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "a",
-                  "y"
-                ]
+                "pattern_id": "FACTOR_COMMON_NUMERIC"
               },
               "example_items": [
                 {
-                  "prompt": "6x^2+9x =",
-                  "answer": "3x(2x+3)",
-                  "prompt_tex": "6x^{2}+9x ="
-                },
-                {
-                  "prompt": "12a-8 =",
-                  "answer": "4(3a-2)",
-                  "prompt_tex": "12a-8 ="
-                },
-                {
-                  "prompt": "10xy+15x =",
-                  "answer": "5x(2y+3)",
-                  "prompt_tex": "10xy+15x ="
+                  "prompt": "8x + 12 を因数分解せよ",
+                  "answer": "4(2x+3)"
                 }
               ]
             },
             {
-              "type_id": "H1.AL.EXP.FACTOR_DIFF_SQ",
-              "type_name": "因数分解（平方差）",
+              "type_id": "H1.AL.FACTOR.H1_1_2_COMMON_VARIABLE",
+              "type_name": "H1-1-2 文字の共通因数",
               "school": "H1",
-              "curriculum_label": "数学I：数と式",
-              "display_mapping": {
-                "domain": "AL",
-                "subdomain": "EXP"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "expr",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "a",
-                  "y"
-                ]
-              },
-              "grading": {
-                "kind": "expr",
-                "normalize": {
-                  "trim": true,
-                  "remove_spaces": true,
-                  "engine": "mathjs",
-                  "vars": [
-                    "x",
-                    "a",
-                    "y"
-                  ]
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "FACTOR_DIFF_SQ",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "a",
-                  "y"
-                ]
+                "pattern_id": "FACTOR_COMMON_VARIABLE"
               },
               "example_items": [
                 {
-                  "prompt": "x^2-49 =",
-                  "answer": "(x-7)(x+7)",
-                  "prompt_tex": "x^{2}-49 ="
-                },
-                {
-                  "prompt": "9a^2-16 =",
-                  "answer": "(3a-4)(3a+4)",
-                  "prompt_tex": "9a^{2}-16 ="
-                },
-                {
-                  "prompt": "4x^2-1 =",
-                  "answer": "(2x-1)(2x+1)",
-                  "prompt_tex": "4x^{2}-1 ="
+                  "prompt": "3x^2 + 6x を因数分解せよ",
+                  "answer": "3x(x+2)"
                 }
               ]
             },
             {
-              "type_id": "H1.AL.EXP.FACTOR_PERF_SQ",
-              "type_name": "因数分解（完全平方）",
+              "type_id": "H1.AL.FACTOR.H1_1_3_COMMON_NUMERIC_VARIABLE",
+              "type_name": "H1-1-3 数と文字の共通因数",
               "school": "H1",
-              "curriculum_label": "数学I：数と式",
-              "display_mapping": {
-                "domain": "AL",
-                "subdomain": "EXP"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "expr",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "a",
-                  "y"
-                ]
-              },
-              "grading": {
-                "kind": "expr",
-                "normalize": {
-                  "trim": true,
-                  "remove_spaces": true,
-                  "engine": "mathjs",
-                  "vars": [
-                    "x",
-                    "a",
-                    "y"
-                  ]
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "FACTOR_PERF_SQ",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "a",
-                  "y"
-                ]
+                "pattern_id": "FACTOR_COMMON_NUMERIC_VARIABLE"
               },
               "example_items": [
                 {
-                  "prompt": "x^2+6x+9 =",
-                  "answer": "(x+3)^2",
-                  "prompt_tex": "x^{2}+6x+9 ="
-                },
-                {
-                  "prompt": "a^2-10a+25 =",
-                  "answer": "(a-5)^2",
-                  "prompt_tex": "a^{2}-10a+25 ="
-                },
-                {
-                  "prompt": "4x^2+12x+9 =",
-                  "answer": "(2x+3)^2",
-                  "prompt_tex": "4x^{2}+12x+9 ="
+                  "prompt": "4x^2y + 6xy を因数分解せよ",
+                  "answer": "2xy(2x+3)"
                 }
               ]
             },
             {
-              "type_id": "H1.AL.EXP.FACTOR_TRINOM",
-              "type_name": "因数分解（二次式）",
+              "type_id": "H1.AL.FACTOR.H1_1_4_COMMON_APPLICATION",
+              "type_name": "H1-1-4 共通因数応用",
               "school": "H1",
-              "curriculum_label": "数学I：数と式",
-              "display_mapping": {
-                "domain": "AL",
-                "subdomain": "EXP"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "expr",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "a",
-                  "y"
-                ]
-              },
-              "grading": {
-                "kind": "expr",
-                "normalize": {
-                  "trim": true,
-                  "remove_spaces": true,
-                  "engine": "mathjs",
-                  "vars": [
-                    "x",
-                    "a",
-                    "y"
-                  ]
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "FACTOR_TRINOM",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "a",
-                  "y"
-                ]
+                "pattern_id": "FACTOR_COMMON_APPLICATION"
               },
               "example_items": [
                 {
-                  "prompt": "x^2+5x+6 =",
-                  "answer": "(x+2)(x+3)",
-                  "prompt_tex": "x^{2}+5x+6 ="
-                },
-                {
-                  "prompt": "x^2-5x+6 =",
-                  "answer": "(x-2)(x-3)",
-                  "prompt_tex": "x^{2}-5x+6 ="
-                },
-                {
-                  "prompt": "2x^2+7x+3 =",
-                  "answer": "(2x+1)(x+3)",
-                  "prompt_tex": "2x^{2}+7x+3 ="
+                  "prompt": "6x^2 - 9x を因数分解せよ",
+                  "answer": "3x(2x-3)"
                 }
               ]
             },
             {
-              "type_id": "H1.AL.EXP.EXP_RULES",
-              "type_name": "指数法則",
+              "type_id": "H1.AL.FACTOR.H1_1_5_DIFF_SQ_BASIC",
+              "type_name": "H1-1-5 平方差（基本）",
               "school": "H1",
-              "curriculum_label": "数学II：指数",
-              "display_mapping": {
-                "domain": "AL",
-                "subdomain": "EXP"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "expr",
-                "engine": "mathjs",
-                "vars": [
-                  "a"
-                ]
-              },
-              "grading": {
-                "kind": "expr",
-                "normalize": {
-                  "trim": true,
-                  "remove_spaces": true,
-                  "engine": "mathjs",
-                  "vars": [
-                    "a"
-                  ]
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "EXP_RULES",
-                "engine": "mathjs",
-                "vars": [
-                  "a"
-                ]
+                "pattern_id": "FACTOR_DIFF_SQ_BASIC"
               },
               "example_items": [
                 {
-                  "prompt": "a^3 * a^5 =",
-                  "answer": "a^8",
-                  "prompt_tex": "a^{3} \\cdot a^{5} ="
-                },
-                {
-                  "prompt": "a^7 / a^2 =",
-                  "answer": "a^5",
-                  "prompt_tex": "a^{7} / a^{2} ="
-                },
-                {
-                  "prompt": "(a^2)^3 =",
-                  "answer": "a^6",
-                  "prompt_tex": "(a^{2})^{3} ="
+                  "prompt": "x^2 - 9 を因数分解せよ",
+                  "answer": "(x-3)(x+3)"
                 }
               ]
             },
             {
-              "type_id": "H1.AL.EQ.QUAD_ROOTS",
-              "type_name": "二次方程式（解）",
+              "type_id": "H1.AL.FACTOR.H1_1_6_DIFF_SQ_COEFF",
+              "type_name": "H1-1-6 平方差（係数付き）",
               "school": "H1",
-              "curriculum_label": "数学I：方程式",
-              "display_mapping": {
-                "domain": "AL",
-                "subdomain": "EQ"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "pair",
-                "sep": ",",
-                "allow_spaces": true,
-                "items": [
-                  {
-                    "kind": "int"
-                  },
-                  {
-                    "kind": "int"
-                  }
-                ]
-              },
-              "grading": {
-                "kind": "pair",
-                "normalize": {
-                  "trim": true,
-                  "sep": ",",
-                  "allow_spaces": true,
-                  "items": [
-                    {
-                      "kind": "int"
-                    },
-                    {
-                      "kind": "int"
-                    }
-                  ]
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "QUAD_ROOTS",
-                "sep": ","
+                "pattern_id": "FACTOR_DIFF_SQ_COEFF"
               },
               "example_items": [
                 {
-                  "prompt": "x^2+x-6=0",
-                  "answer": "-3,2",
-                  "prompt_tex": "x^{2}+x-6=0"
-                },
+                  "prompt": "4x^2 - 25 を因数分解せよ",
+                  "answer": "(2x-5)(2x+5)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.FACTOR.H1_1_7_DIFF_SQ_FRACTION",
+              "type_name": "H1-1-7 平方差（分数型）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_DIFF_SQ_FRACTION"
+              },
+              "example_items": [
                 {
-                  "prompt": "x^2+x-6=0",
-                  "answer": "-3,2",
-                  "prompt_tex": "x^2 + x - 6 = 0"
-                },
+                  "prompt": "x^2 - 1/4 を因数分解せよ",
+                  "answer": "(x-1/2)(x+1/2)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.FACTOR.H1_1_8_DIFF_SQ_LITERAL",
+              "type_name": "H1-1-8 平方差（文字型）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_DIFF_SQ_LITERAL"
+              },
+              "example_items": [
                 {
-                  "prompt": "x^2+x-6=0",
-                  "answer": "-3,2",
-                  "prompt_tex": "x^{2}+x-6 = 0"
+                  "prompt": "a^2 - b^2 を因数分解せよ",
+                  "answer": "(a-b)(a+b)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.FACTOR.H1_1_9_PERF_SQ_BASIC",
+              "type_name": "H1-1-9 完全平方（基本）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_PERF_SQ_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 + 6x + 9 を因数分解せよ",
+                  "answer": "(x+3)^2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.FACTOR.H1_1_10_PERF_SQ_NEG",
+              "type_name": "H1-1-10 完全平方（負の中項）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_PERF_SQ_NEG"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 - 8x + 16 を因数分解せよ",
+                  "answer": "(x-4)^2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.FACTOR.H1_1_11_PERF_SQ_LITERAL",
+              "type_name": "H1-1-11 完全平方（文字型）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_PERF_SQ_LITERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 + 2ax + a^2 を因数分解せよ",
+                  "answer": "(x+a)^2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.FACTOR.H1_1_12_PERF_SQ_COEFF",
+              "type_name": "H1-1-12 完全平方（係数付き）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_PERF_SQ_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "4x^2 + 12x + 9 を因数分解せよ",
+                  "answer": "(2x+3)^2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.FACTOR.H1_1_13_TRINOM_BASIC",
+              "type_name": "H1-1-13 二次式因数分解（基本）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_TRINOM_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 + 7x + 10 を因数分解せよ",
+                  "answer": "(x+5)(x+2)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.FACTOR.H1_1_14_TRINOM_NEG",
+              "type_name": "H1-1-14 二次式因数分解（負を含む）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_TRINOM_NEG"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 - x - 6 を因数分解せよ",
+                  "answer": "(x-3)(x+2)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.FACTOR.H1_1_15_TRINOM_COEFF",
+              "type_name": "H1-1-15 二次式因数分解（係数付き）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_TRINOM_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "2x^2 + 7x + 3 を因数分解せよ",
+                  "answer": "(2x+1)(x+3)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.FACTOR.H1_1_16_MIX_COMMON_DIFF",
+              "type_name": "H1-1-16 共通因数＋平方差",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_MIX_COMMON_DIFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "2x^2 - 18 を因数分解せよ",
+                  "answer": "2(x-3)(x+3)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.FACTOR.H1_1_17_MIX_COMMON_PERF",
+              "type_name": "H1-1-17 共通因数＋完全平方",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_MIX_COMMON_PERF"
+              },
+              "example_items": [
+                {
+                  "prompt": "3x^2 + 12x + 12 を因数分解せよ",
+                  "answer": "3(x+2)^2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.FACTOR.H1_1_18_MIX_TRINOM",
+              "type_name": "H1-1-18 因数分解（混合型）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "FACTOR_MIX_TRINOM"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 - 5x - 14 を因数分解せよ",
+                  "answer": "(x-7)(x+2)"
                 }
               ]
             }
           ]
         },
         {
-          "category_id": "FN",
-          "category_name": "関数",
-          "curriculum_domain": "数学I/II：関数",
+          "category_id": "H1-2",
+          "category_name": "H1-2 展開公式",
           "types": [
             {
-              "type_id": "H1.FN.QUAD.QUAD_VERTEX",
-              "type_name": "二次関数：頂点",
+              "type_id": "H1.AL.EXPAND.H1_2_1_BINOMIAL_BASIC",
+              "type_name": "H1-2-1 (x+a)(x+b) 基本",
               "school": "H1",
-              "curriculum_label": "数学I：二次関数",
-              "display_mapping": {
-                "domain": "FN",
-                "subdomain": "QUAD"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "pair",
-                "sep": ",",
-                "allow_spaces": true,
-                "items": [
-                  {
-                    "kind": "int"
-                  },
-                  {
-                    "kind": "int"
-                  }
-                ]
-              },
-              "grading": {
-                "kind": "pair",
-                "normalize": {
-                  "trim": true,
-                  "sep": ",",
-                  "allow_spaces": true,
-                  "items": [
-                    {
-                      "kind": "int"
-                    },
-                    {
-                      "kind": "int"
-                    }
-                  ]
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "QUAD_VERTEX",
-                "sep": ","
+                "pattern_id": "EXPAND_BINOMIAL_BASIC"
               },
               "example_items": [
                 {
-                  "prompt": "y=x^2-4x+1 の頂点 (x,y) =",
-                  "answer": "2,-3"
-                },
-                {
-                  "prompt": "y=2x^2+8x+5 の頂点 (x,y) =",
-                  "answer": "-2,-3"
-                },
-                {
-                  "prompt": "y=-x^2+6x-8 の頂点 (x,y) =",
-                  "answer": "3,1"
+                  "prompt": "(x + 2)(x + 5) を展開せよ",
+                  "answer": "x^2+7x+10"
                 }
               ]
             },
             {
-              "type_id": "H1.FN.LOG.LOG_VAL",
-              "type_name": "対数の値",
+              "type_id": "H1.AL.EXPAND.H1_2_2_BINOMIAL_MIXED_SIGN",
+              "type_name": "H1-2-2 (x+a)(x+b) 符号混合",
               "school": "H1",
-              "curriculum_label": "数学II：対数",
-              "display_mapping": {
-                "domain": "FN",
-                "subdomain": "LOG"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "dec",
-                "decimal_places": 3
-              },
-              "grading": {
-                "kind": "dec",
-                "normalize": {
-                  "trim": true,
-                  "decimal_places": 3
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "LOG_VAL",
-                "decimal_places": 3
+                "pattern_id": "EXPAND_BINOMIAL_MIXED_SIGN"
               },
               "example_items": [
                 {
-                  "prompt": "log10(1000) =",
-                  "answer": "3.000",
-                  "prompt_tex": "\\log_{10}(1000) ="
-                },
+                  "prompt": "(x + 4)(x - 3) を展開せよ",
+                  "answer": "x^2+x-12"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_3_BINOMIAL_NEGATIVE",
+              "type_name": "H1-2-3 (x+a)(x+b) 負数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_BINOMIAL_NEGATIVE"
+              },
+              "example_items": [
                 {
-                  "prompt": "log2(8) =",
-                  "answer": "3.000",
-                  "prompt_tex": "\\log_{2}(8) ="
-                },
+                  "prompt": "(x - 6)(x - 2) を展開せよ",
+                  "answer": "x^2-8x+12"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_4_BINOMIAL_FRACTION",
+              "type_name": "H1-2-4 (x+a)(x+b) 分数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_BINOMIAL_FRACTION"
+              },
+              "example_items": [
                 {
-                  "prompt": "log10(0.01) =",
-                  "answer": "-2.000",
-                  "prompt_tex": "\\log_{10}(0.01) ="
+                  "prompt": "(x + 1/2)(x + 3/4) を展開せよ",
+                  "answer": "x^2+5/4x+3/8"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_5_BINOMIAL_DECIMAL",
+              "type_name": "H1-2-5 (x+a)(x+b) 小数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_BINOMIAL_DECIMAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x + 0.5)(x + 1.2) を展開せよ",
+                  "answer": "x^2+1.7x+0.6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_6_BINOMIAL_LITERAL",
+              "type_name": "H1-2-6 (x+a)(x+b) 文字型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_BINOMIAL_LITERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x + a)(x + b) を展開せよ",
+                  "answer": "x^2+(a+b)x+ab"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_7_AXBX_BASIC",
+              "type_name": "H1-2-7 (ax+b)(cx+d) 基本",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_AXBX_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "(2x + 3)(x + 4) を展開せよ",
+                  "answer": "2x^2+11x+12"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_8_AXBX_COEFF",
+              "type_name": "H1-2-8 (ax+b)(cx+d) 係数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_AXBX_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "(3x + 2)(2x + 5) を展開せよ",
+                  "answer": "6x^2+19x+10"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_9_AXBX_NEGATIVE",
+              "type_name": "H1-2-9 (ax+b)(cx+d) 負数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_AXBX_NEGATIVE"
+              },
+              "example_items": [
+                {
+                  "prompt": "(2x - 3)(x - 4) を展開せよ",
+                  "answer": "2x^2-11x+12"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_10_SQUARE_PLUS_BASIC",
+              "type_name": "H1-2-10 (x+a)^2 基本",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_SQUARE_PLUS_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x + 3)^2 を展開せよ",
+                  "answer": "x^2+6x+9"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_11_SQUARE_MINUS_BASIC",
+              "type_name": "H1-2-11 (x−a)^2 基本",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_SQUARE_MINUS_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x - 5)^2 を展開せよ",
+                  "answer": "x^2-10x+25"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_12_SQUARE_PLUS_FRACTION",
+              "type_name": "H1-2-12 (x+a)^2 分数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_SQUARE_PLUS_FRACTION"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x + 1/3)^2 を展開せよ",
+                  "answer": "x^2+2/3x+1/9"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_13_SQUARE_AXB_COEFF",
+              "type_name": "H1-2-13 (ax+b)^2 係数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_SQUARE_AXB_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "(2x + 1)^2 を展開せよ",
+                  "answer": "4x^2+4x+1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_14_DIFF_SQ_BASIC",
+              "type_name": "H1-2-14 (x+a)(x−a) 平方差",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_DIFF_SQ_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x + 7)(x - 7) を展開せよ",
+                  "answer": "x^2-49"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_15_DIFF_SQ_FRACTION",
+              "type_name": "H1-2-15 平方差 分数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_DIFF_SQ_FRACTION"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x + 3/2)(x - 3/2) を展開せよ",
+                  "answer": "x^2-9/4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_16_DIFF_SQ_LITERAL",
+              "type_name": "H1-2-16 平方差 文字型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_DIFF_SQ_LITERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "(a + b)(a - b) を展開せよ",
+                  "answer": "a^2-b^2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EXPAND.H1_2_17_GENERAL",
+              "type_name": "H1-2-17 展開 総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_GENERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "(2x + 3)(x - 5) を展開せよ",
+                  "answer": "2x^2-7x-15"
                 }
               ]
             }
           ]
         },
         {
-          "category_id": "TR",
-          "category_name": "三角関数",
-          "curriculum_domain": "数学II：三角関数",
+          "category_id": "H1-3",
+          "category_name": "H1-3 三乗公式",
           "types": [
             {
-              "type_id": "H1.TR.VAL.TRIG_BASIC",
-              "type_name": "三角比の基本値",
+              "type_id": "H1.AL.CUBIC.H1_3_1_PLUS_BASIC",
+              "type_name": "H1-3-1 (a+b)^3 基本",
               "school": "H1",
-              "curriculum_label": "数学II：三角関数",
-              "display_mapping": {
-                "domain": "TR",
-                "subdomain": "VAL"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "frac"
-              },
-              "grading": {
-                "kind": "frac",
-                "normalize": {
-                  "trim": true
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "TRIG_BASIC"
+                "pattern_id": "EXPAND_CUBIC_PLUS_BASIC"
               },
               "example_items": [
                 {
-                  "prompt": "sin 30° =",
-                  "answer": "1/2",
-                  "prompt_tex": "\\mathrm{sin} 30^{\\circ} ="
-                },
-                {
-                  "prompt": "cos 60° =",
-                  "answer": "1/2",
-                  "prompt_tex": "\\mathrm{cos} 60^{\\circ} ="
-                },
-                {
-                  "prompt": "tan 45° =",
-                  "answer": "1/1",
-                  "prompt_tex": "\\mathrm{tan} 45^{\\circ} ="
+                  "prompt": "(x + 2)^3 を展開せよ",
+                  "answer": "x^3+6x^2+12x+8"
                 }
               ]
             },
             {
-              "type_id": "H1.TR.ID.TRIG_ID",
-              "type_name": "三角恒等式",
+              "type_id": "H1.AL.CUBIC.H1_3_2_PLUS_NUMERIC",
+              "type_name": "H1-3-2 (a+b)^3 数値型",
               "school": "H1",
-              "curriculum_label": "数学II：三角関数",
-              "display_mapping": {
-                "domain": "TR",
-                "subdomain": "ID"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "expr",
-                "engine": "mathjs",
-                "vars": [
-                  "x"
-                ]
-              },
-              "grading": {
-                "kind": "expr",
-                "normalize": {
-                  "trim": true,
-                  "remove_spaces": true,
-                  "engine": "mathjs",
-                  "vars": [
-                    "x"
-                  ]
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "TRIG_ID",
-                "engine": "mathjs",
-                "vars": [
-                  "x"
-                ]
+                "pattern_id": "EXPAND_CUBIC_PLUS_NUMERIC"
               },
               "example_items": [
                 {
-                  "prompt": "sin^2 x + cos^2 x =",
-                  "answer": "1",
-                  "prompt_tex": "\\mathrm{sin}^2 x + \\mathrm{cos}^2 x ="
-                },
-                {
-                  "prompt": "1 - sin^2 x =",
-                  "answer": "cos^2 x",
-                  "prompt_tex": "1 - \\mathrm{sin}^2 x ="
-                },
-                {
-                  "prompt": "1 + tan^2 x =",
-                  "answer": "1/cos(x)^2",
-                  "prompt_tex": "1 + \\mathrm{tan}^2 x ="
+                  "prompt": "(a + 3)^3 を展開せよ",
+                  "answer": "a^3+9a^2+27a+27"
                 }
               ]
             },
             {
-              "type_id": "H1.TR.EQ.TRIG_EQ",
-              "type_name": "三角方程式（基本）",
+              "type_id": "H1.AL.CUBIC.H1_3_3_PLUS_COEFF",
+              "type_name": "H1-3-3 (a+b)^3 係数型",
               "school": "H1",
-              "curriculum_label": "数学II：三角関数",
-              "display_mapping": {
-                "domain": "TR",
-                "subdomain": "EQ"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "expr",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "pi"
-                ]
-              },
-              "grading": {
-                "kind": "expr",
-                "normalize": {
-                  "trim": true,
-                  "remove_spaces": true,
-                  "engine": "mathjs",
-                  "vars": [
-                    "x",
-                    "pi"
-                  ]
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "TRIG_EQ",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "pi"
-                ]
+                "pattern_id": "EXPAND_CUBIC_PLUS_COEFF"
               },
               "example_items": [
                 {
-                  "prompt": "sin x = 0 の解（0≤x<2π）= x = ",
-                  "answer": "0,pi"
-                },
+                  "prompt": "(2x + 1)^3 を展開せよ",
+                  "answer": "8x^3+12x^2+6x+1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.CUBIC.H1_3_4_PLUS_FRACTION",
+              "type_name": "H1-3-4 (a+b)^3 分数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_CUBIC_PLUS_FRACTION"
+              },
+              "example_items": [
                 {
-                  "prompt": "cos x = 0 の解（0≤x<2π）= x = ",
-                  "answer": "pi/2,3pi/2"
-                },
+                  "prompt": "(x + 1/2)^3 を展開せよ",
+                  "answer": "x^3+3/2x^2+3/4x+1/8"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.CUBIC.H1_3_5_PLUS_DECIMAL",
+              "type_name": "H1-3-5 (a+b)^3 小数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_CUBIC_PLUS_DECIMAL"
+              },
+              "example_items": [
                 {
-                  "prompt": "tan x = 0 の解（0≤x<2π）= x = ",
-                  "answer": "0,pi"
+                  "prompt": "(x + 0.3)^3 を展開せよ",
+                  "answer": "x^3+0.9x^2+0.27x+0.027"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.CUBIC.H1_3_6_PLUS_LITERAL",
+              "type_name": "H1-3-6 (a+b)^3 文字型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_CUBIC_PLUS_LITERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "(a + b)^3 を展開せよ",
+                  "answer": "a^3+3a^2b+3ab^2+b^3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.CUBIC.H1_3_7_MINUS_BASIC",
+              "type_name": "H1-3-7 (a−b)^3 基本",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_CUBIC_MINUS_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x - 2)^3 を展開せよ",
+                  "answer": "x^3-6x^2+12x-8"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.CUBIC.H1_3_8_MINUS_NUMERIC",
+              "type_name": "H1-3-8 (a−b)^3 数値型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_CUBIC_MINUS_NUMERIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "(a - 3)^3 を展開せよ",
+                  "answer": "a^3-9a^2+27a-27"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.CUBIC.H1_3_9_MINUS_COEFF",
+              "type_name": "H1-3-9 (a−b)^3 係数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_CUBIC_MINUS_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "(2x - 1)^3 を展開せよ",
+                  "answer": "8x^3-12x^2+6x-1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.CUBIC.H1_3_10_MINUS_FRACTION",
+              "type_name": "H1-3-10 (a−b)^3 分数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_CUBIC_MINUS_FRACTION"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x - 1/3)^3 を展開せよ",
+                  "answer": "x^3-x^2+1/3x-1/27"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.CUBIC.H1_3_11_MINUS_DECIMAL",
+              "type_name": "H1-3-11 (a−b)^3 小数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_CUBIC_MINUS_DECIMAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x - 0.5)^3 を展開せよ",
+                  "answer": "x^3-1.5x^2+0.75x-0.125"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.CUBIC.H1_3_12_MINUS_LITERAL",
+              "type_name": "H1-3-12 (a−b)^3 文字型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_CUBIC_MINUS_LITERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "(a - b)^3 を展開せよ",
+                  "answer": "a^3-3a^2b+3ab^2-b^3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.CUBIC.H1_3_13_APPLICATION",
+              "type_name": "H1-3-13 三乗公式 応用",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_CUBIC_APPLICATION"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x + 3)^3 - (x - 3)^3 を展開せよ",
+                  "answer": "18x^2+54"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.CUBIC.H1_3_14_MIXED",
+              "type_name": "H1-3-14 三乗公式 混合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_CUBIC_MIXED"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x + 2)^3 + (x - 2)^3 を展開せよ",
+                  "answer": "2x^3+24x"
                 }
               ]
             }
           ]
         },
         {
-          "category_id": "CA",
-          "category_name": "微積分",
-          "curriculum_domain": "数学II/III：微分・積分",
+          "category_id": "H1-4",
+          "category_name": "H1-4 指数法則",
           "types": [
             {
-              "type_id": "H1.CA.DIF.DIFF_POLY",
-              "type_name": "微分（多項式）",
+              "type_id": "H1.AL.POWER.H1_4_1_MEANING",
+              "type_name": "H1-4-1 指数の意味",
               "school": "H1",
-              "curriculum_label": "数学II/III：微分",
-              "display_mapping": {
-                "domain": "CA",
-                "subdomain": "DIF"
-              },
-              "answer_format": {
-                "kind": "expr",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "e",
-                  "ln"
-                ]
-              },
-              "grading": {
-                "kind": "expr",
-                "normalize": {
-                  "trim": true,
-                  "remove_spaces": true,
-                  "engine": "mathjs",
-                  "vars": [
-                    "x",
-                    "e",
-                    "ln"
-                  ]
-                }
-              },
-              "generation_params": {
-                "pattern_id": "DIFF_POLY",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "e",
-                  "ln"
-                ]
-              },
-              "example_items": [
-                {
-                  "prompt": "d/dx (x^3) =",
-                  "answer": "3*x^2",
-                  "prompt_tex": "d/dx (x^{3}) ="
-                },
-                {
-                  "prompt": "d/dx (5x^2) =",
-                  "answer": "10*x",
-                  "prompt_tex": "d/dx (5x^{2}) ="
-                },
-                {
-                  "prompt": "d/dx (2x+7) =",
-                  "answer": "2",
-                  "prompt_tex": "d/dx (2x+7) ="
-                }
-              ]
-            },
-            {
-              "type_id": "H1.CA.DIF.DIFF_TRIG",
-              "type_name": "微分（三角関数）",
-              "school": "H1",
-              "curriculum_label": "数学II/III：微分",
-              "display_mapping": {
-                "domain": "CA",
-                "subdomain": "DIF"
-              },
-              "answer_format": {
-                "kind": "expr",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "e",
-                  "ln"
-                ]
-              },
-              "grading": {
-                "kind": "expr",
-                "normalize": {
-                  "trim": true,
-                  "remove_spaces": true,
-                  "engine": "mathjs",
-                  "vars": [
-                    "x",
-                    "e",
-                    "ln"
-                  ]
-                }
-              },
-              "generation_params": {
-                "pattern_id": "DIFF_TRIG",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "e",
-                  "ln"
-                ]
-              },
-              "example_items": [
-                {
-                  "prompt": "d/dx (sin x) =",
-                  "answer": "cos x",
-                  "prompt_tex": "d/dx (\\mathrm{sin} x) ="
-                },
-                {
-                  "prompt": "d/dx (cos x) =",
-                  "answer": "-sin x",
-                  "prompt_tex": "d/dx (\\mathrm{cos} x) ="
-                },
-                {
-                  "prompt": "d/dx (tan x) =",
-                  "answer": "1/cos(x)^2",
-                  "prompt_tex": "d/dx (\\mathrm{tan} x) ="
-                }
-              ]
-            },
-            {
-              "type_id": "H1.CA.DIF.DIFF_EXP",
-              "type_name": "微分（指数・対数）",
-              "school": "H1",
-              "curriculum_label": "数学II/III：微分",
-              "display_mapping": {
-                "domain": "CA",
-                "subdomain": "DIF"
-              },
-              "answer_format": {
-                "kind": "expr",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "e",
-                  "ln"
-                ]
-              },
-              "grading": {
-                "kind": "expr",
-                "normalize": {
-                  "trim": true,
-                  "remove_spaces": true,
-                  "engine": "mathjs",
-                  "vars": [
-                    "x",
-                    "e",
-                    "ln"
-                  ]
-                }
-              },
-              "generation_params": {
-                "pattern_id": "DIFF_EXP",
-                "engine": "mathjs",
-                "vars": [
-                  "x",
-                  "e",
-                  "ln"
-                ]
-              },
-              "example_items": [
-                {
-                  "prompt": "d/dx (e^x) =",
-                  "answer": "e^x",
-                  "prompt_tex": "d/dx (e^{x}) ="
-                },
-                {
-                  "prompt": "d/dx (ln x) =",
-                  "answer": "1/x",
-                  "prompt_tex": "d/dx (ln x) ="
-                },
-                {
-                  "prompt": "d/dx (2^x) =",
-                  "answer": "2^x*ln(2)",
-                  "prompt_tex": "d/dx (2^{x}) ="
-                }
-              ]
-            },
-            {
-              "type_id": "H1.CA.INT.DEF_INT",
-              "type_name": "定積分（値）",
-              "school": "H1",
-              "curriculum_label": "数学III：積分",
-              "display_mapping": {
-                "domain": "CA",
-                "subdomain": "INT"
-              },
-              "answer_format": {
-                "kind": "dec",
-                "decimal_places": 3
-              },
-              "grading": {
-                "kind": "dec",
-                "normalize": {
-                  "trim": true,
-                  "decimal_places": 3
-                }
-              },
-              "generation_params": {
-                "pattern_id": "DEF_INT",
-                "decimal_places": 3
-              },
-              "example_items": [
-                {
-                  "prompt": "∫_0^1 2x dx =",
-                  "answer": "1.000",
-                  "prompt_tex": "∫_0^{1} 2x dx ="
-                },
-                {
-                  "prompt": "∫_0^2 x dx =",
-                  "answer": "2.000",
-                  "prompt_tex": "∫_0^{2} x dx ="
-                },
-                {
-                  "prompt": "∫_1^3 1 dx =",
-                  "answer": "2.000",
-                  "prompt_tex": "∫_1^{3} 1 dx ="
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "category_id": "VE",
-          "category_name": "ベクトル",
-          "curriculum_domain": "数学C：ベクトル",
-          "types": [
-            {
-              "type_id": "H1.VE.DOT.DOT_2D",
-              "type_name": "内積（2次元）",
-              "school": "H1",
-              "curriculum_label": "数学C：ベクトル",
-              "display_mapping": {
-                "domain": "VE",
-                "subdomain": "DOT"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
                 "kind": "int"
               },
-              "grading": {
-                "kind": "int",
-                "normalize": {
-                  "trim": true
-                }
-              },
               "generation_params": {
-                "pattern_id": "DOT_2D"
+                "pattern_id": "EXP_RULES_MEANING"
               },
               "example_items": [
                 {
-                  "prompt": "(1,2)・(3,4) =",
-                  "answer": "11"
-                },
-                {
-                  "prompt": "(2,-1)・(5,3) =",
-                  "answer": "7"
-                },
-                {
-                  "prompt": "(-3,1)・(2,6) =",
-                  "answer": "0"
+                  "prompt": "2^3 を計算せよ",
+                  "answer": "8"
                 }
               ]
             },
             {
-              "type_id": "H1.VE.CROSS.CROSS_2D_MAG",
-              "type_name": "外積の大きさ（2D）",
+              "type_id": "H1.AL.POWER.H1_4_2_NEGATIVE_BASE",
+              "type_name": "H1-4-2 負の数の指数",
               "school": "H1",
-              "curriculum_label": "数学C：ベクトル",
-              "display_mapping": {
-                "domain": "VE",
-                "subdomain": "CROSS"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
                 "kind": "int"
               },
-              "grading": {
-                "kind": "int",
-                "normalize": {
-                  "trim": true
-                }
-              },
               "generation_params": {
-                "pattern_id": "CROSS_2D_MAG"
+                "pattern_id": "EXP_RULES_NEGATIVE_BASE"
               },
               "example_items": [
                 {
-                  "prompt": "(1,2)×(3,4) の大きさ =",
-                  "answer": "2"
-                },
+                  "prompt": "(-2)^3 を計算せよ",
+                  "answer": "-8"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_3_NO_PAREN",
+              "type_name": "H1-4-3 括弧なしの指数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_NO_PAREN"
+              },
+              "example_items": [
                 {
-                  "prompt": "(2,0)×(0,5) の大きさ =",
-                  "answer": "10"
-                },
+                  "prompt": "-2^3 を計算せよ",
+                  "answer": "-8"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_4_SAME_BASE_MUL",
+              "type_name": "H1-4-4 同じ底の積",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_SAME_BASE_MUL"
+              },
+              "example_items": [
                 {
-                  "prompt": "(1,-1)×(2,3) の大きさ =",
-                  "answer": "5"
+                  "prompt": "a^3 × a^4 を計算せよ",
+                  "answer": "a^7"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_5_SAME_BASE_DIV",
+              "type_name": "H1-4-5 同じ底の商",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_SAME_BASE_DIV"
+              },
+              "example_items": [
+                {
+                  "prompt": "a^7 ÷ a^3 を計算せよ",
+                  "answer": "a^4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_6_POWER_OF_POWER",
+              "type_name": "H1-4-6 指数の累乗",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_POWER_OF_POWER"
+              },
+              "example_items": [
+                {
+                  "prompt": "(a^3)^2 を計算せよ",
+                  "answer": "a^6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_7_PRODUCT_POWER",
+              "type_name": "H1-4-7 積の指数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_PRODUCT_POWER"
+              },
+              "example_items": [
+                {
+                  "prompt": "(ab)^3 を展開せよ",
+                  "answer": "a^3b^3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_8_QUOTIENT_POWER",
+              "type_name": "H1-4-8 商の指数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_QUOTIENT_POWER"
+              },
+              "example_items": [
+                {
+                  "prompt": "(a/b)^2 を展開せよ",
+                  "answer": "a^2/b^2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_9_COLLECT",
+              "type_name": "H1-4-9 指数の整理",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_COLLECT"
+              },
+              "example_items": [
+                {
+                  "prompt": "a^2 × a^3 × a^4 を計算せよ",
+                  "answer": "a^9"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_10_COLLECT_FRACTION",
+              "type_name": "H1-4-10 指数の整理（分数）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_COLLECT_FRACTION"
+              },
+              "example_items": [
+                {
+                  "prompt": "a^5 ÷ a^2 を計算せよ",
+                  "answer": "a^3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_11_COEFF",
+              "type_name": "H1-4-11 指数と係数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "2a^3 × 3a^2 を計算せよ",
+                  "answer": "6a^5"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_12_MIXED",
+              "type_name": "H1-4-12 指数混合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_MIXED"
+              },
+              "example_items": [
+                {
+                  "prompt": "(a^2)^3 × a^4 を計算せよ",
+                  "answer": "a^10"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_13_FRACTION_MIXED",
+              "type_name": "H1-4-13 指数と分数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_FRACTION_MIXED"
+              },
+              "example_items": [
+                {
+                  "prompt": "(a^4 b^2) ÷ (a^2 b) を計算せよ",
+                  "answer": "a^2b"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_14_FRACTIONAL_EXP",
+              "type_name": "H1-4-14 分数指数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_FRACTIONAL_EXP"
+              },
+              "example_items": [
+                {
+                  "prompt": "a^(1/2) × a^(1/2) を計算せよ",
+                  "answer": "a"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_15_FRACTIONAL_MEANING",
+              "type_name": "H1-4-15 分数指数の意味",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_FRACTIONAL_MEANING"
+              },
+              "example_items": [
+                {
+                  "prompt": "a^(1/2) を根号で表せ",
+                  "answer": "sqrt(a)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_16_FRACTIONAL_TO_ROOT",
+              "type_name": "H1-4-16 分数指数の計算",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_FRACTIONAL_TO_ROOT"
+              },
+              "example_items": [
+                {
+                  "prompt": "a^(3/2) を根号で表せ",
+                  "answer": "a*sqrt(a)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.POWER.H1_4_17_GENERAL",
+              "type_name": "H1-4-17 指数総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXP_RULES_GENERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "(a^3 b^2)^2 ÷ (a^4 b) を計算せよ",
+                  "answer": "a^2b^3"
                 }
               ]
             }
           ]
         },
         {
-          "category_id": "PR",
-          "category_name": "確率・統計・数列",
-          "curriculum_domain": "数学A/B/C：確率・統計・数列",
+          "category_id": "H1-5",
+          "category_name": "H1-5 二次式の展開",
           "types": [
             {
-              "type_id": "H1.PR.COMB.COMB",
-              "type_name": "組合せ nCk",
+              "type_id": "H1.AL.QUADEXP.H1_5_1_BASIC",
+              "type_name": "H1-5-1 基本展開",
               "school": "H1",
-              "curriculum_label": "数学A：場合の数",
-              "display_mapping": {
-                "domain": "PR",
-                "subdomain": "COMB"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "int"
-              },
-              "grading": {
-                "kind": "int",
-                "normalize": {
-                  "trim": true
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "COMB"
+                "pattern_id": "EXPAND_QUAD_BASIC"
               },
               "example_items": [
                 {
-                  "prompt": "8C2 =",
-                  "answer": "28",
-                  "prompt_tex": "8C2 ="
-                },
-                {
-                  "prompt": "10C3 =",
-                  "answer": "120",
-                  "prompt_tex": "10C3 ="
-                },
-                {
-                  "prompt": "12C1 =",
-                  "answer": "12",
-                  "prompt_tex": "12C1 ="
+                  "prompt": "(2x + 3)(x + 4) を展開せよ",
+                  "answer": "2x^2+11x+12"
                 }
               ]
             },
             {
-              "type_id": "H1.PR.PROB.CARD_PROB",
-              "type_name": "確率（カード）",
+              "type_id": "H1.AL.QUADEXP.H1_5_2_COEFF",
+              "type_name": "H1-5-2 係数付き展開",
               "school": "H1",
-              "curriculum_label": "数学A：確率",
-              "display_mapping": {
-                "domain": "PR",
-                "subdomain": "PROB"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "frac"
-              },
-              "grading": {
-                "kind": "frac",
-                "normalize": {
-                  "trim": true
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "CARD_PROB"
+                "pattern_id": "EXPAND_QUAD_COEFF"
               },
               "example_items": [
                 {
-                  "prompt": "トランプでハートが出る確率 =",
-                  "answer": "1/4"
-                },
-                {
-                  "prompt": "トランプでAが出る確率 =",
-                  "answer": "1/13"
-                },
-                {
-                  "prompt": "トランプで赤が出る確率 =",
-                  "answer": "1/2"
+                  "prompt": "(3x + 2)(2x + 5) を展開せよ",
+                  "answer": "6x^2+19x+10"
                 }
               ]
             },
             {
-              "type_id": "H1.PR.SEQ.ARITH_SEQ",
-              "type_name": "等差数列：一般項",
+              "type_id": "H1.AL.QUADEXP.H1_5_3_SIGN",
+              "type_name": "H1-5-3 符号混合展開",
               "school": "H1",
-              "curriculum_label": "数学B：数列",
-              "display_mapping": {
-                "domain": "PR",
-                "subdomain": "SEQ"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "expr",
-                "engine": "mathjs",
-                "vars": [
-                  "n"
-                ]
-              },
-              "grading": {
-                "kind": "expr",
-                "normalize": {
-                  "trim": true,
-                  "remove_spaces": true,
-                  "engine": "mathjs",
-                  "vars": [
-                    "n"
-                  ]
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "ARITH_SEQ",
-                "engine": "mathjs",
-                "vars": [
-                  "n"
-                ]
+                "pattern_id": "EXPAND_QUAD_SIGN"
               },
               "example_items": [
                 {
-                  "prompt": "初項3、公差2の一般項 a_n =",
-                  "answer": "3+2*(n-1)"
-                },
-                {
-                  "prompt": "初項1、公差5の一般項 a_n =",
-                  "answer": "1+5*(n-1)"
-                },
-                {
-                  "prompt": "初項10、公差-3の一般項 a_n =",
-                  "answer": "10-3*(n-1)"
+                  "prompt": "(2x + 3)(x - 5) を展開せよ",
+                  "answer": "2x^2-7x-15"
                 }
               ]
             },
             {
-              "type_id": "H1.PR.SEQ.GEOM_SEQ",
-              "type_name": "等比数列：一般項",
+              "type_id": "H1.AL.QUADEXP.H1_5_4_NEG_COEFF",
+              "type_name": "H1-5-4 負数係数展開",
               "school": "H1",
-              "curriculum_label": "数学B：数列",
-              "display_mapping": {
-                "domain": "PR",
-                "subdomain": "SEQ"
-              },
+              "curriculum_label": "高1",
               "answer_format": {
-                "kind": "expr",
-                "engine": "mathjs",
-                "vars": [
-                  "n"
-                ]
-              },
-              "grading": {
-                "kind": "expr",
-                "normalize": {
-                  "trim": true,
-                  "remove_spaces": true,
-                  "engine": "mathjs",
-                  "vars": [
-                    "n"
-                  ]
-                }
+                "kind": "expr"
               },
               "generation_params": {
-                "pattern_id": "GEOM_SEQ",
-                "engine": "mathjs",
-                "vars": [
-                  "n"
-                ]
+                "pattern_id": "EXPAND_QUAD_NEG_COEFF"
               },
               "example_items": [
                 {
-                  "prompt": "初項2、公比3の一般項 a_n =",
-                  "answer": "2*3^(n-1)"
-                },
+                  "prompt": "(2x - 3)(x - 4) を展開せよ",
+                  "answer": "2x^2-11x+12"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUADEXP.H1_5_5_LIKE_TERMS",
+              "type_name": "H1-5-5 同類項整理型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_QUAD_LIKE_TERMS"
+              },
+              "example_items": [
                 {
-                  "prompt": "初項5、公比2の一般項 a_n =",
-                  "answer": "5*2^(n-1)"
-                },
+                  "prompt": "(2x + 1)(x + 6) を展開せよ",
+                  "answer": "2x^2+13x+6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUADEXP.H1_5_6_COEFF_SORT",
+              "type_name": "H1-5-6 係数整理型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_QUAD_COEFF_SORT"
+              },
+              "example_items": [
                 {
-                  "prompt": "初項1、公比1/2の一般項 a_n =",
-                  "answer": "(1/2)^(n-1)"
+                  "prompt": "(4x + 3)(2x + 1) を展開せよ",
+                  "answer": "8x^2+10x+3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUADEXP.H1_5_7_LITERAL_COEFF",
+              "type_name": "H1-5-7 文字係数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_QUAD_LITERAL_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "(ax + b)(x + c) を展開せよ",
+                  "answer": "ax^2+(ac+b)x+bc"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUADEXP.H1_5_8_BOTH_LITERAL_COEFF",
+              "type_name": "H1-5-8 両方係数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_QUAD_BOTH_LITERAL_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "(ax + b)(cx + d) を展開せよ",
+                  "answer": "acx^2+(ad+bc)x+bd"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUADEXP.H1_5_9_FRACTION_COEFF",
+              "type_name": "H1-5-9 分数係数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_QUAD_FRACTION_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "(2x + 1/2)(x + 3) を展開せよ",
+                  "answer": "2x^2+13/2x+3/2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUADEXP.H1_5_10_DECIMAL_COEFF",
+              "type_name": "H1-5-10 小数係数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_QUAD_DECIMAL_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "(1.5x + 2)(x + 4) を展開せよ",
+                  "answer": "1.5x^2+8x+8"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUADEXP.H1_5_11_COMPLEX_LIKE_TERMS",
+              "type_name": "H1-5-11 同類項複雑型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_QUAD_COMPLEX_LIKE_TERMS"
+              },
+              "example_items": [
+                {
+                  "prompt": "(3x + 2)(2x - 5) を展開せよ",
+                  "answer": "6x^2-11x-10"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUADEXP.H1_5_12_LARGE_COEFF",
+              "type_name": "H1-5-12 係数大きめ型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_QUAD_LARGE_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "(5x + 4)(3x + 7) を展開せよ",
+                  "answer": "15x^2+47x+28"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUADEXP.H1_5_13_LITERAL_MIXED",
+              "type_name": "H1-5-13 文字混合型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_QUAD_LITERAL_MIXED"
+              },
+              "example_items": [
+                {
+                  "prompt": "(ax + 2)(bx + 3) を展開せよ",
+                  "answer": "abx^2+(3a+2b)x+6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUADEXP.H1_5_14_SORTED",
+              "type_name": "H1-5-14 展開整理型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_QUAD_SORTED"
+              },
+              "example_items": [
+                {
+                  "prompt": "(2x - 1)(3x + 4) を展開せよ",
+                  "answer": "6x^2+5x-4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUADEXP.H1_5_15_GENERAL",
+              "type_name": "H1-5-15 二次式総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "EXPAND_QUAD_GENERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "(3x + 5)(2x - 7) を展開せよ",
+                  "answer": "6x^2-11x-35"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "H1-6",
+          "category_name": "H1-6 二次方程式（因数分解）",
+          "types": [
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FACTOR_1_BASIC",
+              "type_name": "H1-6-1 基本",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FACTOR_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 + 5x + 6 = 0 を解け",
+                  "answer": "-3,-2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FACTOR_2_NEG_MIX",
+              "type_name": "H1-6-2 負の係数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FACTOR_NEG_MIX"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 - x - 6 = 0 を解け",
+                  "answer": "-2,3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FACTOR_3_BOTH_NEG",
+              "type_name": "H1-6-3 両方負",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FACTOR_BOTH_NEG"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 - 5x + 6 = 0 を解け",
+                  "answer": "2,3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FACTOR_4_BASIC_FACTOR",
+              "type_name": "H1-6-4 因数分解基本",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FACTOR_BASIC_FACTOR"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 + 7x + 10 = 0 を解け",
+                  "answer": "-5,-2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FACTOR_5_COMMON",
+              "type_name": "H1-6-5 共通因数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FACTOR_COMMON"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 + 4x = 0 を解け",
+                  "answer": "-4,0"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FACTOR_6_DIFF_SQ",
+              "type_name": "H1-6-6 平方差型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FACTOR_DIFF_SQ"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 - 16 = 0 を解け",
+                  "answer": "-4,4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FACTOR_7_PERF_SQ",
+              "type_name": "H1-6-7 完全平方型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FACTOR_PERF_SQ"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 + 6x + 9 = 0 を解け",
+                  "answer": "-3,-3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FACTOR_8_COEFF",
+              "type_name": "H1-6-8 係数付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FACTOR_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "2x^2 + 7x + 3 = 0 を解け",
+                  "answer": "-3,-1/2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FACTOR_9_SIGN",
+              "type_name": "H1-6-9 符号混合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FACTOR_SIGN"
+              },
+              "example_items": [
+                {
+                  "prompt": "2x^2 - x - 6 = 0 を解け",
+                  "answer": "-3/2,2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FACTOR_10_FRACTION",
+              "type_name": "H1-6-10 分数解",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FACTOR_FRACTION"
+              },
+              "example_items": [
+                {
+                  "prompt": "3x^2 + x - 2 = 0 を解け",
+                  "answer": "-1,2/3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FACTOR_11_APPLICATION",
+              "type_name": "H1-6-11 因数分解応用",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FACTOR_APPLICATION"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 - 9x + 20 = 0 を解け",
+                  "answer": "4,5"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FACTOR_12_GENERAL",
+              "type_name": "H1-6-12 因数分解総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FACTOR_GENERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 + 2x - 15 = 0 を解け",
+                  "answer": "-5,3"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "H1-7",
+          "category_name": "H1-7 二次方程式（平方根型）",
+          "types": [
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_SQ_1_BASIC",
+              "type_name": "H1-7-1 基本",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_SQ_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 = 16 を解け",
+                  "answer": "-4,4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_SQ_2_NEGATIVE",
+              "type_name": "H1-7-2 負の数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_SQ_NEGATIVE"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 = 25 を解け",
+                  "answer": "-5,5"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_SQ_3_ROOT",
+              "type_name": "H1-7-3 平方根型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_SQ_ROOT"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 = 49 を解け",
+                  "answer": "-7,7"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_SQ_4_PAREN",
+              "type_name": "H1-7-4 括弧型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_SQ_PAREN"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x - 3)^2 = 9 を解け",
+                  "answer": "0,6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_SQ_5_PAREN_NEG",
+              "type_name": "H1-7-5 括弧型（負）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_SQ_PAREN_NEG"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x + 5)^2 = 16 を解け",
+                  "answer": "-9,-1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_SQ_6_COMPLETE_SQ",
+              "type_name": "H1-7-6 平方完成型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_SQ_COMPLETE"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x - 2)^2 = 25 を解け",
+                  "answer": "-3,7"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_SQ_7_COEFF",
+              "type_name": "H1-7-7 係数付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_SQ_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x - 4)^2 = 36 を解け",
+                  "answer": "-2,10"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_SQ_8_IRRATIONAL",
+              "type_name": "H1-7-8 ルート型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_SQ_IRRATIONAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "x^2 = 7 を解け",
+                  "answer": "-sqrt(7),sqrt(7)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_SQ_9_REARRANGED",
+              "type_name": "H1-7-9 平方根整理",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_SQ_REARRANGED"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x + 2)^2 = 5 を解け",
+                  "answer": "-2-sqrt(5),-2+sqrt(5)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_SQ_10_FRACTION",
+              "type_name": "H1-7-10 分数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_SQ_FRACTION"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x - 1)^2 = 1/4 を解け",
+                  "answer": "1/2,3/2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_SQ_11_DECIMAL",
+              "type_name": "H1-7-11 小数型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_SQ_DECIMAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x + 1)^2 = 0.25 を解け",
+                  "answer": "-1.5,-0.5"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_SQ_12_GENERAL",
+              "type_name": "H1-7-12 総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_SQ_GENERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "(x - 6)^2 = 49 を解け",
+                  "answer": "-1,13"
                 }
               ]
             }

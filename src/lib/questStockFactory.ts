@@ -744,6 +744,7 @@ const filterE2MulDanMixRange = (entries: QuestEntry[], typeId: string) => {
 
 const getGradeIdFromTypeId = (typeId: string) => typeId.split(".")[0] ?? "";
 const isJ1Grade = (gradeId: string) => Boolean(gradeId) && gradeId.startsWith("J1");
+const isH1Grade = (gradeId: string) => gradeId === "H1";
 
 const isFrozenElementaryGrade = (gradeId: string) => /^(E1|E2|E3|E4)$/.test(gradeId);
 
@@ -837,7 +838,7 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
   const normalizedSeed = normalizedType.example_items
     .map((item) => ({ item, type: normalizedType }))
     .map(normalizeJ1IntEntry);
-  if (isJ1Grade(gradeId)) {
+  if (isJ1Grade(gradeId) || isH1Grade(gradeId)) {
     const seedOnlyUnique = uniqueByPromptAndEquivalent(normalizedSeed);
     const orderedSeedOnly = reorderAvoidAdjacentSameFamily(shuffle(seedOnlyUnique)).slice(0, targetCount);
     const entries = uniqueByPromptAndEquivalent(orderedSeedOnly).slice(0, targetCount);
@@ -855,7 +856,7 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
         reason,
         reasonDetail,
         failureClass,
-        j1SeedOnly: true,
+        seedOnlyGrade: gradeId,
         buildMs: Date.now() - startedAt
       });
     }

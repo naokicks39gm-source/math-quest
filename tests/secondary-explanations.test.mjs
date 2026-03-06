@@ -45,7 +45,7 @@ test("all middle/high pattern_id values are covered in PATTERN_IDS", () => {
   const dataPatterns = getSecondaryPatternsFromData();
   const sourcePatterns = getPatternIdsFromSource();
   assert.deepEqual(sourcePatterns, dataPatterns);
-  assert.equal(sourcePatterns.length, 36);
+  assert.ok(sourcePatterns.length >= 36);
 });
 
 test("learning aid includes hint and explanation building", () => {

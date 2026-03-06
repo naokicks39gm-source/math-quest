@@ -247,7 +247,7 @@ const isMixedFractionQuestion = (
   return merged.includes("帯分数") || merged.includes("仮分数");
 };
 
-const isQuadraticRootsType = (typeId?: string) => Boolean(typeId && /^H\d\.AL\.EQ\.QUAD_ROOTS$/.test(typeId));
+const isQuadraticRootsType = (typeId?: string) => Boolean(typeId && /^H\d\.AL\.EQ\.QUAD_ROOTS(?:_|$)/.test(typeId));
 
 const INTEGER_FRACTION_PATTERN = /([+-]?\d+)\/([+-]?\d+)/g;
 const EXPONENT_FRACTION_PATTERN = /([A-Za-z0-9(){}+\-^]+)\s*\/\s*([A-Za-z0-9(){}+\-^]+)/g;
