@@ -10,10 +10,11 @@ const source = fs.readFileSync(
 
 test("J1 stock path uses example_items only", () => {
   assert.equal(source.includes('const isJ1Grade = (gradeId: string) => Boolean(gradeId) && gradeId.startsWith("J1");'), true);
-  assert.equal(source.includes("if (isJ1Grade(gradeId)) {"), true);
+  assert.equal(source.includes('const isH1Grade = (gradeId: string) => gradeId === "H1";'), true);
+  assert.equal(source.includes("if (isJ1Grade(gradeId) || isH1Grade(gradeId)) {"), true);
   assert.equal(source.includes("const seedOnlyUnique = uniqueByPromptAndEquivalent(normalizedSeed);"), true);
   assert.equal(source.includes("const orderedSeedOnly = reorderAvoidAdjacentSameFamily(shuffle(seedOnlyUnique)).slice(0, targetCount);"), true);
-  assert.equal(source.includes("j1SeedOnly: true"), true);
+  assert.equal(source.includes("seedOnlyGrade: gradeId"), true);
 });
 
 test("pattern-based stock generation remains for non-J1 grades", () => {

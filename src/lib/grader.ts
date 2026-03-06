@@ -19,6 +19,7 @@ type MixedFraction = {
 };
 
 type IntPair = [number, number];
+type TokenPair = [string, string];
 
 const gcd = (a: number, b: number): number => {
   let x = Math.abs(a);
@@ -105,7 +106,24 @@ const parseIntPair = (input: string): IntPair | null => {
 
 const sortIntPairAsc = (pair: IntPair): IntPair => (pair[0] <= pair[1] ? pair : [pair[1], pair[0]]);
 
-const isQuadraticRootsPairType = (typeId?: string) => Boolean(typeId && /^H\d\.AL\.EQ\.QUAD_ROOTS$/.test(typeId));
+const normalizePairToken = (value: string) =>
+  value
+    .trim()
+    .replace(/^x\s*=\s*/iu, "")
+    .replace(/\s+/g, "")
+    .replace(/−/g, "-");
+
+const parseTokenPair = (input: string): TokenPair | null => {
+  const parts = input.split(/[,，]/).map(normalizePairToken).filter(Boolean);
+  if (parts.length !== 2) return null;
+  return [parts[0], parts[1]];
+};
+
+const sortTokenPairAsc = (pair: TokenPair): TokenPair =>
+  pair[0] <= pair[1] ? pair : [pair[1], pair[0]];
+
+const isQuadraticRootsPairType = (typeId?: string) =>
+  Boolean(typeId && /^H\d\.AL\.EQ\.QUAD_ROOTS(?:_|$)/.test(typeId));
 const normalizeDecimalString = (value: number) => {
   if (!Number.isFinite(value)) return "";
   const safe = Number(value.toFixed(12));
@@ -189,23 +207,39 @@ export const gradeAnswer = (
     };
   }
   if (format.kind === "pair") {
+    const unordered = isQuadraticRootsPairType(opts?.typeId);
     const userPair = parseIntPair(inputRaw);
     const correctPair = parseIntPair(correctAnswer.trim());
-    if (!userPair || !correctPair) {
+    if (userPair && correctPair) {
+      if (unordered) {
+        const userSorted = sortIntPairAsc(userPair);
+        const correctSorted = sortIntPairAsc(correctPair);
+        return {
+          ok: userSorted[0] === correctSorted[0] && userSorted[1] === correctSorted[1],
+          normalized: `${userSorted[0]},${userSorted[1]}`
+        };
+      }
+      return {
+        ok: userPair[0] === correctPair[0] && userPair[1] === correctPair[1],
+        normalized: `${userPair[0]},${userPair[1]}`
+      };
+    }
+    const userTokenPair = parseTokenPair(inputRaw);
+    const correctTokenPair = parseTokenPair(correctAnswer.trim());
+    if (!userTokenPair || !correctTokenPair) {
       return { ok: false, normalized: "" };
     }
-    const unordered = isQuadraticRootsPairType(opts?.typeId);
     if (unordered) {
-      const userSorted = sortIntPairAsc(userPair);
-      const correctSorted = sortIntPairAsc(correctPair);
+      const userSorted = sortTokenPairAsc(userTokenPair);
+      const correctSorted = sortTokenPairAsc(correctTokenPair);
       return {
         ok: userSorted[0] === correctSorted[0] && userSorted[1] === correctSorted[1],
         normalized: `${userSorted[0]},${userSorted[1]}`
       };
     }
     return {
-      ok: userPair[0] === correctPair[0] && userPair[1] === correctPair[1],
-      normalized: `${userPair[0]},${userPair[1]}`
+      ok: userTokenPair[0] === correctTokenPair[0] && userTokenPair[1] === correctTokenPair[1],
+      normalized: `${userTokenPair[0]},${userTokenPair[1]}`
     };
   }
   return { ok: false, normalized: "" };

@@ -1103,6 +1103,25 @@ export const buildUniqueQuestSet = ({ source, poolSize, quizSize }: BuildParams)
     return { entries: [], reason: "INSUFFICIENT_TYPE_SOURCE", stats };
   }
 
+  if (selectedTypeId.startsWith("H1.")) {
+    const uniquePool = uniqueByPromptAndEquivalent(typedSource);
+    const uniquePromptCount = new Set(uniquePool.map((e) => entryPromptKey(e))).size;
+    const uniqueEquivalentCount = new Set(uniquePool.map((e) => entryEquivalentKey(e))).size;
+    const ordered = reorderAvoidAdjacentSameFamily(shuffle(uniquePool)).slice(0, quizSize);
+    const final = uniqueByPromptAndEquivalent(ordered).slice(0, quizSize);
+    const reason = final.length > 0 ? undefined : "INSUFFICIENT_UNIQUE_PROMPTS";
+    const stats = {
+      buildMs: Date.now() - startedAt,
+      candidateCount: typedSource.length,
+      uniquePromptCount,
+      uniqueEquivalentCount,
+      finalSetSize: final.length,
+      selectedTypeId
+    };
+    logBuildStats(reason ? "failed" : "success", stats, reason);
+    return { entries: final, reason, stats };
+  }
+
   const expanded = expandEntriesToAtLeast(typedSource, Math.max(poolSize, quizSize * 4));
   const uniquePool = uniqueByPromptAndEquivalent(expanded);
   const uniquePromptCount = new Set(uniquePool.map((e) => entryPromptKey(e))).size;

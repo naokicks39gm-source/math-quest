@@ -11,7 +11,7 @@ test("secondary derivation builder covers major pattern families", () => {
   assert.match(source, /patternId === "LIN_EQ" \|\| patternId === "LIN_INEQ"/);
   assert.match(source, /patternId === "SYS_EQ"/);
   assert.match(source, /patternId === "QUAD_ROOTS"/);
-  assert.match(source, /patternId\.startsWith\("FACTOR_"\) \|\| patternId === "EXPAND" \|\| patternId === "EXP_RULES"/);
+  assert.match(source, /patternId\.startsWith\("FACTOR_"\) \|\| patternId === "EXPAND" \|\| patternId\.startsWith\("EXPAND_"\) \|\| patternId === "EXP_RULES" \|\| patternId\.startsWith\("EXP_RULES_"\)/);
   assert.match(source, /patternId === "POW_INT" \|\| patternId === "SQRT_VAL" \|\| patternId === "LOG_VAL"/);
   assert.match(source, /patternId\.startsWith\("TRIG_"\) \|\| patternId\.startsWith\("DIFF_"\) \|\| patternId === "DEF_INT"/);
 });

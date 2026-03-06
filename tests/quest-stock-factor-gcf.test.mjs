@@ -42,18 +42,16 @@ test("factorization generators create prompt + tex + answer triplet", () => {
   assert.equal(secondaryExprSource.includes("remixSecondaryExprFromSeed"), true);
 });
 
-test("H1 has factorization pattern content to seed and expand", () => {
-  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EXP.FACTOR_GCF\""), true);
-  assert.equal(h1Source.includes("\"pattern_id\": \"FACTOR_GCF\""), true);
-  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EXP.FACTOR_DIFF_SQ\""), true);
-  assert.equal(h1Source.includes("\"pattern_id\": \"FACTOR_DIFF_SQ\""), true);
-  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EXP.FACTOR_PERF_SQ\""), true);
-  assert.equal(h1Source.includes("\"pattern_id\": \"FACTOR_PERF_SQ\""), true);
-  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EXP.FACTOR_TRINOM\""), true);
-  assert.equal(h1Source.includes("\"pattern_id\": \"FACTOR_TRINOM\""), true);
-  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EXP.EXP_RULES\""), true);
-  assert.equal(h1Source.includes("\"pattern_id\": \"EXP_RULES\""), true);
-  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EQ.QUAD_ROOTS\""), true);
-  assert.equal(h1Source.includes("\"pattern_id\": \"QUAD_ROOTS\""), true);
-  assert.equal(h1Source.includes("\"prompt\": \"6x^2+9x =\""), true);
+test("H1 is rebuilt into fine-grained seed-only lesson groups", () => {
+  assert.equal(h1Source.includes("\"category_id\": \"H1-1\""), true);
+  assert.equal(h1Source.includes("\"category_id\": \"H1-7\""), true);
+  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.FACTOR.H1_1_1_COMMON_NUMERIC\""), true);
+  assert.equal(h1Source.includes("\"pattern_id\": \"FACTOR_COMMON_NUMERIC\""), true);
+  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EXPAND.H1_2_1_BINOMIAL_BASIC\""), true);
+  assert.equal(h1Source.includes("\"pattern_id\": \"EXPAND_BINOMIAL_BASIC\""), true);
+  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.POWER.H1_4_1_MEANING\""), true);
+  assert.equal(h1Source.includes("\"pattern_id\": \"EXP_RULES_MEANING\""), true);
+  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EQ.QUAD_ROOTS_FACTOR_1_BASIC\""), true);
+  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EQ.QUAD_ROOTS_SQ_1_BASIC\""), true);
+  assert.equal(h1Source.includes("\"prompt\": \"8x + 12 を因数分解せよ\""), true);
 });
