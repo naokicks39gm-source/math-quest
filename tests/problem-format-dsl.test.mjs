@@ -11,6 +11,9 @@ test("problem-format package entry points exist", () => {
   assert.equal(fs.existsSync(path.join(root, "packages/problem-engine/index.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-engine/dsl-engine.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-engine/adapters.ts")), true);
+  assert.equal(fs.existsSync(path.join(root, "packages/problem-hint/index.ts")), true);
+  assert.equal(fs.existsSync(path.join(root, "packages/problem-hint/hint-generator.ts")), true);
+  assert.equal(fs.existsSync(path.join(root, "packages/problem-hint/hint-templates.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-format/index.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-format/engine.ts")), true);
   assert.equal(fs.existsSync(path.join(root, "packages/problem-format/schema.ts")), true);
