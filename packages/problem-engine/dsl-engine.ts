@@ -1,35 +1,73 @@
 import { evaluateExpression, formatEvaluationValue } from "packages/problem-format/expressionEvaluator";
 
-export type VariableRule = {
-  min?: number;
-  max?: number;
-  exclude?: number[];
-  choices?: number[];
+export type Range = [number, number];
+
+export type PatternDSL = {
+  key: string;
+  template: string;
+  variables: Record<string, Range>;
+  constraints?: string[];
+  answer: string;
 };
 
-export type Pattern = {
-  pattern_id: string;
-  problem_template: string;
-  variables: Record<string, VariableRule>;
-  answer_expression: string;
-  hint_templates?: string[];
-  explanation_template?: string[];
-};
+export type Pattern = PatternDSL;
 
 export type GeneratedProblem = {
-  pattern_id: string;
-  patternKey?: string;
-  problem: string;
+  id: string;
+  question: string;
   answer: string;
+  patternKey?: string;
   variables?: Record<string, number>;
   meta?: Record<string, unknown>;
-  hints: string[];
-  explanation: string[];
 };
 
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-const renderTemplate = (template: string, vars: Record<string, number>) =>
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+export const parsePatternDSL = (raw: unknown): PatternDSL => {
+  if (!isRecord(raw)) throw new Error("pattern must be an object");
+  const key = raw.key;
+  const template = raw.template;
+  const variablesRaw = raw.variables;
+  const constraints = raw.constraints;
+  const answer = raw.answer;
+
+  if (typeof key !== "string" || !key.trim()) throw new Error("pattern.key is required");
+  if (typeof template !== "string" || !template.trim()) throw new Error("pattern.template is required");
+  if (!isRecord(variablesRaw)) throw new Error("pattern.variables must be an object");
+  if (typeof answer !== "string" || !answer.trim()) throw new Error("pattern.answer is required");
+  if (constraints !== undefined && (!Array.isArray(constraints) || !constraints.every((item) => typeof item === "string"))) {
+    throw new Error("pattern.constraints must be string[] when set");
+  }
+
+  const variables: Record<string, Range> = {};
+  for (const [name, rangeRaw] of Object.entries(variablesRaw)) {
+    if (!Array.isArray(rangeRaw) || rangeRaw.length !== 2) {
+      throw new Error(`pattern.variables.${name} must be [min,max]`);
+    }
+    const min = Number(rangeRaw[0]);
+    const max = Number(rangeRaw[1]);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      throw new Error(`pattern.variables.${name} range must be finite numbers`);
+    }
+    if (min > max) {
+      throw new Error(`pattern.variables.${name} has invalid range`);
+    }
+    variables[name] = [Math.trunc(min), Math.trunc(max)];
+  }
+
+  return {
+    key,
+    template,
+    variables,
+    constraints: constraints as string[] | undefined,
+    answer
+  };
+};
+
+export const renderTemplate = (template: string, vars: Record<string, number>) =>
   template.replace(/\{([^}]+)\}/gu, (_whole, expr: string) => {
     const normalized = expr.trim();
     if (/^[A-Za-z_]\w*$/u.test(normalized)) {
@@ -43,73 +81,69 @@ const renderTemplate = (template: string, vars: Record<string, number>) =>
     }
   });
 
-const pickVariable = (rule: VariableRule): number => {
-  if (Array.isArray(rule.choices) && rule.choices.length > 0) {
-    const idx = randomInt(0, rule.choices.length - 1);
-    return rule.choices[idx];
+export const generateVariables = (pattern: PatternDSL): Record<string, number> => {
+  const vars: Record<string, number> = {};
+  for (const [name, range] of Object.entries(pattern.variables)) {
+    vars[name] = randomInt(range[0], range[1]);
   }
-
-  const min = typeof rule.min === "number" ? rule.min : -9;
-  const max = typeof rule.max === "number" ? rule.max : 9;
-  const excluded = new Set(rule.exclude ?? []);
-
-  let attempts = 0;
-  while (attempts < 200) {
-    attempts += 1;
-    const value = randomInt(min, max);
-    if (!excluded.has(value)) return value;
-  }
-
-  for (let value = min; value <= max; value += 1) {
-    if (!excluded.has(value)) return value;
-  }
-  throw new Error("Unable to pick variable from rule");
+  return vars;
 };
 
-const expandFunctions = (
-  text: string,
-  vars: Record<string, number>,
-  answer: string
-) => text.replace(/\{([^}]+)\}/gu, (_whole, expr: string) => {
-  const normalized = expr.trim();
-  if (normalized === "answer") return answer;
-  if (/^[A-Za-z_]\w*$/u.test(normalized)) {
-    return vars[normalized] === undefined ? "" : String(vars[normalized]);
+export const evaluateConstraints = (pattern: PatternDSL, vars: Record<string, number>) => {
+  const constraints = pattern.constraints ?? [];
+  for (const constraint of constraints) {
+    const result = evaluateExpression(constraint, vars);
+    if (typeof result === "boolean") {
+      if (!result) return false;
+      continue;
+    }
+    if (result === 0) return false;
   }
-  try {
-    return formatEvaluationValue(evaluateExpression(normalized, vars));
-  } catch {
-    return "";
-  }
-});
+  return true;
+};
 
-export const generateProblem = (pattern: Pattern): GeneratedProblem => {
-  const vars: Record<string, number> = {};
-  for (const key of Object.keys(pattern.variables)) {
-    vars[key] = pickVariable(pattern.variables[key]);
+export const evaluateAnswer = (answerExpr: string, vars: Record<string, number>) =>
+  formatEvaluationValue(evaluateExpression(answerExpr, vars));
+
+const MAX_CONSTRAINT_ATTEMPTS = 500;
+
+export const generateProblem = (rawPattern: PatternDSL): GeneratedProblem => {
+  const pattern = parsePatternDSL(rawPattern);
+  let vars: Record<string, number> = {};
+  let matched = false;
+  for (let attempts = 0; attempts < MAX_CONSTRAINT_ATTEMPTS; attempts += 1) {
+    vars = generateVariables(pattern);
+    if (evaluateConstraints(pattern, vars)) {
+      matched = true;
+      break;
+    }
+  }
+  if (!matched) {
+    throw new Error(`Unable to satisfy constraints for pattern: ${pattern.key}`);
   }
 
-  const problem = renderTemplate(pattern.problem_template, vars);
-  const answer = formatEvaluationValue(evaluateExpression(pattern.answer_expression, vars));
-  const hints = (pattern.hint_templates ?? []).map((line) => expandFunctions(line, vars, answer));
-  const explanation = (pattern.explanation_template ?? []).map((line) => expandFunctions(line, vars, answer));
+  const question = renderTemplate(pattern.template, vars);
+  const answer = evaluateAnswer(pattern.answer, vars);
+  const id = `${pattern.key}:${question}:${answer}`;
 
   return {
-    pattern_id: pattern.pattern_id,
-    patternKey: pattern.pattern_id,
-    problem,
+    id,
+    question,
     answer,
+    patternKey: pattern.key,
     variables: vars,
-    hints,
-    explanation
+    meta: {
+      source: "pattern-dsl"
+    }
   };
 };
 
-export const generateProblems = (pattern: Pattern, n: number): GeneratedProblem[] => {
+export const generateProblems = (pattern: PatternDSL, n: number): GeneratedProblem[] => {
+  const parsed = parsePatternDSL(pattern);
   const count = Math.max(0, Math.trunc(n));
   const problems: GeneratedProblem[] = [];
   for (let i = 0; i < count; i += 1) {
-    problems.push(generateProblem(pattern));
+    problems.push(generateProblem(parsed));
   }
   return problems;
 };

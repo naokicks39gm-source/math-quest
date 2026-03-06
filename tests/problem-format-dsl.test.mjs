@@ -51,29 +51,41 @@ test("quest stock factory uses DSL-first path with legacy fallback remaining", (
 
 test("problem-engine exposes unified generator API", () => {
   const source = read("packages/problem-engine/dsl-engine.ts");
-  assert.equal(source.includes("export type VariableRule"), true);
-  assert.equal(source.includes("export type Pattern"), true);
+  assert.equal(source.includes("export type Range = [number, number];"), true);
+  assert.equal(source.includes("export type PatternDSL"), true);
   assert.equal(source.includes("export type GeneratedProblem"), true);
+  assert.equal(source.includes("id: string;"), true);
+  assert.equal(source.includes("question: string;"), true);
+  assert.equal(source.includes("patternKey?: string;"), true);
+  assert.equal(source.includes("variables?: Record<string, number>;"), true);
+  assert.equal(source.includes("meta?: Record<string, unknown>;"), true);
+  assert.equal(source.includes("export const parsePatternDSL"), true);
+  assert.equal(source.includes("export const generateVariables"), true);
+  assert.equal(source.includes("export const evaluateConstraints"), true);
+  assert.equal(source.includes("export const renderTemplate"), true);
+  assert.equal(source.includes("export const evaluateAnswer"), true);
   assert.equal(source.includes("export const generateProblem"), true);
   assert.equal(source.includes("export const generateProblems"), true);
   assert.equal(source.includes("export const generateStock"), false);
   assert.equal(source.includes("export const pickQuiz"), false);
-  assert.equal(source.includes("shuffle("), false);
   assert.equal(source.includes("new Set<string>()"), false);
   assert.equal(source.includes("for (let i = 0; i < count; i += 1)"), true);
-  assert.equal(source.includes("problems.push(generateProblem(pattern));"), true);
+  assert.equal(source.includes("problems.push(generateProblem(parsed));"), true);
+  assert.equal(source.includes("Function("), false);
 });
 
 test("problem-engine adapter uses fixed 200 raw generations and no dedupe", () => {
   const source = read("packages/problem-engine/adapters.ts");
   assert.equal(source.includes("const generationCount = Math.max(0, Math.trunc(options.generationCount ?? 200));"), true);
-  assert.equal(source.includes("generateProblems(validated.pattern, generationCount)"), true);
+  assert.equal(source.includes("const minimalDsl = toPatternDsl(validated.pattern);"), true);
+  assert.equal(source.includes("generateProblems(validated.pattern, generationCount)"), false);
+  assert.equal(source.includes("generateProblems(minimalDsl, generationCount)"), true);
   assert.equal(source.includes("new Set<string>()"), false);
 });
 
 test("GeneratedProblem supports optional extension fields", () => {
   const source = read("packages/problem-engine/dsl-engine.ts");
-  assert.equal(source.includes("patternKey?: string;"), true);
-  assert.equal(source.includes("variables?: Record<string, number>;"), true);
-  assert.equal(source.includes("meta?: Record<string, unknown>;"), true);
+  assert.equal(source.includes("patternKey: pattern.key"), true);
+  assert.equal(source.includes("variables: vars"), true);
+  assert.equal(source.includes("source: \"pattern-dsl\""), true);
 });
