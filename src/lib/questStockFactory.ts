@@ -13,6 +13,7 @@ import {
 } from "@/lib/questGenerators/factorGcf";
 import { generateExpRulesEntries, generateQuadRootsEntries, remixSecondaryExprFromSeed } from "@/lib/questGenerators/secondaryExpr";
 import { buildDslEntriesForType } from "packages/problem-engine";
+import { pickQuizByDifficulty } from "packages/problem-stock";
 
 type AnswerFormat = {
   kind: "int" | "dec" | "frac" | "pair" | "expr";
@@ -22,6 +23,7 @@ type ExampleItem = {
   prompt: string;
   prompt_tex?: string;
   answer: string;
+  difficulty?: number;
 };
 
 type TypeDef = {
@@ -787,6 +789,15 @@ const uniqueByPromptAndEquivalent = (entries: QuestEntry[]) => {
   return unique;
 };
 
+const toDifficultyPickerProblem = (entry: QuestEntry) => ({
+  id: canonicalStockKey(entry),
+  question: entry.item.prompt_tex ?? entry.item.prompt,
+  answer: entry.item.answer,
+  meta: {
+    difficulty: entry.item.difficulty
+  }
+});
+
 type DslStockBuildOptions = {
   targetCount: number;
   batchSize?: number;
@@ -1002,7 +1013,11 @@ export const buildStocksForTypes = (types: TypeDef[], targetCount = 50) => {
   return map;
 };
 
-export const pickUniqueQuizFromStock = (stock: QuestEntry[], quizSize = 5): { entries: QuestEntry[]; meta: PickMeta } => {
+export const pickUniqueQuizFromStock = (
+  stock: QuestEntry[],
+  quizSize = 5,
+  targetDifficulty?: number | null
+): { entries: QuestEntry[]; meta: PickMeta } => {
   const requested = Math.max(0, quizSize);
   const availableBeforeDedupe = stock.length;
   const deduped = uniqueByPromptAndEquivalent(stock);
@@ -1021,10 +1036,23 @@ export const pickUniqueQuizFromStock = (stock: QuestEntry[], quizSize = 5): { en
       }
     };
   }
-  let picked = shuffle(deduped).slice(0, Math.min(requested, availableAfterDedupe));
-  if (picked.length < requested && availableBeforeDedupe >= requested) {
-    const deterministic = [...deduped].sort((a, b) => entryPromptKey(a).localeCompare(entryPromptKey(b)));
-    picked = deterministic.slice(0, Math.min(requested, deterministic.length));
+  let picked: QuestEntry[];
+  if (targetDifficulty == null) {
+    picked = shuffle(deduped).slice(0, Math.min(requested, availableAfterDedupe));
+    if (picked.length < requested && availableBeforeDedupe >= requested) {
+      const deterministic = [...deduped].sort((a, b) => entryPromptKey(a).localeCompare(entryPromptKey(b)));
+      picked = deterministic.slice(0, Math.min(requested, deterministic.length));
+    }
+  } else {
+    const pickedProblems = pickQuizByDifficulty(
+      deduped.map(toDifficultyPickerProblem),
+      targetDifficulty,
+      requested
+    );
+    const entryById = new Map(deduped.map((entry) => [canonicalStockKey(entry), entry] as const));
+    picked = pickedProblems
+      .map((problem) => entryById.get(problem.id))
+      .filter((entry): entry is QuestEntry => Boolean(entry));
   }
   return {
     entries: picked,

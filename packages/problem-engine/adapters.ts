@@ -18,6 +18,7 @@ type ExampleItem = {
   prompt: string;
   prompt_tex?: string;
   answer: string;
+  difficulty?: number;
 };
 
 type TypeDef = {
@@ -85,6 +86,7 @@ export const generateDslArtifactsForType = (
   const generated = generateProblems(minimalDsl, generationCount).map((item) => ({
     prompt: item.question,
     answer: item.answer,
+    difficulty: item.meta?.difficulty,
     hintLines: [],
     explanationLines: []
   }));
@@ -106,7 +108,8 @@ export const buildDslEntriesForType = (
     item: {
       prompt: artifact.prompt,
       prompt_tex: artifact.prompt,
-      answer: artifact.answer
+      answer: artifact.answer,
+      difficulty: artifact.difficulty
     }
   }));
 };
