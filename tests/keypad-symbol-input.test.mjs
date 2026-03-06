@@ -6,6 +6,7 @@ import path from "node:path";
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 const pageSource = read("src/app/quest/page.tsx");
+const layoutSource = read("src/app/layout.tsx");
 const baseSource = read("src/components/keypad/BaseMathKeypad.ts");
 const elemSource = read("src/components/keypad/ElementaryKeypad.tsx");
 const juniorSource = read("src/components/keypad/JuniorKeypad.tsx");
@@ -53,9 +54,26 @@ test("component layer reads grade-specific layouts", () => {
   assert.equal(baseSource.includes('if (token === KEYS.EXPONENT) return "^";'), true);
   assert.equal(baseSource.includes('if (token === KEYS.DECIMAL) return ".";'), true);
   assert.equal(baseSource.includes('if (token === KEYS.SQRT) return "sqrt(";'), true);
+  assert.equal(baseSource.includes('elementary: "w-[120px] grid grid-cols-1 grid-rows-[72px_72px_72px_72px] gap-2"'), true);
 
   assert.equal(elemSource.includes("KEYPAD_LAYOUT_BY_MODE.elementary.map("), true);
-  assert.equal(elemSource.includes("className=\"grid grid-cols-3 gap-0\""), true);
+  assert.equal(elemSource.includes("className=\"w-full flex items-stretch gap-2\""), true);
+  assert.equal(elemSource.includes("className=\"grid grid-cols-3 gap-2 w-full h-[72px]\""), true);
+  assert.equal(elemSource.includes("className=\"flex-1 flex flex-col gap-2 p-2\""), true);
+  assert.equal(elemSource.includes("elementary-key"), true);
+  assert.equal(elemSource.includes("flex items-center justify-center"), true);
+  assert.equal(elemSource.includes("whitespace-nowrap"), true);
+  assert.equal(elemSource.includes("row-span-2 h-full w-full"), true);
+  assert.equal(read("src/app/keypad.css").includes("border-radius: 10px"), true);
+  assert.equal(elemSource.includes("shadow-[0_3px_0_rgba(0,0,0,0.15)]"), true);
+  assert.equal(elemSource.includes("border border-[#cfd6df]"), true);
+  assert.equal(elemSource.includes("bg-[#f4f6f9]"), true);
+  assert.equal(elemSource.includes("active:shadow-[0_1px_0_rgba(0,0,0,0.15)]"), true);
+  assert.equal(read("src/app/keypad.css").includes("padding: 10px"), true);
+  assert.equal(elemSource.includes("bg-red-100 text-red-600"), true);
+  assert.equal(elemSource.includes("bg-indigo-600 text-white"), true);
+  assert.equal(elemSource.includes("bg-emerald-600 text-white"), true);
+  assert.equal(layoutSource.includes('import "./keypad.css";'), true);
   assert.equal(hsSource.includes('mode === "junior" ? JUNIOR_KEYPAD : HIGH_KEYPAD'), true);
   assert.equal(juniorSource.includes('SecondaryMathKeypad mode="junior"'), true);
 });
