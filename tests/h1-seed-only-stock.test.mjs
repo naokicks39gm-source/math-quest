@@ -33,3 +33,9 @@ test("quest page can start H1 even when fewer than five examples exist", () => {
   assert.equal(questSource.includes("if (pickMeta.availableAfterDedupe < 1 || pickMeta.reason === \"DUP_GUARD_FAILED\") {"), true);
   assert.equal(questSource.includes("候補不足のため"), true);
 });
+
+test("quest page treats H1 expr lessons as reference-only cards", () => {
+  assert.equal(questSource.includes("const isH1ReferenceOnlyType"), true);
+  assert.equal(questSource.includes("このカードは例題表示のみです。右下の「次へ」で進めます。"), true);
+  assert.equal(questSource.includes("const canSubmitResolved = isH1ReferenceOnlyQuestion ? false : canSubmitCurrentAnswer;"), true);
+});

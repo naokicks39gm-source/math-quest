@@ -44,7 +44,7 @@ test("factorization generators create prompt + tex + answer triplet", () => {
 
 test("H1 is rebuilt into fine-grained seed-only lesson groups", () => {
   assert.equal(h1Source.includes("\"category_id\": \"H1-1\""), true);
-  assert.equal(h1Source.includes("\"category_id\": \"H1-7\""), true);
+  assert.equal(h1Source.includes("\"category_id\": \"H1-15\""), true);
   assert.equal(h1Source.includes("\"type_id\": \"H1.AL.FACTOR.H1_1_1_COMMON_NUMERIC\""), true);
   assert.equal(h1Source.includes("\"pattern_id\": \"FACTOR_COMMON_NUMERIC\""), true);
   assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EXPAND.H1_2_1_BINOMIAL_BASIC\""), true);
@@ -53,5 +53,8 @@ test("H1 is rebuilt into fine-grained seed-only lesson groups", () => {
   assert.equal(h1Source.includes("\"pattern_id\": \"EXP_RULES_MEANING\""), true);
   assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EQ.QUAD_ROOTS_FACTOR_1_BASIC\""), true);
   assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EQ.QUAD_ROOTS_SQ_1_BASIC\""), true);
+  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.EQ.QUAD_ROOTS_FORMULA_1_BASIC\""), true);
+  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.COUNT.H1_14_1_TREE\""), true);
+  assert.equal(h1Source.includes("\"type_id\": \"H1.AL.PROB.H1_15_1_BASIC_DIE_3\""), true);
   assert.equal(h1Source.includes("\"prompt\": \"8x + 12 を因数分解せよ\""), true);
 });

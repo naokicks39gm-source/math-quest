@@ -248,6 +248,8 @@ const isMixedFractionQuestion = (
 };
 
 const isQuadraticRootsType = (typeId?: string) => Boolean(typeId && /^H\d\.AL\.EQ\.QUAD_ROOTS(?:_|$)/.test(typeId));
+const isH1ReferenceOnlyType = (type?: { type_id?: string; answer_format?: { kind?: string } }) =>
+  Boolean(type?.type_id?.startsWith("H1.") && type.answer_format?.kind === "expr");
 
 const INTEGER_FRACTION_PATTERN = /([+-]?\d+)\/([+-]?\d+)/g;
 const EXPONENT_FRACTION_PATTERN = /([A-Za-z0-9(){}+\-^]+)\s*\/\s*([A-Za-z0-9(){}+\-^]+)/g;
@@ -2444,6 +2446,7 @@ function QuestPageInner() {
     ]
   );
   const isQuadraticRootsQuestion = isQuadraticRootsType(currentType?.type_id);
+  const isH1ReferenceOnlyQuestion = isH1ReferenceOnlyType(currentType);
   const gradeOptions = useMemo(
     () =>
       grades.map((grade) => ({
@@ -2980,6 +2983,7 @@ function QuestPageInner() {
 
   const handleAttack = () => {
     if (status !== 'playing' || isStarting || isAnswerLockedByExplanation || !currentItem || !currentType) return;
+    if (isH1ReferenceOnlyQuestion) return;
     const answerText = isQuadraticRootsQuestion
       ? `${quadraticFractionInputs[0].enabled ? fractionEditorToAnswerText(quadraticFractionInputs[0]) : quadraticAnswers[0]},${quadraticFractionInputs[1].enabled ? fractionEditorToAnswerText(quadraticFractionInputs[1]) : quadraticAnswers[1]}`
       : (fractionInput.enabled ? fractionEditorToAnswerText(fractionInput) : input);
@@ -3129,6 +3133,7 @@ function QuestPageInner() {
       (fractionInput.enabled ? isFractionEditorReady(fractionInput) : isValidAnswerText(input, keypadAnswerKind)) ||
       (keypadAnswerKind !== "frac" && input.trim().length > 0 && input.includes("/"))
     );
+  const canSubmitResolved = isH1ReferenceOnlyQuestion ? false : canSubmitCurrentAnswer;
   const skipFromExplanation = () => {
     if (status !== "playing" || !currentItem) return;
     setQuestionResults((prev) => ({
@@ -3420,7 +3425,7 @@ function QuestPageInner() {
   };
 
   const handleHandwritingJudge = async (): Promise<string> => {
-    if (!canvasRef.current || isRecognizing || !isModelReady || isStarting) {
+    if (!canvasRef.current || isRecognizing || !isModelReady || isStarting || isH1ReferenceOnlyQuestion) {
       return "";
     }
 
@@ -4444,6 +4449,11 @@ function QuestPageInner() {
                     {renderPrompt(currentItem, currentType?.type_id, currentType?.display_name ?? currentType?.type_name)}
                   </span>
                 </div>
+                {isH1ReferenceOnlyQuestion && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50/95 px-3 py-2 text-sm font-bold text-amber-900">
+                    このカードは例題表示のみです。右下の「次へ」で進めます。
+                  </div>
+                )}
                 {isQuadraticRootsQuestion ? (
                   <div
                     ref={qaAnswerRef}
@@ -4847,7 +4857,7 @@ function QuestPageInner() {
               isPlaying={status === "playing"}
               isStarting={isStarting}
               isAnswerLocked={isAnswerLockedByExplanation}
-              canSubmit={canSubmitCurrentAnswer}
+              canSubmit={canSubmitResolved}
               canUseKeyToken={canUseKeyToken}
               onInput={handleInput}
               onDelete={handleDelete}
@@ -4862,7 +4872,7 @@ function QuestPageInner() {
               isPlaying={status === "playing"}
               isStarting={isStarting}
               isAnswerLocked={isAnswerLockedByExplanation}
-              canSubmit={canSubmitCurrentAnswer}
+              canSubmit={canSubmitResolved}
               canUseKeyToken={canUseKeyToken}
               onInput={handleInput}
               onDelete={handleDelete}
@@ -4877,7 +4887,7 @@ function QuestPageInner() {
               isPlaying={status === "playing"}
               isStarting={isStarting}
               isAnswerLocked={isAnswerLockedByExplanation}
-              canSubmit={canSubmitCurrentAnswer}
+              canSubmit={canSubmitResolved}
               canUseKeyToken={canUseKeyToken}
               onInput={handleInput}
               onDelete={handleDelete}

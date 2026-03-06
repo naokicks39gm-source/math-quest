@@ -1,8 +1,9 @@
 {
   "version": "v2",
-  "generated_at": "2026-03-06T07:40:00.661Z",
+  "generated_at": "2026-03-06T08:31:41.814Z",
   "notes": [
-    "H1 rebuilt as seed-only example catalog with fine-grained lesson groups."
+    "H1 rebuilt as seed-only example catalog with fine-grained lesson groups.",
+    "H1 extended through H1-15 with seed-only example lessons."
   ],
   "grades": [
     {
@@ -1936,6 +1937,2826 @@
                 {
                   "prompt": "(x - 6)^2 = 49 を解け",
                   "answer": "-1,13"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "H1-8",
+          "category_name": "H1-8 二次方程式（解の公式）",
+          "types": [
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FORMULA_1_BASIC",
+              "type_name": "H1-8-1 基本",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FORMULA_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + 3x − 4 = 0 を解の公式で解け",
+                  "answer": "-4,1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FORMULA_2_COEFF",
+              "type_name": "H1-8-2 係数付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FORMULA_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "2x² + 3x − 2 = 0 を解の公式で解け",
+                  "answer": "-2,1/2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FORMULA_3_NEG_COEFF",
+              "type_name": "H1-8-3 負の係数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FORMULA_NEG_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − 5x + 6 = 0 を解の公式で解け",
+                  "answer": "2,3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FORMULA_4_NEG_B",
+              "type_name": "H1-8-4 bが負",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FORMULA_NEG_B"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − 4x − 5 = 0 を解の公式で解け",
+                  "answer": "-1,5"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FORMULA_5_A_NE_1",
+              "type_name": "H1-8-5 係数a≠1",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FORMULA_A_NOT_1"
+              },
+              "example_items": [
+                {
+                  "prompt": "3x² + 5x − 2 = 0 を解の公式で解け",
+                  "answer": "-2,1/3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FORMULA_6_FRACTION",
+              "type_name": "H1-8-6 分数解",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FORMULA_FRACTION"
+              },
+              "example_items": [
+                {
+                  "prompt": "2x² + x − 3 = 0 を解の公式で解け",
+                  "answer": "-3/2,1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FORMULA_7_IRRATIONAL",
+              "type_name": "H1-8-7 無理数解",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FORMULA_IRRATIONAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + x − 1 = 0 を解の公式で解け",
+                  "answer": "(-1-sqrt(5))/2,(-1+sqrt(5))/2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FORMULA_8_DISC_SQUARE",
+              "type_name": "H1-8-8 判別式平方数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FORMULA_DISC_SQUARE"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + 6x + 5 = 0 を解の公式で解け",
+                  "answer": "-5,-1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FORMULA_9_DISC_NON_SQUARE",
+              "type_name": "H1-8-9 判別式非平方数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FORMULA_DISC_NON_SQUARE"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + 2x − 3 = 0 を解の公式で解け",
+                  "answer": "-3,1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FORMULA_10_DECIMAL",
+              "type_name": "H1-8-10 小数係数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FORMULA_DECIMAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "0.5x² + 2x − 1 = 0 を解の公式で解け",
+                  "answer": "-2-sqrt(6),-2+sqrt(6)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FORMULA_11_REARRANGED",
+              "type_name": "H1-8-11 整理型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FORMULA_REARRANGED"
+              },
+              "example_items": [
+                {
+                  "prompt": "4x² − 4x − 3 = 0 を解の公式で解け",
+                  "answer": "-1/2,3/2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.EQ.QUAD_ROOTS_FORMULA_12_GENERAL",
+              "type_name": "H1-8-12 総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "pair"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_ROOTS_FORMULA_GENERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "3x² − x − 2 = 0 を解の公式で解け",
+                  "answer": "-2/3,1"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "H1-9",
+          "category_name": "H1-9 判別式",
+          "types": [
+            {
+              "type_id": "H1.AL.DISC.H1_9_1_VALUE_BASIC",
+              "type_name": "H1-9-1 判別式の計算",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "DISC_VALUE_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + 3x − 4 = 0 の判別式 D を求めよ",
+                  "answer": "25"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.DISC.H1_9_2_COUNT_POSITIVE",
+              "type_name": "H1-9-2 解の個数（D>0）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "DISC_COUNT_POSITIVE"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − 5x + 4 = 0 の解の個数を求めよ",
+                  "answer": "2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.DISC.H1_9_3_COUNT_ZERO",
+              "type_name": "H1-9-3 解の個数（D=0）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "DISC_COUNT_ZERO"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − 4x + 4 = 0 の解の個数を求めよ",
+                  "answer": "1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.DISC.H1_9_4_COUNT_NEGATIVE",
+              "type_name": "H1-9-4 解の個数（D<0）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "DISC_COUNT_NEGATIVE"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + 2x + 5 = 0 の解の個数を求めよ",
+                  "answer": "0"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.DISC.H1_9_5_COUNT_APPLICATION",
+              "type_name": "H1-9-5 判別式応用",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "DISC_COUNT_APPLICATION"
+              },
+              "example_items": [
+                {
+                  "prompt": "2x² − 3x − 2 = 0 の解の個数を求めよ",
+                  "answer": "2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.DISC.H1_9_6_COUNT_COEFF",
+              "type_name": "H1-9-6 係数付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "DISC_COUNT_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "3x² + 2x + 1 = 0 の解の個数を求めよ",
+                  "answer": "0"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.DISC.H1_9_7_VALUE_COEFF",
+              "type_name": "H1-9-7 判別式計算",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "DISC_VALUE_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "2x² + x − 3 = 0 の判別式 D を求めよ",
+                  "answer": "25"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.DISC.H1_9_8_DOUBLE_ROOT",
+              "type_name": "H1-9-8 重解判定",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "DISC_DOUBLE_ROOT"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + 6x + 9 = 0 は重解をもつか",
+                  "answer": "もつ"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.DISC.H1_9_9_COUNT_GENERAL",
+              "type_name": "H1-9-9 判別式総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "DISC_COUNT_GENERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "4x² − 4x + 1 = 0 の解の個数を求めよ",
+                  "answer": "1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.DISC.H1_9_10_NO_REAL",
+              "type_name": "H1-9-10 実数解なし",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "DISC_COUNT_NO_REAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + x + 1 = 0 の解の個数を求めよ",
+                  "answer": "0"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "H1-10",
+          "category_name": "H1-10 二次関数",
+          "types": [
+            {
+              "type_id": "H1.AL.QUAD_FUNC.H1_10_1_BASIC_VERTEX",
+              "type_name": "H1-10-1 基本形",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_FUNC_VERTEX_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² のグラフの頂点を求めよ",
+                  "answer": "(0,0)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_FUNC.H1_10_2_OPENING",
+              "type_name": "H1-10-2 開き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_FUNC_OPENING"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = 2x² のグラフは上に開くか下に開くか",
+                  "answer": "上に開く"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_FUNC.H1_10_3_AXIS",
+              "type_name": "H1-10-3 軸",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_FUNC_AXIS"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 4x の軸を求めよ",
+                  "answer": "x = 2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_FUNC.H1_10_4_VERTEX",
+              "type_name": "H1-10-4 頂点",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_FUNC_VERTEX"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 4x + 3 の頂点を求めよ",
+                  "answer": "(2,-1)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_FUNC.H1_10_5_COMPLETE_SQUARE",
+              "type_name": "H1-10-5 平方完成",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_FUNC_COMPLETE_SQUARE"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 6x + 5 を平方完成せよ",
+                  "answer": "y = (x - 3)² - 4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_FUNC.H1_10_6_VERTEX_FORM",
+              "type_name": "H1-10-6 頂点形式",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_FUNC_VERTEX_FORM"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 6x + 5 の頂点を求めよ",
+                  "answer": "(3,-4)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_FUNC.H1_10_7_TRANSLATE_VERTICAL",
+              "type_name": "H1-10-7 上下移動",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_FUNC_TRANSLATE_VERTICAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² + 3 のグラフは y = x² のグラフをどの方向に移動したものか",
+                  "answer": "上に3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_FUNC.H1_10_8_TRANSLATE_HORIZONTAL",
+              "type_name": "H1-10-8 左右移動",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_FUNC_TRANSLATE_HORIZONTAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = (x − 2)² のグラフは y = x² のグラフをどの方向に移動したものか",
+                  "answer": "右に2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_FUNC.H1_10_9_AXIS_VERTEX",
+              "type_name": "H1-10-9 軸と頂点",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_FUNC_AXIS_VERTEX"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 2x − 3 の軸と頂点を求めよ",
+                  "answer": "軸: x = 1, 頂点: (1,-4)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_FUNC.H1_10_10_GRAPH_READ",
+              "type_name": "H1-10-10 グラフ読み取り",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_FUNC_GRAPH_READ"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = (x − 1)² − 4 の頂点を求めよ",
+                  "answer": "(1,-4)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_FUNC.H1_10_11_GENERAL",
+              "type_name": "H1-10-11 二次関数総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_FUNC_GENERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = 2x² − 8x + 6 の頂点と軸を求めよ",
+                  "answer": "頂点: (2,-2), 軸: x = 2"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "H1-11",
+          "category_name": "H1-11 二次関数の最大・最小",
+          "types": [
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_1_MIN_BASIC",
+              "type_name": "H1-11-1 基本",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_MIN_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² の最小値を求めよ",
+                  "answer": "0"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_2_MIN_VERTEX",
+              "type_name": "H1-11-2 頂点型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_MIN_VERTEX"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = (x − 2)² の最小値を求めよ",
+                  "answer": "0"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_3_MIN_COMPLETE",
+              "type_name": "H1-11-3 平方完成型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_MIN_COMPLETE"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 4x + 5 の最小値を求めよ",
+                  "answer": "1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_4_MIN_UPWARD",
+              "type_name": "H1-11-4 上に開く",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_MIN_UPWARD"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 6x + 10 の最小値を求めよ",
+                  "answer": "1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_5_MAX_DOWNWARD",
+              "type_name": "H1-11-5 下に開く",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_MAX_DOWNWARD"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = −x² + 4x の最大値を求めよ",
+                  "answer": "4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_6_MAX_NO_INTERVAL",
+              "type_name": "H1-11-6 区間なし最大最小",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_MAX_NO_INTERVAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = −x² + 2x + 3 の最大値を求めよ",
+                  "answer": "4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_7_INTERVAL",
+              "type_name": "H1-11-7 区間あり",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_INTERVAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 2x − 3 （0 ≦ x ≦ 3）の最大値と最小値を求めよ",
+                  "answer": "最大値 0, 最小値 -4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_8_ENDPOINT",
+              "type_name": "H1-11-8 端点比較",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_ENDPOINT"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 4x + 1 （1 ≦ x ≦ 4）の最大値と最小値を求めよ",
+                  "answer": "最大値 1, 最小値 -3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_9_VERTEX_OUTSIDE",
+              "type_name": "H1-11-9 頂点が区間外",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_VERTEX_OUTSIDE"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 6x + 5 （4 ≦ x ≦ 7）の最大値と最小値を求めよ",
+                  "answer": "最大値 12, 最小値 -3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_10_GENERAL",
+              "type_name": "H1-11-10 二次関数総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_GENERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = −x² + 6x − 5 （0 ≦ x ≦ 4）の最大値と最小値を求めよ",
+                  "answer": "最大値 4, 最小値 -5"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_11_LITERAL_MIN_BASIC",
+              "type_name": "H1-11-11 文字係数（基本）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_LITERAL_MIN_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = ax² の最小値を求めよ（a > 0）",
+                  "answer": "0"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_12_LITERAL_MAX_BASIC",
+              "type_name": "H1-11-12 文字係数（最大値）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_LITERAL_MAX_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = −ax² の最大値を求めよ（a > 0）",
+                  "answer": "0"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_13_LITERAL_COMPLETE",
+              "type_name": "H1-11-13 文字係数（平方完成）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_LITERAL_COMPLETE"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 2ax + a² の最小値を求めよ",
+                  "answer": "0"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_14_LITERAL_VERTEX",
+              "type_name": "H1-11-14 文字係数（頂点）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_LITERAL_VERTEX"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 2ax + 3 の最小値を求めよ",
+                  "answer": "3 - a²"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_15_LITERAL_VERTEX_FORM",
+              "type_name": "H1-11-15 文字係数（頂点形式）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_LITERAL_VERTEX_FORM"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = (x − a)² + 1 の最小値を求めよ",
+                  "answer": "1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_16_LITERAL_INTERVAL",
+              "type_name": "H1-11-16 文字係数（区間あり）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_LITERAL_INTERVAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 2ax + 1 （0 ≦ x ≦ 2）の最小値を求めよ",
+                  "answer": "場合分け"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_17_LITERAL_ENDPOINT",
+              "type_name": "H1-11-17 文字係数（端点比較）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_LITERAL_ENDPOINT"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − ax （0 ≦ x ≦ 3）の最大値を求めよ",
+                  "answer": "場合分け"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_18_LITERAL_VERTEX_POS",
+              "type_name": "H1-11-18 文字係数（頂点位置）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_LITERAL_VERTEX_POS"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 2ax + 4 （0 ≦ x ≦ 4）の最小値を求めよ",
+                  "answer": "場合分け"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_19_LITERAL_CASE",
+              "type_name": "H1-11-19 文字係数（場合分け）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_LITERAL_CASE"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 2ax （0 ≦ x ≦ 3）の最小値を求めよ",
+                  "answer": "場合分け"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_EXT.H1_11_20_LITERAL_GENERAL",
+              "type_name": "H1-11-20 文字係数総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_EXT_LITERAL_GENERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = −x² + ax （0 ≦ x ≦ 4）の最大値を求めよ",
+                  "answer": "場合分け"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "H1-12",
+          "category_name": "H1-12 二次不等式",
+          "types": [
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_1_BASIC",
+              "type_name": "H1-12-1 基本",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_BASIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − 5x + 6 > 0 を解け",
+                  "answer": "x < 2, 3 < x"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_2_FACTOR",
+              "type_name": "H1-12-2 因数分解型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_FACTOR"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − x − 6 > 0 を解け",
+                  "answer": "x < -2, 3 < x"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_3_SIGN_REVERSE",
+              "type_name": "H1-12-3 不等号反転",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_SIGN_REVERSE"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − 4x + 3 < 0 を解け",
+                  "answer": "1 < x < 3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_4_DIFF_SQ",
+              "type_name": "H1-12-4 平方差型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_DIFF_SQ"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − 9 > 0 を解け",
+                  "answer": "x < -3, 3 < x"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_5_DOUBLE_ROOT",
+              "type_name": "H1-12-5 重解型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_DOUBLE_ROOT"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − 4x + 4 ≥ 0 を解け",
+                  "answer": "すべての実数"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_6_FORMULA",
+              "type_name": "H1-12-6 解の公式型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_FORMULA"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + x − 1 > 0 を解け",
+                  "answer": "x < (-1-sqrt(5))/2, (-1+sqrt(5))/2 < x"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_7_FORMULA_COEFF",
+              "type_name": "H1-12-7 解の公式型（係数付き）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_FORMULA_COEFF"
+              },
+              "example_items": [
+                {
+                  "prompt": "2x² + x − 3 < 0 を解け",
+                  "answer": "-3/2 < x < 1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_8_FORMULA_IRRATIONAL",
+              "type_name": "H1-12-8 解の公式型（無理数解）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_FORMULA_IRRATIONAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + 2x − 3 < 0 を解け",
+                  "answer": "-3 < x < 1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_9_FORMULA_FRACTION",
+              "type_name": "H1-12-9 解の公式型（分数解）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_FORMULA_FRACTION"
+              },
+              "example_items": [
+                {
+                  "prompt": "3x² − x − 1 > 0 を解け",
+                  "answer": "x < (1-sqrt(13))/6, (1+sqrt(13))/6 < x"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_10_GRAPH",
+              "type_name": "H1-12-10 グラフ型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_GRAPH"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − 3x − 4 ≤ 0 を解け",
+                  "answer": "-1 ≤ x ≤ 4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_11_INTERVAL",
+              "type_name": "H1-12-11 区間型",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_INTERVAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − 4x − 5 ≤ 0 を解け",
+                  "answer": "-1 ≤ x ≤ 5"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_12_NEGATE",
+              "type_name": "H1-12-12 符号反転",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_NEGATE"
+              },
+              "example_items": [
+                {
+                  "prompt": "−x² + 4x − 3 > 0 を解け",
+                  "answer": "1 < x < 3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_13_LITERAL",
+              "type_name": "H1-12-13 文字係数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_LITERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − ax + 1 > 0 を解け",
+                  "answer": "a により場合分け"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_14_LITERAL_COMPLETE",
+              "type_name": "H1-12-14 文字係数（平方完成）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_LITERAL_COMPLETE"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − 2ax + a² ≤ 0 を解け",
+                  "answer": "x = a"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_15_ALL_REAL",
+              "type_name": "H1-12-15 すべての実数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_ALL_REAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + 4x + 5 > 0 を解け",
+                  "answer": "すべての実数"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_16_ALL_REAL_COMPLETE",
+              "type_name": "H1-12-16 すべての実数（平方完成）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_ALL_REAL_COMPLETE"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + 2x + 2 > 0 を解け",
+                  "answer": "すべての実数"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_17_NO_SOLUTION",
+              "type_name": "H1-12-17 解なし",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_NO_SOLUTION"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + 4x + 5 < 0 を解け",
+                  "answer": "解なし"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_18_ONE_POINT",
+              "type_name": "H1-12-18 1点のみ",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_ONE_POINT"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² − 4x + 4 ≤ 0 を解け",
+                  "answer": "x = 2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_19_DISC_PROOF",
+              "type_name": "H1-12-19 判別式理解",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_DISC_PROOF"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + 4x + 5 > 0 がすべての実数で成り立つことを判別式を用いて示せ",
+                  "answer": "D < 0"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_20_DISC_CONDITION",
+              "type_name": "H1-12-20 判別式条件",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_DISC_CONDITION"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + ax + 1 > 0 がすべての実数で成り立つような a の条件を求めよ",
+                  "answer": "-2 < a < 2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_INEQ.H1_12_21_DISC_APPLICATION",
+              "type_name": "H1-12-21 判別式応用",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_INEQ_DISC_APPLICATION"
+              },
+              "example_items": [
+                {
+                  "prompt": "x² + ax + 4 ≥ 0 がすべての実数で成り立つような a の範囲を求めよ",
+                  "answer": "-4 ≤ a ≤ 4"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "H1-13",
+          "category_name": "H1-13 二次関数と方程式",
+          "types": [
+            {
+              "type_id": "H1.AL.QUAD_REL.H1_13_1_COUNT",
+              "type_name": "H1-13-1 共有点の個数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_REL_COUNT"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 4 と y = 2x の共有点の個数を求めよ",
+                  "answer": "2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_REL.H1_13_2_INTERSECTION",
+              "type_name": "H1-13-2 交点",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_REL_INTERSECTION"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 1 と y = x + 1 の交点を求めよ",
+                  "answer": "(-1,0), (2,3)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_REL.H1_13_3_TANGENT_K",
+              "type_name": "H1-13-3 接する",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_REL_TANGENT_K"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 2x + 1 と y = k が接するときの k を求めよ",
+                  "answer": "0"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_REL.H1_13_4_DISC_CONDITION",
+              "type_name": "H1-13-4 判別式",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_REL_DISC_CONDITION"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 3x + 2 と y = k が異なる2点で交わるような k の条件を求めよ",
+                  "answer": "k > -1/4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_REL.H1_13_5_NO_INTERSECTION",
+              "type_name": "H1-13-5 共有点なし",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_REL_NO_INTERSECTION"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² + 1 と y = 2x の共有点の個数を求めよ",
+                  "answer": "1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_REL.H1_13_6_TANGENT_POINT",
+              "type_name": "H1-13-6 接点",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_REL_TANGENT_POINT"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 4x + 5 と y = 1 が接するときの接点を求めよ",
+                  "answer": "(2,1)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_REL.H1_13_7_LINE_INTERSECTION",
+              "type_name": "H1-13-7 直線との共有点",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_REL_LINE_INTERSECTION"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 2x − 3 と y = x − 1 の共有点を求めよ",
+                  "answer": "((3-sqrt(17))/2,(1-sqrt(17))/2), ((3+sqrt(17))/2,(1+sqrt(17))/2)"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_REL.H1_13_8_LITERAL_CONDITION",
+              "type_name": "H1-13-8 文字係数",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_REL_LITERAL_CONDITION"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − ax + 1 と y = 0 が異なる2点で交わるような a の条件を求めよ",
+                  "answer": "a < -2 または 2 < a"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_REL.H1_13_9_RANGE",
+              "type_name": "H1-13-9 共有点条件",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_REL_RANGE"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 4x + 3 と y = k が共有点をもつような k の範囲を求めよ",
+                  "answer": "k ≥ -1"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.QUAD_REL.H1_13_10_GENERAL",
+              "type_name": "H1-13-10 総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "QUAD_REL_GENERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "y = x² − 2x − 3 と y = kx が異なる2点で交わるような k の条件を求めよ",
+                  "answer": "すべての実数"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "H1-14",
+          "category_name": "H1-14 場合の数",
+          "types": [
+            {
+              "type_id": "H1.AL.COUNT.H1_14_1_TREE",
+              "type_name": "H1-14-1 樹形図",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_TREE"
+              },
+              "example_items": [
+                {
+                  "prompt": "コインを2回投げるとき，結果は何通りあるか",
+                  "answer": "4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_2_PRODUCT",
+              "type_name": "H1-14-2 積の法則",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_PRODUCT_RULE"
+              },
+              "example_items": [
+                {
+                  "prompt": "3種類のシャツと4種類のズボンがある。組み合わせは何通りあるか",
+                  "answer": "12"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_3_LISTING",
+              "type_name": "H1-14-3 数え上げ",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_LISTING"
+              },
+              "example_items": [
+                {
+                  "prompt": "1,2,3 の数字を並べてできる3桁の数は何通りあるか",
+                  "answer": "6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_4_PERMUTATION",
+              "type_name": "H1-14-4 順列",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_PERMUTATION"
+              },
+              "example_items": [
+                {
+                  "prompt": "4人を1列に並べるとき並べ方は何通りあるか",
+                  "answer": "24"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_5_NPR",
+              "type_name": "H1-14-5 nPr",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_NPR"
+              },
+              "example_items": [
+                {
+                  "prompt": "5人の中から3人を選んで並べる方法は何通りあるか",
+                  "answer": "60"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_6_CIRCULAR",
+              "type_name": "H1-14-6 円順列",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_CIRCULAR"
+              },
+              "example_items": [
+                {
+                  "prompt": "4人が円形のテーブルに座る方法は何通りあるか",
+                  "answer": "6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_7_ADJACENT",
+              "type_name": "H1-14-7 順列条件付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_ADJACENT"
+              },
+              "example_items": [
+                {
+                  "prompt": "4人を並べるとき，AとBが隣り合う並べ方は何通りあるか",
+                  "answer": "12"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_8_SEPARATE",
+              "type_name": "H1-14-8 順列条件付き（離れる）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_SEPARATE"
+              },
+              "example_items": [
+                {
+                  "prompt": "4人を並べるとき，AとBが隣り合わない並べ方は何通りあるか",
+                  "answer": "12"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_9_COMBINATION",
+              "type_name": "H1-14-9 組合せ",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_COMBINATION"
+              },
+              "example_items": [
+                {
+                  "prompt": "5人の中から2人を選ぶ方法は何通りあるか",
+                  "answer": "10"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_10_NCR",
+              "type_name": "H1-14-10 nCr",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_NCR"
+              },
+              "example_items": [
+                {
+                  "prompt": "6人の中から3人を選ぶ方法は何通りあるか",
+                  "answer": "20"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_11_INCLUDE_SPECIFIC",
+              "type_name": "H1-14-11 条件付き組合せ",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_INCLUDE_SPECIFIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "5人の中から2人を選ぶとき，特定の1人を必ず含む選び方は何通りあるか",
+                  "answer": "4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_12_EXCLUDE_SPECIFIC",
+              "type_name": "H1-14-12 補集合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_EXCLUDE_SPECIFIC"
+              },
+              "example_items": [
+                {
+                  "prompt": "5人の中から2人を選ぶとき，特定の1人を含まない選び方は何通りあるか",
+                  "answer": "6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_13_AT_LEAST",
+              "type_name": "H1-14-13 少なくとも",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_AT_LEAST"
+              },
+              "example_items": [
+                {
+                  "prompt": "A,B,C,D,E の中から3人選ぶとき，Aを少なくとも1人含む選び方は何通りあるか",
+                  "answer": "6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_14_GROUP_LABELED",
+              "type_name": "H1-14-14 組み分け（区別あり）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_GROUP_LABELED"
+              },
+              "example_items": [
+                {
+                  "prompt": "4人をA組とB組に2人ずつ分ける方法は何通りあるか",
+                  "answer": "6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_15_GROUP_UNLABELED",
+              "type_name": "H1-14-15 組み分け（区別なし）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_GROUP_UNLABELED"
+              },
+              "example_items": [
+                {
+                  "prompt": "4人を2人ずつの2組に分ける方法は何通りあるか",
+                  "answer": "3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_16_GROUP_SIZED",
+              "type_name": "H1-14-16 組み分け（人数指定）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_GROUP_SIZED"
+              },
+              "example_items": [
+                {
+                  "prompt": "5人を2人と3人の2組に分ける方法は何通りあるか",
+                  "answer": "10"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_17_REPEAT_PERM",
+              "type_name": "H1-14-17 重複順列",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_REPEAT_PERM"
+              },
+              "example_items": [
+                {
+                  "prompt": "A,B,C の3文字からなる4文字の並びは何通りあるか",
+                  "answer": "81"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_18_REPEAT_COMB",
+              "type_name": "H1-14-18 重複組合せ",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_REPEAT_COMB"
+              },
+              "example_items": [
+                {
+                  "prompt": "3種類のアイスから4個選ぶ方法は何通りあるか",
+                  "answer": "15"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_19_REPEAT_COMB_FORMULA",
+              "type_name": "H1-14-19 重複組合せ（公式）",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_REPEAT_COMB_FORMULA"
+              },
+              "example_items": [
+                {
+                  "prompt": "5種類の果物から3個選ぶ方法は何通りあるか",
+                  "answer": "35"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.COUNT.H1_14_20_GENERAL",
+              "type_name": "H1-14-20 総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "COUNT_GENERAL"
+              },
+              "example_items": [
+                {
+                  "prompt": "6人の中から3人選んで並べる方法は何通りあるか",
+                  "answer": "120"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category_id": "H1-15",
+          "category_name": "H1-15 確率",
+          "types": [
+            {
+              "type_id": "H1.AL.PROB.H1_15_1_BASIC_DIE_3",
+              "type_name": "H1-15-1 基本確率",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BASIC_DIE_SINGLE"
+              },
+              "example_items": [
+                {
+                  "prompt": "サイコロを1回投げるとき3が出る確率",
+                  "answer": "1/6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_2_BASIC_DIE_EVEN",
+              "type_name": "H1-15-2 基本確率",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BASIC_DIE_EVEN"
+              },
+              "example_items": [
+                {
+                  "prompt": "サイコロを1回投げるとき偶数が出る確率",
+                  "answer": "1/2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_3_COIN_SINGLE",
+              "type_name": "H1-15-3 コイン",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_COIN_SINGLE"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン1回で表の確率",
+                  "answer": "1/2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_4_TREE_HEAD_HEAD",
+              "type_name": "H1-15-4 樹形図",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_TREE_HEAD_HEAD"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン2回で2回とも表",
+                  "answer": "1/4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_5_TREE_ONE_EACH",
+              "type_name": "H1-15-5 樹形図",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_TREE_ONE_EACH"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン2回で表裏1回ずつ",
+                  "answer": "1/2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_6_DICE_SUM_7",
+              "type_name": "H1-15-6 サイコロ2回",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_DICE_SUM_7"
+              },
+              "example_items": [
+                {
+                  "prompt": "サイコロ2回の和が7",
+                  "answer": "1/6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_7_DICE_SAME",
+              "type_name": "H1-15-7 サイコロ2回",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_DICE_SAME"
+              },
+              "example_items": [
+                {
+                  "prompt": "サイコロ2回で同じ目",
+                  "answer": "1/6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_8_CARD_SUM_7",
+              "type_name": "H1-15-8 場合の数併用",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_CARD_SUM_7"
+              },
+              "example_items": [
+                {
+                  "prompt": "1〜5のカードから2枚選び和が7",
+                  "answer": "1/5"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_9_CARD_SAME",
+              "type_name": "H1-15-9 場合の数併用",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "int"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_CARD_SAME"
+              },
+              "example_items": [
+                {
+                  "prompt": "1〜6カード2枚で同じ数",
+                  "answer": "0"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_10_SPADE",
+              "type_name": "H1-15-10 カード",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_CARD_SPADE"
+              },
+              "example_items": [
+                {
+                  "prompt": "トランプ1枚でスペード",
+                  "answer": "1/4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_11_FACE_CARD",
+              "type_name": "H1-15-11 カード",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_CARD_FACE"
+              },
+              "example_items": [
+                {
+                  "prompt": "トランプ1枚で絵札",
+                  "answer": "3/13"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_12_TWO_HEARTS",
+              "type_name": "H1-15-12 カード2枚",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_CARD_TWO_HEARTS"
+              },
+              "example_items": [
+                {
+                  "prompt": "トランプ2枚でハート2枚",
+                  "answer": "13/221"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_13_NOT_ONE",
+              "type_name": "H1-15-13 余事象",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_COMPLEMENT_NOT_ONE"
+              },
+              "example_items": [
+                {
+                  "prompt": "サイコロで1が出ない",
+                  "answer": "5/6"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_14_AT_LEAST_ONE_SIX",
+              "type_name": "H1-15-14 余事象",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_COMPLEMENT_AT_LEAST_ONE_SIX"
+              },
+              "example_items": [
+                {
+                  "prompt": "サイコロ2回で少なくとも1回6",
+                  "answer": "11/36"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_15_AT_LEAST_ONE_HEAD",
+              "type_name": "H1-15-15 余事象",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_COMPLEMENT_AT_LEAST_ONE_HEAD"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン3回で少なくとも1回表",
+                  "answer": "7/8"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_16_ALL_HEADS",
+              "type_name": "H1-15-16 独立試行",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_INDEPENDENT_ALL_HEADS"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン3回すべて表",
+                  "answer": "1/8"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_17_BOTH_EVEN",
+              "type_name": "H1-15-17 独立試行",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_INDEPENDENT_BOTH_EVEN"
+              },
+              "example_items": [
+                {
+                  "prompt": "サイコロ2回とも偶数",
+                  "answer": "1/4"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_18_EXACT_TWO_HEADS_3",
+              "type_name": "H1-15-18 反復試行",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BINOMIAL_EXACT_TWO_OF_THREE"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン3回で表2回",
+                  "answer": "3/8"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_19_EXACT_TWO_HEADS_4",
+              "type_name": "H1-15-19 反復試行",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BINOMIAL_EXACT_TWO_OF_FOUR"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン4回で表2回",
+                  "answer": "3/8"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_20_EXACT_THREE_HEADS_5",
+              "type_name": "H1-15-20 反復試行",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BINOMIAL_EXACT_THREE_OF_FIVE"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン5回で表3回",
+                  "answer": "5/16"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_21_AT_MOST_TWO_4",
+              "type_name": "H1-15-21 高々",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BINOMIAL_AT_MOST_TWO_OF_FOUR"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン4回で高々2回表",
+                  "answer": "11/16"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_22_CONSECUTIVE_HEADS_3",
+              "type_name": "H1-15-22 連続",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_CONSECUTIVE_HEADS_THREE"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン3回で連続表",
+                  "answer": "3/8"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_23_URN_RED_ONE",
+              "type_name": "H1-15-23 玉問題",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_URN_RED_ONE"
+              },
+              "example_items": [
+                {
+                  "prompt": "赤3白2から1個赤",
+                  "answer": "3/5"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_24_URN_TWO_RED",
+              "type_name": "H1-15-24 玉問題",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_URN_TWO_RED"
+              },
+              "example_items": [
+                {
+                  "prompt": "赤3白2から2個とも赤",
+                  "answer": "3/10"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_25_URN_AT_LEAST_ONE_RED",
+              "type_name": "H1-15-25 玉問題",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_URN_AT_LEAST_ONE_RED"
+              },
+              "example_items": [
+                {
+                  "prompt": "赤3白2から少なくとも1赤",
+                  "answer": "9/10"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_26_URN_RED_WHITE",
+              "type_name": "H1-15-26 玉問題",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_URN_RED_WHITE"
+              },
+              "example_items": [
+                {
+                  "prompt": "赤3白2で1個目赤2個目白",
+                  "answer": "3/10"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_27_URN_RED2_WHITE1",
+              "type_name": "H1-15-27 抽出",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_URN_RED2_WHITE1"
+              },
+              "example_items": [
+                {
+                  "prompt": "赤3白2から3個赤2白1",
+                  "answer": "3/5"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_28_URN_SAME_COLOR",
+              "type_name": "H1-15-28 抽出",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_URN_SAME_COLOR"
+              },
+              "example_items": [
+                {
+                  "prompt": "赤4白3から2個同色",
+                  "answer": "3/7"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_29_URN_RED2_WHITE1_OF3",
+              "type_name": "H1-15-29 抽出",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_URN_RED2_WHITE1_OF3"
+              },
+              "example_items": [
+                {
+                  "prompt": "赤4白3から3個赤2白1",
+                  "answer": "18/35"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_30_COND_EVEN_THEN_FOUR",
+              "type_name": "H1-15-30 条件付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_COND_EVEN_THEN_FOUR"
+              },
+              "example_items": [
+                {
+                  "prompt": "偶数が出たとき4",
+                  "answer": "1/3"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_31_COND_RED_THEN_HEART",
+              "type_name": "H1-15-31 条件付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_COND_RED_THEN_HEART"
+              },
+              "example_items": [
+                {
+                  "prompt": "赤と分かったときハート",
+                  "answer": "1/2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_32_COND_SECOND_RED",
+              "type_name": "H1-15-32 条件付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_COND_SECOND_RED"
+              },
+              "example_items": [
+                {
+                  "prompt": "赤3白2で2個目赤",
+                  "answer": "3/5"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_33_COND_LOTTERY",
+              "type_name": "H1-15-33 条件付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_COND_LOTTERY"
+              },
+              "example_items": [
+                {
+                  "prompt": "くじ当たり後次も当たり",
+                  "answer": "例題表示のみ"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_34_COND_ALL_HEADS_GIVEN_ONE",
+              "type_name": "H1-15-34 条件付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_COND_ALL_HEADS_GIVEN_ONE"
+              },
+              "example_items": [
+                {
+                  "prompt": "少なくとも1表のとき3表",
+                  "answer": "1/7"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_35_BAYES_LOTTERY",
+              "type_name": "H1-15-35 ベイズ",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BAYES_LOTTERY"
+              },
+              "example_items": [
+                {
+                  "prompt": "くじ2人目当たり確率",
+                  "answer": "例題表示のみ"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_36_BAYES_URN",
+              "type_name": "H1-15-36 ベイズ",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BAYES_URN"
+              },
+              "example_items": [
+                {
+                  "prompt": "赤白袋2回抽出",
+                  "answer": "例題表示のみ"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_37_BAYES_BOX",
+              "type_name": "H1-15-37 ベイズ",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BAYES_BOX"
+              },
+              "example_items": [
+                {
+                  "prompt": "箱A/Bから玉",
+                  "answer": "例題表示のみ"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_38_EXACT_THREE_HEADS_6",
+              "type_name": "H1-15-38 反復試行",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BINOMIAL_EXACT_THREE_OF_SIX"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン6回で3表",
+                  "answer": "5/16"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_39_AT_LEAST_THREE_HEADS_6",
+              "type_name": "H1-15-39 反復試行",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BINOMIAL_AT_LEAST_THREE_OF_SIX"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン6回少なくとも3表",
+                  "answer": "21/32"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_40_AT_MOST_TWO_HEADS_6",
+              "type_name": "H1-15-40 反復試行",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BINOMIAL_AT_MOST_TWO_OF_SIX"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン6回高々2表",
+                  "answer": "11/32"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_41_DIE_FIVE_ONES_TWO",
+              "type_name": "H1-15-41 反復試行",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BINOMIAL_DIE_TWO_ONES_OF_FIVE"
+              },
+              "example_items": [
+                {
+                  "prompt": "サイコロ5回1が2回",
+                  "answer": "625/3888"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_42_DIE_FIVE_AT_LEAST_ONE_SIX",
+              "type_name": "H1-15-42 反復試行",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_BINOMIAL_DIE_AT_LEAST_ONE_SIX_OF_FIVE"
+              },
+              "example_items": [
+                {
+                  "prompt": "サイコロ5回少なくとも1回6",
+                  "answer": "4651/7776"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_43_COND_AT_LEAST_ONE_HEART",
+              "type_name": "H1-15-43 条件付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "expr"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_COND_AT_LEAST_ONE_HEART"
+              },
+              "example_items": [
+                {
+                  "prompt": "2枚中少なくとも1ハート",
+                  "answer": "例題表示のみ"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_44_COND_SUM_EVEN",
+              "type_name": "H1-15-44 条件付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_COND_SUM_EVEN"
+              },
+              "example_items": [
+                {
+                  "prompt": "和偶数のとき両偶数",
+                  "answer": "1/2"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_45_COND_ALL_HEADS_GIVEN_AT_LEAST_ONE",
+              "type_name": "H1-15-45 条件付き",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_COND_ALL_HEADS_GIVEN_AT_LEAST_ONE"
+              },
+              "example_items": [
+                {
+                  "prompt": "少なくとも1表のとき3表",
+                  "answer": "1/7"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_46_SUM_TEN_3",
+              "type_name": "H1-15-46 総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_GENERAL_SUM_TEN_THREE"
+              },
+              "example_items": [
+                {
+                  "prompt": "サイコロ3回和10",
+                  "answer": "1/8"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_47_AT_LEAST_ONE_ACE_3",
+              "type_name": "H1-15-47 総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_GENERAL_AT_LEAST_ONE_ACE_THREE"
+              },
+              "example_items": [
+                {
+                  "prompt": "カード3枚少なくとも1エース",
+                  "answer": "1201/5525"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_48_CONSECUTIVE_TWO_HEADS_5",
+              "type_name": "H1-15-48 総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_GENERAL_CONSECUTIVE_TWO_HEADS_FIVE"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン5回連続2表",
+                  "answer": "19/32"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_49_ALL_DIFFERENT_4",
+              "type_name": "H1-15-49 総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_GENERAL_ALL_DIFFERENT_FOUR"
+              },
+              "example_items": [
+                {
+                  "prompt": "サイコロ4回異なる目",
+                  "answer": "5/12"
+                }
+              ]
+            },
+            {
+              "type_id": "H1.AL.PROB.H1_15_50_AT_LEAST_FOUR_HEADS_6",
+              "type_name": "H1-15-50 総合",
+              "school": "H1",
+              "curriculum_label": "高1",
+              "answer_format": {
+                "kind": "frac"
+              },
+              "generation_params": {
+                "pattern_id": "PROB_GENERAL_AT_LEAST_FOUR_HEADS_SIX"
+              },
+              "example_items": [
+                {
+                  "prompt": "コイン6回で表4以上",
+                  "answer": "11/32"
                 }
               ]
             }

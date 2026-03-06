@@ -19,7 +19,9 @@ test("H1 uses structured quadratic equation lesson groups", () => {
   const source = read("src/content/grades/mathquest_h1_types_v1.json");
   assert.match(source, /"type_id":\s*"H1\.AL\.EQ\.QUAD_ROOTS_FACTOR_1_BASIC"/);
   assert.match(source, /"type_id":\s*"H1\.AL\.EQ\.QUAD_ROOTS_SQ_1_BASIC"/);
+  assert.match(source, /"type_id":\s*"H1\.AL\.EQ\.QUAD_ROOTS_FORMULA_1_BASIC"/);
   assert.match(source, /"prompt":\s*"x\^2 \+ 5x \+ 6 = 0 を解け"/);
+  assert.match(source, /"prompt":\s*"x² \+ 3x − 4 = 0 を解の公式で解け"/);
   assert.match(source, /"prompt":\s*"\(x - 1\)\^2 = 1\/4 を解け"/);
 });
 
@@ -47,6 +49,7 @@ test("quest page has dual answer slots for quadratic roots", () => {
   const source = read("src/app/quest/page.tsx");
   assert.match(source, /const isQuadraticRootsType = \(typeId\?: string\) =>/);
   assert.match(source, /QUAD_ROOTS\(\?:_\|\$\)/);
+  assert.match(source, /const isH1ReferenceOnlyType =/);
   assert.match(source, /const \[quadraticAnswers, setQuadraticAnswers\] = useState<\[string, string\]>/);
   assert.match(source, /aria-label="recognized-answer-1"/);
   assert.match(source, /aria-label="recognized-answer-2"/);

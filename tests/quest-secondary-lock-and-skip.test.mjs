@@ -10,7 +10,7 @@ test("answer operations are locked while secondary explanation is open", () => {
   assert.match(source, /const isAnswerLockedByExplanation = isSecondaryQuest && showSecondaryExplanation/);
   assert.match(source, /if \(status !== 'playing' \|\| isStarting \|\| isAnswerLockedByExplanation\) return;/);
   assert.match(source, /isAnswerLocked=\{isAnswerLockedByExplanation\}/);
-  assert.match(source, /canSubmit=\{canSubmitCurrentAnswer\}/);
+  assert.match(source, /canSubmit=\{canSubmitResolved\}/);
   assert.match(hsKeypadSource, /disabled=\{baseDisabled \|\| !canSubmit\}/);
   assert.match(source, /if \(isSecondaryQuest\) \{\s*setShowSecondaryHint\(false\);\s*setShowSecondaryExplanation\(true\);\s*\}/);
 });
