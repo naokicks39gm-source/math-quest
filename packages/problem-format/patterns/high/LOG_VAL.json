@@ -1,0 +1,18 @@
+{
+  "pattern_id": "LOG_VAL",
+  "problem_template": "log_{a}({pow(a,b)}) =",
+  "variables": {
+    "a": { "choices": [2, 3, 4, 5] },
+    "b": { "min": 2, "max": 5 }
+  },
+  "answer_expression": "b",
+  "hint_templates": [
+    "① 対数は a^x = N を満たす x",
+    "a = {a}, N = {pow(a,b)}",
+    "② x を求める"
+  ],
+  "explanation_template": [
+    "log_{a}({pow(a,b)})",
+    "= {answer}"
+  ]
+}

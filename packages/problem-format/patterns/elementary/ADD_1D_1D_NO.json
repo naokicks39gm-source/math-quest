@@ -1,0 +1,19 @@
+{
+  "pattern_id": "ADD_1D_1D_NO",
+  "problem_template": "{a} + {b} =",
+  "variables": {
+    "a": { "min": 1, "max": 9 },
+    "b": { "min": 1, "max": 9 }
+  },
+  "constraint": "a + b < 10",
+  "answer_expression": "a + b",
+  "hint_templates": [
+    "① 1のくらいどうしをたします",
+    "{a} + {b} をそのまま計算",
+    "② 10をこえないかを確認"
+  ],
+  "explanation_template": [
+    "{a} + {b}",
+    "= {answer}"
+  ]
+}

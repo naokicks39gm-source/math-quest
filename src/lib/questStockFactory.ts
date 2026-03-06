@@ -12,6 +12,7 @@ import {
   generateFactorTrinomEntries
 } from "@/lib/questGenerators/factorGcf";
 import { generateExpRulesEntries, generateQuadRootsEntries, remixSecondaryExprFromSeed } from "@/lib/questGenerators/secondaryExpr";
+import { buildDslEntriesForType } from "packages/problem-format";
 
 type AnswerFormat = {
   kind: "int" | "dec" | "frac" | "pair" | "expr";
@@ -876,6 +877,10 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
   const expanded = expandEntriesToAtLeast(normalizedSeed, targetCount).map(normalizeJ1IntEntry);
   let unique = uniqueByPromptAndEquivalent(expanded);
   let reasonDetail: StockReasonDetail | undefined;
+  const dslEntries = hasPattern ? buildDslEntriesForType(normalizedType, patternId, targetCount) : [];
+  if (dslEntries.length > 0) {
+    unique = uniqueByPromptAndEquivalent([...dslEntries, ...unique].map(normalizeJ1IntEntry));
+  }
   const strategy = hasPattern ? STOCK_STRATEGIES[patternId] : undefined;
   if (hasPattern && strategy) {
     const generatedEntries = strategy(normalizedType, patternId, targetCount);

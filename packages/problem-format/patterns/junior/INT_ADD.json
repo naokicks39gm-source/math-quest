@@ -1,0 +1,18 @@
+{
+  "pattern_id": "INT_ADD",
+  "problem_template": "({a}) + ({b}) =",
+  "variables": {
+    "a": { "min": -9, "max": 9, "exclude": [0] },
+    "b": { "min": -9, "max": 9, "exclude": [0] }
+  },
+  "answer_expression": "a + b",
+  "hint_templates": [
+    "① 正負の数は符号と絶対値に注目",
+    "({a}) + ({b}) を符号つきで計算",
+    "② 結果の符号を確認"
+  ],
+  "explanation_template": [
+    "({a}) + ({b})",
+    "= {answer}"
+  ]
+}
