@@ -787,6 +787,34 @@ const uniqueByPromptAndEquivalent = (entries: QuestEntry[]) => {
   return unique;
 };
 
+type DslStockBuildOptions = {
+  targetCount: number;
+  batchSize?: number;
+  maxAttempts?: number;
+};
+
+const buildDslStock = (type: TypeDef, patternId: string, options: DslStockBuildOptions) => {
+  const targetCount = Math.max(0, options.targetCount);
+  const batchSize = Math.max(1, Math.trunc(options.batchSize ?? 200));
+  const maxAttempts = Math.max(1, Math.trunc(options.maxAttempts ?? 5));
+
+  let unique: QuestEntry[] = [];
+  let attempts = 0;
+  while (attempts < maxAttempts && unique.length < targetCount) {
+    attempts += 1;
+    const batchEntries = buildDslEntriesForType(type, patternId, batchSize, {
+      generationCount: batchSize
+    }).map(normalizeJ1IntEntry);
+    unique = uniqueByPromptAndEquivalent([...unique, ...batchEntries]);
+  }
+
+  return {
+    entries: unique,
+    attempts,
+    maxAttempts
+  };
+};
+
 type StockGenerationStrategy = (type: TypeDef, patternId: string, targetCount: number) => QuestEntry[];
 
 const STOCK_STRATEGIES: Record<string, StockGenerationStrategy> = {
@@ -875,12 +903,17 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
       buildMs: Date.now() - startedAt
     };
   }
-  const expanded = expandEntriesToAtLeast(normalizedSeed, targetCount).map(normalizeJ1IntEntry);
-  let unique = uniqueByPromptAndEquivalent(expanded);
+  let unique = uniqueByPromptAndEquivalent(normalizedSeed);
   let reasonDetail: StockReasonDetail | undefined;
-  const dslEntries = hasPattern ? buildDslEntriesForType(normalizedType, patternId, targetCount) : [];
-  if (dslEntries.length > 0) {
-    unique = uniqueByPromptAndEquivalent([...dslEntries, ...unique].map(normalizeJ1IntEntry));
+  if (hasPattern) {
+    const dslStock = buildDslStock(normalizedType, patternId, {
+      targetCount,
+      batchSize: 200,
+      maxAttempts: 5
+    });
+    if (dslStock.entries.length > 0) {
+      unique = uniqueByPromptAndEquivalent([...dslStock.entries, ...unique].map(normalizeJ1IntEntry));
+    }
   }
   const strategy = hasPattern ? STOCK_STRATEGIES[patternId] : undefined;
   if (hasPattern && strategy) {
@@ -896,16 +929,9 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
     const deterministic = buildDeterministicAdd1D1D(normalizedType, patternId);
     unique = uniqueByPromptAndEquivalent([...deterministic, ...unique].map(normalizeJ1IntEntry));
   }
-  if (unique.length < Math.min(5, targetCount) && hasPattern) {
+  if (unique.length < targetCount && hasPattern) {
     const fallbackEntries = buildPatternFallbackEntries(normalizedType, patternId, targetCount);
     unique = uniqueByPromptAndEquivalent([...unique, ...fallbackEntries].map(normalizeJ1IntEntry));
-  }
-  if (unique.length < Math.min(5, targetCount)) {
-    if (!isFrozenElementaryGrade(gradeId)) {
-      // Keep non-frozen grades extensible via questItemFactory generators without altering displayed text.
-      const reExpanded = expandEntriesToAtLeast(unique, Math.max(5, targetCount)).map(normalizeJ1IntEntry);
-      unique = uniqueByPromptAndEquivalent(reExpanded);
-    }
   }
   unique = filterE1Add2D1DYesToTwoDigits(unique, type.type_id, hasPattern ? patternId : undefined);
   unique = filterE1Phase7To10To20Range(unique, type.type_id);
@@ -913,6 +939,13 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
   unique = filterE2Add2D2DNoNoCarry(unique, type.type_id);
   unique = filterE2Sub2D1DRange(unique, type.type_id);
   unique = filterE2MulDanMixRange(unique, type.type_id);
+  if (unique.length < targetCount) {
+    if (!isFrozenElementaryGrade(gradeId)) {
+      // Keep non-frozen grades extensible via questItemFactory generators without altering displayed text.
+      const reExpanded = expandEntriesToAtLeast(unique, Math.max(5, targetCount)).map(normalizeJ1IntEntry);
+      unique = uniqueByPromptAndEquivalent(reExpanded);
+    }
+  }
   const ordered = reorderAvoidAdjacentSameFamily(shuffle(unique).map(normalizeJ1IntEntry)).slice(0, targetCount);
   const entries = uniqueByPromptAndEquivalent(ordered).slice(0, targetCount);
   const reason = entries.length >= targetCount
@@ -933,12 +966,12 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
   if (process.env.NODE_ENV !== "production") {
     console.debug("[stock-build]", {
       typeId: type.type_id,
-      patternId: hasPattern ? patternId : "",
-      seedCount: normalizedSeed.length,
-      expandedCount: expanded.length,
-      uniqueCount: unique.length,
-      finalCount: entries.length,
-      reason,
+        patternId: hasPattern ? patternId : "",
+        seedCount: normalizedSeed.length,
+        expandedCount: normalizedSeed.length,
+        uniqueCount: unique.length,
+        finalCount: entries.length,
+        reason,
       reasonDetail,
       failureClass,
       buildMs: Date.now() - startedAt
@@ -954,9 +987,9 @@ export const buildTypeStock = (type: TypeDef, targetCount = 50): TypeStockResult
     reason,
     reasonDetail,
     failureClass,
-    expandedCount: expanded.length,
+    expandedCount: normalizedSeed.length,
     uniqueCount: unique.length,
-    generatedCount: expanded.length,
+    generatedCount: normalizedSeed.length,
     buildMs: Date.now() - startedAt
   };
 };

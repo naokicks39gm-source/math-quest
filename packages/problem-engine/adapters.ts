@@ -31,7 +31,7 @@ type QuestEntry = {
 export const generateDslArtifactsForType = (
   type: TypeDef,
   patternId: string,
-  options: { targetCount: number }
+  options: { targetCount: number; generationCount?: number }
 ): PatternArtifact[] => {
   const grade = resolveGradeBucketFromTypeId(type.type_id);
   if (!grade) return [];
@@ -40,7 +40,8 @@ export const generateDslArtifactsForType = (
   const validated = validatePatternSchema(pattern);
   if (!validated.ok) return [];
 
-  const generated = generateProblems(validated.pattern, 200).map((item) => ({
+  const generationCount = Math.max(0, Math.trunc(options.generationCount ?? 200));
+  const generated = generateProblems(validated.pattern, generationCount).map((item) => ({
     prompt: item.problem,
     answer: item.answer,
     hintLines: item.hints,
@@ -49,8 +50,16 @@ export const generateDslArtifactsForType = (
   return generated.slice(0, options.targetCount);
 };
 
-export const buildDslEntriesForType = (type: TypeDef, patternId: string, targetCount: number): QuestEntry[] => {
-  const artifacts = generateDslArtifactsForType(type, patternId, { targetCount });
+export const buildDslEntriesForType = (
+  type: TypeDef,
+  patternId: string,
+  targetCount: number,
+  options?: { generationCount?: number }
+): QuestEntry[] => {
+  const artifacts = generateDslArtifactsForType(type, patternId, {
+    targetCount,
+    generationCount: options?.generationCount
+  });
   return artifacts.map((artifact) => ({
     type,
     item: {

@@ -18,8 +18,11 @@ test("J1 stock path uses example_items only", () => {
 });
 
 test("pattern-based stock generation remains for non-J1 grades", () => {
-  assert.equal(source.includes("const expanded = expandEntriesToAtLeast(normalizedSeed, targetCount).map(normalizeJ1IntEntry);"), true);
+  assert.equal(source.includes("const buildDslStock = (type: TypeDef, patternId: string, options: DslStockBuildOptions) => {"), true);
+  assert.equal(source.includes("while (attempts < maxAttempts && unique.length < targetCount) {"), true);
+  assert.equal(source.includes("buildDslEntriesForType(type, patternId, batchSize, {"), true);
   assert.equal(source.includes("const strategy = hasPattern ? STOCK_STRATEGIES[patternId] : undefined;"), true);
   assert.equal(source.includes("if (hasPattern && strategy) {"), true);
+  assert.equal(source.includes("if (unique.length < targetCount && hasPattern) {"), true);
   assert.equal(source.includes("if (!isFrozenElementaryGrade(gradeId)) {"), true);
 });

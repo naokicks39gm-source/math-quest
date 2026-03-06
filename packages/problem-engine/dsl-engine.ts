@@ -18,8 +18,11 @@ export type Pattern = {
 
 export type GeneratedProblem = {
   pattern_id: string;
+  patternKey?: string;
   problem: string;
   answer: string;
+  variables?: Record<string, number>;
+  meta?: Record<string, unknown>;
   hints: string[];
   explanation: string[];
 };
@@ -93,8 +96,10 @@ export const generateProblem = (pattern: Pattern): GeneratedProblem => {
 
   return {
     pattern_id: pattern.pattern_id,
+    patternKey: pattern.pattern_id,
     problem,
     answer,
+    variables: vars,
     hints,
     explanation
   };

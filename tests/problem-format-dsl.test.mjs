@@ -43,8 +43,8 @@ test("curriculum mapping files exist", () => {
 test("quest stock factory uses DSL-first path with legacy fallback remaining", () => {
   const source = read("src/lib/questStockFactory.ts");
   assert.equal(source.includes('import { buildDslEntriesForType } from "packages/problem-engine";'), true);
-  assert.equal(source.includes("const dslEntries = hasPattern ? buildDslEntriesForType(normalizedType, patternId, targetCount) : [];"), true);
-  assert.equal(source.includes("if (dslEntries.length > 0) {"), true);
+  assert.equal(source.includes("const dslStock = buildDslStock(normalizedType, patternId, {"), true);
+  assert.equal(source.includes("if (dslStock.entries.length > 0) {"), true);
   assert.equal(source.includes("const strategy = hasPattern ? STOCK_STRATEGIES[patternId] : undefined;"), true);
   assert.equal(source.includes("buildPatternFallbackEntries"), true);
 });
@@ -66,7 +66,14 @@ test("problem-engine exposes unified generator API", () => {
 
 test("problem-engine adapter uses fixed 200 raw generations and no dedupe", () => {
   const source = read("packages/problem-engine/adapters.ts");
-  assert.equal(source.includes("generateProblems(validated.pattern, 200)"), true);
-  assert.equal(source.includes("uniqueArtifacts"), false);
+  assert.equal(source.includes("const generationCount = Math.max(0, Math.trunc(options.generationCount ?? 200));"), true);
+  assert.equal(source.includes("generateProblems(validated.pattern, generationCount)"), true);
   assert.equal(source.includes("new Set<string>()"), false);
+});
+
+test("GeneratedProblem supports optional extension fields", () => {
+  const source = read("packages/problem-engine/dsl-engine.ts");
+  assert.equal(source.includes("patternKey?: string;"), true);
+  assert.equal(source.includes("variables?: Record<string, number>;"), true);
+  assert.equal(source.includes("meta?: Record<string, unknown>;"), true);
 });

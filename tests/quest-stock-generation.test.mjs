@@ -163,3 +163,27 @@ test("E2 multiplication dan/mix stock applies final guard filter", () => {
   assert.equal(source.includes("return left >= mixRange.min && left <= mixRange.max && right >= 1 && right <= 9;"), true);
   assert.equal(source.includes("unique = filterE2MulDanMixRange(unique, type.type_id);"), true);
 });
+
+test("DSL stock build retries generation with maxAttempts guard", () => {
+  assert.equal(source.includes("type DslStockBuildOptions = {"), true);
+  assert.equal(source.includes("const batchSize = Math.max(1, Math.trunc(options.batchSize ?? 200));"), true);
+  assert.equal(source.includes("const maxAttempts = Math.max(1, Math.trunc(options.maxAttempts ?? 5));"), true);
+  assert.equal(source.includes("while (attempts < maxAttempts && unique.length < targetCount) {"), true);
+  assert.equal(source.includes("buildDslEntriesForType(type, patternId, batchSize, {"), true);
+  assert.equal(source.includes("unique = uniqueByPromptAndEquivalent([...unique, ...batchEntries]);"), true);
+});
+
+test("fallback runs after DSL retry loop, expand is final rescue only", () => {
+  assert.equal(source.includes("const dslStock = buildDslStock(normalizedType, patternId, {"), true);
+  assert.equal(source.includes("if (unique.length < targetCount && hasPattern) {"), true);
+  assert.equal(source.includes("const fallbackEntries = buildPatternFallbackEntries(normalizedType, patternId, targetCount);"), true);
+  assert.equal(source.includes("unique = filterE2MulDanMixRange(unique, type.type_id);"), true);
+  assert.equal(source.includes("const reExpanded = expandEntriesToAtLeast(unique, Math.max(5, targetCount)).map(normalizeJ1IntEntry);"), true);
+
+  const dslIndex = source.indexOf("const dslStock = buildDslStock(normalizedType, patternId, {");
+  const fallbackIndex = source.indexOf("const fallbackEntries = buildPatternFallbackEntries(normalizedType, patternId, targetCount);");
+  const expandIndex = source.indexOf("const reExpanded = expandEntriesToAtLeast(unique, Math.max(5, targetCount)).map(normalizeJ1IntEntry);");
+  assert.equal(dslIndex >= 0, true);
+  assert.equal(fallbackIndex > dslIndex, true);
+  assert.equal(expandIndex > fallbackIndex, true);
+});
