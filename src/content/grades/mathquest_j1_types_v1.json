@@ -38,19 +38,19 @@
               },
               "example_items": [
                 {
-                  "prompt": "(-7) + 3 =",
-                  "answer": "-4",
-                  "prompt_tex": "(-7) + 3 ="
+                  "prompt": "-4 + (-6) =",
+                  "answer": "-10",
+                  "prompt_tex": "-4 + (-6) ="
                 },
                 {
-                  "prompt": "(-9) + (-8) =",
-                  "answer": "-17",
-                  "prompt_tex": "(-9) + (-8) ="
+                  "prompt": "8 + (-3) =",
+                  "answer": "5",
+                  "prompt_tex": "8 + (-3) ="
                 },
                 {
-                  "prompt": "7 + (-10) =",
-                  "answer": "-3",
-                  "prompt_tex": "7 + (-10) ="
+                  "prompt": "-7 + 5 =",
+                  "answer": "-2",
+                  "prompt_tex": "-7 + 5 ="
                 }
               ]
             },
@@ -77,19 +77,19 @@
               },
               "example_items": [
                 {
-                  "prompt": "5 - (-12) =",
-                  "answer": "17",
-                  "prompt_tex": "5 - (-12) ="
+                  "prompt": "6 - (-3) =",
+                  "answer": "9",
+                  "prompt_tex": "6 - (-3) ="
                 },
                 {
-                  "prompt": "(-9) - (-8) =",
-                  "answer": "-1",
-                  "prompt_tex": "(-9) - (-8) ="
+                  "prompt": "-4 - 3 =",
+                  "answer": "-7",
+                  "prompt_tex": "-4 - 3 ="
                 },
                 {
-                  "prompt": "(-4) - 9 =",
-                  "answer": "-13",
-                  "prompt_tex": "(-4) - 9 ="
+                  "prompt": "-5 - (-2) =",
+                  "answer": "-3",
+                  "prompt_tex": "-5 - (-2) ="
                 }
               ]
             },
@@ -116,19 +116,24 @@
               },
               "example_items": [
                 {
-                  "prompt": "(-5) × (-4) =",
-                  "answer": "20",
-                  "prompt_tex": "(-5) \\times (-4) ="
+                  "prompt": "(-3) × (-8) =",
+                  "answer": "24",
+                  "prompt_tex": "(-3) \\times (-8) ="
                 },
                 {
-                  "prompt": "12 × (-3) =",
-                  "answer": "-36",
-                  "prompt_tex": "12 \\times (-3) ="
+                  "prompt": "(-2.5) × 4 =",
+                  "answer": "-10",
+                  "prompt_tex": "(-2.5) \\times 4 ="
                 },
                 {
-                  "prompt": "(-2) × 15 =",
-                  "answer": "-30",
-                  "prompt_tex": "(-2) \\times 15 ="
+                  "prompt": "(-2/3) × 3 =",
+                  "answer": "-2",
+                  "prompt_tex": "\\left(-\\frac{2}{3}\\right) \\times 3 ="
+                },
+                {
+                  "prompt": "(-0.5) × (3/4) =",
+                  "answer": "-3/8",
+                  "prompt_tex": "\\left(-0.5\\right) \\times \\left(\\frac{3}{4}\\right) ="
                 }
               ]
             },
@@ -155,19 +160,19 @@
               },
               "example_items": [
                 {
-                  "prompt": "(-21) ÷ 3 =",
-                  "answer": "-7",
-                  "prompt_tex": "(-21) \\div 3 ="
+                  "prompt": "24 ÷ (-6) =",
+                  "answer": "-4",
+                  "prompt_tex": "24 \\div (-6) ="
                 },
                 {
-                  "prompt": "(-36) ÷ (-3) =",
-                  "answer": "12",
-                  "prompt_tex": "(-36) \\div (-3) ="
+                  "prompt": "-4.8 ÷ 2 =",
+                  "answer": "-2.4",
+                  "prompt_tex": "-4.8 \\div 2 ="
                 },
                 {
-                  "prompt": "30 ÷ (-6) =",
-                  "answer": "-5",
-                  "prompt_tex": "30 \\div (-6) ="
+                  "prompt": "(-3/4) ÷ (1/2) =",
+                  "answer": "-3/2",
+                  "prompt_tex": "\\left(-\\frac{3}{4}\\right) \\div \\left(\\frac{1}{2}\\right) ="
                 }
               ]
             },
@@ -194,19 +199,19 @@
               },
               "example_items": [
                 {
-                  "prompt": "2^5 =",
-                  "answer": "32",
-                  "prompt_tex": "2^{5} ="
+                  "prompt": "3^2 =",
+                  "answer": "9",
+                  "prompt_tex": "3^{2} ="
                 },
                 {
-                  "prompt": "3^4 =",
-                  "answer": "81",
-                  "prompt_tex": "3^{4} ="
+                  "prompt": "(-4)^2 =",
+                  "answer": "16",
+                  "prompt_tex": "\\left(-4\\right)^{2} ="
                 },
                 {
-                  "prompt": "10^3 =",
-                  "answer": "1000",
-                  "prompt_tex": "10^{3} ="
+                  "prompt": "-4^2 =",
+                  "answer": "-16",
+                  "prompt_tex": "-4^{2} ="
                 }
               ]
             },
@@ -293,19 +298,19 @@
               },
               "example_items": [
                 {
-                  "prompt": "6x+9 =",
-                  "answer": "3(2x+3)",
-                  "prompt_tex": "6x+9 ="
+                  "prompt": "3x + 2x =",
+                  "answer": "5x",
+                  "prompt_tex": "3x + 2x ="
                 },
                 {
-                  "prompt": "8y-12 =",
-                  "answer": "4(2y-3)",
-                  "prompt_tex": "8y-12 ="
+                  "prompt": "2x + 3y + 4x =",
+                  "answer": "6x+3y",
+                  "prompt_tex": "2x + 3y + 4x ="
                 },
                 {
-                  "prompt": "15a+10 =",
-                  "answer": "5(3a+2)",
-                  "prompt_tex": "15a+10 ="
+                  "prompt": "2x + 3y + x + y - 4z =",
+                  "answer": "3x+4y-4z",
+                  "prompt_tex": "2x + 3y + x + y - 4z ="
                 }
               ]
             },
@@ -351,19 +356,19 @@
               },
               "example_items": [
                 {
-                  "prompt": "x^2+5x+6 =",
-                  "answer": "(x+2)(x+3)",
-                  "prompt_tex": "x^{2}+5x+6 ="
+                  "prompt": "3x + 2y - x + 5y =",
+                  "answer": "2x+7y",
+                  "prompt_tex": "3x + 2y - x + 5y ="
                 },
                 {
-                  "prompt": "x^2-5x+6 =",
-                  "answer": "(x-2)(x-3)",
-                  "prompt_tex": "x^{2}-5x+6 ="
+                  "prompt": "2(x + y) + 3x =",
+                  "answer": "5x+2y",
+                  "prompt_tex": "2(x + y) + 3x ="
                 },
                 {
-                  "prompt": "x^2+x-6 =",
-                  "answer": "(x+3)(x-2)",
-                  "prompt_tex": "x^{2}+x-6 ="
+                  "prompt": "3(x + 2y) + 2(x + y) =",
+                  "answer": "5x+8y",
+                  "prompt_tex": "3(x + 2y) + 2(x + y) ="
                 }
               ]
             },
@@ -525,19 +530,19 @@
               },
               "example_items": [
                 {
-                  "prompt": "(x+2)(x+5) =",
-                  "answer": "x^2+7x+10",
-                  "prompt_tex": "(x+2)(x+5) ="
+                  "prompt": "3(x + 4) =",
+                  "answer": "3x+12",
+                  "prompt_tex": "3(x + 4) ="
                 },
                 {
-                  "prompt": "(x-3)^2 =",
-                  "answer": "x^2-6x+9",
-                  "prompt_tex": "(x-3)^{2} ="
+                  "prompt": "2(x + y) + 3x =",
+                  "answer": "5x+2y",
+                  "prompt_tex": "2(x + y) + 3x ="
                 },
                 {
-                  "prompt": "(2x-1)(x+4) =",
-                  "answer": "2x^2+7x-4",
-                  "prompt_tex": "(2x-1)(x+4) ="
+                  "prompt": "3(x + 2y) + 2(x + y) =",
+                  "answer": "5x+8y",
+                  "prompt_tex": "3(x + 2y) + 2(x + y) ="
                 }
               ]
             }
@@ -572,19 +577,24 @@
               },
               "example_items": [
                 {
-                  "prompt": "2x + 3 = 11, x =",
+                  "prompt": "x + 5 = 9, x =",
                   "answer": "4",
-                  "prompt_tex": "2x + 3 = 11, x ="
+                  "prompt_tex": "x + 5 = 9, x ="
                 },
                 {
-                  "prompt": "5x - 10 = 0, x =",
+                  "prompt": "0.5x + 2 = 5, x =",
+                  "answer": "6",
+                  "prompt_tex": "0.5x + 2 = 5, x ="
+                },
+                {
+                  "prompt": "(1/2)(x + 6) = 5, x =",
+                  "answer": "4",
+                  "prompt_tex": "\\left(\\frac{1}{2}\\right)(x + 6) = 5, x ="
+                },
+                {
+                  "prompt": "2{ x + 3 } + 4 = 14, x =",
                   "answer": "2",
-                  "prompt_tex": "5x - 10 = 0, x ="
-                },
-                {
-                  "prompt": "3x + 7 = 1, x =",
-                  "answer": "-2",
-                  "prompt_tex": "3x + 7 = 1, x ="
+                  "prompt_tex": "2\\{ x + 3 \\} + 4 = 14, x ="
                 }
               ]
             },
@@ -757,12 +767,12 @@
                   "answer": "2,3"
                 },
                 {
-                  "prompt": "y=-x+5 の (a,b) =",
-                  "answer": "-1,5"
+                  "prompt": "点(1,5) を通る y=2x+b の (a,b) =",
+                  "answer": "2,3"
                 },
                 {
-                  "prompt": "y=4x-7 の (a,b) =",
-                  "answer": "4,-7"
+                  "prompt": "y=2x+3 と平行で切片が -1 の (a,b) =",
+                  "answer": "2,-1"
                 }
               ]
             },
