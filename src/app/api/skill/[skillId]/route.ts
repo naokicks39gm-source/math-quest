@@ -4,6 +4,7 @@ import { getCatalogGrades } from "@/lib/gradeCatalog";
 import { buildTypeStock, pickUniqueQuizFromStock } from "@/lib/questStockFactory";
 import type { GradeDef, TypeDef } from "@/lib/elementaryContent";
 import { dummySkills } from "@/mock/dummySkills";
+import type { SkillPracticeResponse } from "packages/problem-format/skillPracticeResponse";
 
 const STOCK_TARGET = 200;
 const QUIZ_SIZE = 5;
@@ -67,18 +68,17 @@ export async function GET(_request: Request, { params }: SkillRouteContext) {
       );
     }
 
-    return NextResponse.json({
+    const response: SkillPracticeResponse = {
       skillId: skill.id,
-      skillTitle: skill.title,
       problems: picked.map((entry, index) => ({
         id: `${skill.id}-${index}-${entry.type.type_id}`,
         question: entry.item.prompt_tex ?? entry.item.prompt,
         answer: entry.item.answer,
-        typeId: entry.type.type_id,
-        patternId: entry.type.generation_params?.pattern_id ?? null,
         difficulty: typeof entry.item.difficulty === "number" ? entry.item.difficulty : TARGET_DIFFICULTY
       }))
-    });
+    };
+
+    return Response.json(response);
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "unknown_error" },

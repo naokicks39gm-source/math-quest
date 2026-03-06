@@ -4,23 +4,9 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { dummySkills } from "@/mock/dummySkills";
 import { AnswerInput, ProblemCard, ResultView, SessionResultView } from "packages/ui";
+import type { SkillPracticeProblem, SkillPracticeResponse } from "packages/problem-format/skillPracticeResponse";
 
 const TOTAL_QUESTIONS = 5;
-
-type PracticeProblem = {
-  id: string;
-  question: string;
-  answer: string;
-  typeId: string;
-  patternId: string | null;
-  difficulty: number;
-};
-
-type SkillProblemsResponse = {
-  skillId: string;
-  skillTitle: string;
-  problems: PracticeProblem[];
-};
 
 function MockPracticeContent() {
   const router = useRouter();
@@ -37,7 +23,7 @@ function MockPracticeContent() {
   const [result, setResult] = useState<boolean | null>(null);
   const [hasJudgedCurrentQuestion, setHasJudgedCurrentQuestion] = useState(false);
   const [isSessionComplete, setIsSessionComplete] = useState(false);
-  const [problems, setProblems] = useState<PracticeProblem[]>([]);
+  const [problems, setProblems] = useState<SkillPracticeProblem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,20 +49,23 @@ function MockPracticeContent() {
         method: "GET",
         cache: "no-store"
       });
-      const data = (await response.json()) as SkillProblemsResponse | { error?: string };
+      const body = (await response.json()) as SkillPracticeResponse | { error?: string };
 
       if (!response.ok) {
-        throw new Error("error" in data && data.error ? data.error : "failed_to_load_skill_problems");
+        const errorCode = "error" in body && body.error ? body.error : "failed_to_load_skill_problems";
+        throw new Error(errorCode === "skill_not_found" ? "Skill not found" : "Problems unavailable");
       }
 
-      if (!("problems" in data) || data.problems.length !== TOTAL_QUESTIONS) {
-        throw new Error("invalid_problem_count");
+      const data: SkillPracticeResponse = body as SkillPracticeResponse;
+
+      if (!data?.problems?.length || data.problems.length !== TOTAL_QUESTIONS) {
+        throw new Error("Problems unavailable");
       }
 
       setProblems(data.problems);
     } catch (fetchError) {
       setProblems([]);
-      setError(fetchError instanceof Error ? fetchError.message : "failed_to_load_skill_problems");
+      setError(fetchError instanceof Error ? fetchError.message : "Problems unavailable");
     } finally {
       setLoading(false);
     }
@@ -157,8 +146,8 @@ function MockPracticeContent() {
           />
         ) : !currentProblem ? (
           <section className="rounded-[32px] border border-amber-200 bg-amber-50 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
-            <div className="text-sm font-semibold uppercase tracking-[0.35em] text-amber-700">No Problems</div>
-            <p className="mt-3 text-lg font-bold text-amber-900">問題を用意できませんでした。</p>
+            <div className="text-sm font-semibold uppercase tracking-[0.35em] text-amber-700">Problems unavailable</div>
+            <p className="mt-3 text-lg font-bold text-amber-900">Problems unavailable</p>
           </section>
         ) : (
           <>
@@ -192,7 +181,7 @@ function MockPracticeContent() {
 
 export default function MockPracticePage() {
   return (
-    <Suspense fallback={<main className="min-h-screen bg-[radial-gradient(circle_at_top,#fff6d6_0%,#fffaf0_35%,#eef6ff_100%)] px-6 py-10 text-slate-900" />}>
+    <Suspense fallback={<div>Loading...</div>}>
       <MockPracticeContent />
     </Suspense>
   );
