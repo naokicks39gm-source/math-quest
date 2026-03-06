@@ -1,0 +1,24 @@
+[
+  {
+    "id": "E1_ADD_BASIC",
+    "title": "1桁のたし算",
+    "grade": "E1",
+    "patterns": ["E1_ADD_BASIC"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_ADD_CARRY",
+    "title": "くり上がりのたし算",
+    "grade": "E1",
+    "patterns": ["E1_ADD_CARRY"],
+    "prerequisite": ["E1_ADD_BASIC"],
+    "difficulty": 2
+  },
+  {
+    "id": "H1_BINOMIAL",
+    "title": "二項展開",
+    "grade": "H1",
+    "patterns": ["EXPAND_BINOMIAL_BASIC"],
+    "difficulty": 4
+  }
+]

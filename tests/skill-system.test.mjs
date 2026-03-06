@@ -1,0 +1,206 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
+const root = process.cwd();
+
+const transpileTsModule = async (sourcePath, outputPath, replacements = []) => {
+  const tsModule = await import("typescript");
+  const ts = tsModule.default ?? tsModule;
+  let source = fs.readFileSync(sourcePath, "utf8");
+  for (const [from, to] of replacements) {
+    source = source.replaceAll(from, to);
+  }
+  const transpiled = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.ES2020,
+      target: ts.ScriptTarget.ES2020,
+      resolveJsonModule: true,
+      esModuleInterop: true
+    },
+    fileName: path.basename(sourcePath)
+  });
+  fs.writeFileSync(outputPath, transpiled.outputText, "utf8");
+};
+
+const writeJsonModule = (jsonPath, outputPath) => {
+  const raw = fs.readFileSync(jsonPath, "utf8");
+  fs.writeFileSync(outputPath, `export default ${raw};\n`, "utf8");
+};
+
+const withMockedRandom = (values, callback) => {
+  const originalRandom = Math.random;
+  let index = 0;
+  Math.random = () => {
+    const value = values[index] ?? values[values.length - 1] ?? 0;
+    index += 1;
+    return value;
+  };
+
+  try {
+    return callback();
+  } finally {
+    Math.random = originalRandom;
+  }
+};
+
+const loadSkillSystemModules = async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "skill-system-"));
+
+  const expressionEvaluatorSource = path.join(root, "packages/problem-format/expressionEvaluator.ts");
+  const minimalDslSource = path.join(root, "packages/problem-engine/minimal-dsl.ts");
+  const dslEngineSource = path.join(root, "packages/problem-engine/dsl-engine.ts");
+  const skillTypesSource = path.join(root, "packages/skill-system/skillTypes.ts");
+  const skillTreeSource = path.join(root, "packages/skill-system/skillTree.ts");
+  const skillEngineSource = path.join(root, "packages/skill-system/skillEngine.ts");
+
+  const expressionEvaluatorOutput = path.join(tempDir, "expressionEvaluator.mjs");
+  const minimalDslOutput = path.join(tempDir, "minimal-dsl.mjs");
+  const dslEngineOutput = path.join(tempDir, "dsl-engine.mjs");
+  const problemEngineOutput = path.join(tempDir, "problem-engine.mjs");
+  const skillTypesOutput = path.join(tempDir, "skillTypes.mjs");
+  const skillTreeOutput = path.join(tempDir, "skillTree.mjs");
+  const skillEngineOutput = path.join(tempDir, "skillEngine.mjs");
+  const skillsOutput = path.join(tempDir, "skills.mjs");
+  const addBasicOutput = path.join(tempDir, "add-basic.mjs");
+  const addCarryOutput = path.join(tempDir, "add-carry.mjs");
+
+  writeJsonModule(path.join(root, "packages/skill-system/skills.json"), skillsOutput);
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-basic.json"), addBasicOutput);
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-carry.json"), addCarryOutput);
+
+  await transpileTsModule(expressionEvaluatorSource, expressionEvaluatorOutput);
+  await transpileTsModule(minimalDslSource, minimalDslOutput, [
+    ['from "packages/problem-format/expressionEvaluator"', 'from "./expressionEvaluator.mjs"']
+  ]);
+  await transpileTsModule(dslEngineSource, dslEngineOutput, [
+    ['from "packages/problem-format/expressionEvaluator"', 'from "./expressionEvaluator.mjs"'],
+    ['from "packages/problem-engine/minimal-dsl"', 'from "./minimal-dsl.mjs"']
+  ]);
+  fs.writeFileSync(
+    problemEngineOutput,
+    [
+      'export * from "./dsl-engine.mjs";',
+      'import * as dslEngine from "./dsl-engine.mjs";',
+      'globalThis.__skillSystemGenerateProblemsCalls = 0;',
+      'globalThis.__skillSystemGeneratedProblemIdCounter = 0;',
+      'export const generateProblems = (...args) => {',
+      '  globalThis.__skillSystemGenerateProblemsCalls += 1;',
+      '  return dslEngine.generateProblems(...args).map((item) => ({',
+      '    ...item,',
+      '    id: `${item.id}::${globalThis.__skillSystemGeneratedProblemIdCounter++}`',
+      '  }));',
+      '};'
+    ].join("\n"),
+    "utf8"
+  );
+  await transpileTsModule(skillTypesSource, skillTypesOutput);
+  await transpileTsModule(skillTreeSource, skillTreeOutput, [
+    ['from "./skills.json"', 'from "./skills.mjs"']
+  ]);
+  await transpileTsModule(skillEngineSource, skillEngineOutput, [
+    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/add-basic.json"', 'from "./add-basic.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/add-carry.json"', 'from "./add-carry.mjs"'],
+    ['from "./skills.json"', 'from "./skills.mjs"']
+  ]);
+
+  const skillTree = await import(`${pathToFileURL(skillTreeOutput).href}?t=${Date.now()}`);
+  const skillEngine = await import(`${pathToFileURL(skillEngineOutput).href}?t=${Date.now()}`);
+  return { skillTree, skillEngine };
+};
+
+test("skill tree exposes typed skill relationships", async () => {
+  const { skillTree } = await loadSkillSystemModules();
+
+  assert.deepEqual(skillTree.getSkill("E1_ADD_BASIC"), {
+    id: "E1_ADD_BASIC",
+    title: "1桁のたし算",
+    grade: "E1",
+    patterns: ["E1_ADD_BASIC"],
+    difficulty: 1
+  });
+  assert.deepEqual(skillTree.getPrerequisites("E1_ADD_CARRY"), ["E1_ADD_BASIC"]);
+  assert.deepEqual(
+    skillTree.getNextSkills("E1_ADD_BASIC").map((skill) => skill.id),
+    ["E1_ADD_CARRY"]
+  );
+  assert.deepEqual(
+    skillTree.getRootSkills().map((skill) => skill.id).sort(),
+    ["E1_ADD_BASIC", "H1_BINOMIAL"]
+  );
+});
+
+test("generateSkillQuiz returns GeneratedProblem-like items for E1_ADD_BASIC", async () => {
+  const { skillEngine } = await loadSkillSystemModules();
+
+  const generated = skillEngine.generateSkillQuiz("E1_ADD_BASIC", 5);
+
+  assert.equal(generated.length, 5);
+  for (const item of generated) {
+    assert.equal(typeof item.id, "string");
+    assert.equal(typeof item.question, "string");
+    assert.equal(typeof item.answer, "string");
+  }
+});
+
+test("generateSkillQuiz reuses cached stock per pattern", async () => {
+  const { skillEngine } = await loadSkillSystemModules();
+
+  globalThis.__skillSystemGenerateProblemsCalls = 0;
+
+  const first = skillEngine.generateSkillQuiz("E1_ADD_BASIC", 5);
+  const second = skillEngine.generateSkillQuiz("E1_ADD_BASIC", 5);
+
+  assert.equal(first.length, 5);
+  assert.equal(second.length, 5);
+  assert.equal(globalThis.__skillSystemGenerateProblemsCalls, 5);
+  assert.equal(
+    first.every((item) => !second.some((next) => next.id === item.id)),
+    true
+  );
+});
+
+test("generateSkillQuiz reshuffles after stock exhaustion and continues serving quizzes", async () => {
+  const { skillEngine } = await loadSkillSystemModules();
+
+  globalThis.__skillSystemGenerateProblemsCalls = 0;
+
+  const seen = new Set();
+  for (let i = 0; i < 40; i += 1) {
+    const batch = skillEngine.generateSkillQuiz("E1_ADD_BASIC", 5);
+    assert.equal(batch.length, 5);
+    for (const item of batch) {
+      seen.add(item.id);
+    }
+  }
+
+  const reshuffled = withMockedRandom([0], () =>
+    skillEngine.generateSkillQuiz("E1_ADD_BASIC", 5).map((item) => item.id)
+  );
+  const nextBatch = withMockedRandom([0.99], () =>
+    skillEngine.generateSkillQuiz("E1_ADD_BASIC", 5).map((item) => item.id)
+  );
+
+  assert.equal(seen.size >= 50, true);
+  assert.equal(reshuffled.length, 5);
+  assert.equal(nextBatch.length, 5);
+  assert.notDeepEqual(reshuffled, nextBatch);
+  assert.equal(globalThis.__skillSystemGenerateProblemsCalls, 5);
+});
+
+test("generateSkillQuiz throws for unknown skill", async () => {
+  const { skillEngine } = await loadSkillSystemModules();
+  assert.throws(() => skillEngine.generateSkillQuiz("UNKNOWN", 5), /Skill not found/);
+});
+
+test("generateSkillQuiz throws for unresolved pattern entries", async () => {
+  const { skillEngine } = await loadSkillSystemModules();
+  assert.throws(
+    () => skillEngine.generateSkillQuiz("H1_BINOMIAL", 5),
+    /Pattern not found for skill pattern: EXPAND_BINOMIAL_BASIC/
+  );
+});
