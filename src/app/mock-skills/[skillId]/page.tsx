@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { dummySkills } from "@/mock/dummySkills";
+import { getPracticeSkill } from "@/lib/learningSkillCatalog";
 
 type SkillDetailPageProps = {
   params: Promise<{
@@ -10,7 +10,7 @@ type SkillDetailPageProps = {
 
 export default async function SkillDetailPage({ params }: SkillDetailPageProps) {
   const { skillId } = await params;
-  const skill = dummySkills.find((item) => item.id === skillId);
+  const skill = getPracticeSkill(skillId);
 
   if (!skill) {
     notFound();
@@ -29,7 +29,7 @@ export default async function SkillDetailPage({ params }: SkillDetailPageProps) 
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Difficulty</div>
-              <div className="mt-2 text-lg font-bold text-slate-900">{skill.difficulty}</div>
+              <div className="mt-2 text-lg font-bold text-slate-900">{skill.difficultyLabel}</div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">問題数</div>

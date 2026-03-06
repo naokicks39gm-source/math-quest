@@ -1,6 +1,13 @@
+import type { Recommendation } from "packages/learning-engine";
+
 type SessionResultViewProps = {
   score: number;
   totalQuestions: number;
+  difficultyBefore: number;
+  difficultyAfter: number;
+  weakPatternsDetected: number;
+  recommendation: Recommendation;
+  recommendationLabel: string;
   onRetry: () => void;
   onBackToSkills: () => void;
 };
@@ -8,6 +15,11 @@ type SessionResultViewProps = {
 export default function SessionResultView({
   score,
   totalQuestions,
+  difficultyBefore,
+  difficultyAfter,
+  weakPatternsDetected,
+  recommendation,
+  recommendationLabel,
   onRetry,
   onBackToSkills
 }: SessionResultViewProps) {
@@ -18,6 +30,23 @@ export default function SessionResultView({
       <p className="mt-4 text-3xl font-bold text-slate-800">
         {score} / {totalQuestions} correct
       </p>
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Difficulty</div>
+          <div className="mt-2 text-lg font-bold text-slate-900">
+            {difficultyBefore} → {difficultyAfter}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Weak Patterns</div>
+          <div className="mt-2 text-lg font-bold text-slate-900">{weakPatternsDetected}</div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Next Action</div>
+          <div className="mt-2 text-lg font-bold text-slate-900">{recommendationLabel}</div>
+          <div className="mt-1 text-xs text-slate-500">{recommendation.type}</div>
+        </div>
+      </div>
       <div className="mt-6 flex flex-wrap gap-3">
         <button
           type="button"

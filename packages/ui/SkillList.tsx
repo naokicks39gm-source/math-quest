@@ -1,11 +1,10 @@
 "use client";
 
-import type { DummySkill } from "@/mock/dummySkills";
-import SkillCard from "packages/ui/SkillCard";
+import SkillCard, { type SkillCardItem } from "packages/ui/SkillCard";
 
 type SkillListProps = {
-  skills: DummySkill[];
-  onSelect: (skill: DummySkill) => void;
+  skills: SkillCardItem[];
+  onSelect: (skill: SkillCardItem) => void;
 };
 
 export default function SkillList({ skills, onSelect }: SkillListProps) {

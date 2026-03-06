@@ -2,9 +2,20 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { dummySkills } from "@/mock/dummySkills";
+import { getPracticeSkill, practiceSkills } from "@/lib/learningSkillCatalog";
 import { AnswerInput, ProblemCard, ResultView, SessionResultView } from "packages/ui";
-import type { SkillPracticeProblem, SkillPracticeResponse } from "packages/problem-format/skillPracticeResponse";
+import type {
+  LearningSessionAnswerResponse,
+  LearningSessionFinishResponse,
+  LearningSessionStartResponse
+} from "packages/problem-format";
+import {
+  LEARNING_STATE_KEY,
+  loadStateFromClient,
+  type SessionProblem,
+  type LearningState,
+  type Session
+} from "packages/learning-engine";
 
 const TOTAL_QUESTIONS = 5;
 
@@ -13,101 +24,175 @@ function MockPracticeContent() {
   const searchParams = useSearchParams();
   const skillId = searchParams.get("skillId");
   const selectedSkill = useMemo(
-    () => dummySkills.find((skill) => skill.id === skillId) ?? dummySkills[0],
+    () => (skillId ? getPracticeSkill(skillId) : undefined) ?? practiceSkills[0],
     [skillId]
   );
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [correctCount, setCorrectCount] = useState(0);
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState<boolean | null>(null);
   const [hasJudgedCurrentQuestion, setHasJudgedCurrentQuestion] = useState(false);
-  const [isSessionComplete, setIsSessionComplete] = useState(false);
-  const [problems, setProblems] = useState<SkillPracticeProblem[]>([]);
+  const [learningState, setLearningState] = useState<LearningState | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [judgedProblem, setJudgedProblem] = useState<SessionProblem | null>(null);
+  const [resultSummary, setResultSummary] = useState<LearningSessionFinishResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const activeSkillId = selectedSkill.id;
-  const currentProblem = problems[currentIndex] ?? null;
+  const currentProblem = session ? session.problems[session.index] ?? null : null;
+  const displayedProblem = hasJudgedCurrentQuestion ? judgedProblem : currentProblem;
+
+  const persistState = (state: LearningState) => {
+    setLearningState(state);
+    setSession(state.session ?? null);
+    window.localStorage.setItem(LEARNING_STATE_KEY, JSON.stringify(state));
+  };
 
   const resetSessionState = () => {
-    setCurrentIndex(0);
-    setCorrectCount(0);
     setAnswer("");
     setResult(null);
     setHasJudgedCurrentQuestion(false);
-    setIsSessionComplete(false);
+    setLearningState(null);
+    setSession(null);
+    setJudgedProblem(null);
+    setResultSummary(null);
   };
 
-  const loadProblems = async (nextSkillId: string) => {
+  const loadSession = async (nextSkillId: string) => {
     setLoading(true);
     setError(null);
     resetSessionState();
 
     try {
-      const response = await fetch(`/api/skill/${encodeURIComponent(nextSkillId)}`, {
-        method: "GET",
-        cache: "no-store"
+      const state = loadStateFromClient();
+      const response = await fetch("/api/learning/session/start", {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          state,
+          mode: "skill",
+          skillId: nextSkillId
+        })
       });
-      const body = (await response.json()) as SkillPracticeResponse | { error?: string };
+      const body = (await response.json()) as LearningSessionStartResponse | { error?: string };
 
       if (!response.ok) {
-        const errorCode = "error" in body && body.error ? body.error : "failed_to_load_skill_problems";
-        throw new Error(errorCode === "skill_not_found" ? "Skill not found" : "Problems unavailable");
+        throw new Error("error" in body && body.error ? body.error : "Session unavailable");
       }
 
-      const data: SkillPracticeResponse = body as SkillPracticeResponse;
-
-      if (!data?.problems?.length || data.problems.length !== TOTAL_QUESTIONS) {
-        throw new Error("Problems unavailable");
+      const data = body as LearningSessionStartResponse;
+      if (!data.session?.problems?.length || data.session.problems.length !== TOTAL_QUESTIONS) {
+        throw new Error("Session unavailable");
       }
 
-      setProblems(data.problems);
+      persistState(data.state);
     } catch (fetchError) {
-      setProblems([]);
-      setError(fetchError instanceof Error ? fetchError.message : "Problems unavailable");
+      setError(fetchError instanceof Error ? fetchError.message : "Session unavailable");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    void loadProblems(activeSkillId);
+    void loadSession(activeSkillId);
   }, [activeSkillId]);
 
-  const handleJudge = () => {
-    if (!currentProblem) return;
-    const isCorrect = answer.trim() === currentProblem.answer;
-    setResult(isCorrect);
+  const handleJudge = async () => {
+    if (!currentProblem || !learningState || hasJudgedCurrentQuestion) return;
 
-    if (!hasJudgedCurrentQuestion) {
-      if (isCorrect) {
-        setCorrectCount((current) => current + 1);
+    const isCorrect = answer.trim() === currentProblem.problem.answer;
+
+    try {
+      const response = await fetch("/api/learning/session/answer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          state: learningState,
+          correct: isCorrect
+        })
+      });
+      const body = (await response.json()) as LearningSessionAnswerResponse | { error?: string };
+
+      if (!response.ok) {
+        throw new Error("error" in body && body.error ? body.error : "Answer submission failed");
       }
+
+      const data = body as LearningSessionAnswerResponse;
+      setResult(isCorrect);
       setHasJudgedCurrentQuestion(true);
+      setJudgedProblem(currentProblem);
+      persistState(data.state);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Answer submission failed");
     }
   };
 
-  const handleNext = () => {
-    if (!currentProblem) return;
-    if (currentIndex + 1 >= TOTAL_QUESTIONS) {
-      setIsSessionComplete(true);
-      return;
+  const handleNext = async () => {
+    if (!currentProblem || !learningState || !session || !hasJudgedCurrentQuestion) return;
+
+    if (session.index >= session.problems.length) {
+      try {
+        const response = await fetch("/api/learning/session/finish", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            state: learningState
+          })
+        });
+        const body = (await response.json()) as LearningSessionFinishResponse | { error?: string };
+
+        if (!response.ok) {
+          throw new Error("error" in body && body.error ? body.error : "Finish failed");
+        }
+
+        const summary = body as LearningSessionFinishResponse;
+        persistState(summary.state);
+        setResultSummary(summary);
+        setResult(null);
+        setHasJudgedCurrentQuestion(false);
+        setJudgedProblem(null);
+        return;
+      } catch (finishError) {
+        setError(finishError instanceof Error ? finishError.message : "Finish failed");
+        return;
+      }
     }
 
-    setCurrentIndex((current) => current + 1);
     setAnswer("");
     setResult(null);
     setHasJudgedCurrentQuestion(false);
+    setJudgedProblem(null);
   };
 
   const handleRetry = () => {
-    void loadProblems(activeSkillId);
+    void loadSession(activeSkillId);
   };
 
   const handleBackToSkills = () => {
     router.push("/mock-skills");
   };
+
+  const recommendationLabel = useMemo(() => {
+    if (!resultSummary) {
+      return "";
+    }
+
+    const recommendation = resultSummary.result.recommendation;
+    if (recommendation.type === "adaptive") {
+      return "Adaptive review";
+    }
+    if (recommendation.type === "skill") {
+      return getPracticeSkill(recommendation.skillId)?.title ?? recommendation.skillId;
+    }
+    return "All mastered";
+  }, [resultSummary]);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#fff6d6_0%,#fffaf0_35%,#eef6ff_100%)] px-6 py-10 text-slate-900">
@@ -116,14 +201,14 @@ function MockPracticeContent() {
           <div className="text-sm font-semibold uppercase tracking-[0.35em] text-amber-600">Practice</div>
           <h1 className="mt-3 text-3xl font-black">{selectedSkill.title}</h1>
           <p className="mt-2 text-sm text-slate-600">
-            {selectedSkill.code} / Question {Math.min(currentIndex + 1, TOTAL_QUESTIONS)} / {TOTAL_QUESTIONS}
+            {selectedSkill.code} / Question {Math.min((session?.index ?? 0) + 1, TOTAL_QUESTIONS)} / {TOTAL_QUESTIONS}
           </p>
         </section>
 
         {loading ? (
           <section className="rounded-[32px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
             <div className="text-sm font-semibold uppercase tracking-[0.35em] text-amber-600">Loading</div>
-            <p className="mt-3 text-lg font-bold text-slate-900">問題を生成しています...</p>
+            <p className="mt-3 text-lg font-bold text-slate-900">セッションを開始しています...</p>
           </section>
         ) : error ? (
           <section className="rounded-[32px] border border-rose-200 bg-rose-50 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
@@ -131,47 +216,54 @@ function MockPracticeContent() {
             <p className="mt-3 text-lg font-bold text-rose-900">{error}</p>
             <button
               type="button"
-              onClick={() => void loadProblems(activeSkillId)}
+              onClick={() => void loadSession(activeSkillId)}
               className="mt-5 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
             >
               Retry Load
             </button>
           </section>
-        ) : isSessionComplete ? (
+        ) : resultSummary ? (
           <SessionResultView
-            score={correctCount}
-            totalQuestions={TOTAL_QUESTIONS}
+            score={resultSummary.result.score}
+            totalQuestions={resultSummary.result.totalQuestions}
+            difficultyBefore={resultSummary.result.difficultyBefore}
+            difficultyAfter={resultSummary.result.difficultyAfter}
+            weakPatternsDetected={resultSummary.result.weakPatternsDetected}
+            recommendation={resultSummary.result.recommendation}
+            recommendationLabel={recommendationLabel}
             onRetry={handleRetry}
             onBackToSkills={handleBackToSkills}
           />
-        ) : !currentProblem ? (
+        ) : !displayedProblem ? (
           <section className="rounded-[32px] border border-amber-200 bg-amber-50 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
-            <div className="text-sm font-semibold uppercase tracking-[0.35em] text-amber-700">Problems unavailable</div>
-            <p className="mt-3 text-lg font-bold text-amber-900">Problems unavailable</p>
+            <div className="text-sm font-semibold uppercase tracking-[0.35em] text-amber-700">Session unavailable</div>
+            <p className="mt-3 text-lg font-bold text-amber-900">Session unavailable</p>
           </section>
         ) : (
           <>
-            <ProblemCard question={currentProblem.question} />
+            <ProblemCard question={displayedProblem.problem.question} />
             <AnswerInput answer={answer} setAnswer={setAnswer} />
 
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={handleJudge}
-                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
+                onClick={() => void handleJudge()}
+                disabled={hasJudgedCurrentQuestion}
+                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 判定
               </button>
               <button
                 type="button"
-                onClick={handleNext}
-                className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
+                onClick={() => void handleNext()}
+                disabled={!hasJudgedCurrentQuestion}
+                className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next問題
               </button>
             </div>
 
-            <ResultView isCorrect={result} correctAnswer={currentProblem.answer} />
+            <ResultView isCorrect={result} correctAnswer={displayedProblem.problem.answer} />
           </>
         )}
       </div>

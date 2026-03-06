@@ -6,6 +6,12 @@ export { validatePatternSchema } from "packages/problem-format/schema";
 export { renderTemplate, renderTemplateLines } from "packages/problem-format/templateRenderer";
 export { generateVariables } from "packages/problem-format/variableGenerator";
 export type {
+  LearningClientRecommendation,
+  LearningSessionStartResponse,
+  LearningSessionAnswerResponse,
+  LearningSessionFinishResponse
+} from "packages/problem-format/learningSessionApi";
+export type {
   SkillPracticeProblem,
   SkillPracticeResponse
 } from "packages/problem-format/skillPracticeResponse";

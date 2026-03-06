@@ -1,4 +1,5 @@
 export { buildDslEntriesForType, generateDslArtifactsForType } from "packages/problem-engine/adapters";
+export { getPatternMeta } from "packages/problem-engine/patternCatalog";
 export {
   evaluateAnswer,
   evaluateConstraints,

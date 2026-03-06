@@ -1,13 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { dummySkills, type DummySkill } from "@/mock/dummySkills";
+import { practiceSkills } from "@/lib/learningSkillCatalog";
 import { SkillList } from "packages/ui";
 
 export default function MockSkillsPage() {
   const router = useRouter();
 
-  const handleSelect = (skill: DummySkill) => {
+  const handleSelect = (skill: { id: string }) => {
     router.push(`/mock-skills/${encodeURIComponent(skill.id)}`);
   };
 
@@ -19,7 +19,7 @@ export default function MockSkillsPage() {
           <h1 className="mt-3 text-4xl font-black text-slate-900">Skill List</h1>
           <p className="mt-3 text-sm text-slate-600">Skillを選ぶと、詳細画面へ移動します。</p>
           <div className="mt-8">
-            <SkillList skills={dummySkills} onSelect={handleSelect} />
+            <SkillList skills={practiceSkills} onSelect={handleSelect} />
           </div>
         </section>
       </div>

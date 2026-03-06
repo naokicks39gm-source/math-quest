@@ -1,10 +1,14 @@
 "use client";
 
-import type { DummySkill } from "@/mock/dummySkills";
+export type SkillCardItem = {
+  id: string;
+  code: string;
+  title: string;
+};
 
 type SkillCardProps = {
-  skill: DummySkill;
-  onSelect: (skill: DummySkill) => void;
+  skill: SkillCardItem;
+  onSelect: (skill: SkillCardItem) => void;
 };
 
 export default function SkillCard({ skill, onSelect }: SkillCardProps) {
