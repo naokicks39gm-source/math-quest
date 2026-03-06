@@ -801,11 +801,16 @@ const buildDslStock = (type: TypeDef, patternId: string, options: DslStockBuildO
   let unique: QuestEntry[] = [];
   let attempts = 0;
   while (attempts < maxAttempts && unique.length < targetCount) {
+    const before = unique.length;
     attempts += 1;
     const batchEntries = buildDslEntriesForType(type, patternId, batchSize, {
       generationCount: batchSize
     }).map(normalizeJ1IntEntry);
     unique = uniqueByPromptAndEquivalent([...unique, ...batchEntries]);
+    console.debug("[DSL STOCK]", "pattern=", patternId, "attempt=", attempts, "generated=", batchSize, "unique=", unique.length);
+    if (unique.length === before) {
+      break;
+    }
   }
 
   return {
