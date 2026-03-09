@@ -53,6 +53,28 @@ const getPatternStock = (pattern: PatternDSL): PatternStockEntry => {
   return entry;
 };
 
+const takeFromStock = (pattern: PatternDSL, count: number): GeneratedProblem[] => {
+  const targetCount = Math.max(0, Math.trunc(count));
+  if (targetCount <= 0) {
+    return [];
+  }
+
+  const entry = getPatternStock(pattern);
+  const start = entry.cursor;
+  const end = start + targetCount;
+  const quiz = entry.stock.slice(start, end);
+
+  if (quiz.length === targetCount) {
+    entry.cursor = end;
+    return quiz;
+  }
+
+  const remaining = targetCount - quiz.length;
+  entry.stock = shuffle(entry.stock);
+  entry.cursor = remaining;
+  return [...quiz, ...entry.stock.slice(0, remaining)];
+};
+
 const shuffle = <T>(array: T[]): T[] => {
   const arr = [...array];
 
@@ -74,30 +96,35 @@ export function getPatterns(skillId: string): string[] {
 export function generateSkillQuiz(skillId: string, count: number = 5): GeneratedProblem[] {
   const skill = findSkill(skillId);
   const targetCount = Math.max(0, Math.trunc(count));
+  if (targetCount <= 0) {
+    return [];
+  }
 
-  const problems: GeneratedProblem[] = [];
+  const patterns = skill.patterns.flatMap((skillPattern) => resolvePatternsForSkillPattern(skillPattern));
+  const shuffledPatterns = shuffle([...patterns]);
+  const pool: GeneratedProblem[] = [];
+  let addedInLastRound = true;
 
-  for (const skillPattern of skill.patterns) {
-    const resolvedPatterns = resolvePatternsForSkillPattern(skillPattern);
+  while (pool.length < targetCount && addedInLastRound) {
+    addedInLastRound = false;
 
-    for (const pattern of resolvedPatterns) {
-      const entry = getPatternStock(pattern);
-      const start = entry.cursor;
-      const end = start + targetCount;
-      const quiz = entry.stock.slice(start, end);
+    for (const pattern of shuffledPatterns) {
+      const problem = takeFromStock(pattern, 1);
 
-      if (quiz.length === targetCount) {
-        entry.cursor = end;
-        problems.push(...quiz);
-        continue;
+      if (problem.length > 0) {
+        pool.push(problem[0]);
+        addedInLastRound = true;
       }
 
-      const remaining = targetCount - quiz.length;
-      entry.stock = shuffle(entry.stock);
-      entry.cursor = remaining;
-      problems.push(...quiz, ...entry.stock.slice(0, remaining));
+      if (pool.length >= targetCount) {
+        break;
+      }
     }
   }
 
-  return problems.slice(0, targetCount);
+  if (pool.length === 0) {
+    throw new Error("generateSkillQuiz: no problems generated");
+  }
+
+  return pool.slice(0, targetCount);
 }

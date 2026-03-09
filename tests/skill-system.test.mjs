@@ -125,8 +125,15 @@ test("skill tree exposes typed skill relationships", async () => {
   });
   assert.deepEqual(skillTree.getPrerequisites("E1_ADD_CARRY"), ["E1_ADD_BASIC"]);
   assert.deepEqual(
-    skillTree.getNextSkills("E1_ADD_BASIC").map((skill) => skill.id),
-    ["E1_ADD_CARRY"]
+    new Set(skillTree.getNextSkills("E1_ADD_BASIC").map((skill) => skill.id)),
+    new Set([
+      "E1_ADD_CARRY",
+      "E1_ADD_BASIC_01",
+      "E1_ADD_BASIC_02",
+      "E1_ADD_BASIC_03",
+      "E1_ADD_BASIC_04",
+      "E1_ADD_BASIC_05"
+    ])
   );
   assert.deepEqual(
     skillTree.getRootSkills().map((skill) => skill.id).sort(),
@@ -145,6 +152,16 @@ test("generateSkillQuiz returns GeneratedProblem-like items for E1_ADD_BASIC", a
     assert.equal(typeof item.question, "string");
     assert.equal(typeof item.answer, "string");
   }
+});
+
+test("generateSkillQuiz mixes multiple patterns for E1_ADD_BASIC", async () => {
+  const { skillEngine } = await loadSkillSystemModules();
+
+  const generated = skillEngine.generateSkillQuiz("E1_ADD_BASIC", 5);
+  const patternKeys = new Set(generated.map((item) => item.patternKey ?? item.id.split(":")[0]));
+
+  assert.equal(generated.length, 5);
+  assert.equal(patternKeys.size > 1, true);
 });
 
 test("generateSkillQuiz reuses cached stock per pattern", async () => {
@@ -190,6 +207,13 @@ test("generateSkillQuiz reshuffles after stock exhaustion and continues serving 
   assert.equal(nextBatch.length, 5);
   assert.notDeepEqual(reshuffled, nextBatch);
   assert.equal(globalThis.__skillSystemGenerateProblemsCalls, 5);
+});
+
+test("generateSkillQuiz returns empty array for non-positive count", async () => {
+  const { skillEngine } = await loadSkillSystemModules();
+
+  assert.deepEqual(skillEngine.generateSkillQuiz("E1_ADD_BASIC", 0), []);
+  assert.deepEqual(skillEngine.generateSkillQuiz("E1_ADD_BASIC", -3), []);
 });
 
 test("generateSkillQuiz throws for unknown skill", async () => {
