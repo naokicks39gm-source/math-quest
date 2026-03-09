@@ -75,14 +75,11 @@ export const parsePatternDSL = (raw: unknown): PatternDSL => {
 export const renderTemplate = (template: string, vars: Record<string, number>) =>
   template.replace(/\{([^}]+)\}/gu, (_whole, expr: string) => {
     const normalized = expr.trim();
-    if (!/^[A-Za-z_]\w*$/u.test(normalized)) {
+    try {
+      return formatEvaluationValue(evaluateExpression(normalized, vars));
+    } catch {
       throw new Error("DSL template variable not defined");
     }
-    const value = vars[normalized];
-    if (value === undefined) {
-      throw new Error("DSL template variable not defined");
-    }
-    return String(value);
   });
 
 export const generateVariables = (pattern: PatternDSL): Record<string, number> => {

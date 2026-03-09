@@ -1763,8 +1763,8 @@ function QuestPageInner() {
   const pendingRecognizeRef = useRef(false);
   const forcedDigitsRef = useRef<number | null>(null);
   const cooldownUntilRef = useRef(0);
-  const AUTO_NEXT_WAIT_MS = 600;
-  const WRONG_MARK_WAIT_MS = 380;
+  const FEEDBACK_FLASH_MS = 150;
+  const AUTO_ADVANCE_MS = 300;
   const autoNextTimerRef = useRef<number | null>(null);
   const wrongMarkTimerRef = useRef<number | null>(null);
   const idleCheckTimerRef = useRef<number | null>(null);
@@ -1802,6 +1802,7 @@ function QuestPageInner() {
   const [learningError, setLearningError] = useState<string | null>(null);
   const [learningSessionId, setLearningSessionId] = useState<string | null>(null);
   const [quizBuildError, setQuizBuildError] = useState<string | null>(null);
+  const finishGuardRef = useRef(false);
   const [typeStocks, setTypeStocks] = useState<Map<string, TypeStockResult>>(new Map());
   const [stockShortages, setStockShortages] = useState<StockShortage[]>([]);
   const [stockReady, setStockReady] = useState(false);
@@ -1848,6 +1849,7 @@ function QuestPageInner() {
     [questionResults]
   );
   const isLearningSessionMode = Boolean(skillIdFromQuery);
+  const useFastLearningLoop = isLearningSessionMode;
   const correctCount = useMemo(
     () => clearResults.filter(([, result]) => result.everWrong !== true).length,
     [clearResults]
@@ -1867,6 +1869,14 @@ function QuestPageInner() {
   };
 
   const resetQuestionUi = () => {
+    if (autoNextTimerRef.current) {
+      window.clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
+    if (wrongMarkTimerRef.current) {
+      window.clearTimeout(wrongMarkTimerRef.current);
+      wrongMarkTimerRef.current = null;
+    }
     clearAllFractionAutoMoveTimers();
     setPracticeResult(null);
     setResultMark(null);
@@ -1981,6 +1991,7 @@ function QuestPageInner() {
 
   const startLearningSession = async (skillId: string) => {
     sessionStartTrackedRef.current = false;
+    finishGuardRef.current = false;
     setLearningLoading(true);
     setLearningError(null);
     setLearningResult(null);
@@ -2032,6 +2043,7 @@ function QuestPageInner() {
   };
 
   const resumeLearningSession = async (sessionId: string, skillId: string) => {
+    finishGuardRef.current = false;
     setLearningLoading(true);
     setLearningError(null);
     setLearningResult(null);
@@ -2347,14 +2359,44 @@ function QuestPageInner() {
     return () => observer.disconnect();
   }, [status]);
 
+  const normalizedLearningSession = useMemo(() => {
+    if (!learningSession) return null;
+    const normalizedIndex = Math.min(learningSession.index, learningSession.problems.length);
+    return {
+      session: learningSession,
+      index: normalizedIndex
+    };
+  }, [learningSession]);
+
+  useEffect(() => {
+    if (!learningSession || !normalizedLearningSession) {
+      return;
+    }
+    if (normalizedLearningSession.index !== learningSession.index) {
+      setLearningSession({
+        ...learningSession,
+        index: normalizedLearningSession.index
+      });
+    }
+  }, [learningSession, normalizedLearningSession]);
+
   const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
+  const currentLearningIndex = normalizedLearningSession?.index ?? 0;
   const learningProblem = isLearningSessionMode
-    ? learningSession?.problems[learningSession.index] ?? null
+    ? normalizedLearningSession?.session.problems[currentLearningIndex] ?? null
     : null;
+  const shouldAutoFinishLearningSession =
+    isLearningSessionMode &&
+    status === "playing" &&
+    Boolean(normalizedLearningSession) &&
+    (
+      currentLearningIndex >= (normalizedLearningSession?.session.problems.length ?? 0) ||
+      currentLearningIndex >= 5
+    );
   const currentEntry = learningProblem
     ? adaptLearningSessionProblem(learningProblem)
     : (quizItems[safeIndex] ?? null);
-  const currentQuestionIndex = isLearningSessionMode ? (learningSession?.index ?? itemIndex) : itemIndex;
+  const currentQuestionIndex = isLearningSessionMode ? currentLearningIndex : itemIndex;
   const currentItem = currentEntry?.item ?? null;
   const currentType = currentEntry?.type ?? selectedType;
   const currentGradeId = currentType?.type_id.split(".")[0] ?? "";
@@ -2396,6 +2438,30 @@ function QuestPageInner() {
       setAutoJudgeEnabled(false);
     }
   }, [inkFirstMode]);
+
+  useEffect(() => {
+    if (!shouldAutoFinishLearningSession) {
+      return;
+    }
+
+    if (finishGuardRef.current) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        finishGuardRef.current = true;
+        await finishQuestLearningSession();
+      } catch (error: unknown) {
+        console.error("finish failed", error);
+        const message = error instanceof Error ? error.message : "learning_session_finish_failed";
+        finishGuardRef.current = false;
+        setLearningError(message);
+        setStatus("blocked");
+        setQuizBuildError(`Learning session を完了できませんでした: ${message}`);
+      }
+    })();
+  }, [shouldAutoFinishLearningSession]);
 
   useEffect(() => {
     if (idleCheckTimerRef.current) {
@@ -3007,11 +3073,13 @@ function QuestPageInner() {
   const isElementaryQuest = isElementaryGrade(currentGradeId);
   const shouldShowElementaryExplanation =
     status === "playing" &&
+    !useFastLearningLoop &&
     isElementaryQuest &&
     practiceResult?.ok === false &&
     Boolean(currentElementaryAid);
   const shouldRenderElementaryExplanationPanel =
     status === "playing" &&
+    !useFastLearningLoop &&
     isElementaryQuest &&
     Boolean(currentElementaryAid) &&
     (showElementaryExplanation || shouldShowElementaryExplanation);
@@ -3053,6 +3121,31 @@ function QuestPageInner() {
       };
   const emptyMessage = uiText.noItems;
   const isAnswerLockedByExplanation = isSecondaryQuest && showSecondaryExplanation;
+  const queueAdvanceAfterFeedback = (verdict: { ok: boolean }) => {
+    if (wrongMarkTimerRef.current) {
+      window.clearTimeout(wrongMarkTimerRef.current);
+      wrongMarkTimerRef.current = null;
+    }
+    if (autoNextTimerRef.current) {
+      window.clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = null;
+    }
+    if (autoRecognizeTimerRef.current) {
+      window.clearTimeout(autoRecognizeTimerRef.current);
+      autoRecognizeTimerRef.current = null;
+    }
+    pendingRecognizeRef.current = false;
+    setResultMark(verdict.ok ? "correct" : "wrong");
+    wrongMarkTimerRef.current = window.setTimeout(() => {
+      setResultMark(null);
+      wrongMarkTimerRef.current = null;
+    }, FEEDBACK_FLASH_MS);
+    cooldownUntilRef.current = Date.now() + AUTO_ADVANCE_MS;
+    autoNextTimerRef.current = window.setTimeout(() => {
+      autoNextTimerRef.current = null;
+      nextQuestion();
+    }, AUTO_ADVANCE_MS);
+  };
   const nextQuestion = () => {
     if (status !== "playing") return;
     if (isLearningSessionMode) {
@@ -3104,6 +3197,7 @@ function QuestPageInner() {
   };
   const restartSameLevel = () => {
     if (isLearningSessionMode && skillIdFromQuery) {
+      finishGuardRef.current = false;
       void startLearningSession(skillIdFromQuery);
       return;
     }
@@ -3523,12 +3617,7 @@ function QuestPageInner() {
     });
     if (isLearningSessionMode) {
       void submitLearningAnswer(verdict.ok, answerText)
-        .then((response) => {
-          if (!response) return;
-          if (response.session.index >= response.session.problems.length) {
-            nextQuestion();
-          }
-        })
+        .then(() => undefined)
         .catch((error: unknown) => {
           const message = error instanceof Error ? error.message : "learning_session_answer_failed";
           setLearningError(message);
@@ -3538,45 +3627,42 @@ function QuestPageInner() {
     }
 
     if (verdict.ok) {
-      if (wrongMarkTimerRef.current) {
-        window.clearTimeout(wrongMarkTimerRef.current);
-        wrongMarkTimerRef.current = null;
-      }
-      setResultMark('correct');
       const newCombo = combo + 1;
       setCombo(newCombo);
       const charData = CHARACTERS[character];
       let hitMsg = charData.hits[Math.floor(Math.random() * charData.hits.length)];
       if (newCombo >= 3) hitMsg += ` (Combo x${newCombo}!)`;
       setMessage(hitMsg);
-      if (autoNextEnabled) {
-        cooldownUntilRef.current = Date.now() + AUTO_NEXT_WAIT_MS;
+      if (useFastLearningLoop) {
+        queueAdvanceAfterFeedback(verdict);
+      } else if (autoNextEnabled) {
+        cooldownUntilRef.current = Date.now() + AUTO_ADVANCE_MS;
         if (autoNextTimerRef.current) window.clearTimeout(autoNextTimerRef.current);
         autoNextTimerRef.current = window.setTimeout(() => {
           autoNextTimerRef.current = null;
-          if (isLearningSessionMode) {
-            nextQuestion();
-            return;
-          }
           nextQuestion();
-        }, AUTO_NEXT_WAIT_MS);
+        }, AUTO_ADVANCE_MS);
       }
     } else {
-      if (wrongMarkTimerRef.current) {
-        window.clearTimeout(wrongMarkTimerRef.current);
-      }
-      setResultMark('wrong');
-      if (isSecondaryQuest) {
+      if (!useFastLearningLoop && isSecondaryQuest) {
         setShowSecondaryHint(false);
         setShowSecondaryExplanation(true);
       }
-      wrongMarkTimerRef.current = window.setTimeout(() => {
-        setResultMark(null);
-        wrongMarkTimerRef.current = null;
-      }, WRONG_MARK_WAIT_MS);
       setCombo(0);
       const charData = CHARACTERS[character];
       setMessage(charData.misses[Math.floor(Math.random() * charData.misses.length)]);
+      if (useFastLearningLoop) {
+        queueAdvanceAfterFeedback(verdict);
+      } else {
+        if (wrongMarkTimerRef.current) {
+          window.clearTimeout(wrongMarkTimerRef.current);
+        }
+        setResultMark('wrong');
+        wrongMarkTimerRef.current = window.setTimeout(() => {
+          setResultMark(null);
+          wrongMarkTimerRef.current = null;
+        }, FEEDBACK_FLASH_MS);
+      }
     }
 
     if (isQuadraticRootsQuestion) {
@@ -3892,61 +3978,20 @@ function QuestPageInner() {
   );
 
   const resultOverlay = resultMark ? (
-    <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
-      {resultMark === "correct" ? (
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 120 120"
-          className="h-24 w-24 sm:h-28 sm:w-28 text-red-700 drop-shadow-[0_3px_0_rgba(0,0,0,0.28)]"
+    <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-[18px]">
+      <div className={`absolute inset-0 ${resultMark === "correct" ? "bg-emerald-400/35" : "bg-red-500/35"}`} />
+      <div className="absolute inset-0 bg-white/10" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div
+          className={`rounded-full px-4 py-2 text-sm font-black uppercase tracking-[0.3em] ${
+            resultMark === "correct"
+              ? "border border-emerald-100/80 bg-emerald-50/90 text-emerald-700"
+              : "border border-red-100/80 bg-red-50/90 text-red-700"
+          }`}
         >
-          <path
-            d="M16 61 C18 30, 48 10, 82 17 C108 24, 114 69, 93 93 C66 116, 23 102, 16 61"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="10"
-            strokeLinecap="round"
-          />
-          <path
-            d="M20 60 C23 35, 47 20, 74 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4"
-            strokeLinecap="round"
-            opacity="0.62"
-          />
-        </svg>
-      ) : (
-        <div className="relative flex items-center justify-center">
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 120 120"
-            className="h-24 w-24 sm:h-28 sm:w-28 text-red-700 drop-shadow-[0_3px_0_rgba(0,0,0,0.28)]"
-          >
-            <path
-              d="M20 22 L100 96"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="11"
-              strokeLinecap="round"
-            />
-            <path
-              d="M97 20 L26 99"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="11"
-              strokeLinecap="round"
-            />
-            <path
-              d="M30 34 L86 84"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="4"
-              strokeLinecap="round"
-              opacity="0.5"
-            />
-          </svg>
+          {resultMark === "correct" ? "Correct" : "Incorrect"}
         </div>
-      )}
+      </div>
     </div>
   ) : null;
 
@@ -4158,15 +4203,7 @@ function QuestPageInner() {
       }
       if (isLearningSessionMode) {
         try {
-          const response = await submitLearningAnswer(verdict.ok, userInputForJudge);
-          if (response && response.session.index >= response.session.problems.length) {
-            void finishQuestLearningSession().catch((error: unknown) => {
-              const message = error instanceof Error ? error.message : "learning_session_finish_failed";
-              setLearningError(message);
-              setStatus("blocked");
-              setQuizBuildError(`Learning session を完了できませんでした: ${message}`);
-            });
-          }
+          await submitLearningAnswer(verdict.ok, userInputForJudge);
         } catch (error) {
           const message = error instanceof Error ? error.message : "learning_session_answer_failed";
           setLearningError(message);
@@ -4195,15 +4232,12 @@ function QuestPageInner() {
       }));
 
       if (verdict.ok) {
-        if (wrongMarkTimerRef.current) {
-          window.clearTimeout(wrongMarkTimerRef.current);
-          wrongMarkTimerRef.current = null;
-        }
-        setResultMark('correct');
         const newCombo = combo + 1;
         setCombo(newCombo);
-        if (autoNextEnabled) {
-          cooldownUntilRef.current = Date.now() + AUTO_NEXT_WAIT_MS;
+        if (useFastLearningLoop) {
+          queueAdvanceAfterFeedback(verdict);
+        } else if (autoNextEnabled) {
+          cooldownUntilRef.current = Date.now() + AUTO_ADVANCE_MS;
           if (autoNextTimerRef.current) {
             window.clearTimeout(autoNextTimerRef.current);
             autoNextTimerRef.current = null;
@@ -4216,22 +4250,26 @@ function QuestPageInner() {
             }
             pendingRecognizeRef.current = false;
             nextQuestion();
-          }, AUTO_NEXT_WAIT_MS);
+          }, AUTO_ADVANCE_MS);
         }
       } else {
-        if (wrongMarkTimerRef.current) {
-          window.clearTimeout(wrongMarkTimerRef.current);
-        }
-        setResultMark('wrong');
-        if (isSecondaryQuest) {
+        if (!useFastLearningLoop && isSecondaryQuest) {
           setShowSecondaryHint(false);
           setShowSecondaryExplanation(true);
         }
-        wrongMarkTimerRef.current = window.setTimeout(() => {
-          setResultMark(null);
-          wrongMarkTimerRef.current = null;
-        }, WRONG_MARK_WAIT_MS);
         setCombo(0);
+        if (useFastLearningLoop) {
+          queueAdvanceAfterFeedback(verdict);
+        } else {
+          if (wrongMarkTimerRef.current) {
+            window.clearTimeout(wrongMarkTimerRef.current);
+          }
+          setResultMark('wrong');
+          wrongMarkTimerRef.current = window.setTimeout(() => {
+            setResultMark(null);
+            wrongMarkTimerRef.current = null;
+          }, FEEDBACK_FLASH_MS);
+        }
       }
     }
 
@@ -4962,14 +5000,16 @@ function QuestPageInner() {
                   <div aria-label="board-chalk-blue" className="h-2.5 w-6 rounded-full border border-sky-300 bg-sky-100 shadow-[0_1px_0_rgba(0,0,0,0.2)]" />
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={nextQuestion}
-                disabled={status !== "playing" || isStarting}
-                className="absolute bottom-3 right-3 z-20 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs sm:text-sm font-bold text-emerald-900 shadow-[0_2px_0_rgba(0,0,0,0.25)] active:translate-y-[1px] disabled:bg-slate-300 disabled:text-slate-500"
-              >
-                {uiText.nextQuestion}
-              </button>
+              {!useFastLearningLoop && (
+                <button
+                  type="button"
+                  onClick={nextQuestion}
+                  disabled={status !== "playing" || isStarting}
+                  className="absolute bottom-3 right-3 z-20 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs sm:text-sm font-bold text-emerald-900 shadow-[0_2px_0_rgba(0,0,0,0.25)] active:translate-y-[1px] disabled:bg-slate-300 disabled:text-slate-500"
+                >
+                  {uiText.nextQuestion}
+                </button>
+              )}
               <div
                 ref={qaRowRef}
                 className={
@@ -5281,7 +5321,7 @@ function QuestPageInner() {
                 </div>
               </div>
             )}
-            {(quizItems.length === 0 || !currentItem) && (
+            {!shouldAutoFinishLearningSession && (quizItems.length === 0 || !currentItem) && (
               <div className="w-full text-slate-500 text-center">
                 {quizItems.length === 0 ? emptyMessage : uiText.selectType}
               </div>

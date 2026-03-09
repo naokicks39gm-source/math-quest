@@ -52,8 +52,12 @@ test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("h-[40vh] min-h-[260px]"), true);
   assert.equal(source.includes("bg-white/90"), true);
   assert.equal(source.includes("w-full bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[48vh] overflow-y-auto"), false);
-  assert.equal(source.includes("h-[120%] w-[120%]"), true);
-  assert.equal(source.includes("overflow-visible"), true);
+  assert.equal(source.includes("const FEEDBACK_FLASH_MS = 150;"), true);
+  assert.equal(source.includes("const AUTO_ADVANCE_MS = 300;"), true);
+  assert.equal(source.includes("const queueAdvanceAfterFeedback = (verdict: { ok: boolean }) => {"), true);
+  assert.equal(source.includes("bg-emerald-400/35"), true);
+  assert.equal(source.includes("bg-red-500/35"), true);
+  assert.equal(source.includes('{resultMark === "correct" ? "Correct" : "Incorrect"}'), true);
   assert.equal(source.includes("fixed inset-x-2 bottom-2"), false);
   assert.equal(source.includes("status === \"playing\" && ("), true);
   assert.equal(source.includes("selectedPath && ("), true);

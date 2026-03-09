@@ -6,6 +6,7 @@ export type PracticeSkill = {
   code: string;
   title: string;
   grade: string;
+  patterns: string[];
   difficultyLabel: string;
   difficultyValue: number;
   problemCount: number;
@@ -25,6 +26,7 @@ export const practiceSkills: PracticeSkill[] = skills.map((skill, index) => ({
   code: `${skill.grade}-${String(index + 1).padStart(2, "0")}`,
   title: skill.title,
   grade: skill.grade,
+  patterns: skill.patterns,
   difficultyLabel: difficultyLabels[skill.difficulty] ?? `Lv ${skill.difficulty}`,
   difficultyValue: skill.difficulty,
   problemCount: 5

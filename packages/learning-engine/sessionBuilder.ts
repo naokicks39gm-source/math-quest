@@ -8,6 +8,7 @@ const SESSION_SIZE = 5;
 const SKILL_TARGET = 3;
 const WEAK_TARGET = 2;
 const PROBLEMS_PER_PATTERN = 20;
+const MAX_PATTERN_PER_SESSION = 2;
 export const SESSION_COOLDOWN_MS = 5 * 60 * 1000;
 export const PRIORITY_WEIGHTS = {
   mastery: 0.5,
@@ -87,6 +88,16 @@ const uniqueByProblemId = (problems: SessionProblem[]): SessionProblem[] => {
   });
 };
 
+const getPatternCount = (patternCounts: Map<string, number>, patternKey: string) =>
+  patternCounts.get(patternKey) ?? 0;
+
+const canSelectPattern = (patternCounts: Map<string, number>, patternKey: string) =>
+  getPatternCount(patternCounts, patternKey) < MAX_PATTERN_PER_SESSION;
+
+const recordSelectedProblem = (patternCounts: Map<string, number>, problem: SessionProblem) => {
+  patternCounts.set(problem.patternKey, getPatternCount(patternCounts, problem.patternKey) + 1);
+};
+
 const sortPatternsByPriority = (
   skillId: string,
   patternKeys: Set<string>,
@@ -106,14 +117,17 @@ const buildCandidates = (
   patternKeys: Set<string>,
   source: "skill" | "weakness",
   studentDifficulty: number,
-  nowMs: number
+  nowMs: number,
+  options?: {
+    ignoreDifficulty?: boolean;
+  }
 ) => {
   const patterns = sortPatternsByPriority(skillId, patternKeys, state, nowMs, studentDifficulty);
 
   return uniqueByProblemId(
     patterns.flatMap((pattern) =>
       shuffle(generateProblems(pattern, PROBLEMS_PER_PATTERN))
-        .filter((problem) => inDifficultyWindow(problem.meta?.difficulty, studentDifficulty))
+        .filter((problem) => options?.ignoreDifficulty || inDifficultyWindow(problem.meta?.difficulty, studentDifficulty))
         .map(
           (problem): SessionProblem => ({
             problem,
@@ -127,7 +141,12 @@ const buildCandidates = (
   );
 };
 
-const takeProblems = (candidates: SessionProblem[], count: number, usedPatternKeys: Set<string>) => {
+const takeProblems = (
+  candidates: SessionProblem[],
+  count: number,
+  usedPatternKeys: Set<string>,
+  patternCounts: Map<string, number>
+) => {
   const selected: SessionProblem[] = [];
 
   for (const problem of candidates) {
@@ -137,7 +156,11 @@ const takeProblems = (candidates: SessionProblem[], count: number, usedPatternKe
     if (usedPatternKeys.has(problem.patternKey)) {
       continue;
     }
+    if (!canSelectPattern(patternCounts, problem.patternKey)) {
+      continue;
+    }
     usedPatternKeys.add(problem.patternKey);
+    recordSelectedProblem(patternCounts, problem);
     selected.push(problem);
   }
 
@@ -152,10 +175,67 @@ const takeProblems = (candidates: SessionProblem[], count: number, usedPatternKe
     if (selected.some((entry) => entry.problem.id === problem.problem.id)) {
       continue;
     }
+    if (!canSelectPattern(patternCounts, problem.patternKey)) {
+      continue;
+    }
+    recordSelectedProblem(patternCounts, problem);
     selected.push(problem);
   }
 
   return selected;
+};
+
+const topUpWithRandomSkillPatterns = (
+  selected: SessionProblem[],
+  skillId: string,
+  studentDifficulty: number,
+  patternCounts: Map<string, number>
+) => {
+  const resolvedPatterns = shuffle(resolveSkillPatterns(skillId));
+  if (resolvedPatterns.length === 0) {
+    return;
+  }
+
+  let patternIndex = 0;
+  let attempts = 0;
+  const maxAttempts = Math.max(SESSION_SIZE * 4, resolvedPatterns.length * 2);
+
+  while (selected.length < SESSION_SIZE && attempts < maxAttempts) {
+    const pattern = resolvedPatterns[patternIndex % resolvedPatterns.length];
+    if (!canSelectPattern(patternCounts, pattern.key)) {
+      patternIndex += 1;
+      attempts += 1;
+      continue;
+    }
+    const generated = shuffle(generateProblems(pattern, PROBLEMS_PER_PATTERN)).map(
+      (problem): SessionProblem => ({
+        problem,
+        skillId,
+        patternKey: pattern.key,
+        difficulty: clampDifficulty(problem.meta?.difficulty ?? studentDifficulty),
+        source: "skill"
+      })
+    );
+
+    const uniqueBatch = generated.filter(
+      (candidate) => !selected.some((entry) => entry.problem.id === candidate.problem.id)
+    );
+    const additions = uniqueBatch.length > 0 ? uniqueBatch : generated;
+
+    for (const problem of additions) {
+      if (selected.length >= SESSION_SIZE) {
+        break;
+      }
+      if (!canSelectPattern(patternCounts, problem.patternKey)) {
+        continue;
+      }
+      recordSelectedProblem(patternCounts, problem);
+      selected.push(problem);
+    }
+
+    patternIndex += 1;
+    attempts += 1;
+  }
 };
 
 export function buildSession(
@@ -171,6 +251,7 @@ export function buildSession(
   const skillPatternKeys = new Set(skillPatterns.map((pattern) => pattern.key));
   const weakPatternKeys = new Set(weakPatterns.map((pattern) => pattern.patternKey));
   const usedPatternKeys = new Set<string>();
+  const patternCounts = new Map<string, number>();
   const nowMs = now();
 
   const weakPatternBuckets = partitionPatternKeysByCooldown(state, weakPatternKeys, nowMs);
@@ -179,12 +260,12 @@ export function buildSession(
   const weaknessCandidates = buildCandidates(state, skillId, weakPatternBuckets.available, "weakness", targetDifficulty, nowMs);
   const skillCandidates = buildCandidates(state, skillId, skillPatternBuckets.available, "skill", targetDifficulty, nowMs);
 
-  const selectedWeak = takeProblems(weaknessCandidates, WEAK_TARGET, usedPatternKeys);
-  const selectedSkill = takeProblems(skillCandidates, SKILL_TARGET, usedPatternKeys);
+  const selectedWeak = takeProblems(weaknessCandidates, WEAK_TARGET, usedPatternKeys, patternCounts);
+  const selectedSkill = takeProblems(skillCandidates, SKILL_TARGET, usedPatternKeys, patternCounts);
   const selected = [...selectedSkill, ...selectedWeak];
 
   if (selected.length < SESSION_SIZE) {
-    const fallback = takeProblems(skillCandidates, SESSION_SIZE - selected.length, usedPatternKeys);
+    const fallback = takeProblems(skillCandidates, SESSION_SIZE - selected.length, usedPatternKeys, patternCounts);
     selected.push(...fallback);
   }
 
@@ -206,6 +287,10 @@ export function buildSession(
       if (selected.some((entry) => entry.problem.id === problem.problem.id)) {
         continue;
       }
+      if (!canSelectPattern(patternCounts, problem.patternKey)) {
+        continue;
+      }
+      recordSelectedProblem(patternCounts, problem);
       selected.push(problem);
     }
   }
@@ -226,6 +311,30 @@ export function buildSession(
       }
       selected.push(problem);
     }
+  }
+
+  if (selected.length < SESSION_SIZE) {
+    const relaxedCombined = uniqueByProblemId([
+      ...buildCandidates(state, skillId, skillPatternKeys, "skill", targetDifficulty, nowMs, { ignoreDifficulty: true }),
+      ...buildCandidates(state, skillId, weakPatternKeys, "weakness", targetDifficulty, nowMs, { ignoreDifficulty: true })
+    ]);
+    for (const problem of relaxedCombined) {
+      if (selected.length >= SESSION_SIZE) {
+        break;
+      }
+      if (selected.some((entry) => entry.problem.id === problem.problem.id)) {
+        continue;
+      }
+      if (!canSelectPattern(patternCounts, problem.patternKey)) {
+        continue;
+      }
+      recordSelectedProblem(patternCounts, problem);
+      selected.push(problem);
+    }
+  }
+
+  if (selected.length < SESSION_SIZE) {
+    topUpWithRandomSkillPatterns(selected, skillId, targetDifficulty, patternCounts);
   }
 
   return {

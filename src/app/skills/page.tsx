@@ -71,8 +71,16 @@ const buildSkillItems = (): SkillCardItem[] => {
 };
 
 const getRecommendedSkill = (items: SkillCardItem[]) =>
-  items
-    .filter((skill) => (skill.mastery ?? 0) < 0.75)
+  practiceSkills
+    .map((skill) => {
+      const progress = items.find((item) => item.id === skill.id);
+      return {
+        ...skill,
+        mastery: progress?.mastery ?? 0,
+        mastered: progress?.mastered ?? false
+      };
+    })
+    .filter((skill) => (skill.mastery ?? 0) < 0.75 && skill.patterns.length > 0)
     .sort((left, right) => {
       const masteryDelta = (left.mastery ?? 0) - (right.mastery ?? 0);
       if (masteryDelta !== 0) {
@@ -112,9 +120,9 @@ export default function SkillsPage() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#ecfeff_0%,#f8fafc_45%,#e2e8f0_100%)] px-6 py-10 text-slate-900">
       <div className="mx-auto max-w-4xl">
-        <section className="mb-6 rounded-[32px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
-          <div className="text-sm font-semibold uppercase tracking-[0.35em] text-sky-600">Recommended</div>
-          {recommendedSkill ? (
+        {recommendedSkill ? (
+          <section className="mb-6 rounded-[32px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
+            <div className="text-sm font-semibold uppercase tracking-[0.35em] text-sky-600">Recommended</div>
             <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-5">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">
                 {recommendedSkill.grade ?? recommendedSkill.code ?? recommendedSkill.id}
@@ -129,12 +137,8 @@ export default function SkillsPage() {
                 Start Practice
               </button>
             </div>
-          ) : (
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm font-semibold text-emerald-800">
-              すべての skill を mastered しています。
-            </div>
-          )}
-        </section>
+          </section>
+        ) : null}
         <section className="rounded-[32px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
           <div className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-600">Learning Progress</div>
           <h1 className="mt-3 text-4xl font-black text-slate-900">Skill List</h1>

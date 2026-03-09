@@ -434,9 +434,13 @@ test("sessionBuilder avoids recently seen patterns until cooldown fallback is ne
   });
 
   const cooldownAwareSession = sessionBuilder.buildSession(state, "E1_ADD_BASIC", 1, "skill", () => nowMs);
+  const cooldownCounts = cooldownAwareSession.problems.reduce((acc, problem) => {
+    acc[problem.patternKey] = (acc[problem.patternKey] ?? 0) + 1;
+    return acc;
+  }, {});
   assert.equal(cooldownAwareSession.problems.length, 5);
   assert.equal(cooldownAwareSession.problems.some((problem) => problem.patternKey === "E1-ADD-BASIC-03"), true);
-  assert.equal(cooldownAwareSession.problems.every((problem) => problem.patternKey === "E1-ADD-BASIC-03"), true);
+  assert.equal(Object.values(cooldownCounts).every((count) => count <= 2), true);
 
   const relaxedState = studentStore.serializeState({
     ...state,
@@ -618,6 +622,53 @@ test("sessionBuilder composition preserves five problems when fallback is trigge
   assert.equal(composition.weaknessCount <= 2, true);
   assert.equal(composition.skillCount >= 3, true);
   assert.equal(composition.skillCount + composition.weaknessCount, 5);
+});
+
+test("sessionBuilder ignores difficulty alignment when strict candidates are empty", async () => {
+  const { studentStore, sessionBuilder } = await loadLearningEngineModules();
+  const state = studentStore.serializeState({
+    version: 1,
+    engineVersion: 1,
+    student: { difficulty: 4, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xp: 0, level: 0 },
+    patternProgress: {},
+    skillProgress: {}
+  });
+
+  const session = sessionBuilder.buildSession(state, "E1_ADD_BASIC", 4);
+
+  assert.equal(session.problems.length, 5);
+  assert.equal(session.problems.some((problem) => Math.abs(problem.difficulty - 4) > 1), true);
+});
+
+test("sessionBuilder source includes random skill-pattern top-up fallback", () => {
+  const source = fs.readFileSync(path.join(root, "packages/learning-engine/sessionBuilder.ts"), "utf8");
+
+  assert.equal(source.includes("ignoreDifficulty: true"), true);
+  assert.equal(source.includes("topUpWithRandomSkillPatterns"), true);
+  assert.equal(source.includes("const additions = uniqueBatch.length > 0 ? uniqueBatch : generated;"), true);
+  assert.equal(source.includes("const MAX_PATTERN_PER_SESSION = 2;"), true);
+  assert.equal(source.includes("patternCounts"), true);
+  assert.equal(source.includes("getPatternCount(patternCounts, patternKey) < MAX_PATTERN_PER_SESSION"), true);
+});
+
+test("sessionBuilder keeps same pattern at most twice per session", async () => {
+  const { studentStore, sessionBuilder } = await loadLearningEngineModules();
+  const state = studentStore.serializeState({
+    version: 1,
+    engineVersion: 1,
+    student: { difficulty: 4, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xp: 0, level: 0 },
+    patternProgress: {},
+    skillProgress: {}
+  });
+
+  const session = sessionBuilder.buildSession(state, "E1_ADD_BASIC", 4);
+  const counts = session.problems.reduce((acc, problem) => {
+    acc[problem.patternKey] = (acc[problem.patternKey] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  assert.equal(session.problems.length, 5);
+  assert.equal(Object.values(counts).every((count) => count <= 2), true);
 });
 
 test("learningEngine start/record/finish/recommend are pure state transformers", async () => {

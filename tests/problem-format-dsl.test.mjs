@@ -204,9 +204,17 @@ test("minimal DSL renderTemplate throws when a template variable is undefined", 
     () => minimalDsl.renderTemplate("x = {missing}", { a: 1 }),
     /DSL template variable not defined/
   );
-  assert.throws(
-    () => minimalDsl.renderTemplate("x = {a + b}", { a: 1, b: 2 }),
-    /DSL template variable not defined/
+});
+
+test("minimal DSL renderTemplate supports expression placeholders", async () => {
+  const minimalDsl = await loadMinimalDslModule();
+  assert.equal(
+    minimalDsl.renderTemplate("log_{a}({pow(a,b)}) =", { a: 2, b: 3 }),
+    "log_2(8) ="
+  );
+  assert.equal(
+    minimalDsl.renderTemplate("x = {a + b}", { a: 1, b: 2 }),
+    "x = 3"
   );
 });
 

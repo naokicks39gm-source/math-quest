@@ -144,17 +144,11 @@ export const evaluateConstraints = (pattern: PatternDSL, vars: Record<string, nu
 
 export const renderTemplate = (template: string, vars: Record<string, number>) =>
   template.replace(/\{([^}]+)\}/gu, (_whole, expr: string) => {
-    const key = expr.trim();
-    if (!/^[A-Za-z_]\w*$/u.test(key)) {
+    try {
+      return formatEvaluationValue(evaluateExpression(expr.trim(), vars));
+    } catch {
       throw new Error("DSL template variable not defined");
     }
-
-    const value = vars[key];
-    if (value === undefined) {
-      throw new Error("DSL template variable not defined");
-    }
-
-    return String(value);
   });
 
 export const evaluateAnswer = (answerExpr: string, vars: Record<string, number>) =>
