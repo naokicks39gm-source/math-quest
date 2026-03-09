@@ -36,7 +36,7 @@ import { getElementaryLearningAid, isElementaryGrade, type ElementaryLearningAid
 import ElementaryKeypad from "@/components/keypad/ElementaryKeypad";
 import JuniorKeypad from "@/components/keypad/JuniorKeypad";
 import HighSchoolKeypad from "@/components/keypad/HighSchoolKeypad";
-import { SessionResultView } from "packages/ui";
+import { QuestHeader, SessionResultView } from "packages/ui";
 import { VARIABLE_SYMBOLS } from "packages/keypad";
 import { generateProblems } from "packages/problem-engine/dsl-engine";
 import type {
@@ -4995,6 +4995,15 @@ function QuestPageInner() {
           )}
           {currentItem && currentType && (
             <div className="bg-slate-50/95 backdrop-blur-sm py-1">
+            {learningSession && learningProblem && (
+              <QuestHeader
+                skillTitle={getPracticeSkill(currentLearningSkillId ?? "")?.title ?? currentLearningSkillId ?? "-"}
+                patternId={learningProblem.patternKey ?? learningProblem.problem.meta?.source ?? "-"}
+                difficulty={learningProblem.difficulty ?? learningProblem.problem.meta?.difficulty ?? 0}
+                index={learningSession.index}
+                total={learningSession.problems.length}
+              />
+            )}
             <div
               ref={currentCardRef}
               className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 py-4 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] h-[200px] sm:h-[185px] flex items-center justify-center"
