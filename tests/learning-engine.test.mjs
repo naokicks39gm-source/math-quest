@@ -183,6 +183,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
   assert.equal(typeof studentStore.loadStateFromClient, "function");
   assert.equal(typeof studentStore.serializeState, "function");
   assert.equal(typeof studentStore.createLearningState, "function");
+  assert.equal(typeof studentStore.updateXP, "function");
   assert.equal(typeof studentStore.loadState, "undefined");
   assert.equal(typeof studentStore.saveState, "undefined");
 
@@ -269,6 +270,8 @@ test("studentStore only exposes client load and serialize helpers", async () => 
   assert.equal(source.includes("CURRENT_ENGINE_VERSION = 1"), true);
   assert.equal(source.includes("value.version !== LEARNING_STATE_VERSION"), true);
   assert.equal(source.includes("value.engineVersion !== CURRENT_ENGINE_VERSION"), true);
+  assert.equal(source.includes("export function updateXP"), true);
+  assert.equal(studentStore.updateXP({ difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xp: 5, level: 0 }, 2).xp, 25);
 });
 
 test("progress tracker and difficulty controller update only the expected fields", async () => {
@@ -369,7 +372,9 @@ test("sessionBuilder creates a five-problem session from explicit state", async 
       "E1-ADD-BASIC-01": { patternKey: "E1-ADD-BASIC-01", attempts: 5, correct: 1, mastery: 0.2, lastSeenAt: 100 },
       "E1-ADD-BASIC-03": { patternKey: "E1-ADD-BASIC-03", attempts: 3, correct: 1, mastery: 0.3333333333333333, lastSeenAt: 300 }
     },
-    skillProgress: {}
+    skillProgress: {
+      E1_ADD_BASIC: { skillId: "E1_ADD_BASIC", mastery: 0, mastered: false }
+    }
   });
 
   const session = sessionBuilder.buildSession(state, "E1_ADD_BASIC", 1);
@@ -378,6 +383,29 @@ test("sessionBuilder creates a five-problem session from explicit state", async 
   assert.equal(session.startedDifficulty, 1);
   assert.equal(session.problems.every((problem) => Math.abs(problem.difficulty - 1) <= 1), true);
   assert.equal(session.problems.some((problem) => problem.source === "weakness"), true);
+});
+
+test("sessionBuilder computes targetDifficulty from skillProgress mastery", async () => {
+  const { studentStore, sessionBuilder } = await loadLearningEngineModules();
+
+  assert.equal(sessionBuilder.computeTargetDifficulty(0), 1);
+  assert.equal(sessionBuilder.computeTargetDifficulty(0.39), 2);
+  assert.equal(sessionBuilder.computeTargetDifficulty(0.6), 4);
+  assert.equal(sessionBuilder.computeTargetDifficulty(0.85), 5);
+
+  const highMasteryState = studentStore.serializeState({
+    version: 1,
+    engineVersion: 1,
+    student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xp: 0, level: 0 },
+    patternProgress: {},
+    skillProgress: {
+      E1_ADD_BASIC: { skillId: "E1_ADD_BASIC", mastery: 0.85, mastered: false }
+    }
+  });
+
+  const session = sessionBuilder.buildSession(highMasteryState, "E1_ADD_BASIC", 1);
+  assert.equal(session.startedDifficulty, 5);
+  assert.equal(session.problems.length, 5);
 });
 
 test("sessionBuilder computes recency and pattern priority from mastery and lastSeenAt", async () => {
@@ -414,6 +442,58 @@ test("sessionBuilder computes recency and pattern priority from mastery and last
 
   assert.equal(weakerPriority > strongerRecentPriority, true);
   assert.equal(unseenPriority > weakerPriority, true);
+  assert.equal(sessionBuilder.recencyPenalty("E1-ADD-BASIC-01", state, nowMs), 0);
+  assert.equal(sessionBuilder.recencyPenalty("E1-ADD-BASIC-02", state, nowMs), 100);
+  assert.equal(sessionBuilder.recencyPenalty("E1-ADD-BASIC-03", state, nowMs), 0);
+});
+
+test("sessionBuilder sorts patterns by weakness before applying priority tiebreaks", async () => {
+  const { studentStore, sessionBuilder } = await loadLearningEngineModules();
+  const nowMs = 30_000_000;
+  const state = studentStore.serializeState({
+    version: 1,
+    engineVersion: 1,
+    student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xp: 0, level: 0 },
+    patternProgress: {
+      "E1-ADD-BASIC-01": { patternKey: "E1-ADD-BASIC-01", attempts: 3, correct: 3, mastery: 0.9, lastSeenAt: nowMs - 3_600_000 },
+      "E1-ADD-BASIC-02": { patternKey: "E1-ADD-BASIC-02", attempts: 3, correct: 1, mastery: 0.2, lastSeenAt: nowMs - 3_600_000 },
+      "E1-ADD-BASIC-03": { patternKey: "E1-ADD-BASIC-03", attempts: 3, correct: 1, mastery: 0.3, lastSeenAt: nowMs - 3_600_000 }
+    },
+    skillProgress: {}
+  });
+
+  const highMasteryPriority = sessionBuilder.computePatternPriority("E1-ADD-BASIC-01", state, nowMs, 1);
+  const lowMasteryPriority = sessionBuilder.computePatternPriority("E1-ADD-BASIC-02", state, nowMs, 1);
+  assert.equal(lowMasteryPriority > highMasteryPriority, true);
+
+  const source = fs.readFileSync(path.join(root, "packages/learning-engine/sessionBuilder.ts"), "utf8");
+  assert.equal(source.includes("const sortPatternsByWeakness"), true);
+  assert.equal(source.includes('"weakPatterns"'), true);
+  assert.equal(source.includes('"patternRecency"'), true);
+});
+
+test("sessionBuilder lowers priority for very recent patterns with similar mastery", async () => {
+  const { studentStore, sessionBuilder } = await loadLearningEngineModules();
+  const nowMs = 40_000_000;
+  const state = studentStore.serializeState({
+    version: 1,
+    engineVersion: 1,
+    student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xp: 0, level: 0 },
+    patternProgress: {
+      "E1-ADD-BASIC-01": { patternKey: "E1-ADD-BASIC-01", attempts: 3, correct: 1, mastery: 0.4, lastSeenAt: nowMs - 5 * 60 * 1000 },
+      "E1-ADD-BASIC-02": { patternKey: "E1-ADD-BASIC-02", attempts: 3, correct: 1, mastery: 0.4, lastSeenAt: nowMs - 60 * 60 * 1000 }
+    },
+    skillProgress: {}
+  });
+
+  const recentScore =
+    sessionBuilder.computePatternPriority("E1-ADD-BASIC-01", state, nowMs, 1) -
+    sessionBuilder.recencyPenalty("E1-ADD-BASIC-01", state, nowMs);
+  const olderScore =
+    sessionBuilder.computePatternPriority("E1-ADD-BASIC-02", state, nowMs, 1) -
+    sessionBuilder.recencyPenalty("E1-ADD-BASIC-02", state, nowMs);
+
+  assert.equal(olderScore > recentScore, true);
 });
 
 test("sessionBuilder avoids recently seen patterns until cooldown fallback is needed", async () => {
@@ -631,13 +711,16 @@ test("sessionBuilder ignores difficulty alignment when strict candidates are emp
     engineVersion: 1,
     student: { difficulty: 4, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xp: 0, level: 0 },
     patternProgress: {},
-    skillProgress: {}
+    skillProgress: {
+      E1_ADD_BASIC: { skillId: "E1_ADD_BASIC", mastery: 0.85, mastered: false }
+    }
   });
 
   const session = sessionBuilder.buildSession(state, "E1_ADD_BASIC", 4);
 
   assert.equal(session.problems.length, 5);
-  assert.equal(session.problems.some((problem) => Math.abs(problem.difficulty - 4) > 1), true);
+  assert.equal(session.startedDifficulty, 5);
+  assert.equal(session.problems.some((problem) => Math.abs(problem.difficulty - 5) > 1), true);
 });
 
 test("sessionBuilder source includes random skill-pattern top-up fallback", () => {
@@ -669,6 +752,18 @@ test("sessionBuilder keeps same pattern at most twice per session", async () => 
 
   assert.equal(session.problems.length, 5);
   assert.equal(Object.values(counts).every((count) => count <= 2), true);
+  assert.equal(
+    session.problems.every((problem, index, list) => index === 0 || problem.patternKey !== list[index - 1].patternKey),
+    true
+  );
+});
+
+test("sessionBuilder source includes patternUsage diversity guard logging", () => {
+  const source = fs.readFileSync(path.join(root, "packages/learning-engine/sessionBuilder.ts"), "utf8");
+
+  assert.equal(source.includes("const patternUsage = Object.fromEntries(patternCounts);"), true);
+  assert.equal(source.includes('console.log("patternUsage", patternUsage);'), true);
+  assert.equal(source.includes("const reorderProblemsWithPatternDiversity"), true);
 });
 
 test("learningEngine start/record/finish/recommend are pure state transformers", async () => {
@@ -691,6 +786,7 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(answered.state.engineVersion, 1);
   assert.equal(answered.state.student.solved, 1);
   assert.equal(answered.state.student.correct, 1);
+  assert.equal(answered.state.student.xp, 10);
   assert.equal(answered.session.index, 1);
   assert.equal(answered.state.skillProgress.E1_ADD_BASIC?.mastery, 2 / 3);
   assert.equal(answered.state.skillProgress.E1_ADD_BASIC?.mastered, false);
@@ -720,11 +816,16 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(finished.state.version, 1);
   assert.equal(finished.state.engineVersion, 1);
   assert.equal(finished.state.session, undefined);
+  assert.equal(finished.state.student.xp, 10);
   assert.equal(finished.result.totalQuestions, 5);
   assert.equal(finished.result.skillProgressBefore?.skillId, "E1_ADD_BASIC");
   assert.equal(finished.result.skillProgressBefore?.mastery, 0);
   assert.equal(finished.result.skillProgressAfter?.skillId, "E1_ADD_BASIC");
   assert.equal(finished.result.skillProgressAfter?.mastery, 2 / 3);
+
+  const source = fs.readFileSync(path.join(root, "packages/learning-engine/learningEngine.ts"), "utf8");
+  assert.equal(source.includes('console.log("skillMastery"'), true);
+  assert.equal(source.includes('console.log("studentXP"'), true);
 });
 
 test("recordAnswer recomputes only the affected skill", async () => {
@@ -757,6 +858,7 @@ test("adaptive start works without skillId and difficulty remains within 1..4", 
   assert.equal(adaptive.state.engineVersion, 1);
   assert.equal(adaptive.session.mode, "adaptive");
   assert.equal(adaptive.session.skillId, "E1_ADD_BASIC");
+  assert.equal(adaptive.session.startedDifficulty >= 1 && adaptive.session.startedDifficulty <= 5, true);
 
   const highDifficultyState = studentStore.serializeState({
     ...adaptive.state,

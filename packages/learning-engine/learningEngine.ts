@@ -6,7 +6,7 @@ import { updateSkillProgress } from "./skillProgressTracker";
 import type { SkillProgress } from "./skillProgressTypes";
 import type { Session } from "./sessionTypes";
 import { buildSession } from "./sessionBuilder";
-import { createLearningState, serializeState, type LearningState } from "./studentStore";
+import { createLearningState, serializeState, updateXP, type LearningState } from "./studentStore";
 import { getWeakPatterns, resolveSkillPatterns } from "./weaknessAnalyzer";
 
 type StartSessionOptions = {
@@ -172,13 +172,16 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     throw new Error("session_problem_not_found");
   }
 
-  const student = updateDifficulty(
-    {
-      ...currentState.student,
-      solved: currentState.student.solved + 1,
-      correct: currentState.student.correct + (result.correct ? 1 : 0)
-    },
-    result.correct
+  const student = updateXP(
+    updateDifficulty(
+      {
+        ...currentState.student,
+        solved: currentState.student.solved + 1,
+        correct: currentState.student.correct + (result.correct ? 1 : 0)
+      },
+      result.correct
+    ),
+    result.correct ? 1 : 0
   );
 
   const patternProgress = {
@@ -231,6 +234,8 @@ export function finishSession(state: LearningState): { state: LearningState; res
     ? (session.skillProgressBefore ?? getSkillProgressSnapshot(currentState, sessionSkillId))
     : null;
   const skillProgressAfter = sessionSkillId ? getSkillProgressSnapshot(currentState, sessionSkillId) : null;
+  console.log("skillMastery", skillProgressAfter?.mastery ?? 0);
+  console.log("studentXP", currentState.student.xp);
   const result: SessionResult = {
     score: session.correct,
     totalQuestions: session.problems.length,

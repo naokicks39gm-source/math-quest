@@ -7,7 +7,6 @@ import { loadStateFromClient } from "packages/learning-engine/studentStore";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { practiceSkills } from "@/lib/learningSkillCatalog";
 import { readDailyStreak, type DailyStreak } from "@/lib/streak";
-import { readXp, type StoredXp } from "@/lib/xp";
 
 const getSkillBucket = (mastery: number) => {
   if (mastery >= 0.75) {
@@ -35,9 +34,7 @@ const getSkillSortRank = (mastery: number) => {
   return 2;
 };
 
-const buildSkillItems = (): SkillCardItem[] => {
-  const state = loadStateFromClient();
-
+const buildSkillItems = (state: ReturnType<typeof loadStateFromClient>): SkillCardItem[] => {
   return practiceSkills
     .map((skill) => {
       const progress = state.skillProgress[skill.id];
@@ -92,7 +89,7 @@ const getRecommendedSkill = (items: SkillCardItem[]) =>
 export default function SkillsPage() {
   const router = useRouter();
   const [streak, setStreak] = useState<DailyStreak | null>(null);
-  const [xp, setXp] = useState<StoredXp>({ totalXp: 0 });
+  const [xp, setXp] = useState(0);
   const [skills, setSkills] = useState<SkillCardItem[]>(() =>
     practiceSkills.map((skill) => ({
       id: skill.id,
@@ -105,9 +102,13 @@ export default function SkillsPage() {
   );
 
   useEffect(() => {
-    setSkills(buildSkillItems());
+    const state = loadStateFromClient();
+    const nextXp = state.student.xp ?? 0;
+
+    setSkills(buildSkillItems(state));
     setStreak(readDailyStreak());
-    setXp(readXp());
+    setXp(nextXp);
+    console.log("studentXP", nextXp);
     trackAnalyticsEvent("skill_open");
   }, []);
 
@@ -143,7 +144,7 @@ export default function SkillsPage() {
           <div className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-600">Learning Progress</div>
           <h1 className="mt-3 text-4xl font-black text-slate-900">Skill List</h1>
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <div className="rounded-full bg-slate-900 px-4 py-2 text-sm font-black text-white">XP {xp.totalXp}</div>
+            <div className="rounded-full bg-slate-900 px-4 py-2 text-sm font-black text-white">XP {xp}</div>
             {streak ? <p className="text-lg font-bold text-amber-600">🔥 {streak.streak} day streak</p> : null}
           </div>
           <p className="mt-3 text-sm text-slate-600">進捗を見ながら、次に進める skill を選べます。</p>

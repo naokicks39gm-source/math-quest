@@ -39,6 +39,15 @@ const createInitialStudentState = (): StudentState => ({
   level: 0
 });
 
+export function updateXP(studentState: StudentState, correctCount: number): StudentState {
+  const gain = Math.max(0, Math.trunc(correctCount)) * 10;
+
+  return {
+    ...studentState,
+    xp: studentState.xp + gain
+  };
+}
+
 const createInitialState = (): LearningState => ({
   version: LEARNING_STATE_VERSION,
   engineVersion: CURRENT_ENGINE_VERSION,
@@ -207,7 +216,7 @@ const parseSession = (value: unknown): Session | undefined => {
   return {
     mode: value.mode,
     skillId: typeof value.skillId === "string" ? value.skillId : undefined,
-    startedDifficulty: Math.max(1, Math.min(4, Math.trunc(parseNumber(value.startedDifficulty, 1)))),
+    startedDifficulty: Math.max(1, Math.min(5, Math.trunc(parseNumber(value.startedDifficulty, 1)))),
     skillProgressBefore: parseSingleSkillProgress(value.skillProgressBefore),
     problems,
     index: Math.max(0, Math.trunc(parseNumber(value.index, 0))),

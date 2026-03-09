@@ -28,7 +28,15 @@ const shuffle = <T>(items: T[]): T[] => {
   return copied;
 };
 
-const clampDifficulty = (difficulty: number) => Math.max(1, Math.min(4, Math.trunc(difficulty)));
+const clampDifficulty = (difficulty: number) => Math.max(1, Math.min(5, Math.trunc(difficulty)));
+
+export const computeTargetDifficulty = (skillProgress: number) => {
+  if (skillProgress < 0.2) return 1;
+  if (skillProgress < 0.4) return 2;
+  if (skillProgress < 0.6) return 3;
+  if (skillProgress < 0.8) return 4;
+  return 5;
+};
 
 const inDifficultyWindow = (difficulty: unknown, target: number) =>
   typeof difficulty === "number" && Math.abs(clampDifficulty(difficulty) - target) <= 1;
@@ -40,6 +48,19 @@ export const computeRecencyScore = (lastSeenAt: number | undefined, nowMs: numbe
 
   const elapsedMs = Math.max(0, nowMs - lastSeenAt);
   return Math.min(elapsedMs / RECENCY_WINDOW_MS, 1);
+};
+
+const RECENCY_PENALTY_INTERVAL_MS = 30 * 60 * 1000;
+const RECENCY_PENALTY_SCORE = 100;
+
+export const recencyPenalty = (patternKey: string, state: LearningState, nowMs: number) => {
+  const lastSeenAt = state.patternProgress[patternKey]?.lastSeenAt;
+  if (typeof lastSeenAt !== "number" || lastSeenAt <= 0) {
+    return 0;
+  }
+
+  const delta = Math.max(0, nowMs - lastSeenAt);
+  return delta < RECENCY_PENALTY_INTERVAL_MS ? RECENCY_PENALTY_SCORE : 0;
 };
 
 export const computeDifficultyScore = (patternDifficulty: number, studentDifficulty: number) =>
@@ -98,6 +119,28 @@ const recordSelectedProblem = (patternCounts: Map<string, number>, problem: Sess
   patternCounts.set(problem.patternKey, getPatternCount(patternCounts, problem.patternKey) + 1);
 };
 
+const reorderProblemsWithPatternDiversity = (problems: SessionProblem[]): SessionProblem[] => {
+  const remaining = [...problems];
+  const ordered: SessionProblem[] = [];
+
+  while (remaining.length > 0) {
+    const previousPatternKey = ordered[ordered.length - 1]?.patternKey;
+    const nextIndex = remaining.findIndex((problem) => problem.patternKey !== previousPatternKey);
+    const index = nextIndex >= 0 ? nextIndex : 0;
+    const [next] = remaining.splice(index, 1);
+    ordered.push(next);
+  }
+
+  return ordered;
+};
+
+const sortPatternsByWeakness = <T extends { key: string }>(patterns: T[], state: LearningState) =>
+  [...patterns].sort((left, right) => {
+    const leftMastery = state.patternProgress[left.key]?.mastery ?? 0;
+    const rightMastery = state.patternProgress[right.key]?.mastery ?? 0;
+    return leftMastery - rightMastery;
+  });
+
 const sortPatternsByPriority = (
   skillId: string,
   patternKeys: Set<string>,
@@ -105,11 +148,23 @@ const sortPatternsByPriority = (
   nowMs: number,
   studentDifficulty: number
 ) =>
-  shuffle(resolveSkillPatterns(skillId).filter((pattern) => patternKeys.has(pattern.key))).sort(
-    (left, right) =>
-      computePatternPriority(right.key, state, nowMs, studentDifficulty) -
-      computePatternPriority(left.key, state, nowMs, studentDifficulty)
-  );
+  sortPatternsByWeakness(
+    shuffle(resolveSkillPatterns(skillId).filter((pattern) => patternKeys.has(pattern.key))),
+    state
+  ).sort((left, right) => {
+    const masteryDelta =
+      (state.patternProgress[left.key]?.mastery ?? 0) - (state.patternProgress[right.key]?.mastery ?? 0);
+    if (Math.abs(masteryDelta) > 0.05) {
+      return masteryDelta;
+    }
+
+    const leftScore =
+      computePatternPriority(left.key, state, nowMs, studentDifficulty) - recencyPenalty(left.key, state, nowMs);
+    const rightScore =
+      computePatternPriority(right.key, state, nowMs, studentDifficulty) - recencyPenalty(right.key, state, nowMs);
+
+    return rightScore - leftScore;
+  });
 
 const buildCandidates = (
   state: LearningState,
@@ -245,8 +300,24 @@ export function buildSession(
   mode: "skill" | "adaptive" = "skill",
   now: () => number = Date.now
 ): Session {
-  const targetDifficulty = clampDifficulty(studentDifficulty);
+  const skillProgress = state.skillProgress[skillId]?.mastery ?? 0;
+  const targetDifficulty = computeTargetDifficulty(skillProgress);
+  console.log("targetDifficulty", targetDifficulty);
   const skillPatterns = resolveSkillPatterns(skillId);
+  console.log(
+    "weakPatterns",
+    skillPatterns.map((pattern) => ({
+      id: pattern.key,
+      mastery: state.patternProgress[pattern.key]?.mastery ?? 0
+    }))
+  );
+  console.log(
+    "patternRecency",
+    skillPatterns.map((pattern) => ({
+      id: pattern.key,
+      lastSeenAt: state.patternProgress[pattern.key]?.lastSeenAt ?? null
+    }))
+  );
   const weakPatterns = getWeakPatterns(state, skillId);
   const skillPatternKeys = new Set(skillPatterns.map((pattern) => pattern.key));
   const weakPatternKeys = new Set(weakPatterns.map((pattern) => pattern.patternKey));
@@ -337,11 +408,15 @@ export function buildSession(
     topUpWithRandomSkillPatterns(selected, skillId, targetDifficulty, patternCounts);
   }
 
+  const patternUsage = Object.fromEntries(patternCounts);
+  console.log("patternUsage", patternUsage);
+  const orderedProblems = reorderProblemsWithPatternDiversity(shuffle(selected)).slice(0, SESSION_SIZE);
+
   return {
     mode,
     skillId,
     startedDifficulty: targetDifficulty,
-    problems: shuffle(selected).slice(0, SESSION_SIZE),
+    problems: orderedProblems,
     index: 0,
     correct: 0,
     wrong: 0

@@ -18,6 +18,7 @@ type SkillCardProps = {
 
 export default function SkillCard({ skill, onSelect }: SkillCardProps) {
   const mastery = typeof skill.mastery === "number" ? Math.max(0, Math.min(1, skill.mastery)) : undefined;
+  const masteryPercent = mastery !== undefined ? Math.round(mastery * 100) : 0;
   const status = mastery !== undefined ? (mastery >= 0.75 ? "mastered" : "learning") : undefined;
 
   return (
@@ -42,7 +43,7 @@ export default function SkillCard({ skill, onSelect }: SkillCardProps) {
           <SkillProgressBar mastery={mastery} />
           <div className="mt-2 flex items-center justify-between text-sm text-slate-600">
             <span>{skill.grade ?? "Skill"}</span>
-            <span>{Math.round(mastery * 100)}%</span>
+            <span>{masteryPercent}%</span>
           </div>
         </>
       ) : null}

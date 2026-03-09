@@ -85,10 +85,12 @@ test("skill list and detail pages use skill-system-based catalog", () => {
   assert.equal(progressPageSource.includes("Start Practice"), true);
   assert.equal(progressPageSource.includes(") : null}"), true);
   assert.equal(progressPageSource.includes('import { readDailyStreak, type DailyStreak } from "@/lib/streak";'), true);
-  assert.equal(progressPageSource.includes('import { readXp, type StoredXp } from "@/lib/xp";'), true);
+  assert.equal(progressPageSource.includes('import { readXp, type StoredXp } from "@/lib/xp";'), false);
   assert.equal(progressPageSource.includes('trackAnalyticsEvent("skill_open")'), true);
-  assert.equal(progressPageSource.includes("setXp(readXp());"), true);
-  assert.equal(progressPageSource.includes("XP {xp.totalXp}"), true);
+  assert.equal(progressPageSource.includes("const nextXp = state.student.xp ?? 0;"), true);
+  assert.equal(progressPageSource.includes("setXp(nextXp);"), true);
+  assert.equal(progressPageSource.includes('console.log("studentXP", nextXp);'), true);
+  assert.equal(progressPageSource.includes("XP {xp}"), true);
   assert.equal(progressPageSource.includes("🔥 {streak.streak} day streak"), true);
   assert.equal(progressPageSource.includes("left.mastery ?? 0"), true);
   assert.equal(progressPageSource.includes("right.mastery ?? 0"), true);
@@ -264,7 +266,8 @@ test("skills ui components expose mastery progress and status", () => {
   assert.equal(skillCardSource.includes('import SkillProgressBar from "packages/ui/SkillProgressBar";'), true);
   assert.equal(skillCardSource.includes('mastery >= 0.75 ? "mastered" : "learning"'), true);
   assert.equal(skillCardSource.includes("skill.grade"), true);
-  assert.equal(skillCardSource.includes("Math.round(mastery * 100)"), true);
+  assert.equal(skillCardSource.includes("const masteryPercent = mastery !== undefined ? Math.round(mastery * 100) : 0;"), true);
+  assert.equal(skillCardSource.includes("{masteryPercent}%"), true);
   assert.equal(progressBarSource.includes("type SkillProgressBarProps = {"), true);
   assert.equal(progressBarSource.includes("mastery: number;"), true);
   assert.equal(progressBarSource.includes("normalizedMastery * 100"), true);
