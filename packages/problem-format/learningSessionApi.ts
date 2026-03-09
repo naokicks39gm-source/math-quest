@@ -73,6 +73,8 @@ export type SessionResult = {
   difficultyBefore: number;
   difficultyAfter: number;
   weakPatternsDetected: number;
+  skillProgressBefore: LearningSkillProgress | null;
+  skillProgressAfter: LearningSkillProgress | null;
   recommendation: Recommendation;
 };
 

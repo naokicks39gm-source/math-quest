@@ -1,5 +1,7 @@
 export { default as SkillCard } from "./SkillCard";
+export type { SkillCardItem } from "./SkillCard";
 export { default as SkillList } from "./SkillList";
+export { default as SkillProgressBar } from "./SkillProgressBar";
 export { default as ProblemCard } from "./ProblemCard";
 export { default as AnswerInput } from "./AnswerInput";
 export { default as ResultView } from "./ResultView";

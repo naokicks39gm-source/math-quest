@@ -670,6 +670,10 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(finished.state.engineVersion, 1);
   assert.equal(finished.state.session, undefined);
   assert.equal(finished.result.totalQuestions, 5);
+  assert.equal(finished.result.skillProgressBefore?.skillId, "E1_ADD_BASIC");
+  assert.equal(finished.result.skillProgressBefore?.mastery, 0);
+  assert.equal(finished.result.skillProgressAfter?.skillId, "E1_ADD_BASIC");
+  assert.equal(finished.result.skillProgressAfter?.mastery, 2 / 3);
 });
 
 test("recordAnswer recomputes only the affected skill", async () => {

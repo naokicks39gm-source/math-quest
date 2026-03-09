@@ -16,10 +16,14 @@ test("learning practice ui and api files exist", () => {
     "src/app/mock-skills/page.tsx",
     "src/app/mock-skills/[skillId]/page.tsx",
     "src/app/mock-practice/page.tsx",
+    "src/app/review/page.tsx",
+    "src/app/skills/page.tsx",
     "src/lib/learningSkillCatalog.ts",
+    "src/lib/learningPatternCatalog.ts",
     "packages/problem-format/learningSessionApi.ts",
     "packages/ui/SkillList.tsx",
     "packages/ui/SkillCard.tsx",
+    "packages/ui/SkillProgressBar.tsx",
     "packages/ui/ProblemCard.tsx",
     "packages/ui/AnswerInput.tsx",
     "packages/ui/ResultView.tsx",
@@ -34,14 +38,42 @@ test("learning practice ui and api files exist", () => {
 test("skill list and detail pages use skill-system-based catalog", () => {
   const skillsPageSource = read("src/app/mock-skills/page.tsx");
   const detailPageSource = read("src/app/mock-skills/[skillId]/page.tsx");
+  const progressPageSource = read("src/app/skills/page.tsx");
+  const reviewPageSource = read("src/app/review/page.tsx");
   const catalogSource = read("src/lib/learningSkillCatalog.ts");
+  const patternCatalogSource = read("src/lib/learningPatternCatalog.ts");
 
   assert.equal(skillsPageSource.includes('import { practiceSkills } from "@/lib/learningSkillCatalog";'), true);
   assert.equal(skillsPageSource.includes("dummySkills"), false);
   assert.equal(detailPageSource.includes('import { getPracticeSkill } from "@/lib/learningSkillCatalog";'), true);
   assert.equal(detailPageSource.includes("dummySkills"), false);
   assert.equal(detailPageSource.includes('href={`/mock-practice?skillId=${encodeURIComponent(skill.id)}`}'), true);
+  assert.equal(progressPageSource.includes('import { loadStateFromClient } from "packages/learning-engine/studentStore";'), true);
+  assert.equal(progressPageSource.includes("state.skillProgress[skill.id]"), true);
+  assert.equal(progressPageSource.includes('router.push(`/quest?skillId=${encodeURIComponent(skill.id)}`)'), true);
+  assert.equal(progressPageSource.includes("mastery >= 0.75"), true);
+  assert.equal(progressPageSource.includes("mastery > 0"), true);
+  assert.equal(progressPageSource.includes('return "not_started";'), true);
+  assert.equal(progressPageSource.includes("getSkillSortRank"), true);
+  assert.equal(progressPageSource.includes("const getRecommendedSkill"), true);
+  assert.equal(progressPageSource.includes('.filter((skill) => (skill.mastery ?? 0) < 0.75)'), true);
+  assert.equal(progressPageSource.includes("Recommended"), true);
+  assert.equal(progressPageSource.includes("Start Practice"), true);
+  assert.equal(progressPageSource.includes("left.mastery ?? 0"), true);
+  assert.equal(progressPageSource.includes("right.mastery ?? 0"), true);
+  assert.equal(progressPageSource.includes('leftBucket === "learning" && rightBucket === "learning"'), true);
+  assert.equal(progressPageSource.includes("left.title.localeCompare"), true);
+  assert.equal(reviewPageSource.includes('import { loadStateFromClient } from "packages/learning-engine/studentStore";'), true);
+  assert.equal(reviewPageSource.includes("progress.attempts >= 2 && progress.mastery < 0.7"), true);
+  assert.equal(reviewPageSource.includes('router.push(`/quest?patternId=${encodeURIComponent(patternId)}`)'), true);
+  assert.equal(reviewPageSource.includes("Weak Skills"), true);
+  assert.equal(reviewPageSource.includes("Practice"), true);
   assert.equal(catalogSource.includes('import skillsData from "packages/skill-system/skills.json";'), true);
+  assert.equal(patternCatalogSource.includes('import skillsData from "packages/skill-system/skills.json";'), true);
+  assert.equal(patternCatalogSource.includes('import addBasicPatterns from "packages/problem-engine/patterns/E1/add-basic.json";'), true);
+  assert.equal(patternCatalogSource.includes("title: pattern.template"), true);
+  assert.equal(catalogSource.includes("grade: string"), true);
+  assert.equal(catalogSource.includes("grade: skill.grade"), true);
   assert.equal(catalogSource.includes("problemCount: 5"), true);
 });
 
@@ -64,6 +96,18 @@ test("mock practice uses learning session lifecycle instead of runtime quiz gene
   assert.equal(source.includes("resultSummary"), true);
   assert.equal(source.includes('fetch(`/api/skill/${encodeURIComponent(nextSkillId)}`'), false);
   assert.equal(source.includes('fetch("/api/learning/recommendation"'), false);
+});
+
+test("quest and review support weak pattern practice flow", () => {
+  const questSource = read("src/app/quest/page.tsx");
+  const reviewSource = read("src/app/review/page.tsx");
+
+  assert.equal(reviewSource.includes('router.push(`/quest?patternId=${encodeURIComponent(patternId)}`)'), true);
+  assert.equal(questSource.includes('const patternIdFromQuery = (params.get("patternId") ?? "").trim();'), true);
+  assert.equal(questSource.includes("const hasPatternQuery = Boolean(patternIdFromQuery);"), true);
+  assert.equal(questSource.includes('const patternEntry = getLearningPattern(patternIdFromQuery);'), true);
+  assert.equal(questSource.includes("generateProblems(patternEntry.pattern, quizSize)"), true);
+  assert.equal(questSource.includes('type_id: `REVIEW.${patternEntry.skillId}.${patternEntry.patternId}`'), true);
 });
 
 test("learning api routes delegate to learning engine with state in/out and old skill route is disabled", () => {
@@ -97,6 +141,8 @@ test("learning api routes delegate to learning engine with state in/out and old 
   assert.equal(apiTypesSource.includes("index: number;"), true);
   assert.equal(apiTypesSource.includes("answer: string;"), true);
   assert.equal(apiTypesSource.includes("export type LearningSessionFinishResponse = {"), true);
+  assert.equal(apiTypesSource.includes("skillProgressBefore: LearningSkillProgress | null;"), true);
+  assert.equal(apiTypesSource.includes("skillProgressAfter: LearningSkillProgress | null;"), true);
   assert.equal(apiTypesSource.includes("export type LearningSessionResumeResponse = {"), true);
   assert.equal(apiTypesSource.includes("result: SessionResult;"), true);
   assert.equal(storeSource.includes("version: number"), true);
@@ -113,8 +159,30 @@ test("session result view shows difficulty swing weak patterns and recommendatio
   assert.equal(resultViewSource.includes("difficultyBefore"), true);
   assert.equal(resultViewSource.includes("difficultyAfter"), true);
   assert.equal(resultViewSource.includes("weakPatternsDetected"), true);
+  assert.equal(resultViewSource.includes("skillName"), true);
+  assert.equal(resultViewSource.includes("skillProgressBefore"), true);
+  assert.equal(resultViewSource.includes("skillProgressAfter"), true);
+  assert.equal(resultViewSource.includes("Skill Progress"), true);
+  assert.equal(resultViewSource.includes("delta > 0"), true);
+  assert.equal(resultViewSource.includes("text-emerald-600"), true);
+  assert.equal(resultViewSource.includes("text-slate-500"), true);
   assert.equal(resultViewSource.includes("recommendationLabel"), true);
   assert.equal(resultViewSource.includes("Difficulty"), true);
   assert.equal(resultViewSource.includes("Weak Patterns"), true);
   assert.equal(resultViewSource.includes("Next Action"), true);
+});
+
+test("skills ui components expose mastery progress and status", () => {
+  const skillCardSource = read("packages/ui/SkillCard.tsx");
+  const progressBarSource = read("packages/ui/SkillProgressBar.tsx");
+  const uiIndexSource = read("packages/ui/index.ts");
+
+  assert.equal(skillCardSource.includes('import SkillProgressBar from "packages/ui/SkillProgressBar";'), true);
+  assert.equal(skillCardSource.includes('mastery >= 0.75 ? "mastered" : "learning"'), true);
+  assert.equal(skillCardSource.includes("skill.grade"), true);
+  assert.equal(skillCardSource.includes("Math.round(mastery * 100)"), true);
+  assert.equal(progressBarSource.includes("type SkillProgressBarProps = {"), true);
+  assert.equal(progressBarSource.includes("mastery: number;"), true);
+  assert.equal(progressBarSource.includes("normalizedMastery * 100"), true);
+  assert.equal(uiIndexSource.includes('export { default as SkillProgressBar } from "./SkillProgressBar";'), true);
 });

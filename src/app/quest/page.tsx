@@ -10,6 +10,7 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getPracticeSkill } from "@/lib/learningSkillCatalog";
+import { getLearningPattern } from "@/lib/learningPatternCatalog";
 import { getCatalogGrades } from '@/lib/gradeCatalog';
 import { entryEquivalentKey, entryPromptKey } from '@/lib/questItemFactory';
 import { buildStocksForTypes, pickUniqueQuizFromStock, type PickMeta, type TypeStockResult } from "@/lib/questStockFactory";
@@ -32,6 +33,7 @@ import JuniorKeypad from "@/components/keypad/JuniorKeypad";
 import HighSchoolKeypad from "@/components/keypad/HighSchoolKeypad";
 import { SessionResultView } from "packages/ui";
 import { VARIABLE_SYMBOLS } from "packages/keypad";
+import { generateProblems } from "packages/problem-engine/dsl-engine";
 import type {
   LearningSessionAnswerResponse,
   LearningSessionFinishResponse,
@@ -1691,6 +1693,7 @@ function QuestPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const skillIdFromQuery = (params.get("skillId") ?? "").trim();
+  const patternIdFromQuery = (params.get("patternId") ?? "").trim();
   const typeFromQuery = (params.get("type") ?? "").trim();
   const categoryFromQuery = params.get("category");
   const difficultyFromQuery = parseDifficulty((params.get("difficulty") ?? "").trim());
@@ -2453,6 +2456,7 @@ function QuestPageInner() {
   }, [categoryFromQuery, grades]);
 
   const hasLevelQuery = Boolean(levelFromQuery);
+  const hasPatternQuery = Boolean(patternIdFromQuery);
   const hasTypeQuery = Boolean(typeFromQuery);
   const hasCategoryQuery = Boolean(categoryFromQuery);
 
@@ -2661,6 +2665,60 @@ function QuestPageInner() {
       return;
     }
     clearAllFractionAutoMoveTimers();
+    if (hasPatternQuery && patternIdFromQuery) {
+      const patternEntry = getLearningPattern(patternIdFromQuery);
+      if (!patternEntry) {
+        setQuizItems([]);
+        setItemIndex(0);
+        setQuestionResults({});
+        setStatus("blocked");
+        setQuizBuildError("この復習パターンは現在利用できません。");
+        return;
+      }
+      const generated = dedupeQuestSet(
+        generateProblems(patternEntry.pattern, quizSize).map(
+          (problem): QuestEntry => ({
+            item: {
+              prompt: problem.question,
+              answer: problem.answer
+            },
+            type: {
+              type_id: `REVIEW.${patternEntry.skillId}.${patternEntry.patternId}`,
+              display_name: patternEntry.title,
+              generation_params: {
+                pattern_id: patternEntry.patternId
+              },
+              answer_format: { kind: "int" },
+              example_items: []
+            }
+          })
+        )
+      );
+      if (generated.length < 1) {
+        setQuizItems([]);
+        setItemIndex(0);
+        setQuestionResults({});
+        setStatus("blocked");
+        setQuizBuildError("この復習パターンは一時的に出題候補不足です。");
+        return;
+      }
+      setActivePickMeta(null);
+      setQuizItems(generated);
+      setItemIndex(0);
+      setQuestionResults({});
+      setStatus("playing");
+      setQuizBuildError(null);
+      setMessage("Battle Start!");
+      setPracticeResult(null);
+      setResultMark(null);
+      setRecognizedNumber(null);
+      setInput("");
+      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
+      setQuadraticAnswers(["", ""]);
+      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
+      setQuadraticActiveIndex(0);
+      return;
+    }
     if (levelInfo?.gradeId === "E1") {
       const generated = dedupeQuestSet(generateE1LevelProblems(levelInfo.levelId as E1LevelId, quizSize) as QuestEntry[]);
       if (generated.length < 1) {
@@ -2791,7 +2849,7 @@ function QuestPageInner() {
     setQuadraticAnswers(["", ""]);
     setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
     setQuadraticActiveIndex(0);
-  }, [isLearningSessionMode, levelGradeId, levelFromQuery, stockReady, typeStocks, activeTypeId, quizSize, retryNonce, difficultyFromQuery]);
+  }, [isLearningSessionMode, hasPatternQuery, patternIdFromQuery, levelGradeId, levelFromQuery, stockReady, typeStocks, activeTypeId, quizSize, retryNonce, difficultyFromQuery]);
 
   const currentAid = useMemo(
     () =>
@@ -4999,11 +5057,14 @@ function QuestPageInner() {
           isLearningSessionMode && learningResult ? (
             <div className="w-full max-w-3xl">
               <SessionResultView
+                skillName={getPracticeSkill(skillIdFromQuery)?.title ?? skillIdFromQuery}
                 score={learningResult.score}
                 totalQuestions={learningResult.totalQuestions}
                 difficultyBefore={learningResult.difficultyBefore}
                 difficultyAfter={learningResult.difficultyAfter}
                 weakPatternsDetected={learningResult.weakPatternsDetected}
+                skillProgressBefore={learningResult.skillProgressBefore}
+                skillProgressAfter={learningResult.skillProgressAfter}
                 recommendation={learningResult.recommendation}
                 recommendationLabel={getRecommendationLabel(learningResult)}
                 onRetry={() => {

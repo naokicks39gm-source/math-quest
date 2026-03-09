@@ -114,6 +114,18 @@ const parseSkillProgress = (value: unknown): Record<string, SkillProgress> => {
   return Object.fromEntries(entries);
 };
 
+const parseSingleSkillProgress = (value: unknown): SkillProgress | undefined => {
+  if (!isRecord(value) || typeof value.skillId !== "string") {
+    return undefined;
+  }
+
+  return {
+    skillId: value.skillId,
+    mastery: Math.max(0, Math.min(1, parseNumber(value.mastery, 0))),
+    mastered: value.mastered === true
+  };
+};
+
 const parseSession = (value: unknown): Session | undefined => {
   if (!isRecord(value) || !Array.isArray(value.problems)) {
     return undefined;
@@ -196,6 +208,7 @@ const parseSession = (value: unknown): Session | undefined => {
     mode: value.mode,
     skillId: typeof value.skillId === "string" ? value.skillId : undefined,
     startedDifficulty: Math.max(1, Math.min(4, Math.trunc(parseNumber(value.startedDifficulty, 1)))),
+    skillProgressBefore: parseSingleSkillProgress(value.skillProgressBefore),
     problems,
     index: Math.max(0, Math.trunc(parseNumber(value.index, 0))),
     correct: Math.max(0, Math.trunc(parseNumber(value.correct, 0))),

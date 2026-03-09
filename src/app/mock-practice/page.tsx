@@ -231,11 +231,14 @@ function MockPracticeContent() {
           </section>
         ) : resultSummary ? (
           <SessionResultView
+            skillName={selectedSkill.title}
             score={resultSummary.result.score}
             totalQuestions={resultSummary.result.totalQuestions}
             difficultyBefore={resultSummary.result.difficultyBefore}
             difficultyAfter={resultSummary.result.difficultyAfter}
             weakPatternsDetected={resultSummary.result.weakPatternsDetected}
+            skillProgressBefore={resultSummary.result.skillProgressBefore}
+            skillProgressAfter={resultSummary.result.skillProgressAfter}
             recommendation={resultSummary.result.recommendation}
             recommendationLabel={recommendationLabel}
             onRetry={handleRetry}

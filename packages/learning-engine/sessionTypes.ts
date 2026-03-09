@@ -1,3 +1,5 @@
+import type { SkillProgress } from "./skillProgressTypes";
+
 type SessionGeneratedProblem = {
   id: string;
   question: string;
@@ -23,6 +25,7 @@ export type Session = {
   mode: "skill" | "adaptive";
   skillId?: string;
   startedDifficulty: number;
+  skillProgressBefore?: SkillProgress;
   problems: SessionProblem[];
   index: number;
   correct: number;

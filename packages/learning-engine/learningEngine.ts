@@ -3,6 +3,7 @@ import skillsData from "packages/skill-system/skills.json";
 import { updateDifficulty } from "./difficultyController";
 import { updatePatternProgress as nextPatternProgress } from "./patternProgressTracker";
 import { updateSkillProgress } from "./skillProgressTracker";
+import type { SkillProgress } from "./skillProgressTypes";
 import type { Session } from "./sessionTypes";
 import { buildSession } from "./sessionBuilder";
 import { createLearningState, serializeState, type LearningState } from "./studentStore";
@@ -28,6 +29,8 @@ export type SessionResult = {
   difficultyBefore: number;
   difficultyAfter: number;
   weakPatternsDetected: number;
+  skillProgressBefore: SkillProgress | null;
+  skillProgressAfter: SkillProgress | null;
   recommendation: Recommendation;
 };
 
@@ -126,6 +129,13 @@ const countWeakPatterns = (state: LearningState) =>
     }
   }, 0);
 
+const getSkillProgressSnapshot = (state: LearningState, skillId: string): SkillProgress =>
+  state.skillProgress[skillId] ?? {
+    skillId,
+    mastery: 0,
+    mastered: false
+  };
+
 export function startSession(state: LearningState, options: StartSessionOptions): { state: LearningState; session: Session } {
   const currentState = serializeState(state);
 
@@ -135,7 +145,10 @@ export function startSession(state: LearningState, options: StartSessionOptions)
 
   const skillId =
     options.mode === "adaptive" ? resolveAdaptiveSkillId(currentState, options.skillId) : (options.skillId as string);
-  const session = buildSession(currentState, skillId, currentState.student.difficulty, options.mode);
+  const session = {
+    ...buildSession(currentState, skillId, currentState.student.difficulty, options.mode),
+    skillProgressBefore: getSkillProgressSnapshot(currentState, skillId)
+  };
   const nextState = serializeState({
     ...currentState,
     session
@@ -213,12 +226,19 @@ export function finishSession(state: LearningState): { state: LearningState; res
   }
 
   const recommendation = recommendNextAction(currentState);
+  const sessionSkillId = session.skillId;
+  const skillProgressBefore = sessionSkillId
+    ? (session.skillProgressBefore ?? getSkillProgressSnapshot(currentState, sessionSkillId))
+    : null;
+  const skillProgressAfter = sessionSkillId ? getSkillProgressSnapshot(currentState, sessionSkillId) : null;
   const result: SessionResult = {
     score: session.correct,
     totalQuestions: session.problems.length,
     difficultyBefore: session.startedDifficulty,
     difficultyAfter: currentState.student.difficulty,
     weakPatternsDetected: countWeakPatterns(currentState),
+    skillProgressBefore,
+    skillProgressAfter,
     recommendation
   };
 

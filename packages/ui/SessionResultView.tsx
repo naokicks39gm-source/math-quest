@@ -4,11 +4,14 @@ type Recommendation =
   | { type: "done"; reason: "all_mastered" };
 
 type SessionResultViewProps = {
+  skillName: string;
   score: number;
   totalQuestions: number;
   difficultyBefore: number;
   difficultyAfter: number;
   weakPatternsDetected: number;
+  skillProgressBefore: { mastery: number } | null;
+  skillProgressAfter: { mastery: number } | null;
   recommendation: Recommendation;
   recommendationLabel: string;
   onRetry: () => void;
@@ -16,16 +19,25 @@ type SessionResultViewProps = {
 };
 
 export default function SessionResultView({
+  skillName,
   score,
   totalQuestions,
   difficultyBefore,
   difficultyAfter,
   weakPatternsDetected,
+  skillProgressBefore,
+  skillProgressAfter,
   recommendation,
   recommendationLabel,
   onRetry,
   onBackToSkills
 }: SessionResultViewProps) {
+  const beforeMastery = skillProgressBefore?.mastery ?? 0;
+  const afterMastery = skillProgressAfter?.mastery ?? 0;
+  const delta = afterMastery - beforeMastery;
+  const deltaLabel = `${delta > 0 ? "+" : ""}${delta.toFixed(2)}`;
+  const deltaColorClass = delta > 0 ? "text-emerald-600" : "text-slate-500";
+
   return (
     <section className="rounded-[32px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
       <div className="text-sm font-semibold uppercase tracking-[0.35em] text-sky-600">Session Result</div>
@@ -48,6 +60,16 @@ export default function SessionResultView({
           <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Next Action</div>
           <div className="mt-2 text-lg font-bold text-slate-900">{recommendationLabel}</div>
           <div className="mt-1 text-xs text-slate-500">{recommendation.type}</div>
+        </div>
+      </div>
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Skill Progress</div>
+        <div className="mt-2 text-sm font-semibold text-slate-600">{skillName}</div>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-lg font-bold text-slate-900">
+          <span>{beforeMastery.toFixed(2)}</span>
+          <span className="text-slate-400">→</span>
+          <span>{afterMastery.toFixed(2)}</span>
+          <span className={deltaColorClass}>({deltaLabel})</span>
         </div>
       </div>
       <div className="mt-6 flex flex-wrap gap-3">
