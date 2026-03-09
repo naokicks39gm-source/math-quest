@@ -1,8 +1,20 @@
-import type { GeneratedProblem } from "packages/problem-engine";
 import type { PatternProgress } from "./patternProgressTypes";
 import type { Session } from "./sessionTypes";
 import type { SkillProgress } from "./skillProgressTypes";
 import type { StudentState } from "./studentTypes";
+
+type StoredGeneratedProblem = {
+  id: string;
+  question: string;
+  answer: string;
+  patternKey?: string;
+  variables?: Record<string, number>;
+  variableRanges?: Record<string, [number, number]>;
+  meta?: {
+    source?: string;
+    difficulty?: number;
+  };
+};
 
 export const LEARNING_STATE_KEY = "mathquest_learning_state";
 export const LEARNING_STATE_VERSION = 1;
@@ -111,7 +123,7 @@ const parseSession = (value: unknown): Session | undefined => {
     return undefined;
   }
 
-  const parseGeneratedProblem = (raw: unknown): GeneratedProblem | null => {
+  const parseGeneratedProblem = (raw: unknown): StoredGeneratedProblem | null => {
     if (!isRecord(raw) || typeof raw.id !== "string" || typeof raw.question !== "string" || typeof raw.answer !== "string") {
       return null;
     }

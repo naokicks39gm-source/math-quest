@@ -8,14 +8,13 @@ import type {
   LearningSessionAnswerResponse,
   LearningSessionFinishResponse,
   LearningSessionStartResponse
-} from "packages/problem-format";
+} from "packages/problem-format/learningSessionApi";
 import {
   LEARNING_STATE_KEY,
   loadStateFromClient,
-  type SessionProblem,
-  type LearningState,
-  type Session
-} from "packages/learning-engine";
+  type LearningState
+} from "packages/learning-engine/studentStore";
+import type { SessionProblem, Session } from "packages/learning-engine/sessionTypes";
 
 const TOTAL_QUESTIONS = 5;
 
@@ -33,6 +32,7 @@ function MockPracticeContent() {
   const [hasJudgedCurrentQuestion, setHasJudgedCurrentQuestion] = useState(false);
   const [learningState, setLearningState] = useState<LearningState | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [judgedProblem, setJudgedProblem] = useState<SessionProblem | null>(null);
   const [resultSummary, setResultSummary] = useState<LearningSessionFinishResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,6 +54,7 @@ function MockPracticeContent() {
     setHasJudgedCurrentQuestion(false);
     setLearningState(null);
     setSession(null);
+    setSessionId(null);
     setJudgedProblem(null);
     setResultSummary(null);
   };
@@ -88,6 +89,7 @@ function MockPracticeContent() {
         throw new Error("Session unavailable");
       }
 
+      setSessionId(data.sessionId);
       persistState(data.state);
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : "Session unavailable");
@@ -104,6 +106,7 @@ function MockPracticeContent() {
     if (!currentProblem || !learningState || hasJudgedCurrentQuestion) return;
 
     const isCorrect = answer.trim() === currentProblem.problem.answer;
+    const answerIndex = session?.index ?? 0;
 
     try {
       const response = await fetch("/api/learning/session/answer", {
@@ -112,7 +115,9 @@ function MockPracticeContent() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          state: learningState,
+          sessionId,
+          index: answerIndex,
+          answer,
           correct: isCorrect
         })
       });
@@ -123,6 +128,7 @@ function MockPracticeContent() {
       }
 
       const data = body as LearningSessionAnswerResponse;
+      setSessionId(data.sessionId);
       setResult(isCorrect);
       setHasJudgedCurrentQuestion(true);
       setJudgedProblem(currentProblem);
@@ -133,7 +139,7 @@ function MockPracticeContent() {
   };
 
   const handleNext = async () => {
-    if (!currentProblem || !learningState || !session || !hasJudgedCurrentQuestion) return;
+    if (!currentProblem || !learningState || !session || !sessionId || !hasJudgedCurrentQuestion) return;
 
     if (session.index >= session.problems.length) {
       try {
@@ -143,7 +149,7 @@ function MockPracticeContent() {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            state: learningState
+            sessionId
           })
         });
         const body = (await response.json()) as LearningSessionFinishResponse | { error?: string };
@@ -153,6 +159,7 @@ function MockPracticeContent() {
         }
 
         const summary = body as LearningSessionFinishResponse;
+        setSessionId(summary.sessionId);
         persistState(summary.state);
         setResultSummary(summary);
         setResult(null);

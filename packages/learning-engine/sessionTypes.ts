@@ -1,7 +1,18 @@
-import type { GeneratedProblem } from "packages/problem-engine";
+type SessionGeneratedProblem = {
+  id: string;
+  question: string;
+  answer: string;
+  patternKey?: string;
+  variables?: Record<string, number>;
+  variableRanges?: Record<string, [number, number]>;
+  meta?: {
+    source?: string;
+    difficulty?: number;
+  };
+};
 
 export type SessionProblem = {
-  problem: GeneratedProblem;
+  problem: SessionGeneratedProblem;
   skillId: string;
   patternKey: string;
   difficulty: number;

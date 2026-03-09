@@ -22,6 +22,17 @@ type AnswerStat = {
   correct: number;
 };
 
+type LearningSessionRow = {
+  session_id: string;
+  skill_id: string;
+  state_json: string;
+  session_json: string;
+  status: string;
+  expires_at: number;
+  finished: number;
+  updated_at: string;
+};
+
 export type SessionInfo = {
   id: string;
   studentId: string;
@@ -41,6 +52,17 @@ export type SessionAnswer = {
   correctAnswer: string;
   isCorrect: boolean;
   answeredAt: string;
+};
+
+export type LearningSessionRecord = {
+  sessionId: string;
+  skillId: string;
+  stateJson: string;
+  sessionJson: string;
+  status: "active" | "completed";
+  expiresAt: number;
+  finished: boolean;
+  updatedAt: string;
 };
 
 export type MailDeliveryRow = {
@@ -127,12 +149,25 @@ const initSchema = (db: DatabaseSync) => {
       FOREIGN KEY(session_id) REFERENCES sessions(id),
       FOREIGN KEY(student_id) REFERENCES students(id)
     );
+
+    CREATE TABLE IF NOT EXISTS learning_sessions (
+      session_id TEXT PRIMARY KEY,
+      skill_id TEXT NOT NULL,
+      state_json TEXT NOT NULL,
+      session_json TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      expires_at INTEGER NOT NULL DEFAULT 0,
+      finished INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    );
   `);
 
   addColumnIfMissing(db, "mail_deliveries", "provider TEXT");
   addColumnIfMissing(db, "mail_deliveries", "provider_message_id TEXT");
   addColumnIfMissing(db, "mail_deliveries", "failure_reason TEXT");
   addColumnIfMissing(db, "mail_deliveries", "bounce_class TEXT");
+  addColumnIfMissing(db, "learning_sessions", "expires_at INTEGER NOT NULL DEFAULT 0");
+  addColumnIfMissing(db, "learning_sessions", "finished INTEGER NOT NULL DEFAULT 0");
 };
 
 export const getDb = () => {
@@ -268,6 +303,85 @@ const toSessionInfo = (row: SessionRow): SessionInfo => ({
   correct: row.correct,
   accuracy: row.accuracy
 });
+
+const toLearningSessionRecord = (row: LearningSessionRow): LearningSessionRecord => ({
+  sessionId: row.session_id,
+  skillId: row.skill_id,
+  stateJson: row.state_json,
+  sessionJson: row.session_json,
+  status: row.status === "completed" ? "completed" : "active",
+  expiresAt: Number(row.expires_at ?? 0),
+  finished: row.finished === 1,
+  updatedAt: row.updated_at
+});
+
+export const upsertLearningSession = (params: {
+  sessionId: string;
+  skillId: string;
+  stateJson: string;
+  sessionJson: string;
+  status?: "active" | "completed";
+  expiresAt: number;
+  finished?: boolean;
+}) => {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const status = params.status ?? "active";
+  const finished = params.finished === true ? 1 : 0;
+  const existing = db
+    .prepare(
+      "SELECT session_id, skill_id, state_json, session_json, status, expires_at, finished, updated_at FROM learning_sessions WHERE session_id = ?"
+    )
+    .get(params.sessionId) as LearningSessionRow | undefined;
+
+  if (existing) {
+    db.prepare(
+      `UPDATE learning_sessions
+       SET skill_id = ?, state_json = ?, session_json = ?, status = ?, expires_at = ?, finished = ?, updated_at = ?
+       WHERE session_id = ?`
+    ).run(
+      params.skillId,
+      params.stateJson,
+      params.sessionJson,
+      status,
+      params.expiresAt,
+      finished,
+      now,
+      params.sessionId
+    );
+  } else {
+    db.prepare(
+      `INSERT INTO learning_sessions (session_id, skill_id, state_json, session_json, status, expires_at, finished, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      params.sessionId,
+      params.skillId,
+      params.stateJson,
+      params.sessionJson,
+      status,
+      params.expiresAt,
+      finished,
+      now
+    );
+  }
+
+  const row = db
+    .prepare(
+      "SELECT session_id, skill_id, state_json, session_json, status, expires_at, finished, updated_at FROM learning_sessions WHERE session_id = ?"
+    )
+    .get(params.sessionId) as LearningSessionRow;
+  return toLearningSessionRecord(row);
+};
+
+export const getLearningSessionById = (sessionId: string): LearningSessionRecord | null => {
+  const db = getDb();
+  const row = db
+    .prepare(
+      "SELECT session_id, skill_id, state_json, session_json, status, expires_at, finished, updated_at FROM learning_sessions WHERE session_id = ?"
+    )
+    .get(sessionId) as LearningSessionRow | undefined;
+  return row ? toLearningSessionRecord(row) : null;
+};
 
 export const getSessionById = (sessionId: string): SessionInfo | null => {
   const db = getDb();

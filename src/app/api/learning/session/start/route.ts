@@ -1,6 +1,10 @@
+import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { serializeState, startSession } from "packages/learning-engine";
 import type { LearningSessionStartResponse } from "packages/problem-format";
+import { upsertLearningSession } from "@/lib/server/db";
+
+const LEARNING_SESSION_TTL_MS = 30 * 60 * 1000;
 
 export async function POST(req: Request) {
   try {
@@ -18,8 +22,21 @@ export async function POST(req: Request) {
       mode: body.mode,
       skillId: typeof body.skillId === "string" ? body.skillId : undefined
     });
+    const sessionId = crypto.randomUUID();
+    const expiresAt = Date.now() + LEARNING_SESSION_TTL_MS;
+    upsertLearningSession({
+      sessionId,
+      skillId: result.session.skillId ?? body.skillId ?? "",
+      stateJson: JSON.stringify(result.state),
+      sessionJson: JSON.stringify(result.session),
+      status: "active",
+      expiresAt,
+      finished: false
+    });
 
     const response: LearningSessionStartResponse = {
+      sessionId,
+      expiresAt,
       state: result.state,
       session: result.session
     };

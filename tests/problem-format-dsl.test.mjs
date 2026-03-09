@@ -50,7 +50,7 @@ test("curriculum mapping files exist", () => {
 
 test("quest stock factory uses DSL-first path with legacy fallback remaining", () => {
   const source = read("src/lib/questStockFactory.ts");
-  assert.equal(source.includes('import { buildDslEntriesForType } from "packages/problem-engine";'), true);
+  assert.equal(source.includes('import { buildDslEntriesForType } from "packages/problem-format/engine";'), true);
   assert.equal(source.includes("const dslStock = buildDslStock(normalizedType, patternId, {"), true);
   assert.equal(source.includes("if (dslStock.entries.length > 0) {"), true);
   assert.equal(source.includes("const strategy = hasPattern ? STOCK_STRATEGIES[patternId] : undefined;"), true);

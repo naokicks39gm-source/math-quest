@@ -1,4 +1,7 @@
-import type { Recommendation } from "packages/learning-engine";
+type Recommendation =
+  | { type: "adaptive"; reason: "weak_patterns"; weakPatterns: number }
+  | { type: "skill"; skillId: string; reason: "next_skill" }
+  | { type: "done"; reason: "all_mastered" };
 
 type SessionResultViewProps = {
   score: number;

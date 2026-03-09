@@ -8,6 +8,7 @@ const exists = (p) => fs.existsSync(path.join(process.cwd(), p));
 
 test("learning practice ui and api files exist", () => {
   const mustExist = [
+    "src/app/api/learning/session/[sessionId]/route.ts",
     "src/app/api/learning/session/start/route.ts",
     "src/app/api/learning/session/answer/route.ts",
     "src/app/api/learning/session/finish/route.ts",
@@ -50,10 +51,13 @@ test("mock practice uses learning session lifecycle instead of runtime quiz gene
   assert.equal(source.includes('fetch("/api/learning/session/start"'), true);
   assert.equal(source.includes('fetch("/api/learning/session/answer"'), true);
   assert.equal(source.includes('fetch("/api/learning/session/finish"'), true);
+  assert.equal(source.includes("sessionId"), true);
+  assert.equal(source.includes("index: answerIndex"), true);
+  assert.equal(source.includes("answer,"), true);
   assert.equal(source.includes("loadStateFromClient()"), true);
   assert.equal(source.includes("LEARNING_STATE_KEY"), true);
   assert.equal(source.includes("window.localStorage.setItem"), true);
-  assert.equal(source.includes("state: learningState"), true);
+  assert.equal(source.includes("sessionId,"), true);
   assert.equal(source.includes('session.problems[session.index]'), true);
   assert.equal(source.includes("displayedProblem.problem.question"), true);
   assert.equal(source.includes("displayedProblem.problem.answer"), true);
@@ -66,6 +70,7 @@ test("learning api routes delegate to learning engine with state in/out and old 
   const startSource = read("src/app/api/learning/session/start/route.ts");
   const answerSource = read("src/app/api/learning/session/answer/route.ts");
   const finishSource = read("src/app/api/learning/session/finish/route.ts");
+  const resumeSource = read("src/app/api/learning/session/[sessionId]/route.ts");
   const oldSkillSource = read("src/app/api/skill/[skillId]/route.ts");
   const apiTypesSource = read("packages/problem-format/learningSessionApi.ts");
   const storeSource = read("packages/learning-engine/studentStore.ts");
@@ -73,14 +78,26 @@ test("learning api routes delegate to learning engine with state in/out and old 
   assert.equal(startSource.includes('import { serializeState, startSession } from "packages/learning-engine";'), true);
   assert.equal(answerSource.includes('import { recordAnswer, serializeState } from "packages/learning-engine";'), true);
   assert.equal(finishSource.includes('import { finishSession, serializeState } from "packages/learning-engine";'), true);
+  assert.equal(resumeSource.includes("getLearningSessionById"), true);
+  assert.equal(answerSource.includes("body.sessionId?.trim()"), true);
+  assert.equal(answerSource.includes("typeof body.index !== \"number\""), true);
+  assert.equal(answerSource.includes("Partial<LearningSessionAnswerRequest>"), true);
+  assert.equal(answerSource.includes("learning_session_index_mismatch"), true);
+  assert.equal(answerSource.includes("currentIndex !== body.index"), true);
+  assert.equal(finishSource.includes("sessionId?: string"), true);
   assert.equal(exists("src/app/api/learning/recommendation/route.ts"), false);
   assert.equal(oldSkillSource.includes("learning_session_api_required"), true);
   assert.equal(oldSkillSource.includes("buildTypeStock"), false);
   assert.equal(oldSkillSource.includes("pickUniqueQuizFromStock"), false);
   assert.equal(apiTypesSource.includes("export type LearningSessionStartResponse = {"), true);
+  assert.equal(apiTypesSource.includes("sessionId: string;"), true);
   assert.equal(apiTypesSource.includes("state: LearningState;"), true);
   assert.equal(apiTypesSource.includes("export type LearningSessionAnswerResponse = {"), true);
+  assert.equal(apiTypesSource.includes("export type LearningSessionAnswerRequest = {"), true);
+  assert.equal(apiTypesSource.includes("index: number;"), true);
+  assert.equal(apiTypesSource.includes("answer: string;"), true);
   assert.equal(apiTypesSource.includes("export type LearningSessionFinishResponse = {"), true);
+  assert.equal(apiTypesSource.includes("export type LearningSessionResumeResponse = {"), true);
   assert.equal(apiTypesSource.includes("result: SessionResult;"), true);
   assert.equal(storeSource.includes("version: number"), true);
   assert.equal(storeSource.includes("engineVersion: number"), true);
