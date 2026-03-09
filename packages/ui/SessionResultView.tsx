@@ -1,9 +1,7 @@
-type Recommendation =
-  | { type: "adaptive"; reason: "weak_patterns"; weakPatterns: number }
-  | { type: "skill"; skillId: string; reason: "next_skill" }
-  | { type: "done"; reason: "all_mastered" };
+"use client";
 
 type SessionResultViewProps = {
+  skillId?: string | null;
   skillName: string;
   score: number;
   totalQuestions: number;
@@ -13,13 +11,13 @@ type SessionResultViewProps = {
   weakPatternsDetected: number;
   skillProgressBefore: { mastery: number } | null;
   skillProgressAfter: { mastery: number } | null;
-  recommendation: Recommendation;
-  recommendationLabel: string;
   onRetry: () => void;
+  onContinueLearning: (skillId: string) => void;
   onBackToSkills: () => void;
 };
 
 export default function SessionResultView({
+  skillId,
   skillName,
   score,
   totalQuestions,
@@ -29,9 +27,8 @@ export default function SessionResultView({
   weakPatternsDetected,
   skillProgressBefore,
   skillProgressAfter,
-  recommendation,
-  recommendationLabel,
   onRetry,
+  onContinueLearning,
   onBackToSkills
 }: SessionResultViewProps) {
   const beforeMastery = skillProgressBefore?.mastery ?? 0;
@@ -51,7 +48,7 @@ export default function SessionResultView({
         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">XP</div>
         <div className="mt-2 text-2xl font-black text-amber-700">+{earnedXp} XP</div>
       </div>
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Difficulty</div>
           <div className="mt-2 text-lg font-bold text-slate-900">
@@ -61,11 +58,6 @@ export default function SessionResultView({
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Weak Patterns</div>
           <div className="mt-2 text-lg font-bold text-slate-900">{weakPatternsDetected}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Next Action</div>
-          <div className="mt-2 text-lg font-bold text-slate-900">{recommendationLabel}</div>
-          <div className="mt-1 text-xs text-slate-500">{recommendation.type}</div>
         </div>
       </div>
       <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -85,6 +77,22 @@ export default function SessionResultView({
           className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
         >
           Retry
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            console.log("CONTINUE CLICKED");
+            console.log("skillId", skillId);
+            if (!skillId) {
+              console.log("skillId missing");
+              return;
+            }
+            onContinueLearning(skillId);
+          }}
+          disabled={skillId == null}
+          className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Continue Learning
         </button>
         <button
           type="button"

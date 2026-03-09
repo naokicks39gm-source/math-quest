@@ -233,7 +233,7 @@ test("learning api routes delegate to learning engine with state in/out and old 
   assert.equal(storeSource.includes("value.engineVersion !== CURRENT_ENGINE_VERSION"), true);
 });
 
-test("session result view shows difficulty swing weak patterns and recommendation", () => {
+test("session result view shows difficulty swing weak patterns and continue actions", () => {
   const resultViewSource = read("packages/ui/SessionResultView.tsx");
 
   assert.equal(resultViewSource.includes("difficultyBefore"), true);
@@ -249,10 +249,11 @@ test("session result view shows difficulty swing weak patterns and recommendatio
   assert.equal(resultViewSource.includes("delta > 0"), true);
   assert.equal(resultViewSource.includes("text-emerald-600"), true);
   assert.equal(resultViewSource.includes("text-slate-500"), true);
-  assert.equal(resultViewSource.includes("recommendationLabel"), true);
+  assert.equal(resultViewSource.includes("onContinueLearning"), true);
   assert.equal(resultViewSource.includes("Difficulty"), true);
   assert.equal(resultViewSource.includes("Weak Patterns"), true);
-  assert.equal(resultViewSource.includes("Next Action"), true);
+  assert.equal(resultViewSource.includes("Continue Learning"), true);
+  assert.equal(resultViewSource.includes("Next Action"), false);
 });
 
 test("skills ui components expose mastery progress and status", () => {

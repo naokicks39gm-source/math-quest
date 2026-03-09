@@ -192,21 +192,6 @@ function MockPracticeContent() {
     router.push("/mock-skills");
   };
 
-  const recommendationLabel = useMemo(() => {
-    if (!resultSummary) {
-      return "";
-    }
-
-    const recommendation = resultSummary.result.recommendation;
-    if (recommendation.type === "adaptive") {
-      return "Adaptive review";
-    }
-    if (recommendation.type === "skill") {
-      return getPracticeSkill(recommendation.skillId)?.title ?? recommendation.skillId;
-    }
-    return "All mastered";
-  }, [resultSummary]);
-
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#fff6d6_0%,#fffaf0_35%,#eef6ff_100%)] px-6 py-10 text-slate-900">
       <div className="mx-auto max-w-3xl space-y-6">
@@ -237,6 +222,7 @@ function MockPracticeContent() {
           </section>
         ) : resultSummary ? (
           <SessionResultView
+            skillId={activeSkillId}
             skillName={selectedSkill.title}
             score={resultSummary.result.score}
             totalQuestions={resultSummary.result.totalQuestions}
@@ -246,9 +232,10 @@ function MockPracticeContent() {
             weakPatternsDetected={resultSummary.result.weakPatternsDetected}
             skillProgressBefore={resultSummary.result.skillProgressBefore}
             skillProgressAfter={resultSummary.result.skillProgressAfter}
-            recommendation={resultSummary.result.recommendation}
-            recommendationLabel={recommendationLabel}
             onRetry={handleRetry}
+            onContinueLearning={() => {
+              handleRetry();
+            }}
             onBackToSkills={handleBackToSkills}
           />
         ) : !displayedProblem ? (

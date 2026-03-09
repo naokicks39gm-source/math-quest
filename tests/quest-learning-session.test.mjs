@@ -16,6 +16,7 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes('import { trackAnalyticsEvent } from "@/lib/analytics";'), true);
   assert.equal(source.includes("const shouldAutoFinishLearningSession ="), true);
   assert.equal(source.includes("const finishGuardRef = useRef(false);"), true);
+  assert.equal(source.includes("const advanceGuardRef = useRef(false);"), true);
   assert.equal(source.includes("const normalizedLearningSession = useMemo(() => {"), true);
   assert.equal(source.includes("const normalizedIndex = Math.min(learningSession.index, learningSession.problems.length);"), true);
   assert.equal(source.includes("if (normalizedLearningSession.index !== learningSession.index) {"), true);
@@ -32,6 +33,9 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes("const FEEDBACK_FLASH_MS = 150;"), true);
   assert.equal(source.includes("const AUTO_ADVANCE_MS = 300;"), true);
   assert.equal(source.includes("const queueAdvanceAfterFeedback = (verdict: { ok: boolean }) => {"), true);
+  assert.equal(source.includes("if (advanceGuardRef.current) {"), true);
+  assert.equal(source.includes("advanceGuardRef.current = true;"), true);
+  assert.equal(source.includes("advanceGuardRef.current = false;"), true);
   assert.equal(source.includes("setResultMark(verdict.ok ? \"correct\" : \"wrong\");"), true);
   assert.equal(source.includes("}, FEEDBACK_FLASH_MS);"), true);
   assert.equal(source.includes("}, AUTO_ADVANCE_MS);"), true);

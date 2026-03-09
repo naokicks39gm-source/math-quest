@@ -316,16 +316,6 @@ const adaptLearningSessionProblem = (sessionProblem: SessionProblem): QuestEntry
   }
 });
 
-const getRecommendationLabel = (result: LearningSessionFinishResponse["result"] | null) => {
-  if (!result) return "";
-  const recommendation = result.recommendation;
-  if (recommendation.type === "adaptive") return "Adaptive review";
-  if (recommendation.type === "skill") {
-    return getPracticeSkill(recommendation.skillId)?.title ?? recommendation.skillId;
-  }
-  return "All mastered";
-};
-
 const INTEGER_FRACTION_PATTERN = /([+-]?\d+)\/([+-]?\d+)/g;
 const EXPONENT_FRACTION_PATTERN = /([A-Za-z0-9(){}+\-^]+)\s*\/\s*([A-Za-z0-9(){}+\-^]+)/g;
 
@@ -1798,11 +1788,13 @@ function QuestPageInner() {
   const [learningState, setLearningState] = useState<LearningState | null>(null);
   const [learningSession, setLearningSession] = useState<Session | null>(null);
   const [learningResult, setLearningResult] = useState<LearningSessionFinishResponse["result"] | null>(null);
+  const [learningResultSkillId, setLearningResultSkillId] = useState<string | null>(null);
   const [learningLoading, setLearningLoading] = useState(false);
   const [learningError, setLearningError] = useState<string | null>(null);
   const [learningSessionId, setLearningSessionId] = useState<string | null>(null);
   const [quizBuildError, setQuizBuildError] = useState<string | null>(null);
   const finishGuardRef = useRef(false);
+  const advanceGuardRef = useRef(false);
   const [typeStocks, setTypeStocks] = useState<Map<string, TypeStockResult>>(new Map());
   const [stockShortages, setStockShortages] = useState<StockShortage[]>([]);
   const [stockReady, setStockReady] = useState(false);
@@ -1849,6 +1841,11 @@ function QuestPageInner() {
     [questionResults]
   );
   const isLearningSessionMode = Boolean(skillIdFromQuery);
+  const currentLearningSkillId = learningSession?.skillId ?? learningResultSkillId ?? null;
+  const handleContinueLearning = (skillId: string) => {
+    console.log("HANDLE CONTINUE", skillId);
+    void startLearningSession(skillId);
+  };
   const useFastLearningLoop = isLearningSessionMode;
   const correctCount = useMemo(
     () => clearResults.filter(([, result]) => result.everWrong !== true).length,
@@ -1869,6 +1866,7 @@ function QuestPageInner() {
   };
 
   const resetQuestionUi = () => {
+    advanceGuardRef.current = false;
     if (autoNextTimerRef.current) {
       window.clearTimeout(autoNextTimerRef.current);
       autoNextTimerRef.current = null;
@@ -1968,8 +1966,11 @@ function QuestPageInner() {
       expiresAt?: number;
     }
   ) => {
+    const persistedRecovery = typeof window !== "undefined" ? loadLearningRecovery() : null;
+    const nextSkillId =
+      options?.skillId ?? nextState.session?.skillId ?? persistedRecovery?.skillId ?? learningSession?.skillId ?? null;
     setLearningState(nextState);
-    setLearningSession(nextState.session ?? null);
+    setLearningSession(nextState.session ? { ...nextState.session, skillId: nextSkillId ?? nextState.session.skillId } : null);
     const nextSessionId = options?.sessionId ?? learningSessionId;
     if (nextSessionId) {
       setLearningSessionId(nextSessionId);
@@ -1977,10 +1978,9 @@ function QuestPageInner() {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(LEARNING_STATE_KEY, JSON.stringify(nextState));
       if (nextSessionId && nextState.session) {
-        const persistedRecovery = loadLearningRecovery();
         saveLearningRecovery({
           sessionId: nextSessionId,
-          skillId: options?.skillId ?? nextState.session.skillId ?? persistedRecovery?.skillId ?? skillIdFromQuery,
+          skillId: nextSkillId ?? skillIdFromQuery,
           currentIndex: nextState.session.index,
           answers: options?.recoveryAnswers ?? persistedRecovery?.answers ?? [],
           expiresAt: options?.expiresAt ?? persistedRecovery?.expiresAt ?? Date.now() + LEARNING_SESSION_TTL_MS
@@ -1995,6 +1995,7 @@ function QuestPageInner() {
     setLearningLoading(true);
     setLearningError(null);
     setLearningResult(null);
+    setLearningResultSkillId(null);
     setLearningSession(null);
     setLearningState(null);
     setLearningSessionId(null);
@@ -2047,6 +2048,7 @@ function QuestPageInner() {
     setLearningLoading(true);
     setLearningError(null);
     setLearningResult(null);
+    setLearningResultSkillId(null);
     setQuestionResults({});
     setStatus("playing");
     resetQuestionUi();
@@ -2127,6 +2129,7 @@ function QuestPageInner() {
 
   const finishQuestLearningSession = async () => {
     if (!learningState || !learningSessionId) return null;
+    const completedSkillId = learningSession?.skillId ?? learningResultSkillId ?? null;
     const response = await fetch("/api/learning/session/finish", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2144,7 +2147,7 @@ function QuestPageInner() {
     persistLearningState(data.state, {
       sessionId: data.sessionId,
       recoveryAnswers: [],
-      skillId: skillIdFromQuery,
+      skillId: completedSkillId ?? skillIdFromQuery,
       expiresAt: data.expiresAt
     });
     clearLearningRecovery();
@@ -2152,6 +2155,7 @@ function QuestPageInner() {
     updateDailyStreak();
     updateXpFromSession(data.result.score);
     trackAnalyticsEvent("session_finish");
+    setLearningResultSkillId(completedSkillId ?? skillIdFromQuery);
     setLearningResult(data.result);
     setStatus("cleared");
     setMessage("クリアー！");
@@ -2252,21 +2256,25 @@ function QuestPageInner() {
     if (recovery?.sessionId) {
       if (Date.now() > recovery.expiresAt) {
         clearLearningRecovery();
+        console.log("START SESSION", skillIdFromQuery);
         void startLearningSession(skillIdFromQuery);
         return;
       }
       if (recovery.skillId !== skillIdFromQuery) {
         clearLearningRecovery();
+        console.log("START SESSION", skillIdFromQuery);
         void startLearningSession(skillIdFromQuery);
         return;
       }
       void resumeLearningSession(recovery.sessionId, skillIdFromQuery).then((resumed) => {
         if (!resumed) {
+          console.log("START SESSION", skillIdFromQuery);
           void startLearningSession(skillIdFromQuery);
         }
       });
       return;
     }
+    console.log("START SESSION", skillIdFromQuery);
     void startLearningSession(skillIdFromQuery);
   }, [isLearningSessionMode, skillIdFromQuery]);
 
@@ -3122,6 +3130,10 @@ function QuestPageInner() {
   const emptyMessage = uiText.noItems;
   const isAnswerLockedByExplanation = isSecondaryQuest && showSecondaryExplanation;
   const queueAdvanceAfterFeedback = (verdict: { ok: boolean }) => {
+    if (advanceGuardRef.current) {
+      return;
+    }
+    advanceGuardRef.current = true;
     if (wrongMarkTimerRef.current) {
       window.clearTimeout(wrongMarkTimerRef.current);
       wrongMarkTimerRef.current = null;
@@ -3143,6 +3155,7 @@ function QuestPageInner() {
     cooldownUntilRef.current = Date.now() + AUTO_ADVANCE_MS;
     autoNextTimerRef.current = window.setTimeout(() => {
       autoNextTimerRef.current = null;
+      advanceGuardRef.current = false;
       nextQuestion();
     }, AUTO_ADVANCE_MS);
   };
@@ -5143,7 +5156,8 @@ function QuestPageInner() {
           isLearningSessionMode && learningResult ? (
             <div className="w-full max-w-3xl">
               <SessionResultView
-                skillName={getPracticeSkill(skillIdFromQuery)?.title ?? skillIdFromQuery}
+                skillId={currentLearningSkillId}
+                skillName={getPracticeSkill(currentLearningSkillId ?? "")?.title ?? currentLearningSkillId ?? ""}
                 score={learningResult.score}
                 totalQuestions={learningResult.totalQuestions}
                 earnedXp={learningResult.score * 10}
@@ -5152,12 +5166,11 @@ function QuestPageInner() {
                 weakPatternsDetected={learningResult.weakPatternsDetected}
                 skillProgressBefore={learningResult.skillProgressBefore}
                 skillProgressAfter={learningResult.skillProgressAfter}
-                recommendation={learningResult.recommendation}
-                recommendationLabel={getRecommendationLabel(learningResult)}
                 onRetry={() => {
-                  if (!skillIdFromQuery) return;
-                  void startLearningSession(skillIdFromQuery);
+                  if (!currentLearningSkillId) return;
+                  void startLearningSession(currentLearningSkillId);
                 }}
+                onContinueLearning={handleContinueLearning}
                 onBackToSkills={() => router.push("/skills")}
               />
             </div>
@@ -5307,18 +5320,33 @@ function QuestPageInner() {
             )}
             {process.env.NODE_ENV !== "production" && (
               <div className="w-full mb-2 rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-left">
-                <div className="text-xs font-bold text-sky-800">DEV診断: Lv/type/stock</div>
-                <div className="mt-1 space-y-0.5 text-[11px] text-sky-900">
-                  <div>表示: {currentType?.display_name ?? currentType?.type_name ?? "-"}</div>
-                  <div>type_id: {currentType?.type_id ?? "-"}</div>
-                  <div>pattern_id: {currentType?.generation_params?.pattern_id ?? "-"}</div>
-                  <div>stock.count: {activeStockInfo?.count ?? 0}</div>
-                  <div>stock.reason: {activeStockInfo?.reason ?? "-"}</div>
-                  <div>stock.reason_detail: {activeStockInfo?.reasonDetail ?? "-"}</div>
-                  <div>stock.unique: {activeStockInfo?.uniqueCount ?? 0}</div>
-                  <div>stock.expanded: {activeStockInfo?.expandedCount ?? 0}</div>
-                  <div>pick: {activePickMeta?.picked ?? 0} / {activePickMeta?.requested ?? quizSize}</div>
-                </div>
+                {isLearningSessionMode ? (
+                  <>
+                    <div className="text-xs font-bold text-sky-800">DEV診断: Learning</div>
+                    <div className="mt-1 space-y-0.5 text-[11px] text-sky-900">
+                      <div>Skill: {learningSession?.skillId ?? "-"}</div>
+                      <div>Pattern: {learningProblem?.patternKey ?? learningProblem?.problem.meta?.source ?? "-"}</div>
+                      <div>Difficulty: {learningProblem?.difficulty ?? learningProblem?.problem.meta?.difficulty ?? "-"}</div>
+                      <div>SessionSize: {learningSession?.problems.length ?? 0}</div>
+                      <div>Index: {currentLearningIndex + 1} / {learningSession?.problems.length ?? 0}</div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-xs font-bold text-sky-800">DEV診断: Lv/type/stock</div>
+                    <div className="mt-1 space-y-0.5 text-[11px] text-sky-900">
+                      <div>表示: {currentType?.display_name ?? currentType?.type_name ?? "-"}</div>
+                      <div>type_id: {currentType?.type_id ?? "-"}</div>
+                      <div>pattern_id: {currentType?.generation_params?.pattern_id ?? "-"}</div>
+                      <div>stock.count: {activeStockInfo?.count ?? 0}</div>
+                      <div>stock.reason: {activeStockInfo?.reason ?? "-"}</div>
+                      <div>stock.reason_detail: {activeStockInfo?.reasonDetail ?? "-"}</div>
+                      <div>stock.unique: {activeStockInfo?.uniqueCount ?? 0}</div>
+                      <div>stock.expanded: {activeStockInfo?.expandedCount ?? 0}</div>
+                      <div>pick: {activePickMeta?.picked ?? 0} / {activePickMeta?.requested ?? quizSize}</div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
             {!shouldAutoFinishLearningSession && (quizItems.length === 0 || !currentItem) && (
