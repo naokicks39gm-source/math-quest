@@ -10,7 +10,7 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getPracticeSkill } from "@/lib/learningSkillCatalog";
-import { getLearningPattern } from "@/lib/learningPatternCatalog";
+import { getLearningPattern, learningPatternCatalog } from "@/lib/learningPatternCatalog";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { resetProgress } from "@/lib/resetProgress";
 import { updateDailyStreak } from "@/lib/streak";
@@ -193,6 +193,16 @@ const getTargetQuestionCount = (typeId?: string, levelId?: string) => {
   if (typeId === E1_SUMMARY_TYPE_ID) return 10;
   return DEFAULT_TOTAL_QUESTIONS;
 };
+
+const toDiagnosticSeed = (value: string | null) => {
+  if (!value) return "-";
+  let hash = 0;
+  for (const ch of value) {
+    hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  }
+  return String(hash);
+};
+
 const QUESTION_POOL_SIZE = 50;
 const OUTER_MARGIN = 8;
 const DEFAULT_VISIBLE_CANVAS_SIZE = 300;
@@ -1842,6 +1852,15 @@ function QuestPageInner() {
   );
   const isLearningSessionMode = Boolean(skillIdFromQuery);
   const currentLearningSkillId = learningSession?.skillId ?? learningResultSkillId ?? null;
+  const currentSkillProgress = currentLearningSkillId
+    ? (learningState?.skillProgress[currentLearningSkillId] ?? null)
+    : null;
+  const currentPatternPool = currentLearningSkillId
+    ? learningPatternCatalog
+        .filter((entry) => entry.skillId === currentLearningSkillId)
+        .map((entry) => entry.patternId)
+    : [];
+  const currentSessionSeed = toDiagnosticSeed(learningSessionId);
   const handleContinueLearning = (skillId: string) => {
     console.log("HANDLE CONTINUE", skillId);
     void startLearningSession(skillId);
@@ -5331,13 +5350,24 @@ function QuestPageInner() {
               <div className="w-full mb-2 rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-left">
                 {isLearningSessionMode ? (
                   <>
-                    <div className="text-xs font-bold text-sky-800">DEV診断: Learning</div>
+                    <div className="text-xs font-bold text-sky-800">DEV診断: Learning Engine</div>
                     <div className="mt-1 space-y-0.5 text-[11px] text-sky-900">
-                      <div>Skill: {learningSession?.skillId ?? "-"}</div>
-                      <div>Pattern: {learningProblem?.patternKey ?? learningProblem?.problem.meta?.source ?? "-"}</div>
-                      <div>Difficulty: {learningProblem?.difficulty ?? learningProblem?.problem.meta?.difficulty ?? "-"}</div>
-                      <div>SessionSize: {learningSession?.problems.length ?? 0}</div>
-                      <div>Index: {currentLearningIndex + 1} / {learningSession?.problems.length ?? 0}</div>
+                      <div>skillId: {learningSession?.skillId ?? "-"}</div>
+                      <div>skillProgress: {currentSkillProgress ? JSON.stringify(currentSkillProgress) : "-"}</div>
+                      <div>targetDifficulty: {learningSession?.startedDifficulty ?? "-"}</div>
+                      <div>patternPool:</div>
+                      {currentPatternPool.length > 0 ? (
+                        <div className="whitespace-pre-wrap pl-3">
+                          {currentPatternPool.join("\n")}
+                        </div>
+                      ) : (
+                        <div className="pl-3">-</div>
+                      )}
+                      <div>selectedPattern: {learningProblem?.patternKey ?? learningProblem?.problem.meta?.source ?? "-"}</div>
+                      <div>sessionSeed: {currentSessionSeed}</div>
+                      <div className="pt-1">session</div>
+                      <div className="pl-3">size: {learningSession?.problems.length ?? 0}</div>
+                      <div className="pl-3">index: {currentLearningIndex + 1} / {learningSession?.problems.length ?? 0}</div>
                     </div>
                   </>
                 ) : (
