@@ -7,6 +7,7 @@ type SessionResultViewProps = {
   skillName: string;
   score: number;
   totalQuestions: number;
+  earnedXp: number;
   difficultyBefore: number;
   difficultyAfter: number;
   weakPatternsDetected: number;
@@ -22,6 +23,7 @@ export default function SessionResultView({
   skillName,
   score,
   totalQuestions,
+  earnedXp,
   difficultyBefore,
   difficultyAfter,
   weakPatternsDetected,
@@ -45,6 +47,10 @@ export default function SessionResultView({
       <p className="mt-4 text-3xl font-bold text-slate-800">
         {score} / {totalQuestions} correct
       </p>
+      <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">XP</div>
+        <div className="mt-2 text-2xl font-black text-amber-700">+{earnedXp} XP</div>
+      </div>
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Difficulty</div>

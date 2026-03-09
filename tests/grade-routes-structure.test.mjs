@@ -5,11 +5,13 @@ import path from "node:path";
 
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
-test("top page has grade navigation routes", () => {
+test("top page routes users into MVP learning flows", () => {
   const source = read("src/app/page.tsx");
-  assert.match(source, /router\.push\("\/elementary"\)/);
-  assert.match(source, /router\.push\("\/junior"\)/);
-  assert.match(source, /router\.push\("\/highschool"\)/);
+  assert.match(source, /Math Quest/);
+  assert.match(source, /Start Learning/);
+  assert.match(source, /Review Weak Skills/);
+  assert.match(source, /router\.push\("\/skills"\)/);
+  assert.match(source, /router\.push\("\/review"\)/);
 });
 
 test("grade route pages exist", () => {

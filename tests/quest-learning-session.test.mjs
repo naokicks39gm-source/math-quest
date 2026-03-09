@@ -13,6 +13,7 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes('fetch(`/api/learning/session/${encodeURIComponent(sessionId)}`'), true);
   assert.equal(source.includes('fetch("/api/learning/session/answer"'), true);
   assert.equal(source.includes('fetch("/api/learning/session/finish"'), true);
+  assert.equal(source.includes('import { trackAnalyticsEvent } from "@/lib/analytics";'), true);
   assert.equal(source.includes("index: answerIndex"), true);
   assert.equal(source.includes("answer: answerText"), true);
   assert.equal(source.includes("loadStateFromClient()"), true);
@@ -20,6 +21,9 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes('const LS_LEARNING_SESSION = "mq:learningSession";'), true);
   assert.equal(source.includes("if (storedSession.skillId !== skillId) {"), true);
   assert.equal(source.includes("clearLearningRecovery();"), true);
+  assert.equal(source.includes('trackAnalyticsEvent("session_start");'), true);
+  assert.equal(source.includes('trackAnalyticsEvent("session_finish");'), true);
+  assert.equal(source.includes("sessionStartTrackedRef.current = true;"), true);
   assert.equal(source.includes('if (isLearningSessionMode) {'), true);
   assert.equal(source.includes('return postJson("/api/session/answer", {'), true);
   assert.equal(source.includes("<SessionResultView"), true);

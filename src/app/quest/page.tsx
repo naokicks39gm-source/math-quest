@@ -11,6 +11,10 @@ import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getPracticeSkill } from "@/lib/learningSkillCatalog";
 import { getLearningPattern } from "@/lib/learningPatternCatalog";
+import { trackAnalyticsEvent } from "@/lib/analytics";
+import { resetProgress } from "@/lib/resetProgress";
+import { updateDailyStreak } from "@/lib/streak";
+import { updateXpFromSession } from "@/lib/xp";
 import { getCatalogGrades } from '@/lib/gradeCatalog';
 import { entryEquivalentKey, entryPromptKey } from '@/lib/questItemFactory';
 import { buildStocksForTypes, pickUniqueQuizFromStock, type PickMeta, type TypeStockResult } from "@/lib/questStockFactory";
@@ -25,6 +29,7 @@ import {
   type J1LevelId
 } from "@/lib/problem";
 import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
+import QuestSettingsPanel from "@/components/QuestSettingsPanel";
 import { getSecondaryLearningAid } from "@/lib/secondaryExplanations";
 import ElementaryExplanationPanel from "@/components/ElementaryExplanationPanel";
 import { getElementaryLearningAid, isElementaryGrade, type ElementaryLearningAid } from "@/lib/elementaryExplanations";
@@ -1753,6 +1758,7 @@ function QuestPageInner() {
   const [autoJudgeEnabled, setAutoJudgeEnabled] = useState(false);
   const [autoNextEnabled, setAutoNextEnabled] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const sessionStartTrackedRef = useRef(false);
   const inFlightRef = useRef(false);
   const pendingRecognizeRef = useRef(false);
   const forcedDigitsRef = useRef<number | null>(null);
@@ -1917,6 +1923,27 @@ function QuestPageInner() {
     window.localStorage.removeItem(LS_LEARNING_SESSION);
   };
 
+  const handleResetProgress = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const confirmed = window.confirm("Reset progress? XP, streak, session, and learning state will be cleared.");
+    if (!confirmed) {
+      return;
+    }
+
+    resetProgress();
+    setLearningState(null);
+    setLearningSession(null);
+    setLearningResult(null);
+    setLearningSessionId(null);
+    setLearningError(null);
+    setQuestionResults({});
+    setSettingsOpen(false);
+    router.push("/skills");
+  };
+
   const saveLearningRecovery = (recovery: LearningSessionRecovery) => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(LS_LEARNING_SESSION, JSON.stringify(recovery));
@@ -1953,6 +1980,7 @@ function QuestPageInner() {
   };
 
   const startLearningSession = async (skillId: string) => {
+    sessionStartTrackedRef.current = false;
     setLearningLoading(true);
     setLearningError(null);
     setLearningResult(null);
@@ -1989,6 +2017,8 @@ function QuestPageInner() {
         skillId,
         expiresAt: data.expiresAt
       });
+      trackAnalyticsEvent("session_start");
+      sessionStartTrackedRef.current = true;
       setStatus("playing");
       setQuizBuildError(null);
     } catch (error) {
@@ -2107,6 +2137,9 @@ function QuestPageInner() {
     });
     clearLearningRecovery();
     setLearningSessionId(null);
+    updateDailyStreak();
+    updateXpFromSession(data.result.score);
+    trackAnalyticsEvent("session_finish");
     setLearningResult(data.result);
     setStatus("cleared");
     setMessage("クリアー！");
@@ -2180,6 +2213,7 @@ function QuestPageInner() {
       setSessionError(null);
       const json = await postJson("/api/session/end", { sessionId: activeSessionId });
       setSessionMailStatus(`メール: ${json.mail.status} (${json.mail.toMasked})`);
+      trackAnalyticsEvent("session_finish");
       setActiveSessionId(null);
       if (typeof window !== "undefined") {
         localStorage.removeItem(LS_ACTIVE_SESSION_ID);
@@ -2223,6 +2257,17 @@ function QuestPageInner() {
     }
     void startLearningSession(skillIdFromQuery);
   }, [isLearningSessionMode, skillIdFromQuery]);
+
+  useEffect(() => {
+    if (isLearningSessionMode) {
+      return;
+    }
+    if (!hasStarted || status !== "playing" || sessionStartTrackedRef.current) {
+      return;
+    }
+    trackAnalyticsEvent("session_start");
+    sessionStartTrackedRef.current = true;
+  }, [hasStarted, isLearningSessionMode, status]);
 
   useEffect(() => {
     return () => {
@@ -3062,6 +3107,7 @@ function QuestPageInner() {
       void startLearningSession(skillIdFromQuery);
       return;
     }
+    sessionStartTrackedRef.current = false;
     clearAllFractionAutoMoveTimers();
     setItemIndex(0);
     setQuestionResults({});
@@ -5060,6 +5106,7 @@ function QuestPageInner() {
                 skillName={getPracticeSkill(skillIdFromQuery)?.title ?? skillIdFromQuery}
                 score={learningResult.score}
                 totalQuestions={learningResult.totalQuestions}
+                earnedXp={learningResult.score * 10}
                 difficultyBefore={learningResult.difficultyBefore}
                 difficultyAfter={learningResult.difficultyAfter}
                 weakPatternsDetected={learningResult.weakPatternsDetected}
@@ -5071,7 +5118,7 @@ function QuestPageInner() {
                   if (!skillIdFromQuery) return;
                   void startLearningSession(skillIdFromQuery);
                 }}
-                onBackToSkills={() => router.push("/mock-skills")}
+                onBackToSkills={() => router.push("/skills")}
               />
             </div>
           ) : (
@@ -5382,6 +5429,15 @@ function QuestPageInner() {
       {/* Bottom: Input + Calc Memo */}
       {status === 'playing' && (
         <div className="w-full pt-2 pb-3 sticky bottom-0 bg-slate-50/95 backdrop-blur-sm z-20 space-y-2">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen((prev) => !prev)}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm"
+            >
+              Settings
+            </button>
+          </div>
           {isHighSchoolQuest ? (
             <HighSchoolKeypad
               isPlaying={status === "playing"}
@@ -5459,6 +5515,12 @@ function QuestPageInner() {
           document.body
         )
         : null}
+
+      <QuestSettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onResetProgress={handleResetProgress}
+      />
 
     </main>
   );

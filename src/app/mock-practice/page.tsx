@@ -2,7 +2,10 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { getPracticeSkill, practiceSkills } from "@/lib/learningSkillCatalog";
+import { updateDailyStreak } from "@/lib/streak";
+import { updateXpFromSession } from "@/lib/xp";
 import { AnswerInput, ProblemCard, ResultView, SessionResultView } from "packages/ui";
 import type {
   LearningSessionAnswerResponse,
@@ -161,6 +164,9 @@ function MockPracticeContent() {
         const summary = body as LearningSessionFinishResponse;
         setSessionId(summary.sessionId);
         persistState(summary.state);
+        updateDailyStreak();
+        updateXpFromSession(summary.result.score);
+        trackAnalyticsEvent("session_finish");
         setResultSummary(summary);
         setResult(null);
         setHasJudgedCurrentQuestion(false);
@@ -234,6 +240,7 @@ function MockPracticeContent() {
             skillName={selectedSkill.title}
             score={resultSummary.result.score}
             totalQuestions={resultSummary.result.totalQuestions}
+            earnedXp={resultSummary.result.score * 10}
             difficultyBefore={resultSummary.result.difficultyBefore}
             difficultyAfter={resultSummary.result.difficultyAfter}
             weakPatternsDetected={resultSummary.result.weakPatternsDetected}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadStateFromClient } from "packages/learning-engine/studentStore";
 import { SkillProgressBar } from "packages/ui";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { getLearningPattern } from "@/lib/learningPatternCatalog";
 
 type WeakReviewItem = {
@@ -49,6 +50,7 @@ export default function ReviewPage() {
 
   useEffect(() => {
     setWeakItems(buildWeakReviewItems());
+    trackAnalyticsEvent("review_open");
   }, []);
 
   const handlePractice = (patternId: string) => {

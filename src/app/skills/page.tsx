@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SkillList, type SkillCardItem } from "packages/ui";
 import { loadStateFromClient } from "packages/learning-engine/studentStore";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { practiceSkills } from "@/lib/learningSkillCatalog";
+import { readDailyStreak, type DailyStreak } from "@/lib/streak";
+import { readXp, type StoredXp } from "@/lib/xp";
 
 const getSkillBucket = (mastery: number) => {
   if (mastery >= 0.75) {
@@ -80,6 +83,8 @@ const getRecommendedSkill = (items: SkillCardItem[]) =>
 
 export default function SkillsPage() {
   const router = useRouter();
+  const [streak, setStreak] = useState<DailyStreak | null>(null);
+  const [xp, setXp] = useState<StoredXp>({ totalXp: 0 });
   const [skills, setSkills] = useState<SkillCardItem[]>(() =>
     practiceSkills.map((skill) => ({
       id: skill.id,
@@ -93,6 +98,9 @@ export default function SkillsPage() {
 
   useEffect(() => {
     setSkills(buildSkillItems());
+    setStreak(readDailyStreak());
+    setXp(readXp());
+    trackAnalyticsEvent("skill_open");
   }, []);
 
   const recommendedSkill = getRecommendedSkill(skills);
@@ -130,6 +138,10 @@ export default function SkillsPage() {
         <section className="rounded-[32px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
           <div className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-600">Learning Progress</div>
           <h1 className="mt-3 text-4xl font-black text-slate-900">Skill List</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <div className="rounded-full bg-slate-900 px-4 py-2 text-sm font-black text-white">XP {xp.totalXp}</div>
+            {streak ? <p className="text-lg font-bold text-amber-600">🔥 {streak.streak} day streak</p> : null}
+          </div>
           <p className="mt-3 text-sm text-slate-600">進捗を見ながら、次に進める skill を選べます。</p>
           <div className="mt-8">
             <SkillList skills={skills} onSelect={handleSelect} />
