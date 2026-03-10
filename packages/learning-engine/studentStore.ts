@@ -35,16 +35,24 @@ const createInitialStudentState = (): StudentState => ({
   wrongStreak: 0,
   solved: 0,
   correct: 0,
-  xp: 0,
-  level: 0
+  xpTotal: 0,
+  xpSession: 0,
+  level: 1
 });
+
+export function computeLevel(xpTotal: number): number {
+  return Math.floor(Math.sqrt(Math.max(0, xpTotal) / 10)) + 1;
+}
 
 export function updateXP(studentState: StudentState, correctCount: number): StudentState {
   const gain = Math.max(0, Math.trunc(correctCount)) * 10;
+  const xpTotal = studentState.xpTotal + gain;
 
   return {
     ...studentState,
-    xp: studentState.xp + gain
+    xpTotal,
+    xpSession: studentState.xpSession + gain,
+    level: computeLevel(xpTotal)
   };
 }
 
@@ -72,8 +80,12 @@ const parseStudentState = (value: unknown): StudentState => {
     wrongStreak: Math.max(0, Math.trunc(parseNumber(value.wrongStreak, 0))),
     solved: Math.max(0, Math.trunc(parseNumber(value.solved, 0))),
     correct: Math.max(0, Math.trunc(parseNumber(value.correct, 0))),
-    xp: Math.max(0, Math.trunc(parseNumber(value.xp, 0))),
-    level: Math.max(0, Math.trunc(parseNumber(value.level, 0)))
+    xpTotal: Math.max(
+      0,
+      Math.trunc(parseNumber(value.xpTotal, typeof value.xp === "number" ? value.xp : 0))
+    ),
+    xpSession: Math.max(0, Math.trunc(parseNumber(value.xpSession, 0))),
+    level: Math.max(1, Math.trunc(parseNumber(value.level, 1)))
   };
 };
 

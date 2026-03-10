@@ -103,7 +103,7 @@ export default function SkillsPage() {
 
   useEffect(() => {
     const state = loadStateFromClient();
-    const nextXp = state.student.xp ?? 0;
+    const nextXp = state.student.xpTotal ?? 0;
 
     setSkills(buildSkillItems(state));
     setStreak(readDailyStreak());
