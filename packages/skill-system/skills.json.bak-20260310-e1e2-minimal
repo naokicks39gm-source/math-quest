@@ -1,0 +1,104 @@
+[
+  {
+    "id": "E1_ADD_BASIC",
+    "title": "1桁のたし算",
+    "grade": "E1",
+    "patterns": ["E1_ADD_BASIC"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_ADD_CARRY",
+    "title": "くり上がりのたし算",
+    "grade": "E1",
+    "patterns": ["E1_ADD_CARRY"],
+    "prerequisite": ["E1_ADD_BASIC"],
+    "difficulty": 2
+  },
+  {
+    "id": "H1_BINOMIAL",
+    "title": "二項展開",
+    "grade": "H1",
+    "patterns": ["EXPAND_BINOMIAL_BASIC"],
+    "difficulty": 4
+  },
+  {
+    "id": "E1_ADD_BASIC_01",
+    "title": "1桁のたし算①",
+    "grade": "E1",
+    "patterns": ["E1_ADD_BASIC"],
+    "prerequisite": ["E1_ADD_BASIC"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_ADD_BASIC_02",
+    "title": "1桁のたし算②",
+    "grade": "E1",
+    "patterns": ["E1_ADD_BASIC"],
+    "prerequisite": ["E1_ADD_BASIC"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_ADD_BASIC_03",
+    "title": "1桁のたし算③",
+    "grade": "E1",
+    "patterns": ["E1_ADD_BASIC"],
+    "prerequisite": ["E1_ADD_BASIC"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_ADD_BASIC_04",
+    "title": "1桁のたし算④",
+    "grade": "E1",
+    "patterns": ["E1_ADD_BASIC"],
+    "prerequisite": ["E1_ADD_BASIC"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_ADD_BASIC_05",
+    "title": "1桁のたし算⑤",
+    "grade": "E1",
+    "patterns": ["E1_ADD_BASIC"],
+    "prerequisite": ["E1_ADD_BASIC"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_ADD_CARRY_01",
+    "title": "くり上がり①",
+    "grade": "E1",
+    "patterns": ["E1_ADD_CARRY"],
+    "prerequisite": ["E1_ADD_CARRY"],
+    "difficulty": 2
+  },
+  {
+    "id": "E1_ADD_CARRY_02",
+    "title": "くり上がり②",
+    "grade": "E1",
+    "patterns": ["E1_ADD_CARRY"],
+    "prerequisite": ["E1_ADD_CARRY"],
+    "difficulty": 2
+  },
+  {
+    "id": "E1_ADD_CARRY_03",
+    "title": "くり上がり③",
+    "grade": "E1",
+    "patterns": ["E1_ADD_CARRY"],
+    "prerequisite": ["E1_ADD_CARRY"],
+    "difficulty": 2
+  },
+  {
+    "id": "E1_ADD_CARRY_04",
+    "title": "くり上がり④",
+    "grade": "E1",
+    "patterns": ["E1_ADD_CARRY"],
+    "prerequisite": ["E1_ADD_CARRY"],
+    "difficulty": 2
+  },
+  {
+    "id": "E1_ADD_CARRY_05",
+    "title": "くり上がり⑤",
+    "grade": "E1",
+    "patterns": ["E1_ADD_CARRY"],
+    "prerequisite": ["E1_ADD_CARRY"],
+    "difficulty": 2
+  }
+]

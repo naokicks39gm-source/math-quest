@@ -67,10 +67,18 @@ const loadSkillSystemModules = async () => {
   const skillsOutput = path.join(tempDir, "skills.mjs");
   const addBasicOutput = path.join(tempDir, "add-basic.mjs");
   const addCarryOutput = path.join(tempDir, "add-carry.mjs");
+  const subBasicOutput = path.join(tempDir, "sub-basic.mjs");
+  const subBorrowOutput = path.join(tempDir, "sub-borrow.mjs");
+  const add2DigitOutput = path.join(tempDir, "add-2digit.mjs");
+  const sub2DigitOutput = path.join(tempDir, "sub-2digit.mjs");
 
   writeJsonModule(path.join(root, "packages/skill-system/skills.json"), skillsOutput);
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-basic.json"), addBasicOutput);
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-carry.json"), addCarryOutput);
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-basic.json"), subBasicOutput);
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-borrow.json"), subBorrowOutput);
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/add-2digit.json"), add2DigitOutput);
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/sub-2digit.json"), sub2DigitOutput);
 
   await transpileTsModule(expressionEvaluatorSource, expressionEvaluatorOutput);
   await transpileTsModule(minimalDslSource, minimalDslOutput, [
@@ -105,6 +113,10 @@ const loadSkillSystemModules = async () => {
     ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
     ['from "packages/problem-engine/patterns/E1/add-basic.json"', 'from "./add-basic.mjs"'],
     ['from "packages/problem-engine/patterns/E1/add-carry.json"', 'from "./add-carry.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/sub-basic.json"', 'from "./sub-basic.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/sub-borrow.json"', 'from "./sub-borrow.mjs"'],
+    ['from "packages/problem-engine/patterns/E2/add-2digit.json"', 'from "./add-2digit.mjs"'],
+    ['from "packages/problem-engine/patterns/E2/sub-2digit.json"', 'from "./sub-2digit.mjs"'],
     ['from "./skills.json"', 'from "./skills.mjs"']
   ]);
 
@@ -123,21 +135,14 @@ test("skill tree exposes typed skill relationships", async () => {
     patterns: ["E1_ADD_BASIC"],
     difficulty: 1
   });
-  assert.deepEqual(skillTree.getPrerequisites("E1_ADD_CARRY"), ["E1_ADD_BASIC"]);
+  assert.deepEqual(skillTree.getPrerequisites("E1_ADD_CARRY"), ["E1_ADD_10"]);
   assert.deepEqual(
     new Set(skillTree.getNextSkills("E1_ADD_BASIC").map((skill) => skill.id)),
-    new Set([
-      "E1_ADD_CARRY",
-      "E1_ADD_BASIC_01",
-      "E1_ADD_BASIC_02",
-      "E1_ADD_BASIC_03",
-      "E1_ADD_BASIC_04",
-      "E1_ADD_BASIC_05"
-    ])
+    new Set(["E1_ADD_10"])
   );
   assert.deepEqual(
     skillTree.getRootSkills().map((skill) => skill.id).sort(),
-    ["E1_ADD_BASIC", "H1_BINOMIAL"]
+    ["E1_ADD_BASIC", "E1_SUB_BASIC", "E2_ADD_2DIGIT", "H1_BINOMIAL"]
   );
 });
 
@@ -227,4 +232,18 @@ test("generateSkillQuiz throws for unresolved pattern entries", async () => {
     () => skillEngine.generateSkillQuiz("H1_BINOMIAL", 5),
     /Pattern not found for skill pattern: EXPAND_BINOMIAL_BASIC/
   );
+});
+
+test("generateSkillQuiz returns GeneratedProblem-like items for new E1 and E2 skills", async () => {
+  const { skillEngine } = await loadSkillSystemModules();
+
+  for (const skillId of ["E1_SUB_BASIC", "E1_SUB_BORROW", "E2_ADD_2DIGIT", "E2_SUB_2DIGIT"]) {
+    const generated = skillEngine.generateSkillQuiz(skillId, 5);
+    assert.equal(generated.length, 5, skillId);
+    for (const item of generated) {
+      assert.equal(typeof item.id, "string");
+      assert.equal(typeof item.question, "string");
+      assert.equal(typeof item.answer, "string");
+    }
+  }
 });

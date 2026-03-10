@@ -7,7 +7,7 @@ import type { SkillProgress } from "./skillProgressTypes";
 import type { Session } from "./sessionTypes";
 import { buildSession } from "./sessionBuilder";
 import { createLearningState, serializeState, updateXP, type LearningState } from "./studentStore";
-import { getWeakPatterns, resolveSkillPatterns } from "./weaknessAnalyzer";
+import { getWeakPatterns, resolveSkillPatterns, type WeakPattern } from "./weaknessAnalyzer";
 
 type StartSessionOptions = {
   mode: "skill" | "adaptive";
@@ -120,14 +120,30 @@ const advanceSession = (session: Session | undefined, correct: boolean): Session
   };
 };
 
-const countWeakPatterns = (state: LearningState) =>
-  skills.reduce((total, skill) => {
-    try {
-      return total + getWeakPatterns(state, skill.id).length;
-    } catch {
-      return total;
+const dedupeWeakPatterns = (patterns: WeakPattern[]): WeakPattern[] => {
+  const next = new Map<string, WeakPattern>();
+
+  for (const pattern of patterns) {
+    if (!next.has(pattern.patternKey)) {
+      next.set(pattern.patternKey, pattern);
     }
-  }, 0);
+  }
+
+  return [...next.values()];
+};
+
+const collectWeakPatterns = (state: LearningState) =>
+  dedupeWeakPatterns(
+    skills.flatMap((skill) => {
+      try {
+        return getWeakPatterns(state, skill.id);
+      } catch {
+        return [];
+      }
+    })
+  );
+
+const countWeakPatterns = (state: LearningState) => collectWeakPatterns(state).length;
 
 const getSkillProgressSnapshot = (state: LearningState, skillId: string): SkillProgress =>
   state.skillProgress[skillId] ?? {
@@ -268,7 +284,7 @@ export function recommendNextAction(state: LearningState): Recommendation {
       return false;
     }
   });
-  const weakPatterns = supportedSkills.flatMap((skill) => getWeakPatterns(currentState, skill.id));
+  const weakPatterns = dedupeWeakPatterns(supportedSkills.flatMap((skill) => getWeakPatterns(currentState, skill.id)));
 
   if (weakPatterns.length >= WEAK_PATTERN_THRESHOLD) {
     return {

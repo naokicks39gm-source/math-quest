@@ -1,5 +1,9 @@
 import addBasicPatterns from "packages/problem-engine/patterns/E1/add-basic.json";
 import addCarryPatterns from "packages/problem-engine/patterns/E1/add-carry.json";
+import subBasicPatterns from "packages/problem-engine/patterns/E1/sub-basic.json";
+import subBorrowPatterns from "packages/problem-engine/patterns/E1/sub-borrow.json";
+import add2DigitPatterns from "packages/problem-engine/patterns/E2/add-2digit.json";
+import sub2DigitPatterns from "packages/problem-engine/patterns/E2/sub-2digit.json";
 import type { PatternDSL } from "packages/problem-engine";
 import { getPatterns as getSkillPatternBundles } from "packages/skill-system";
 
@@ -7,7 +11,11 @@ import type { LearningState } from "./studentStore";
 
 const patternCatalog: Record<string, PatternDSL[]> = {
   E1_ADD_BASIC: addBasicPatterns as unknown as PatternDSL[],
-  E1_ADD_CARRY: addCarryPatterns as unknown as PatternDSL[]
+  E1_ADD_CARRY: addCarryPatterns as unknown as PatternDSL[],
+  E1_SUB_BASIC: subBasicPatterns as unknown as PatternDSL[],
+  E1_SUB_BORROW: subBorrowPatterns as unknown as PatternDSL[],
+  E2_ADD_2DIGIT: add2DigitPatterns as unknown as PatternDSL[],
+  E2_SUB_2DIGIT: sub2DigitPatterns as unknown as PatternDSL[]
 };
 
 export type WeakPattern = {

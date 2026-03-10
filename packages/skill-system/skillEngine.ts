@@ -2,6 +2,10 @@ import type { GeneratedProblem, PatternDSL } from "packages/problem-engine";
 import { generateProblems } from "packages/problem-engine";
 import addBasicPatterns from "packages/problem-engine/patterns/E1/add-basic.json";
 import addCarryPatterns from "packages/problem-engine/patterns/E1/add-carry.json";
+import subBasicPatterns from "packages/problem-engine/patterns/E1/sub-basic.json";
+import subBorrowPatterns from "packages/problem-engine/patterns/E1/sub-borrow.json";
+import add2DigitPatterns from "packages/problem-engine/patterns/E2/add-2digit.json";
+import sub2DigitPatterns from "packages/problem-engine/patterns/E2/sub-2digit.json";
 import skillsData from "./skills.json";
 import type { Skill } from "./skillTypes";
 
@@ -11,7 +15,11 @@ const asPatternCatalog = (patterns: unknown): PatternDSL[] => patterns as Patter
 
 const patternCatalog: Record<string, PatternDSL[]> = {
   E1_ADD_BASIC: asPatternCatalog(addBasicPatterns),
-  E1_ADD_CARRY: asPatternCatalog(addCarryPatterns)
+  E1_ADD_CARRY: asPatternCatalog(addCarryPatterns),
+  E1_SUB_BASIC: asPatternCatalog(subBasicPatterns),
+  E1_SUB_BORROW: asPatternCatalog(subBorrowPatterns),
+  E2_ADD_2DIGIT: asPatternCatalog(add2DigitPatterns),
+  E2_SUB_2DIGIT: asPatternCatalog(sub2DigitPatterns)
 };
 type PatternStockEntry = {
   stock: GeneratedProblem[];

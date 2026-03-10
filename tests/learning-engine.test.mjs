@@ -79,7 +79,12 @@ const createSkillSystemStub = (outputPath) => {
     [
       'const skillPatterns = {',
       '  E1_ADD_BASIC: ["E1_ADD_BASIC"],',
+      '  E1_ADD_10: ["E1_ADD_BASIC"],',
       '  E1_ADD_CARRY: ["E1_ADD_CARRY"],',
+      '  E1_SUB_BASIC: ["E1_SUB_BASIC"],',
+      '  E1_SUB_BORROW: ["E1_SUB_BORROW"],',
+      '  E2_ADD_2DIGIT: ["E2_ADD_2DIGIT"],',
+      '  E2_SUB_2DIGIT: ["E2_SUB_2DIGIT"],',
       '  H1_BINOMIAL: ["EXPAND_BINOMIAL_BASIC"]',
       "};",
       "export const getPatterns = (skillId) => {",
@@ -128,6 +133,10 @@ const loadLearningEngineModules = async () => {
 
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-basic.json"), path.join(tempDir, "add-basic.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-carry.json"), path.join(tempDir, "add-carry.mjs"));
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-basic.json"), path.join(tempDir, "sub-basic.mjs"));
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-borrow.json"), path.join(tempDir, "sub-borrow.mjs"));
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/add-2digit.json"), path.join(tempDir, "add-2digit.mjs"));
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/sub-2digit.json"), path.join(tempDir, "sub-2digit.mjs"));
   writeJsonModule(path.join(root, "packages/skill-system/skills.json"), path.join(tempDir, "skills.mjs"));
   createSkillSystemStub(path.join(tempDir, "skill-system.mjs"));
   createProblemEngineStub(path.join(tempDir, "problem-engine.mjs"));
@@ -138,7 +147,11 @@ const loadLearningEngineModules = async () => {
     ['from "packages/skill-system"', 'from "./skill-system.mjs"'],
     ['from "packages/skill-system/skills.json"', 'from "./skills.mjs"'],
     ['from "packages/problem-engine/patterns/E1/add-basic.json"', 'from "./add-basic.mjs"'],
-    ['from "packages/problem-engine/patterns/E1/add-carry.json"', 'from "./add-carry.mjs"']
+    ['from "packages/problem-engine/patterns/E1/add-carry.json"', 'from "./add-carry.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/sub-basic.json"', 'from "./sub-basic.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/sub-borrow.json"', 'from "./sub-borrow.mjs"'],
+    ['from "packages/problem-engine/patterns/E2/add-2digit.json"', 'from "./add-2digit.mjs"'],
+    ['from "packages/problem-engine/patterns/E2/sub-2digit.json"', 'from "./sub-2digit.mjs"']
   ];
 
   const modules = [

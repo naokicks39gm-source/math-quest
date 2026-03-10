@@ -1,5 +1,9 @@
 import addBasicPatterns from "packages/problem-engine/patterns/E1/add-basic.json";
 import addCarryPatterns from "packages/problem-engine/patterns/E1/add-carry.json";
+import subBasicPatterns from "packages/problem-engine/patterns/E1/sub-basic.json";
+import subBorrowPatterns from "packages/problem-engine/patterns/E1/sub-borrow.json";
+import add2DigitPatterns from "packages/problem-engine/patterns/E2/add-2digit.json";
+import sub2DigitPatterns from "packages/problem-engine/patterns/E2/sub-2digit.json";
 import skillsData from "packages/skill-system/skills.json";
 
 type PatternDSL = {
@@ -26,10 +30,16 @@ export type LearningPatternCatalogEntry = {
 
 const patternBundles: Record<string, PatternDSL[]> = {
   E1_ADD_BASIC: addBasicPatterns as unknown as PatternDSL[],
-  E1_ADD_CARRY: addCarryPatterns as unknown as PatternDSL[]
+  E1_ADD_CARRY: addCarryPatterns as unknown as PatternDSL[],
+  E1_SUB_BASIC: subBasicPatterns as unknown as PatternDSL[],
+  E1_SUB_BORROW: subBorrowPatterns as unknown as PatternDSL[],
+  E2_ADD_2DIGIT: add2DigitPatterns as unknown as PatternDSL[],
+  E2_SUB_2DIGIT: sub2DigitPatterns as unknown as PatternDSL[]
 };
 
-const supportedSkills = (skillsData as SkillDefinition[]).filter((skill) => skill.id in patternBundles);
+const supportedSkills = (skillsData as SkillDefinition[]).filter((skill) =>
+  (skill.patterns ?? []).some((patternBundleId) => patternBundleId in patternBundles)
+);
 
 const catalogEntries: LearningPatternCatalogEntry[] = supportedSkills.flatMap((skill) =>
   (skill.patterns ?? []).flatMap((patternBundleId) =>
