@@ -35,8 +35,12 @@ const PATTERN_ROOT = path.join(process.cwd(), "packages/problem-engine/patterns"
 type PatternDsl = {
   key: string;
   template: string;
-  variables: Record<string, [number, number]>;
+  variables: Record<string, [number, number]> | { pairs: [number, number][] };
+  generator?: Record<string, string>;
 };
+
+const hasPairVariables = (variables: PatternDsl["variables"]): variables is { pairs: [number, number][] } =>
+  "pairs" in variables;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -46,7 +50,7 @@ const parsePatternEntry = (raw: unknown): PatternDsl => {
     throw new Error("Pattern entry must be an object");
   }
 
-  const { key, template, variables } = raw;
+  const { key, template, variables, generator } = raw;
   if (typeof key !== "string" || !key.trim()) {
     throw new Error("Pattern key is required");
   }
@@ -55,6 +59,34 @@ const parsePatternEntry = (raw: unknown): PatternDsl => {
   }
   if (!isRecord(variables)) {
     throw new Error(`Pattern variables must be an object: ${key}`);
+  }
+
+  const pairs = variables.pairs;
+  if (pairs !== undefined) {
+    if (
+      !Array.isArray(pairs) ||
+      pairs.length === 0 ||
+      pairs.some(
+        (pair) =>
+          !Array.isArray(pair) ||
+          pair.length !== 2 ||
+          typeof pair[0] !== "number" ||
+          typeof pair[1] !== "number"
+      )
+    ) {
+      throw new Error(`Pattern variable pairs must be [number, number][]: ${key}`);
+    }
+    if (!isRecord(generator) || Object.values(generator).some((value) => typeof value !== "string")) {
+      throw new Error(`Pattern generator must be Record<string, string>: ${key}`);
+    }
+    return {
+      key,
+      template,
+      variables: {
+        pairs: pairs.map((pair) => [Math.trunc(pair[0]), Math.trunc(pair[1])] as [number, number])
+      },
+      generator: Object.fromEntries(Object.entries(generator).map(([name, expr]) => [name, String(expr)]))
+    };
   }
 
   const parsedVariables: Record<string, [number, number]> = {};
@@ -151,10 +183,12 @@ const inferConcept = (fileName: string, key: string): PatternConcept => {
 
 const inferDifficulty = (pattern: PatternDsl): number => {
   let score = 1;
-  const maxVar = Math.max(
-    ...Object.values(pattern.variables).map(([min, max]) => Math.max(Math.abs(min), Math.abs(max))),
-    0
-  );
+  const maxVar = hasPairVariables(pattern.variables)
+    ? Math.max(...pattern.variables.pairs.flatMap(([left, right]) => [Math.abs(left), Math.abs(right)]), 0)
+    : Math.max(
+        ...Object.values(pattern.variables).map(([min, max]) => Math.max(Math.abs(min), Math.abs(max))),
+        0
+      );
 
   if (maxVar > 20) score += 1;
   if (maxVar > 50) score += 1;

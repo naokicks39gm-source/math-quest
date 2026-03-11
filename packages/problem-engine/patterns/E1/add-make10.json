@@ -1,97 +1,24 @@
 [
   {
-    "key": "E1-ADD-MAKE10-01",
+    "key": "E1-ADD-MAKE10",
     "template": "{a} + {b}",
     "variables": {
-      "a": [
-        6,
-        9
-      ],
-      "b": [
-        2,
-        9
+      "pairs": [
+        [1, 9],
+        [2, 8],
+        [3, 7],
+        [4, 6],
+        [5, 5],
+        [6, 4],
+        [7, 3],
+        [8, 2],
+        [9, 1]
       ]
     },
-    "constraints": [
-      "a + b > 10",
-      "a + b <= 15"
-    ],
-    "answer": "a + b"
-  },
-  {
-    "key": "E1-ADD-MAKE10-02",
-    "template": "{a} + {b}",
-    "variables": {
-      "a": [
-        7,
-        9
-      ],
-      "b": [
-        3,
-        9
-      ]
+    "generator": {
+      "a": "pair[0]",
+      "b": "pair[1]"
     },
-    "constraints": [
-      "a + b >= 11",
-      "a + b <= 16"
-    ],
-    "answer": "a + b"
-  },
-  {
-    "key": "E1-ADD-MAKE10-03",
-    "template": "{a} + {b}",
-    "variables": {
-      "a": [
-        8,
-        9
-      ],
-      "b": [
-        2,
-        8
-      ]
-    },
-    "constraints": [
-      "a + b >= 12",
-      "a + b <= 17"
-    ],
-    "answer": "a + b"
-  },
-  {
-    "key": "E1-ADD-MAKE10-04",
-    "template": "{a} + {b}",
-    "variables": {
-      "a": [
-        5,
-        9
-      ],
-      "b": [
-        5,
-        9
-      ]
-    },
-    "constraints": [
-      "a + b >= 10",
-      "a + b <= 18"
-    ],
-    "answer": "a + b"
-  },
-  {
-    "key": "E1-ADD-MAKE10-05",
-    "template": "{a} + {b}",
-    "variables": {
-      "a": [
-        4,
-        9
-      ],
-      "b": [
-        4,
-        9
-      ]
-    },
-    "constraints": [
-      "a + b >= 10",
-      "a + b <= 14"
-    ],
     "answer": "a + b"
   }
 ]

@@ -170,7 +170,7 @@ test("generateSkillQuiz returns GeneratedProblem-like items for E1_ADD_10", asyn
   const patternKeys = new Set(generated.map((item) => item.patternKey ?? item.id.split(":")[0]));
 
   assert.equal(generated.length, 5);
-  assert.equal([...patternKeys].every((key) => key.startsWith("E1-ADD-MAKE10-")), true);
+  assert.equal([...patternKeys].every((key) => key.startsWith("E1-ADD-MAKE10")), true);
   for (const item of generated) {
     assert.equal(typeof item.id, "string");
     assert.equal(typeof item.question, "string");

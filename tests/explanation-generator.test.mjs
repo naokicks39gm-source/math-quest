@@ -59,17 +59,17 @@ test("generateExplanation resolves known pattern key by prefix", async () => {
 test("generateExplanation builds multiline make10 explanation when variables are present", async () => {
   const explanationModule = await loadExplanationModule();
   const explanation = explanationModule.generateExplanation({
-    id: "E1-ADD-MAKE10-01:test:15",
-    question: "8 + 7",
-    answer: "15",
-    patternKey: "E1-ADD-MAKE10-01",
-    variables: { a: 8, b: 7 }
+    id: "E1-ADD-MAKE10:test:10",
+    question: "8 + 2",
+    answer: "10",
+    patternKey: "E1-ADD-MAKE10",
+    variables: { a: 8, b: 2 }
   });
 
   assert.equal(explanation.includes("まず10を作ります"), true);
-  assert.equal(explanation.includes("8 + 2 + 5"), true);
-  assert.equal(explanation.includes("10 + 5"), true);
-  assert.equal(explanation.endsWith("\n15"), true);
+  assert.equal(explanation.includes("8 + 2 + 0"), true);
+  assert.equal(explanation.includes("10 + 0"), true);
+  assert.equal(explanation.endsWith("\n10"), true);
 });
 
 test("generateExplanation falls back to default explanation for unknown pattern keys", async () => {
@@ -98,10 +98,10 @@ test("generateExplanation falls back to default explanation when pattern key is 
 test("generateExplanation falls back to default explanation when template variables are missing", async () => {
   const explanationModule = await loadExplanationModule();
   const explanation = explanationModule.generateExplanation({
-    id: "E1-ADD-MAKE10-01:test:15",
+    id: "E1-ADD-MAKE10:test:10",
     question: "8 + 7",
-    answer: "15",
-    patternKey: "E1-ADD-MAKE10-01"
+    answer: "10",
+    patternKey: "E1-ADD-MAKE10"
   });
 
   assert.equal(explanation, explanationModule.DEFAULT_EXPLANATION);

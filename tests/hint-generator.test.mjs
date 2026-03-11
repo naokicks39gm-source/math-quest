@@ -59,16 +59,16 @@ test("generateHint resolves known pattern key by prefix", async () => {
 test("generateHint builds multiline make10 hint when variables are present", async () => {
   const hintModule = await loadHintModule();
   const hint = hintModule.generateHint({
-    id: "E1-ADD-MAKE10-01:test:15",
+    id: "E1-ADD-MAKE10:test:10",
     question: "8 + 7",
-    answer: "15",
-    patternKey: "E1-ADD-MAKE10-01",
-    variables: { a: 8, b: 7 }
+    answer: "10",
+    patternKey: "E1-ADD-MAKE10",
+    variables: { a: 8, b: 2 }
   });
 
   assert.equal(hint.includes("まず10を作ります"), true);
-  assert.equal(hint.includes("8 + 7"), true);
-  assert.equal(hint.includes("8 + 2 + 5"), true);
+  assert.equal(hint.includes("8 + 2"), true);
+  assert.equal(hint.includes("8 + 2 + 0"), true);
 });
 
 test("generateHint falls back to default hint for unknown pattern keys", async () => {
@@ -97,10 +97,10 @@ test("generateHint falls back to default hint when pattern key is missing", asyn
 test("generateHint falls back to default hint when template variables are missing", async () => {
   const hintModule = await loadHintModule();
   const hint = hintModule.generateHint({
-    id: "E1-ADD-MAKE10-01:test:15",
+    id: "E1-ADD-MAKE10:test:10",
     question: "8 + 7",
-    answer: "15",
-    patternKey: "E1-ADD-MAKE10-01"
+    answer: "10",
+    patternKey: "E1-ADD-MAKE10"
   });
 
   assert.equal(hint, hintModule.DEFAULT_HINT);

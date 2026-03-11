@@ -55,25 +55,14 @@
       "id": "E1_ADD_10",
       "title": "10を作るたし算",
       "grade": "E1",
-      "patterns": [
-        "E1-ADD-MAKE10-01",
-        "E1-ADD-MAKE10-02",
-        "E1-ADD-MAKE10-03",
-        "E1-ADD-MAKE10-04"
-      ],
+      "patterns": ["E1-ADD-MAKE10"],
       "prerequisite": ["E1_ADD_BASIC"]
     },
     {
       "id": "E1_ADD_CARRY",
       "title": "繰り上がりのあるたし算",
       "grade": "E1",
-      "patterns": [
-        "E1-ADD-CARRY-01",
-        "E1-ADD-CARRY-02",
-        "E1-ADD-CARRY-03",
-        "E1-ADD-CARRY-04",
-        "E1-ADD-CARRY-05"
-      ],
+      "patterns": ["E1-ADD-CARRY"],
       "prerequisite": ["E1_ADD_10"]
     },
     {

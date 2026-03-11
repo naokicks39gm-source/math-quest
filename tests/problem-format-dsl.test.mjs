@@ -96,7 +96,8 @@ test("GeneratedProblem supports optional extension fields", () => {
   assert.equal(source.includes("patternKey: pattern.key"), true);
   assert.equal(source.includes("variables: vars"), true);
   assert.equal(source.includes("variableRanges?: Record<string, Range>;"), true);
-  assert.equal(source.includes("variableRanges: pattern.variables,"), true);
+  assert.equal(source.includes("const variableRanges = deriveVariableRanges(pattern);"), true);
+  assert.equal(source.includes("variableRanges,"), true);
   assert.equal(source.includes("source: \"pattern-dsl\""), true);
 });
 

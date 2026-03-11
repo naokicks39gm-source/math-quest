@@ -1,11 +1,17 @@
 import { evaluateExpression, formatEvaluationValue } from "packages/problem-format/expressionEvaluator";
 
 export type Range = [number, number];
+export type Pair = [number, number];
+export type PairVariables = {
+  pairs: Pair[];
+};
+export type VariableGenerator = Record<string, string>;
 
 export type PatternDSL = {
   key: string;
   template: string;
-  variables: Record<string, Range>;
+  variables: Record<string, Range> | PairVariables;
+  generator?: VariableGenerator;
   constraints?: string[];
   answer: string;
 };
@@ -37,6 +43,7 @@ export const parsePatternDSL = (raw: unknown): PatternDSL => {
   const key = raw.key;
   const template = raw.template;
   const variablesRaw = raw.variables;
+  const generatorRaw = raw.generator;
   const constraints = raw.constraints;
   const answer = raw.answer;
 
@@ -46,6 +53,42 @@ export const parsePatternDSL = (raw: unknown): PatternDSL => {
   if (typeof answer !== "string" || !answer.trim()) throw new Error("pattern.answer is required");
   if (constraints !== undefined && (!Array.isArray(constraints) || !constraints.every((item) => typeof item === "string"))) {
     throw new Error("pattern.constraints must be string[] when set");
+  }
+
+  if (generatorRaw !== undefined && (!isRecord(generatorRaw) || Object.values(generatorRaw).some((value) => typeof value !== "string"))) {
+    throw new Error("pattern.generator must be Record<string, string> when set");
+  }
+
+  const pairsRaw = variablesRaw.pairs;
+  if (pairsRaw !== undefined) {
+    if (
+      !Array.isArray(pairsRaw) ||
+      pairsRaw.length === 0 ||
+      pairsRaw.some(
+        (pair) =>
+          !Array.isArray(pair) ||
+          pair.length !== 2 ||
+          !Number.isFinite(Number(pair[0])) ||
+          !Number.isFinite(Number(pair[1]))
+      )
+    ) {
+      throw new Error("pattern.variables.pairs must be [number, number][]");
+    }
+    if (!isRecord(generatorRaw) || Object.keys(generatorRaw).length === 0) {
+      throw new Error("pattern.generator is required when pattern.variables.pairs is set");
+    }
+    return {
+      key,
+      template,
+      variables: {
+        pairs: pairsRaw.map((pair) => [Math.trunc(Number(pair[0])), Math.trunc(Number(pair[1]))] as Pair)
+      },
+      generator: Object.fromEntries(
+        Object.entries(generatorRaw).map(([name, expr]) => [name, String(expr)])
+      ),
+      constraints: constraints as string[] | undefined,
+      answer
+    };
   }
 
   const variables: Record<string, Range> = {};
@@ -70,12 +113,56 @@ export const parsePatternDSL = (raw: unknown): PatternDSL => {
     key,
     template,
     variables,
+    generator: generatorRaw as VariableGenerator | undefined,
     constraints: constraints as string[] | undefined,
     answer
   };
 };
 
+const isPairVariables = (variables: PatternDSL["variables"]): variables is PairVariables =>
+  "pairs" in variables;
+
+const replacePairIndexes = (expr: string, pair: Pair) =>
+  expr.replace(/pair\[(0|1)\]/gu, (_whole, index: string) => String(pair[Number(index)]));
+
+const evaluateGeneratorExpression = (expr: string, pair: Pair) => {
+  const value = evaluateExpression(replacePairIndexes(expr, pair), {});
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`Generator expression must resolve to a finite number: ${expr}`);
+  }
+  return Math.trunc(value);
+};
+
+const deriveVariableRanges = (pattern: PatternDSL): Record<string, Range> | undefined => {
+  if (!isPairVariables(pattern.variables) || !pattern.generator) {
+    return isPairVariables(pattern.variables) ? undefined : pattern.variables;
+  }
+
+  const derivedValues = Object.fromEntries(
+    Object.keys(pattern.generator).map((name) => [name, [] as number[]])
+  );
+  for (const pair of pattern.variables.pairs) {
+    for (const [name, expr] of Object.entries(pattern.generator)) {
+      derivedValues[name].push(evaluateGeneratorExpression(expr, pair));
+    }
+  }
+
+  return Object.fromEntries(
+    Object.entries(derivedValues).map(([name, values]) => [name, [Math.min(...values), Math.max(...values)] as Range])
+  );
+};
+
 export const generateVariables = (pattern: PatternDSL): Record<string, number> => {
+  if (isPairVariables(pattern.variables)) {
+    if (!pattern.generator) {
+      throw new Error(`pattern.generator is required for pair variables: ${pattern.key}`);
+    }
+    const pair = pattern.variables.pairs[randomInt(0, pattern.variables.pairs.length - 1)];
+    return Object.fromEntries(
+      Object.entries(pattern.generator).map(([name, expr]) => [name, evaluateGeneratorExpression(expr, pair)])
+    );
+  }
+
   const vars: Record<string, number> = {};
   for (const [name, range] of Object.entries(pattern.variables)) {
     vars[name] = randomInt(range[0], range[1]);
@@ -173,6 +260,7 @@ export const generateMinimalProblem = (rawPattern: PatternDSL): GeneratedProblem
   const pattern = parsePatternDSL(rawPattern);
   let vars: Record<string, number> = {};
   let matched = false;
+  const variableRanges = deriveVariableRanges(pattern);
 
   for (let attempts = 0; attempts < MAX_CONSTRAINT_ATTEMPTS; attempts += 1) {
     vars = applyDerivedVariables(pattern, generateVariables(pattern));
@@ -195,7 +283,7 @@ export const generateMinimalProblem = (rawPattern: PatternDSL): GeneratedProblem
     answer,
     patternKey: pattern.key,
     variables: vars,
-    variableRanges: pattern.variables
+    variableRanges
   });
 
   return {
@@ -204,7 +292,7 @@ export const generateMinimalProblem = (rawPattern: PatternDSL): GeneratedProblem
     answer,
     patternKey: pattern.key,
     variables: vars,
-    variableRanges: pattern.variables,
+    variableRanges,
     meta: {
       source: "pattern-dsl",
       difficulty

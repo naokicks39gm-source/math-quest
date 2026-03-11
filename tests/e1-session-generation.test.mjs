@@ -69,8 +69,6 @@ const createSkillSystemStub = (outputPath) => {
 const createProblemEngineStub = (outputPath) => {
   const ranges = [
     ['"E1-ADD-BASIC-"', 1, 10, "(index <= 8 ? 1 : 2)"],
-    ['"E1-ADD-MAKE10-"', 1, 5, "2"],
-    ['"E1-ADD-CARRY-"', 1, 10, "(index <= 4 ? 2 : 3)"],
     ['"E1-SUB-BASIC-"', 1, 10, "(index <= 7 ? 1 : 2)"],
     ['"E1-SUB-BORROW-"', 1, 10, "(index <= 4 ? 2 : 3)"]
   ];
@@ -83,6 +81,8 @@ const createProblemEngineStub = (outputPath) => {
         ([prefix, start, end, expr]) =>
           `for (let index = ${start}; index <= ${end}; index += 1) difficultyByPattern[\`${prefix}\${String(index).padStart(2, "0")}\`] = ${expr};`
       ),
+      'difficultyByPattern["E1-ADD-MAKE10"] = 2;',
+      'difficultyByPattern["E1-ADD-CARRY"] = 2;',
       "export const getPatternMeta = (key) =>",
       "  difficultyByPattern[key] ? { key, difficulty: difficultyByPattern[key] } : undefined;",
       "export const generateProblems = (pattern, count) =>",
@@ -170,8 +170,8 @@ const loadModules = async () => {
 
 const e1SkillCases = [
   ["E1_ADD_BASIC", "E1-ADD-BASIC-"],
-  ["E1_ADD_10", "E1-ADD-MAKE10-"],
-  ["E1_ADD_CARRY", "E1-ADD-CARRY-"],
+  ["E1_ADD_10", "E1-ADD-MAKE10"],
+  ["E1_ADD_CARRY", "E1-ADD-CARRY"],
   ["E1_SUB_BASIC", "E1-SUB-BASIC-"],
   ["E1_SUB_BORROW", "E1-SUB-BORROW-"]
 ];
