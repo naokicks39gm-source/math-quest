@@ -43,3 +43,5 @@ next-env.d.ts
 
 # datasets
 /data/mnist
+data/
+*.sqlite*
