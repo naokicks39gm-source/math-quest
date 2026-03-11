@@ -260,3 +260,28 @@ test("learning session start route returns valid E1 skill sessions", async () =>
     }
   }
 });
+
+test("learning session start route issues a new sessionId for repeated starts", async () => {
+  const { route } = await loadModules();
+  const firstResponse = await route.POST(
+    new Request("http://localhost/api/learning/session/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "skill", skillId: "E1_ADD_BASIC" })
+    })
+  );
+  const secondResponse = await route.POST(
+    new Request("http://localhost/api/learning/session/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "skill", skillId: "E1_ADD_BASIC" })
+    })
+  );
+
+  const firstBody = await firstResponse.json();
+  const secondBody = await secondResponse.json();
+
+  assert.equal(firstResponse.status, 200);
+  assert.equal(secondResponse.status, 200);
+  assert.notEqual(firstBody.sessionId, secondBody.sessionId);
+});
