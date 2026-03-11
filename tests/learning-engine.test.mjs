@@ -70,7 +70,9 @@ const localModuleReplacements = [
   ['from "./difficultyController"', 'from "./difficultyController.mjs"'],
   ['from "./weaknessAnalyzer"', 'from "./weaknessAnalyzer.mjs"'],
   ['from "./sessionBuilder"', 'from "./sessionBuilder.mjs"'],
-  ['from "./learningEngine"', 'from "./learningEngine.mjs"']
+  ['from "./learningEngine"', 'from "./learningEngine.mjs"'],
+  ['from "./skill-unlock"', 'from "./skill-unlock.mjs"'],
+  ['from "./progression-engine"', 'from "./progression-engine.mjs"']
 ];
 
 const createSkillSystemStub = (outputPath) => {
@@ -167,6 +169,8 @@ const loadLearningEngineModules = async () => {
     "difficultyController",
     "weaknessAnalyzer",
     "sessionBuilder",
+    "skill-unlock",
+    "progression-engine",
     "learningEngine",
     "index"
   ];
@@ -207,6 +211,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
     assert.equal(initial.version, 1);
     assert.equal(initial.engineVersion, 1);
     assert.equal(initial.student.difficulty, 1);
+    assert.deepEqual(initial.unlockedSkills, ["E1_ADD_BASIC"]);
     const serialized = studentStore.serializeState({
       ...initial,
       student: { ...initial.student, difficulty: 2 }
@@ -214,6 +219,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
     assert.equal(serialized.version, 1);
     assert.equal(serialized.engineVersion, 1);
     assert.equal(serialized.student.difficulty, 2);
+    assert.deepEqual(serialized.unlockedSkills, ["E1_ADD_BASIC"]);
   });
 
   await withMockedWindow(
@@ -230,6 +236,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
       assert.equal(reset.engineVersion, 1);
       assert.equal(reset.student.difficulty, 1);
       assert.deepEqual(reset.patternProgress, {});
+      assert.deepEqual(reset.unlockedSkills, ["E1_ADD_BASIC"]);
     }
   );
 
@@ -247,6 +254,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
       assert.equal(reset.engineVersion, 1);
       assert.equal(reset.student.difficulty, 1);
       assert.deepEqual(reset.patternProgress, {});
+      assert.deepEqual(reset.unlockedSkills, ["E1_ADD_BASIC"]);
     }
   );
 
@@ -263,6 +271,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
   assert.equal(mismatchedVersion.engineVersion, 1);
   assert.equal(mismatchedVersion.student.difficulty, 1);
   assert.deepEqual(mismatchedVersion.patternProgress, {});
+  assert.deepEqual(mismatchedVersion.unlockedSkills, ["E1_ADD_BASIC"]);
 
   const mismatchedEngineVersion = studentStore.serializeState({
     version: 1,
@@ -277,6 +286,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
   assert.equal(mismatchedEngineVersion.engineVersion, 1);
   assert.equal(mismatchedEngineVersion.student.difficulty, 1);
   assert.deepEqual(mismatchedEngineVersion.patternProgress, {});
+  assert.deepEqual(mismatchedEngineVersion.unlockedSkills, ["E1_ADD_BASIC"]);
 
   const source = fs.readFileSync(path.join(root, "packages/learning-engine/studentStore.ts"), "utf8");
   assert.equal(source.includes("__mathquestLearningStateStorage"), false);
@@ -383,6 +393,20 @@ test("weakness detection uses attempts >= 2 and mastery < 0.7", async () => {
     reason: "weak_patterns",
     weakPatterns: 2
   });
+});
+
+test("studentStore backfills unlockedSkills for legacy states", async () => {
+  const { studentStore } = await loadLearningEngineModules();
+
+  const state = studentStore.serializeState({
+    version: 1,
+    engineVersion: 1,
+    student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xpTotal: 0, xpSession: 0, level: 1 },
+    patternProgress: {},
+    skillProgress: {}
+  });
+
+  assert.deepEqual(state.unlockedSkills, ["E1_ADD_BASIC"]);
 });
 
 test("sessionBuilder creates a five-problem session from explicit state", async () => {
@@ -846,10 +870,63 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(finished.result.skillProgressBefore?.mastery, 0);
   assert.equal(finished.result.skillProgressAfter?.skillId, "E1_ADD_BASIC");
   assert.equal(finished.result.skillProgressAfter?.mastery, 2 / 3);
+  assert.deepEqual(finished.state.unlockedSkills, ["E1_ADD_BASIC"]);
 
   const source = fs.readFileSync(path.join(root, "packages/learning-engine/learningEngine.ts"), "utf8");
   assert.equal(source.includes('console.log("skillMastery"'), true);
   assert.equal(source.includes('console.log("studentXP"'), true);
+});
+
+test("finishSession unlocks the next skill when mastery reaches 0.8", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  const state = studentStore.serializeState({
+    version: 1,
+    engineVersion: 1,
+    student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 5, xpTotal: 50, xpSession: 50, level: 3 },
+    patternProgress: {},
+    skillProgress: {
+      E1_ADD_BASIC: { skillId: "E1_ADD_BASIC", mastery: 0.8, mastered: true }
+    },
+    unlockedSkills: ["E1_ADD_BASIC"],
+    session: {
+      mode: "skill",
+      skillId: "E1_ADD_BASIC",
+      startedDifficulty: 1,
+      problems: [],
+      index: 0,
+      correct: 5,
+      wrong: 0
+    }
+  });
+
+  const finished = learningEngine.finishSession(state);
+
+  assert.deepEqual(finished.state.unlockedSkills, ["E1_ADD_BASIC", "E1_ADD_10"]);
+  assert.deepEqual(finished.result.recommendation, {
+    type: "skill",
+    skillId: "E1_ADD_10",
+    reason: "next_skill"
+  });
+});
+
+test("progression treats mastery below 0.8 as still in progress", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  const state = studentStore.serializeState({
+    version: 1,
+    engineVersion: 1,
+    student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 4, xpTotal: 40, xpSession: 0, level: 3 },
+    patternProgress: {},
+    skillProgress: {
+      E1_ADD_BASIC: { skillId: "E1_ADD_BASIC", mastery: 0.76, mastered: true }
+    },
+    unlockedSkills: ["E1_ADD_BASIC"]
+  });
+
+  assert.deepEqual(learningEngine.recommendNextAction(state), {
+    type: "skill",
+    skillId: "E1_ADD_BASIC",
+    reason: "next_skill"
+  });
 });
 
 test("learningEngine.startSession rebuilds a fresh problem list when prior session exists in state", async () => {

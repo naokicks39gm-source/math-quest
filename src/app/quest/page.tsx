@@ -9,7 +9,7 @@ import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { gradeAnswer, AnswerFormat } from '@/lib/grader';
-import { getPracticeSkill } from "@/lib/learningSkillCatalog";
+import { getPracticeSkill, practiceSkills } from "@/lib/learningSkillCatalog";
 import { getLearningPattern, learningPatternCatalog } from "@/lib/learningPatternCatalog";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { resetProgress } from "@/lib/resetProgress";
@@ -1864,6 +1864,22 @@ function QuestPageInner() {
     console.log("HANDLE CONTINUE", skillId);
     void startLearningSession(skillId);
   };
+  const recommendedLearningSkillId = useMemo(() => {
+    if (!learningResult || !learningState) {
+      return null;
+    }
+
+    if (learningResult.recommendation.type === "skill") {
+      return learningResult.recommendation.skillId;
+    }
+
+    return (
+      practiceSkills.find(
+        (skill) =>
+          learningState.unlockedSkills.includes(skill.id) && (learningState.skillProgress[skill.id]?.mastery ?? 0) < 0.8
+      )?.id ?? null
+    );
+  }, [learningResult, learningState]);
   const useFastLearningLoop = isLearningSessionMode;
   const correctCount = useMemo(
     () => clearResults.filter(([, result]) => result.everWrong !== true).length,
@@ -5185,6 +5201,7 @@ function QuestPageInner() {
             <div className="w-full max-w-3xl">
               <SessionResultView
                 skillId={currentLearningSkillId}
+                recommendedSkillId={recommendedLearningSkillId}
                 skillName={getPracticeSkill(currentLearningSkillId ?? "")?.title ?? currentLearningSkillId ?? ""}
                 score={learningResult.score}
                 totalQuestions={learningResult.totalQuestions}

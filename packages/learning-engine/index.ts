@@ -9,3 +9,5 @@ export * from "./sessionBuilder";
 export * from "./learningEngine";
 export { updatePatternProgress as updatePatternProgressEntry } from "./patternProgressTracker";
 export * from "./skillProgressTracker";
+export * from "./skill-unlock";
+export * from "./progression-engine";

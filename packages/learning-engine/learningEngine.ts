@@ -2,11 +2,13 @@ import skillsData from "packages/skill-system/skills.json";
 
 import { updateDifficulty } from "./difficultyController";
 import { updatePatternProgress as nextPatternProgress } from "./patternProgressTracker";
+import { getNextRecommendedSkillId } from "./progression-engine";
 import { updateSkillProgress } from "./skillProgressTracker";
 import type { SkillProgress } from "./skillProgressTypes";
 import type { Session } from "./sessionTypes";
 import { buildSession } from "./sessionBuilder";
 import { createLearningState, serializeState, updateXP, type LearningState } from "./studentStore";
+import { PROGRESSION_UNLOCK_THRESHOLD, isSkillUnlocked, unlockNextSkills } from "./skill-unlock";
 import { getWeakPatterns, resolveSkillPatterns, type WeakPattern } from "./weaknessAnalyzer";
 
 type StartSessionOptions = {
@@ -43,7 +45,8 @@ const WEAK_PATTERN_THRESHOLD = 2;
 
 const skills = skillsData as SkillDefinition[];
 
-const isSkillMastered = (skillProgress: LearningState["skillProgress"], skillId: string) => skillProgress[skillId]?.mastered === true;
+const isSkillMastered = (skillProgress: LearningState["skillProgress"], skillId: string) =>
+  (skillProgress[skillId]?.mastery ?? 0) >= PROGRESSION_UNLOCK_THRESHOLD;
 
 const resolveAdaptiveSkillId = (state: LearningState, requestedSkillId?: string) => {
   if (requestedSkillId) {
@@ -52,7 +55,7 @@ const resolveAdaptiveSkillId = (state: LearningState, requestedSkillId?: string)
 
   const weakSkill = skills.find((skill) => {
     try {
-      return getWeakPatterns(state, skill.id).length > 0;
+      return isSkillUnlocked(state, skill.id) && getWeakPatterns(state, skill.id).length > 0;
     } catch {
       return false;
     }
@@ -63,31 +66,17 @@ const resolveAdaptiveSkillId = (state: LearningState, requestedSkillId?: string)
   }
 
   const activeSkill = state.session?.skillId;
-  if (activeSkill) {
+  if (activeSkill && isSkillUnlocked(state, activeSkill)) {
     return activeSkill;
   }
 
-  const firstAvailable = skills.find((skill) => {
-    try {
-      return true;
-    } catch {
-      return false;
-    }
-  });
+  const firstAvailable = getNextRecommendedSkillId(state);
 
   if (!firstAvailable) {
     throw new Error("No supported skills available for adaptive session");
   }
 
-  return firstAvailable.id;
-};
-
-const findFirstUnmasteredSkill = (state: LearningState) => {
-  return skills.find((skill) => {
-    const prerequisites = skill.prerequisite ?? [];
-    const unlocked = prerequisites.every((prerequisite) => isSkillMastered(state.skillProgress, prerequisite));
-    return unlocked && !isSkillMastered(state.skillProgress, skill.id);
-  });
+  return firstAvailable;
 };
 
 const setLockedSkills = (skillProgress: LearningState["skillProgress"]) => {
@@ -228,6 +217,7 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     student,
     patternProgress,
     skillProgress,
+    unlockedSkills: currentState.unlockedSkills,
     session: nextSession
   });
 
@@ -244,12 +234,20 @@ export function finishSession(state: LearningState): { state: LearningState; res
     throw new Error("session_not_found");
   }
 
-  const recommendation = recommendNextAction(currentState);
   const sessionSkillId = session.skillId;
   const skillProgressBefore = sessionSkillId
     ? (session.skillProgressBefore ?? getSkillProgressSnapshot(currentState, sessionSkillId))
     : null;
   const skillProgressAfter = sessionSkillId ? getSkillProgressSnapshot(currentState, sessionSkillId) : null;
+  const unlockedSkills =
+    sessionSkillId && (skillProgressAfter?.mastery ?? 0) >= PROGRESSION_UNLOCK_THRESHOLD
+      ? unlockNextSkills(currentState, sessionSkillId)
+      : currentState.unlockedSkills;
+  const recommendedState = serializeState({
+    ...currentState,
+    unlockedSkills
+  });
+  const recommendation = recommendNextAction(recommendedState);
   console.log("skillMastery", skillProgressAfter?.mastery ?? 0);
   console.log("studentXP", currentState.student.xpTotal);
   const result: SessionResult = {
@@ -269,6 +267,7 @@ export function finishSession(state: LearningState): { state: LearningState; res
       ...currentState.student,
       xpSession: 0
     },
+    unlockedSkills,
     session: undefined
   });
 
@@ -282,8 +281,7 @@ export function recommendNextAction(state: LearningState): Recommendation {
   const currentState = serializeState(state);
   const supportedSkills = skills.filter((skill) => {
     try {
-      getWeakPatterns(currentState, skill.id);
-      return true;
+      return isSkillUnlocked(currentState, skill.id) && getWeakPatterns(currentState, skill.id).length >= 0;
     } catch {
       return false;
     }
@@ -298,15 +296,15 @@ export function recommendNextAction(state: LearningState): Recommendation {
     };
   }
 
-  const nextSkill = findFirstUnmasteredSkill({
+  const nextSkillId = getNextRecommendedSkillId({
     ...currentState,
     skillProgress: setLockedSkills(currentState.skillProgress)
   });
 
-  if (nextSkill) {
+  if (nextSkillId) {
     return {
       type: "skill",
-      skillId: nextSkill.id,
+      skillId: nextSkillId,
       reason: "next_skill"
     };
   }

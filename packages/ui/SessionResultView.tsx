@@ -2,6 +2,7 @@
 
 type SessionResultViewProps = {
   skillId?: string | null;
+  recommendedSkillId?: string | null;
   skillName: string;
   score: number;
   totalQuestions: number;
@@ -18,6 +19,7 @@ type SessionResultViewProps = {
 
 export default function SessionResultView({
   skillId,
+  recommendedSkillId,
   skillName,
   score,
   totalQuestions,
@@ -83,13 +85,14 @@ export default function SessionResultView({
           onClick={() => {
             console.log("CONTINUE CLICKED");
             console.log("skillId", skillId);
-            if (!skillId) {
+            console.log("recommendedSkillId", recommendedSkillId);
+            if (!recommendedSkillId) {
               console.log("skillId missing");
               return;
             }
-            onContinueLearning(skillId);
+            onContinueLearning(recommendedSkillId);
           }}
-          disabled={skillId == null}
+          disabled={recommendedSkillId == null}
           className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Continue Learning

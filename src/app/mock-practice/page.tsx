@@ -190,6 +190,24 @@ function MockPracticeContent() {
     router.push("/mock-skills");
   };
 
+  const recommendedSkillId = useMemo(() => {
+    if (!resultSummary) {
+      return null;
+    }
+
+    if (resultSummary.result.recommendation.type === "skill") {
+      return resultSummary.result.recommendation.skillId;
+    }
+
+    return (
+      practiceSkills.find(
+        (skill) =>
+          resultSummary.state.unlockedSkills.includes(skill.id) &&
+          (resultSummary.state.skillProgress[skill.id]?.mastery ?? 0) < 0.8
+      )?.id ?? null
+    );
+  }, [resultSummary]);
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#fff6d6_0%,#fffaf0_35%,#eef6ff_100%)] px-6 py-10 text-slate-900">
       <div className="mx-auto max-w-3xl space-y-6">
@@ -221,6 +239,7 @@ function MockPracticeContent() {
         ) : resultSummary ? (
           <SessionResultView
             skillId={activeSkillId}
+            recommendedSkillId={recommendedSkillId}
             skillName={selectedSkill.title}
             score={resultSummary.result.score}
             totalQuestions={resultSummary.result.totalQuestions}
@@ -231,8 +250,8 @@ function MockPracticeContent() {
             skillProgressBefore={resultSummary.result.skillProgressBefore}
             skillProgressAfter={resultSummary.result.skillProgressAfter}
             onRetry={handleRetry}
-            onContinueLearning={() => {
-              handleRetry();
+            onContinueLearning={(nextSkillId) => {
+              void loadSession(nextSkillId);
             }}
             onBackToSkills={handleBackToSkills}
           />

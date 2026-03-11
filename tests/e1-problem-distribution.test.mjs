@@ -43,7 +43,9 @@ const localModuleReplacements = [
   ['from "./difficultyController"', 'from "./difficultyController.mjs"'],
   ['from "./weaknessAnalyzer"', 'from "./weaknessAnalyzer.mjs"'],
   ['from "./sessionBuilder"', 'from "./sessionBuilder.mjs"'],
-  ['from "./learningEngine"', 'from "./learningEngine.mjs"']
+  ['from "./learningEngine"', 'from "./learningEngine.mjs"'],
+  ['from "./skill-unlock"', 'from "./skill-unlock.mjs"'],
+  ['from "./progression-engine"', 'from "./progression-engine.mjs"']
 ];
 
 const createSkillSystemStub = (outputPath) => {
@@ -140,6 +142,8 @@ const loadModules = async () => {
     "difficultyController",
     "weaknessAnalyzer",
     "sessionBuilder",
+    "skill-unlock",
+    "progression-engine",
     "learningEngine"
   ]) {
     await transpileTsModule(
