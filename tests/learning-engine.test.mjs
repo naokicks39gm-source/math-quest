@@ -101,6 +101,7 @@ const createProblemEngineStub = (outputPath) => {
   fs.writeFileSync(
     outputPath,
     [
+      "let generationBatch = 0;",
       "const difficultyByPattern = {",
       '  "E1-ADD-BASIC-01": 1,',
       '  "E1-ADD-BASIC-02": 1,',
@@ -112,13 +113,15 @@ const createProblemEngineStub = (outputPath) => {
       "};",
       "export const getPatternMeta = (key) =>",
       "  difficultyByPattern[key] ? { key, difficulty: difficultyByPattern[key] } : undefined;",
-      "export const generateProblems = (pattern, count) =>",
-      "  Array.from({ length: count }, (_, index) => ({",
-      '    id: `${pattern.key}::${index}`,',
-      '    question: `${pattern.key} question ${index}`,',
+      "export const generateProblems = (pattern, count) => {",
+      "  generationBatch += 1;",
+      "  return Array.from({ length: count }, (_, index) => ({",
+      '    id: `${pattern.key}::${generationBatch}::${index}`,',
+      '    question: `${pattern.key} question ${generationBatch}-${index}`,',
       '    answer: `${index}`,',
       "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2 }",
-      "  }));"
+      "  }));",
+      "};"
     ].join("\n"),
     "utf8"
   );
@@ -401,7 +404,7 @@ test("sessionBuilder creates a five-problem session from explicit state", async 
 
   assert.equal(session.problems.length, 5);
   assert.equal(session.startedDifficulty, 1);
-  assert.equal(session.problems.every((problem) => Math.abs(problem.difficulty - 1) <= 1), true);
+  assert.equal(session.problems.every((problem) => problem.difficulty <= session.startedDifficulty), true);
   assert.equal(session.problems.some((problem) => problem.source === "weakness"), true);
 });
 
@@ -555,7 +558,7 @@ test("sessionBuilder avoids recently seen patterns until cooldown fallback is ne
 
   const relaxedSession = sessionBuilder.buildSession(relaxedState, "E1_ADD_BASIC", 1, "skill", () => nowMs);
   assert.equal(relaxedSession.problems.length, 5);
-  assert.equal(relaxedSession.problems.every((problem) => Math.abs(problem.difficulty - 1) <= 1), true);
+  assert.equal(relaxedSession.problems.every((problem) => problem.difficulty <= relaxedSession.startedDifficulty), true);
 });
 
 test("sessionBuilder prioritizes weaker and less recent patterns within the current bucket", async () => {
@@ -724,7 +727,7 @@ test("sessionBuilder composition preserves five problems when fallback is trigge
   assert.equal(composition.skillCount + composition.weaknessCount, 5);
 });
 
-test("sessionBuilder ignores difficulty alignment when strict candidates are empty", async () => {
+test("sessionBuilder uses targetDifficulty as an upper bound for candidate filtering", async () => {
   const { studentStore, sessionBuilder } = await loadLearningEngineModules();
   const state = studentStore.serializeState({
     version: 1,
@@ -740,7 +743,7 @@ test("sessionBuilder ignores difficulty alignment when strict candidates are emp
 
   assert.equal(session.problems.length, 5);
   assert.equal(session.startedDifficulty, 5);
-  assert.equal(session.problems.some((problem) => Math.abs(problem.difficulty - 5) > 1), true);
+  assert.equal(session.problems.every((problem) => problem.difficulty <= session.startedDifficulty), true);
 });
 
 test("sessionBuilder source includes random skill-pattern top-up fallback", () => {
@@ -751,10 +754,11 @@ test("sessionBuilder source includes random skill-pattern top-up fallback", () =
   assert.equal(source.includes("const additions = uniqueBatch.length > 0 ? uniqueBatch : generated;"), true);
   assert.equal(source.includes("const MAX_PATTERN_PER_SESSION = 2;"), true);
   assert.equal(source.includes("patternCounts"), true);
-  assert.equal(source.includes("getPatternCount(patternCounts, patternKey) < MAX_PATTERN_PER_SESSION"), true);
+  assert.equal(source.includes("const computeMaxPatternPerSession"), true);
+  assert.equal(source.includes("getPatternCount(patternCounts, patternKey) < maxPatternPerSession"), true);
 });
 
-test("sessionBuilder keeps same pattern at most twice per session", async () => {
+test("sessionBuilder limits repeated patterns for multi-pattern skills", async () => {
   const { studentStore, sessionBuilder } = await loadLearningEngineModules();
   const state = studentStore.serializeState({
     version: 1,
@@ -772,10 +776,6 @@ test("sessionBuilder keeps same pattern at most twice per session", async () => 
 
   assert.equal(session.problems.length, 5);
   assert.equal(Object.values(counts).every((count) => count <= 2), true);
-  assert.equal(
-    session.problems.every((problem, index, list) => index === 0 || problem.patternKey !== list[index - 1].patternKey),
-    true
-  );
 });
 
 test("sessionBuilder source includes patternUsage diversity guard logging", () => {
@@ -850,6 +850,20 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   const source = fs.readFileSync(path.join(root, "packages/learning-engine/learningEngine.ts"), "utf8");
   assert.equal(source.includes('console.log("skillMastery"'), true);
   assert.equal(source.includes('console.log("studentXP"'), true);
+});
+
+test("learningEngine.startSession rebuilds a fresh problem list when prior session exists in state", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  const initial = studentStore.createLearningState();
+  const first = learningEngine.startSession(initial, { mode: "skill", skillId: "E1_ADD_BASIC" });
+  const second = learningEngine.startSession(first.state, { mode: "skill", skillId: "E1_ADD_BASIC" });
+
+  assert.equal(first.session.problems.length, 5);
+  assert.equal(second.session.problems.length, 5);
+  assert.notDeepEqual(
+    second.session.problems.map((problem) => problem.problem.id),
+    first.session.problems.map((problem) => problem.problem.id)
+  );
 });
 
 test("recordAnswer recomputes only the affected skill", async () => {

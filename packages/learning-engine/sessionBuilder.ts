@@ -38,9 +38,6 @@ export const computeTargetDifficulty = (skillProgress: number) => {
   return 5;
 };
 
-const inDifficultyWindow = (difficulty: unknown, target: number) =>
-  typeof difficulty === "number" && Math.abs(clampDifficulty(difficulty) - target) <= 1;
-
 export const computeRecencyScore = (lastSeenAt: number | undefined, nowMs: number) => {
   if (typeof lastSeenAt !== "number" || lastSeenAt <= 0) {
     return 1;
@@ -112,8 +109,11 @@ const uniqueByProblemId = (problems: SessionProblem[]): SessionProblem[] => {
 const getPatternCount = (patternCounts: Map<string, number>, patternKey: string) =>
   patternCounts.get(patternKey) ?? 0;
 
-const canSelectPattern = (patternCounts: Map<string, number>, patternKey: string) =>
-  getPatternCount(patternCounts, patternKey) < MAX_PATTERN_PER_SESSION;
+const computeMaxPatternPerSession = (resolvedPatternCount: number) =>
+  Math.max(MAX_PATTERN_PER_SESSION, Math.ceil(SESSION_SIZE / Math.max(1, resolvedPatternCount)));
+
+const canSelectPattern = (patternCounts: Map<string, number>, patternKey: string, maxPatternPerSession: number) =>
+  getPatternCount(patternCounts, patternKey) < maxPatternPerSession;
 
 const recordSelectedProblem = (patternCounts: Map<string, number>, problem: SessionProblem) => {
   patternCounts.set(problem.patternKey, getPatternCount(patternCounts, problem.patternKey) + 1);
@@ -171,24 +171,32 @@ const buildCandidates = (
   skillId: string,
   patternKeys: Set<string>,
   source: "skill" | "weakness",
-  studentDifficulty: number,
+  targetDifficulty: number,
   nowMs: number,
   options?: {
     ignoreDifficulty?: boolean;
   }
 ) => {
-  const patterns = sortPatternsByPriority(skillId, patternKeys, state, nowMs, studentDifficulty);
+  const patterns = sortPatternsByPriority(skillId, patternKeys, state, nowMs, targetDifficulty);
 
   return uniqueByProblemId(
     patterns.flatMap((pattern) =>
       shuffle(generateProblems(pattern, PROBLEMS_PER_PATTERN))
-        .filter((problem) => options?.ignoreDifficulty || inDifficultyWindow(problem.meta?.difficulty, studentDifficulty))
+        .filter((problem) => {
+          if (options?.ignoreDifficulty) {
+            return true;
+          }
+          if (typeof problem.meta?.difficulty !== "number") {
+            return true;
+          }
+          return clampDifficulty(problem.meta.difficulty) <= targetDifficulty;
+        })
         .map(
           (problem): SessionProblem => ({
             problem,
             skillId,
             patternKey: pattern.key,
-            difficulty: clampDifficulty(problem.meta?.difficulty ?? studentDifficulty),
+            difficulty: clampDifficulty(problem.meta?.difficulty ?? targetDifficulty),
             source
           })
         )
@@ -200,7 +208,8 @@ const takeProblems = (
   candidates: SessionProblem[],
   count: number,
   usedPatternKeys: Set<string>,
-  patternCounts: Map<string, number>
+  patternCounts: Map<string, number>,
+  maxPatternPerSession: number
 ) => {
   const selected: SessionProblem[] = [];
 
@@ -211,7 +220,7 @@ const takeProblems = (
     if (usedPatternKeys.has(problem.patternKey)) {
       continue;
     }
-    if (!canSelectPattern(patternCounts, problem.patternKey)) {
+    if (!canSelectPattern(patternCounts, problem.patternKey, maxPatternPerSession)) {
       continue;
     }
     usedPatternKeys.add(problem.patternKey);
@@ -230,7 +239,7 @@ const takeProblems = (
     if (selected.some((entry) => entry.problem.id === problem.problem.id)) {
       continue;
     }
-    if (!canSelectPattern(patternCounts, problem.patternKey)) {
+    if (!canSelectPattern(patternCounts, problem.patternKey, maxPatternPerSession)) {
       continue;
     }
     recordSelectedProblem(patternCounts, problem);
@@ -244,7 +253,8 @@ const topUpWithRandomSkillPatterns = (
   selected: SessionProblem[],
   skillId: string,
   studentDifficulty: number,
-  patternCounts: Map<string, number>
+  patternCounts: Map<string, number>,
+  maxPatternPerSession: number
 ) => {
   const resolvedPatterns = shuffle(resolveSkillPatterns(skillId));
   if (resolvedPatterns.length === 0) {
@@ -257,7 +267,7 @@ const topUpWithRandomSkillPatterns = (
 
   while (selected.length < SESSION_SIZE && attempts < maxAttempts) {
     const pattern = resolvedPatterns[patternIndex % resolvedPatterns.length];
-    if (!canSelectPattern(patternCounts, pattern.key)) {
+    if (!canSelectPattern(patternCounts, pattern.key, maxPatternPerSession)) {
       patternIndex += 1;
       attempts += 1;
       continue;
@@ -281,7 +291,7 @@ const topUpWithRandomSkillPatterns = (
       if (selected.length >= SESSION_SIZE) {
         break;
       }
-      if (!canSelectPattern(patternCounts, problem.patternKey)) {
+      if (!canSelectPattern(patternCounts, problem.patternKey, maxPatternPerSession)) {
         continue;
       }
       recordSelectedProblem(patternCounts, problem);
@@ -293,17 +303,28 @@ const topUpWithRandomSkillPatterns = (
   }
 };
 
-export function buildSession(
+const hasSameProblemSet = (left: SessionProblem[], right: SessionProblem[]) => {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  const leftIds = [...left.map((problem) => problem.problem.id)].sort();
+  const rightIds = [...right.map((problem) => problem.problem.id)].sort();
+  return leftIds.every((id, index) => id === rightIds[index]);
+};
+
+const buildSessionOnce = (
   state: LearningState,
   skillId: string,
   studentDifficulty: number,
   mode: "skill" | "adaptive" = "skill",
   now: () => number = Date.now
-): Session {
+): Session => {
   const skillProgress = state.skillProgress[skillId]?.mastery ?? 0;
   const targetDifficulty = computeTargetDifficulty(skillProgress);
   console.log("targetDifficulty", targetDifficulty);
   const skillPatterns = resolveSkillPatterns(skillId);
+  const maxPatternPerSession = computeMaxPatternPerSession(skillPatterns.length);
   console.log(
     "weakPatterns",
     skillPatterns.map((pattern) => ({
@@ -331,12 +352,12 @@ export function buildSession(
   const weaknessCandidates = buildCandidates(state, skillId, weakPatternBuckets.available, "weakness", targetDifficulty, nowMs);
   const skillCandidates = buildCandidates(state, skillId, skillPatternBuckets.available, "skill", targetDifficulty, nowMs);
 
-  const selectedWeak = takeProblems(weaknessCandidates, WEAK_TARGET, usedPatternKeys, patternCounts);
-  const selectedSkill = takeProblems(skillCandidates, SKILL_TARGET, usedPatternKeys, patternCounts);
+  const selectedWeak = takeProblems(weaknessCandidates, WEAK_TARGET, usedPatternKeys, patternCounts, maxPatternPerSession);
+  const selectedSkill = takeProblems(skillCandidates, SKILL_TARGET, usedPatternKeys, patternCounts, maxPatternPerSession);
   const selected = [...selectedSkill, ...selectedWeak];
 
   if (selected.length < SESSION_SIZE) {
-    const fallback = takeProblems(skillCandidates, SESSION_SIZE - selected.length, usedPatternKeys, patternCounts);
+    const fallback = takeProblems(skillCandidates, SESSION_SIZE - selected.length, usedPatternKeys, patternCounts, maxPatternPerSession);
     selected.push(...fallback);
   }
 
@@ -358,7 +379,7 @@ export function buildSession(
       if (selected.some((entry) => entry.problem.id === problem.problem.id)) {
         continue;
       }
-      if (!canSelectPattern(patternCounts, problem.patternKey)) {
+      if (!canSelectPattern(patternCounts, problem.patternKey, maxPatternPerSession)) {
         continue;
       }
       recordSelectedProblem(patternCounts, problem);
@@ -396,7 +417,7 @@ export function buildSession(
       if (selected.some((entry) => entry.problem.id === problem.problem.id)) {
         continue;
       }
-      if (!canSelectPattern(patternCounts, problem.patternKey)) {
+      if (!canSelectPattern(patternCounts, problem.patternKey, maxPatternPerSession)) {
         continue;
       }
       recordSelectedProblem(patternCounts, problem);
@@ -405,7 +426,7 @@ export function buildSession(
   }
 
   if (selected.length < SESSION_SIZE) {
-    topUpWithRandomSkillPatterns(selected, skillId, targetDifficulty, patternCounts);
+    topUpWithRandomSkillPatterns(selected, skillId, targetDifficulty, patternCounts, maxPatternPerSession);
   }
 
   const patternUsage = Object.fromEntries(patternCounts);
@@ -421,4 +442,30 @@ export function buildSession(
     correct: 0,
     wrong: 0
   };
+};
+
+const MAX_REBUILD_ATTEMPTS = 6;
+
+export function buildSession(
+  state: LearningState,
+  skillId: string,
+  studentDifficulty: number,
+  mode: "skill" | "adaptive" = "skill",
+  now: () => number = Date.now
+): Session {
+  const previousProblems = state.session?.skillId === skillId ? state.session.problems : undefined;
+  let session = buildSessionOnce(state, skillId, studentDifficulty, mode, now);
+
+  if (!previousProblems || previousProblems.length === 0) {
+    return session;
+  }
+
+  for (let attempt = 1; attempt < MAX_REBUILD_ATTEMPTS; attempt += 1) {
+    if (!hasSameProblemSet(session.problems, previousProblems)) {
+      return session;
+    }
+    session = buildSessionOnce(state, skillId, studentDifficulty, mode, now);
+  }
+
+  return session;
 }
