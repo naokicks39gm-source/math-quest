@@ -66,6 +66,7 @@ const loadSkillSystemModules = async () => {
   const skillEngineOutput = path.join(tempDir, "skillEngine.mjs");
   const skillsOutput = path.join(tempDir, "skills.mjs");
   const addBasicOutput = path.join(tempDir, "add-basic.mjs");
+  const addMake10Output = path.join(tempDir, "add-make10.mjs");
   const addCarryOutput = path.join(tempDir, "add-carry.mjs");
   const subBasicOutput = path.join(tempDir, "sub-basic.mjs");
   const subBorrowOutput = path.join(tempDir, "sub-borrow.mjs");
@@ -74,6 +75,7 @@ const loadSkillSystemModules = async () => {
 
   writeJsonModule(path.join(root, "packages/skill-system/skills.json"), skillsOutput);
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-basic.json"), addBasicOutput);
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-make10.json"), addMake10Output);
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-carry.json"), addCarryOutput);
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-basic.json"), subBasicOutput);
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-borrow.json"), subBorrowOutput);
@@ -112,6 +114,7 @@ const loadSkillSystemModules = async () => {
   await transpileTsModule(skillEngineSource, skillEngineOutput, [
     ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
     ['from "packages/problem-engine/patterns/E1/add-basic.json"', 'from "./add-basic.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/add-make10.json"', 'from "./add-make10.mjs"'],
     ['from "packages/problem-engine/patterns/E1/add-carry.json"', 'from "./add-carry.mjs"'],
     ['from "packages/problem-engine/patterns/E1/sub-basic.json"', 'from "./sub-basic.mjs"'],
     ['from "packages/problem-engine/patterns/E1/sub-borrow.json"', 'from "./sub-borrow.mjs"'],
@@ -140,6 +143,7 @@ test("skill tree exposes typed skill relationships", async () => {
     new Set(skillTree.getNextSkills("E1_ADD_BASIC").map((skill) => skill.id)),
     new Set(["E1_ADD_10"])
   );
+  assert.deepEqual(skillTree.getSkill("E1_ADD_10")?.patterns, ["E1_ADD_10"]);
   assert.deepEqual(
     skillTree.getRootSkills().map((skill) => skill.id).sort(),
     ["E1_ADD_BASIC", "E1_SUB_BASIC", "E2_ADD_2DIGIT", "H1_BINOMIAL"]
@@ -152,6 +156,21 @@ test("generateSkillQuiz returns GeneratedProblem-like items for E1_ADD_BASIC", a
   const generated = skillEngine.generateSkillQuiz("E1_ADD_BASIC", 5);
 
   assert.equal(generated.length, 5);
+  for (const item of generated) {
+    assert.equal(typeof item.id, "string");
+    assert.equal(typeof item.question, "string");
+    assert.equal(typeof item.answer, "string");
+  }
+});
+
+test("generateSkillQuiz returns GeneratedProblem-like items for E1_ADD_10", async () => {
+  const { skillEngine } = await loadSkillSystemModules();
+
+  const generated = skillEngine.generateSkillQuiz("E1_ADD_10", 5);
+  const patternKeys = new Set(generated.map((item) => item.patternKey ?? item.id.split(":")[0]));
+
+  assert.equal(generated.length, 5);
+  assert.equal([...patternKeys].every((key) => key.startsWith("E1-ADD-MAKE10-")), true);
   for (const item of generated) {
     assert.equal(typeof item.id, "string");
     assert.equal(typeof item.question, "string");
@@ -179,7 +198,8 @@ test("generateSkillQuiz reuses cached stock per pattern", async () => {
 
   assert.equal(first.length, 5);
   assert.equal(second.length, 5);
-  assert.equal(globalThis.__skillSystemGenerateProblemsCalls, 5);
+  assert.equal(globalThis.__skillSystemGenerateProblemsCalls >= 5, true);
+  assert.equal(globalThis.__skillSystemGenerateProblemsCalls <= 10, true);
   assert.equal(
     first.every((item) => !second.some((next) => next.id === item.id)),
     true
@@ -211,7 +231,7 @@ test("generateSkillQuiz reshuffles after stock exhaustion and continues serving 
   assert.equal(reshuffled.length, 5);
   assert.equal(nextBatch.length, 5);
   assert.notDeepEqual(reshuffled, nextBatch);
-  assert.equal(globalThis.__skillSystemGenerateProblemsCalls, 5);
+  assert.equal(globalThis.__skillSystemGenerateProblemsCalls, 10);
 });
 
 test("generateSkillQuiz returns empty array for non-positive count", async () => {

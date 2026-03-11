@@ -74,5 +74,24 @@
       "a + b <= 18"
     ],
     "answer": "a + b"
+  },
+  {
+    "key": "E1-ADD-MAKE10-05",
+    "template": "{a} + {b}",
+    "variables": {
+      "a": [
+        4,
+        9
+      ],
+      "b": [
+        4,
+        9
+      ]
+    },
+    "constraints": [
+      "a + b >= 10",
+      "a + b <= 14"
+    ],
+    "answer": "a + b"
   }
 ]

@@ -93,5 +93,100 @@
       "a % 10 < b"
     ],
     "answer": "a - b"
+  },
+  {
+    "key": "E1-SUB-BORROW-06",
+    "template": "{a} - {b}",
+    "variables": {
+      "a": [
+        12,
+        18
+      ],
+      "b": [
+        3,
+        9
+      ]
+    },
+    "constraints": [
+      "a > b",
+      "a % 10 < b"
+    ],
+    "answer": "a - b"
+  },
+  {
+    "key": "E1-SUB-BORROW-07",
+    "template": "{a} - {b}",
+    "variables": {
+      "a": [
+        22,
+        28
+      ],
+      "b": [
+        3,
+        9
+      ]
+    },
+    "constraints": [
+      "a > b",
+      "a % 10 < b"
+    ],
+    "answer": "a - b"
+  },
+  {
+    "key": "E1-SUB-BORROW-08",
+    "template": "{a} - {b}",
+    "variables": {
+      "a": [
+        32,
+        38
+      ],
+      "b": [
+        3,
+        9
+      ]
+    },
+    "constraints": [
+      "a > b",
+      "a % 10 < b"
+    ],
+    "answer": "a - b"
+  },
+  {
+    "key": "E1-SUB-BORROW-09",
+    "template": "{a} - {b}",
+    "variables": {
+      "a": [
+        42,
+        48
+      ],
+      "b": [
+        3,
+        9
+      ]
+    },
+    "constraints": [
+      "a > b",
+      "a % 10 < b"
+    ],
+    "answer": "a - b"
+  },
+  {
+    "key": "E1-SUB-BORROW-10",
+    "template": "{a} - {b}",
+    "variables": {
+      "a": [
+        52,
+        58
+      ],
+      "b": [
+        3,
+        9
+      ]
+    },
+    "constraints": [
+      "a > b",
+      "a % 10 < b"
+    ],
+    "answer": "a - b"
   }
 ]

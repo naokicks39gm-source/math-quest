@@ -1,6 +1,7 @@
 import type { GeneratedProblem, PatternDSL } from "packages/problem-engine";
 import { generateProblems } from "packages/problem-engine";
 import addBasicPatterns from "packages/problem-engine/patterns/E1/add-basic.json";
+import addMake10Patterns from "packages/problem-engine/patterns/E1/add-make10.json";
 import addCarryPatterns from "packages/problem-engine/patterns/E1/add-carry.json";
 import subBasicPatterns from "packages/problem-engine/patterns/E1/sub-basic.json";
 import subBorrowPatterns from "packages/problem-engine/patterns/E1/sub-borrow.json";
@@ -15,6 +16,7 @@ const asPatternCatalog = (patterns: unknown): PatternDSL[] => patterns as Patter
 
 const patternCatalog: Record<string, PatternDSL[]> = {
   E1_ADD_BASIC: asPatternCatalog(addBasicPatterns),
+  E1_ADD_10: asPatternCatalog(addMake10Patterns),
   E1_ADD_CARRY: asPatternCatalog(addCarryPatterns),
   E1_SUB_BASIC: asPatternCatalog(subBasicPatterns),
   E1_SUB_BORROW: asPatternCatalog(subBorrowPatterns),

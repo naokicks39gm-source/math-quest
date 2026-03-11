@@ -79,7 +79,7 @@ const createSkillSystemStub = (outputPath) => {
     [
       'const skillPatterns = {',
       '  E1_ADD_BASIC: ["E1_ADD_BASIC"],',
-      '  E1_ADD_10: ["E1_ADD_BASIC"],',
+      '  E1_ADD_10: ["E1_ADD_10"],',
       '  E1_ADD_CARRY: ["E1_ADD_CARRY"],',
       '  E1_SUB_BASIC: ["E1_SUB_BASIC"],',
       '  E1_SUB_BORROW: ["E1_SUB_BORROW"],',
@@ -107,6 +107,11 @@ const createProblemEngineStub = (outputPath) => {
       '  "E1-ADD-BASIC-03": 1,',
       '  "E1-ADD-BASIC-04": 1,',
       '  "E1-ADD-BASIC-05": 2,',
+      '  "E1-ADD-MAKE10-01": 2,',
+      '  "E1-ADD-MAKE10-02": 2,',
+      '  "E1-ADD-MAKE10-03": 2,',
+      '  "E1-ADD-MAKE10-04": 2,',
+      '  "E1-ADD-MAKE10-05": 2,',
       '  "E1-ADD-CARRY-01": 2,',
       '  "E1-ADD-CARRY-02": 2,',
       '  "E1-ADD-CARRY-03": 3,',
@@ -132,6 +137,7 @@ const loadLearningEngineModules = async () => {
   const learningRoot = path.join(root, "packages/learning-engine");
 
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-basic.json"), path.join(tempDir, "add-basic.mjs"));
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-make10.json"), path.join(tempDir, "add-make10.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-carry.json"), path.join(tempDir, "add-carry.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-basic.json"), path.join(tempDir, "sub-basic.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-borrow.json"), path.join(tempDir, "sub-borrow.mjs"));
@@ -147,6 +153,7 @@ const loadLearningEngineModules = async () => {
     ['from "packages/skill-system"', 'from "./skill-system.mjs"'],
     ['from "packages/skill-system/skills.json"', 'from "./skills.mjs"'],
     ['from "packages/problem-engine/patterns/E1/add-basic.json"', 'from "./add-basic.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/add-make10.json"', 'from "./add-make10.mjs"'],
     ['from "packages/problem-engine/patterns/E1/add-carry.json"', 'from "./add-carry.mjs"'],
     ['from "packages/problem-engine/patterns/E1/sub-basic.json"', 'from "./sub-basic.mjs"'],
     ['from "packages/problem-engine/patterns/E1/sub-borrow.json"', 'from "./sub-borrow.mjs"'],

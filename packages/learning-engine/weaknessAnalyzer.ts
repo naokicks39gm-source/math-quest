@@ -1,4 +1,5 @@
 import addBasicPatterns from "packages/problem-engine/patterns/E1/add-basic.json";
+import addMake10Patterns from "packages/problem-engine/patterns/E1/add-make10.json";
 import addCarryPatterns from "packages/problem-engine/patterns/E1/add-carry.json";
 import subBasicPatterns from "packages/problem-engine/patterns/E1/sub-basic.json";
 import subBorrowPatterns from "packages/problem-engine/patterns/E1/sub-borrow.json";
@@ -11,6 +12,7 @@ import type { LearningState } from "./studentStore";
 
 const patternCatalog: Record<string, PatternDSL[]> = {
   E1_ADD_BASIC: addBasicPatterns as unknown as PatternDSL[],
+  E1_ADD_10: addMake10Patterns as unknown as PatternDSL[],
   E1_ADD_CARRY: addCarryPatterns as unknown as PatternDSL[],
   E1_SUB_BASIC: subBasicPatterns as unknown as PatternDSL[],
   E1_SUB_BORROW: subBorrowPatterns as unknown as PatternDSL[],

@@ -10,7 +10,7 @@
     "id": "E1_ADD_10",
     "title": "10を作るたし算",
     "grade": "E1",
-    "patterns": ["E1_ADD_BASIC"],
+    "patterns": ["E1_ADD_10"],
     "prerequisite": ["E1_ADD_BASIC"],
     "difficulty": 1
   },
