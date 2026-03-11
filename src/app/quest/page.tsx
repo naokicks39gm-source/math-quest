@@ -14,7 +14,6 @@ import { getLearningPattern, learningPatternCatalog } from "@/lib/learningPatter
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { resetProgress } from "@/lib/resetProgress";
 import { updateDailyStreak } from "@/lib/streak";
-import { updateXpFromSession } from "@/lib/xp";
 import { getCatalogGrades } from '@/lib/gradeCatalog';
 import { entryEquivalentKey, entryPromptKey } from '@/lib/questItemFactory';
 import { buildStocksForTypes, pickUniqueQuizFromStock, type PickMeta, type TypeStockResult } from "@/lib/questStockFactory";
@@ -2172,7 +2171,6 @@ function QuestPageInner() {
     clearLearningRecovery();
     setLearningSessionId(null);
     updateDailyStreak();
-    updateXpFromSession(data.result.score);
     trackAnalyticsEvent("session_finish");
     setLearningResultSkillId(completedSkillId ?? skillIdFromQuery);
     setLearningResult(data.result);
@@ -5021,6 +5019,8 @@ function QuestPageInner() {
                 difficulty={learningProblem.difficulty ?? learningProblem.problem.meta?.difficulty ?? 0}
                 index={learningSession.index}
                 total={learningSession.problems.length}
+                xpSession={learningState?.student.xpSession ?? 0}
+                xpTotal={learningState?.student.xpTotal ?? 0}
               />
             )}
             <div
@@ -5354,6 +5354,9 @@ function QuestPageInner() {
                     <div className="mt-1 space-y-0.5 text-[11px] text-sky-900">
                       <div>skillId: {learningSession?.skillId ?? "-"}</div>
                       <div>skillProgress: {currentSkillProgress ? JSON.stringify(currentSkillProgress) : "-"}</div>
+                      <div>studentXP: {learningState?.student.xpTotal ?? 0}</div>
+                      <div>sessionXP: {learningState?.student.xpSession ?? 0}</div>
+                      <div>studentLevel: {learningState?.student.level ?? 1}</div>
                       <div>targetDifficulty: {learningSession?.startedDifficulty ?? "-"}</div>
                       <div>patternPool:</div>
                       {currentPatternPool.length > 0 ? (

@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { getPracticeSkill, practiceSkills } from "@/lib/learningSkillCatalog";
 import { updateDailyStreak } from "@/lib/streak";
-import { updateXpFromSession } from "@/lib/xp";
 import { AnswerInput, ProblemCard, ResultView, SessionResultView } from "packages/ui";
 import type {
   LearningSessionAnswerResponse,
@@ -165,7 +164,6 @@ function MockPracticeContent() {
         setSessionId(summary.sessionId);
         persistState(summary.state);
         updateDailyStreak();
-        updateXpFromSession(summary.result.score);
         trackAnalyticsEvent("session_finish");
         setResultSummary(summary);
         setResult(null);

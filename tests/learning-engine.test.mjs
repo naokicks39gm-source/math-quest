@@ -218,7 +218,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
     JSON.stringify({
       version: 99,
       engineVersion: 1,
-      student: { difficulty: 4, correctStreak: 0, wrongStreak: 0, solved: 10, correct: 9, xp: 0, level: 0 },
+      student: { difficulty: 4, correctStreak: 0, wrongStreak: 0, solved: 10, correct: 9, xpTotal: 0, xpSession: 0, level: 1 },
       patternProgress: {},
       skillProgress: {}
     }),
@@ -235,7 +235,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
     JSON.stringify({
       version: 1,
       engineVersion: 99,
-      student: { difficulty: 4, correctStreak: 0, wrongStreak: 0, solved: 10, correct: 9, xp: 0, level: 0 },
+      student: { difficulty: 4, correctStreak: 0, wrongStreak: 0, solved: 10, correct: 9, xpTotal: 0, xpSession: 0, level: 1 },
       patternProgress: {},
       skillProgress: {}
     }),
@@ -251,7 +251,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
   const mismatchedVersion = studentStore.serializeState({
     version: 2,
     engineVersion: 1,
-    student: { difficulty: 4, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 5, xp: 0, level: 0 },
+    student: { difficulty: 4, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 5, xpTotal: 0, xpSession: 0, level: 1 },
     patternProgress: {
       "E1-ADD-BASIC-01": { patternKey: "E1-ADD-BASIC-01", attempts: 4, correct: 3, mastery: 0.75, lastSeenAt: 100 }
     },
@@ -265,7 +265,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
   const mismatchedEngineVersion = studentStore.serializeState({
     version: 1,
     engineVersion: 2,
-    student: { difficulty: 4, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 5, xp: 0, level: 0 },
+    student: { difficulty: 4, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 5, xpTotal: 0, xpSession: 0, level: 1 },
     patternProgress: {
       "E1-ADD-BASIC-01": { patternKey: "E1-ADD-BASIC-01", attempts: 4, correct: 3, mastery: 0.75, lastSeenAt: 100 }
     },
@@ -284,7 +284,15 @@ test("studentStore only exposes client load and serialize helpers", async () => 
   assert.equal(source.includes("value.version !== LEARNING_STATE_VERSION"), true);
   assert.equal(source.includes("value.engineVersion !== CURRENT_ENGINE_VERSION"), true);
   assert.equal(source.includes("export function updateXP"), true);
-  assert.equal(studentStore.updateXP({ difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xp: 5, level: 0 }, 2).xp, 25);
+  const xpUpdated = studentStore.updateXP(
+    { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xpTotal: 5, xpSession: 0, level: 1 },
+    2
+  );
+  assert.equal(xpUpdated.xpTotal, 25);
+  assert.equal(xpUpdated.xpSession, 20);
+  assert.equal(xpUpdated.level, 2);
+  assert.equal(studentStore.computeLevel(0), 1);
+  assert.equal(studentStore.computeLevel(10), 2);
 });
 
 test("progress tracker and difficulty controller update only the expected fields", async () => {
@@ -799,7 +807,9 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(answered.state.engineVersion, 1);
   assert.equal(answered.state.student.solved, 1);
   assert.equal(answered.state.student.correct, 1);
-  assert.equal(answered.state.student.xp, 10);
+  assert.equal(answered.state.student.xpTotal, 10);
+  assert.equal(answered.state.student.xpSession, 10);
+  assert.equal(answered.state.student.level, 2);
   assert.equal(answered.session.index, 1);
   assert.equal(answered.state.skillProgress.E1_ADD_BASIC?.mastery, 2 / 3);
   assert.equal(answered.state.skillProgress.E1_ADD_BASIC?.mastered, false);
@@ -829,7 +839,9 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(finished.state.version, 1);
   assert.equal(finished.state.engineVersion, 1);
   assert.equal(finished.state.session, undefined);
-  assert.equal(finished.state.student.xp, 10);
+  assert.equal(finished.state.student.xpTotal, 10);
+  assert.equal(finished.state.student.xpSession, 0);
+  assert.equal(finished.state.student.level, 2);
   assert.equal(finished.result.totalQuestions, 5);
   assert.equal(finished.result.skillProgressBefore?.skillId, "E1_ADD_BASIC");
   assert.equal(finished.result.skillProgressBefore?.mastery, 0);

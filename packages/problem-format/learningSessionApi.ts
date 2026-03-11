@@ -4,7 +4,8 @@ export type LearningStudentState = {
   wrongStreak: number;
   solved: number;
   correct: number;
-  xp: number;
+  xpTotal: number;
+  xpSession: number;
   level: number;
 };
 

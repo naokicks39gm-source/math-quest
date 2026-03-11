@@ -87,7 +87,7 @@ test("skill list and detail pages use skill-system-based catalog", () => {
   assert.equal(progressPageSource.includes('import { readDailyStreak, type DailyStreak } from "@/lib/streak";'), true);
   assert.equal(progressPageSource.includes('import { readXp, type StoredXp } from "@/lib/xp";'), false);
   assert.equal(progressPageSource.includes('trackAnalyticsEvent("skill_open")'), true);
-  assert.equal(progressPageSource.includes("const nextXp = state.student.xp ?? 0;"), true);
+  assert.equal(progressPageSource.includes("const nextXp = state.student.xpTotal ?? 0;"), true);
   assert.equal(progressPageSource.includes("setXp(nextXp);"), true);
   assert.equal(progressPageSource.includes('console.log("studentXP", nextXp);'), true);
   assert.equal(progressPageSource.includes("XP {xp}"), true);
@@ -141,10 +141,10 @@ test("mock practice uses learning session lifecycle instead of runtime quiz gene
   assert.equal(source.includes('fetch("/api/learning/session/answer"'), true);
   assert.equal(source.includes('fetch("/api/learning/session/finish"'), true);
   assert.equal(source.includes('import { updateDailyStreak } from "@/lib/streak";'), true);
-  assert.equal(source.includes('import { updateXpFromSession } from "@/lib/xp";'), true);
+  assert.equal(source.includes('import { updateXpFromSession } from "@/lib/xp";'), false);
   assert.equal(source.includes('import { trackAnalyticsEvent } from "@/lib/analytics";'), true);
   assert.equal(source.includes("updateDailyStreak();"), true);
-  assert.equal(source.includes("updateXpFromSession(summary.result.score);"), true);
+  assert.equal(source.includes("updateXpFromSession(summary.result.score);"), false);
   assert.equal(source.includes('trackAnalyticsEvent("session_finish")'), true);
   assert.equal(source.includes("earnedXp={resultSummary.result.score * 10}"), true);
   assert.equal(source.includes("sessionId"), true);
@@ -169,7 +169,7 @@ test("quest and review support weak pattern practice flow", () => {
 
   assert.equal(reviewSource.includes('router.push(`/quest?patternId=${encodeURIComponent(patternId)}`)'), true);
   assert.equal(questSource.includes('import { updateDailyStreak } from "@/lib/streak";'), true);
-  assert.equal(questSource.includes('import { updateXpFromSession } from "@/lib/xp";'), true);
+  assert.equal(questSource.includes('import { updateXpFromSession } from "@/lib/xp";'), false);
   assert.equal(questSource.includes('import { trackAnalyticsEvent } from "@/lib/analytics";'), true);
   assert.equal(questSource.includes('import { resetProgress } from "@/lib/resetProgress";'), true);
   assert.equal(questSource.includes('import QuestSettingsPanel from "@/components/QuestSettingsPanel";'), true);
@@ -179,11 +179,16 @@ test("quest and review support weak pattern practice flow", () => {
   assert.equal(questSource.includes("generateProblems(patternEntry.pattern, quizSize)"), true);
   assert.equal(questSource.includes('type_id: `REVIEW.${patternEntry.skillId}.${patternEntry.patternId}`'), true);
   assert.equal(questSource.includes("updateDailyStreak();"), true);
-  assert.equal(questSource.includes("updateXpFromSession(data.result.score);"), true);
+  assert.equal(questSource.includes("updateXpFromSession(data.result.score);"), false);
   assert.equal(questSource.includes('trackAnalyticsEvent("session_start")'), true);
   assert.equal(questSource.includes('trackAnalyticsEvent("session_finish")'), true);
   assert.equal(questSource.includes("sessionStartTrackedRef.current"), true);
   assert.equal(questSource.includes("earnedXp={learningResult.score * 10}"), true);
+  assert.equal(questSource.includes("xpSession={learningState?.student.xpSession ?? 0}"), true);
+  assert.equal(questSource.includes("xpTotal={learningState?.student.xpTotal ?? 0}"), true);
+  assert.equal(questSource.includes("studentXP: {learningState?.student.xpTotal ?? 0}"), true);
+  assert.equal(questSource.includes("sessionXP: {learningState?.student.xpSession ?? 0}"), true);
+  assert.equal(questSource.includes("studentLevel: {learningState?.student.level ?? 1}"), true);
   assert.equal(questSource.includes('window.confirm("Reset progress? XP, streak, session, and learning state will be cleared.")'), true);
   assert.equal(questSource.includes("resetProgress();"), true);
   assert.equal(questSource.includes('router.push("/skills")'), true);

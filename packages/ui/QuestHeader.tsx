@@ -6,6 +6,8 @@ type Props = {
   difficulty: number;
   index: number;
   total: number;
+  xpSession: number;
+  xpTotal: number;
 };
 
 export default function QuestHeader({
@@ -13,7 +15,9 @@ export default function QuestHeader({
   patternId,
   difficulty,
   index,
-  total
+  total,
+  xpSession,
+  xpTotal
 }: Props) {
   const stars = "★★★★★".slice(0, difficulty);
 
@@ -23,6 +27,8 @@ export default function QuestHeader({
       <div>Pattern: {patternId}</div>
       <div>Difficulty: {stars}</div>
       <div>Progress: {index + 1} / {total}</div>
+      <div>XP +{xpSession}</div>
+      <div>Total XP {xpTotal}</div>
     </div>
   );
 }

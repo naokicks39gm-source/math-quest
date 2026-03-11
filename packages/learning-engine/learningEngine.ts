@@ -251,7 +251,7 @@ export function finishSession(state: LearningState): { state: LearningState; res
     : null;
   const skillProgressAfter = sessionSkillId ? getSkillProgressSnapshot(currentState, sessionSkillId) : null;
   console.log("skillMastery", skillProgressAfter?.mastery ?? 0);
-  console.log("studentXP", currentState.student.xp);
+  console.log("studentXP", currentState.student.xpTotal);
   const result: SessionResult = {
     score: session.correct,
     totalQuestions: session.problems.length,
@@ -265,6 +265,10 @@ export function finishSession(state: LearningState): { state: LearningState; res
 
   const nextState = serializeState({
     ...currentState,
+    student: {
+      ...currentState.student,
+      xpSession: 0
+    },
     session: undefined
   });
 
