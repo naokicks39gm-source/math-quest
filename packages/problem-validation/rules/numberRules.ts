@@ -32,7 +32,7 @@ export const validateNumberCompare: Rule = ({ problem }) => {
   const left = typeof variables.a === "number" ? variables.a : parseLeadingNumbers(question)?.left;
   const right = typeof variables.b === "number" ? variables.b : parseLeadingNumbers(question)?.right;
 
-  if (!question.includes("?") && !question.includes("くらべ") && !question.includes("小さいほう")) {
+  if (!question.includes("?") && !question.includes("くらべ") && !question.includes("どちらが小さい")) {
     return {
       valid: false,
       error: "not compare prompt"

@@ -47,6 +47,8 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes("!shouldAutoFinishLearningSession && (quizItems.length === 0 || !currentItem)"), true);
   assert.equal(source.includes("index: answerIndex"), true);
   assert.equal(source.includes("answer: answerText"), true);
+  assert.equal(source.includes("carryoverHistory: options?.carryoverHistory"), true);
+  assert.equal(source.includes("recentProblems: options?.recentProblems"), true);
   assert.equal(source.includes("loadStateFromClient()"), true);
   assert.equal(source.includes("LEARNING_STATE_KEY"), true);
   assert.equal(source.includes('const LS_LEARNING_SESSION = "mq:learningSession";'), true);
@@ -58,5 +60,6 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes('if (isLearningSessionMode) {'), true);
   assert.equal(source.includes('return postJson("/api/session/answer", {'), true);
   assert.equal(source.includes("<SkillClearView"), true);
+  assert.equal(source.includes("history={learningResult.history}"), true);
   assert.equal(source.includes('!isLearningSessionMode && selectedPath && ('), true);
 });

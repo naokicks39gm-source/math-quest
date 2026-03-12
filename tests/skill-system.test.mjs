@@ -112,7 +112,7 @@ const loadSkillSystemModules = async () => {
       '};',
       'export const generateRuntimeProblems = (...args) => generateProblems(...args).map((item) => ({',
       '  ...item,',
-      '  question: item.patternKey === "E1-NUM-COMPARE-01" ? `${item.variables?.a ?? 0} と ${item.variables?.b ?? 0}\\n小さいほうは？` : item.question,',
+      '  question: item.patternKey === "E1-NUM-COMPARE-01" ? `${item.variables?.a ?? 0} と ${item.variables?.b ?? 0}\\nどちらが小さい？` : item.question,',
       '  answer: item.patternKey === "E1-NUM-COMPARE-01" ? String(Math.min(item.variables?.a ?? 0, item.variables?.b ?? 0)) : item.answer,',
       '  meta: { ...(item.meta ?? {}), source: "runtime-pattern" }',
       '}));'

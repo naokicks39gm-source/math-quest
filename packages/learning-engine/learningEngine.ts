@@ -5,7 +5,7 @@ import { updatePatternProgress as nextPatternProgress } from "./patternProgressT
 import { getNextRecommendedSkillId } from "./progression-engine";
 import { updateSkillProgress } from "./skillProgressTracker";
 import type { SkillProgress } from "./skillProgressTypes";
-import type { Session, SessionProblem } from "./sessionTypes";
+import type { Session, SessionHistoryEntry, SessionProblem } from "./sessionTypes";
 import { buildSession } from "./sessionBuilder";
 import { createLearningState, serializeState, updateXP, type LearningState } from "./studentStore";
 import { PROGRESSION_UNLOCK_THRESHOLD, isSkillUnlocked, unlockNextSkills } from "./skill-unlock";
@@ -14,10 +14,13 @@ import { getWeakPatterns, resolveSkillPatterns, type WeakPattern } from "./weakn
 type StartSessionOptions = {
   mode: "skill" | "adaptive";
   skillId?: string;
+  carryoverHistory?: SessionHistoryEntry[];
+  recentProblems?: string[];
 };
 
 type RecordAnswerInput = {
   correct: boolean;
+  userAnswer?: string;
 };
 
 export type Recommendation =
@@ -39,6 +42,8 @@ export type SessionResult = {
   cleared: boolean;
   newlyUnlockedSkillIds: string[];
   earnedXp: number;
+  history: SessionHistoryEntry[];
+  recentProblems: string[];
   recommendation: Recommendation;
 };
 
@@ -134,11 +139,13 @@ const buildReplacementProblem = (
     return currentProblem;
   }
 
+  const recentProblems = state.session?.recentProblems ?? [];
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const candidates = generateRuntimeProblems(matchedPattern, 12).filter(
       (problem) =>
         problem.id !== currentProblem.problem.id &&
         problem.question !== currentProblem.problem.question &&
+        !recentProblems.includes(problem.id) &&
         (typeof problem.meta?.difficulty !== "number" || clampSessionDifficulty(problem.meta.difficulty) <= targetDifficulty)
     );
     const replacement = candidates[attempt] ?? candidates[0];
@@ -202,11 +209,41 @@ export function startSession(state: LearningState, options: StartSessionOptions)
 
   const skillId =
     options.mode === "adaptive" ? resolveAdaptiveSkillId(currentState, options.skillId) : (options.skillId as string);
+  const carryoverSession: Session | undefined =
+    options.carryoverHistory?.length || options.recentProblems?.length
+      ? {
+          mode: options.mode,
+          skillId,
+          startedDifficulty: clampSessionDifficulty(currentState.student.difficulty),
+          currentDifficulty: clampSessionDifficulty(currentState.student.difficulty),
+          skillProgressBefore: getSkillProgressSnapshot(currentState, skillId),
+          skillXpBefore: currentState.skillXP[skillId] ?? 0,
+          attemptCount: 0,
+          combo: 0,
+          failCount: 0,
+          history: options.carryoverHistory ?? [],
+          recentProblems: (options.recentProblems ?? []).slice(-5),
+          problems: [],
+          index: 0,
+          correct: 0,
+          wrong: 0
+        }
+      : currentState.session;
   const session = {
-    ...buildSession(currentState, skillId, currentState.student.difficulty, options.mode),
+    ...buildSession(
+      {
+        ...currentState,
+        session: carryoverSession
+      },
+      skillId,
+      currentState.student.difficulty,
+      options.mode
+    ),
     skillProgressBefore: getSkillProgressSnapshot(currentState, skillId),
     skillXpBefore: currentState.skillXP[skillId] ?? 0,
-    attemptCount: 0
+    attemptCount: 0,
+    history: options.carryoverHistory ?? carryoverSession?.history ?? [],
+    recentProblems: (options.recentProblems ?? carryoverSession?.recentProblems ?? []).slice(-5)
   };
   const nextState = serializeState({
     ...currentState,
@@ -265,6 +302,14 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
 
   const nextSkillXPValue = (currentState.skillXP[currentProblem.skillId] ?? 0) + xpGain;
   const nextSkillMasteryValue = computeXpMastery(currentProblem.skillId, nextSkillXPValue);
+  const nextHistoryEntry: SessionHistoryEntry = {
+    problemId: currentProblem.problem.id,
+    question: currentProblem.problem.question,
+    userAnswer: result.userAnswer ?? "",
+    correctAnswer: currentProblem.problem.answer,
+    isCorrect: result.correct
+  };
+  const nextRecentProblems = [...session.recentProblems.filter((problemId) => problemId !== currentProblem.problem.id), currentProblem.problem.id].slice(-5);
   const skillProgress = setLockedSkills({
     ...currentState.skillProgress,
     [currentProblem.skillId]: {
@@ -284,6 +329,8 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     combo: nextCombo,
     failCount: nextFailCount,
     attemptCount: nextAttemptCount,
+    history: [...session.history, nextHistoryEntry],
+    recentProblems: nextRecentProblems,
     index: Math.min(result.correct ? session.index + 1 : session.index, session.problems.length),
     correct: session.correct + (result.correct ? 1 : 0),
     wrong: session.wrong + (result.correct ? 0 : 1)
@@ -376,6 +423,8 @@ export function finishSession(state: LearningState): { state: LearningState; res
     cleared,
     newlyUnlockedSkillIds,
     earnedXp: currentState.student.xpSession,
+    history: session.history,
+    recentProblems: session.recentProblems,
     recommendation
   };
 

@@ -25,7 +25,7 @@
   },
   {
     "key": "E1-NUM-COMPARE-01",
-    "template": "{a} と {b}\n小さいほうは？",
+    "template": "{a} と {b}\nどちらが小さい？",
     "variables": {
       "a": [0, 20],
       "b": [0, 20]

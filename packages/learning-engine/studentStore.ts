@@ -1,5 +1,5 @@
 import type { PatternProgress } from "./patternProgressTypes";
-import type { Session } from "./sessionTypes";
+import type { Session, SessionHistoryEntry } from "./sessionTypes";
 import type { SkillProgress } from "./skillProgressTypes";
 import type { StudentState } from "./studentTypes";
 
@@ -176,6 +176,29 @@ const parseSingleSkillProgress = (value: unknown): SkillProgress | undefined => 
   };
 };
 
+const parseSessionHistory = (value: unknown): SessionHistoryEntry[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(
+      (entry) =>
+        isRecord(entry) &&
+        typeof entry.problemId === "string" &&
+        typeof entry.question === "string" &&
+        typeof entry.userAnswer === "string" &&
+        typeof entry.correctAnswer === "string"
+    )
+    .map((entry) => ({
+      problemId: entry.problemId as string,
+      question: entry.question as string,
+      userAnswer: entry.userAnswer as string,
+      correctAnswer: entry.correctAnswer as string,
+      isCorrect: entry.isCorrect === true
+    }));
+};
+
 const parseSession = (value: unknown): Session | undefined => {
   if (!isRecord(value) || !Array.isArray(value.problems)) {
     return undefined;
@@ -264,6 +287,10 @@ const parseSession = (value: unknown): Session | undefined => {
     attemptCount: Math.max(0, Math.trunc(parseNumber(value.attemptCount, 0))),
     combo: Math.max(0, Math.trunc(parseNumber(value.combo, 0))),
     failCount: Math.max(0, Math.trunc(parseNumber(value.failCount, 0))),
+    history: parseSessionHistory(value.history),
+    recentProblems: Array.isArray(value.recentProblems)
+      ? value.recentProblems.filter((entry): entry is string => typeof entry === "string" && entry.length > 0).slice(-5)
+      : [],
     problems,
     index: Math.max(0, Math.trunc(parseNumber(value.index, 0))),
     correct: Math.max(0, Math.trunc(parseNumber(value.correct, 0))),

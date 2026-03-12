@@ -384,7 +384,7 @@ test("number rules validate count/order/compare/compose/decompose/line semantics
     numberRules.validateNumberCompare({
       problem: {
         id: "cmp-1",
-        question: "3 と 5\n小さいほうは？",
+        question: "3 と 5\nどちらが小さい？",
         answer: "3",
         patternKey: "E1-NUM-COMPARE-01",
         variables: { a: 3, b: 5 },
@@ -483,7 +483,7 @@ test("problem validator applies number skill semantic rules", async () => {
     validator.validateProblem(
       {
         id: "cmp-invalid",
-        question: "3 と 5\n小さいほうは？",
+        question: "3 と 5\nどちらが小さい？",
         answer: "5",
         patternKey: "E1-NUM-COMPARE-01",
         variables: { a: 3, b: 5 },

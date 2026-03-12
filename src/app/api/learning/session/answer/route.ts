@@ -33,7 +33,8 @@ export async function POST(req: Request) {
     }
 
     const result = recordAnswer(state, {
-      correct: body.correct
+      correct: body.correct,
+      userAnswer: body.answer
     });
     upsertLearningSession({
       sessionId,

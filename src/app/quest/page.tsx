@@ -2113,7 +2113,13 @@ function QuestPageInner() {
     }
   };
 
-  const startLearningSession = async (skillId: string) => {
+  const startLearningSession = async (
+    skillId: string,
+    options?: {
+      carryoverHistory?: LearningSessionFinishResponse["result"]["history"];
+      recentProblems?: LearningSessionFinishResponse["result"]["recentProblems"];
+    }
+  ) => {
     sessionStartTrackedRef.current = false;
     finishGuardRef.current = false;
     setLearningLoading(true);
@@ -2137,7 +2143,9 @@ function QuestPageInner() {
         body: JSON.stringify({
           state: loadStateFromClient(),
           mode: "skill",
-          skillId
+          skillId,
+          carryoverHistory: options?.carryoverHistory,
+          recentProblems: options?.recentProblems
         })
       });
       const data = (await response.json()) as LearningSessionStartResponse | LearningSessionErrorResponse;
@@ -2276,7 +2284,10 @@ function QuestPageInner() {
     });
     if (!data.result.cleared && completedSkillId) {
       finishGuardRef.current = false;
-      await startLearningSession(completedSkillId);
+      await startLearningSession(completedSkillId, {
+        carryoverHistory: data.result.history,
+        recentProblems: data.result.recentProblems
+      });
       return data;
     }
     clearLearningRecovery();
@@ -5411,6 +5422,7 @@ function QuestPageInner() {
                 skillXp={learningResult.skillXpAfter}
                 requiredXP={learningResult.requiredXP}
                 nextSkillTitle={recommendedSkillNode?.title ?? null}
+                history={learningResult.history}
                 onNextSkill={recommendedLearningSkillId ? () => router.push(`/quest?skillId=${encodeURIComponent(recommendedLearningSkillId)}`) : undefined}
                 onRetry={() => {
                   if (!currentLearningSkillId) return;

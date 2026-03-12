@@ -270,7 +270,7 @@ const generateOne = (levelId: E1LevelId): E1Item => {
     const left = randInt(1, 19);
     const right = randInt(left + 1, 20);
     return {
-      prompt: `${left} と ${right}\n小さいほうは？`,
+      prompt: `${left} と ${right}\nどちらが小さい？`,
       answer: `${left}`,
       memo_explanation: explanationCompare(left, right)
     };

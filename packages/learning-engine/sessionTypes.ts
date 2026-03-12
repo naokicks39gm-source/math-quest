@@ -21,6 +21,14 @@ export type SessionProblem = {
   source: "skill" | "weakness";
 };
 
+export type SessionHistoryEntry = {
+  problemId: string;
+  question: string;
+  userAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+};
+
 export type Session = {
   mode: "skill" | "adaptive";
   skillId?: string;
@@ -31,6 +39,8 @@ export type Session = {
   attemptCount: number;
   combo: number;
   failCount: number;
+  history: SessionHistoryEntry[];
+  recentProblems: string[];
   problems: SessionProblem[];
   index: number;
   correct: number;

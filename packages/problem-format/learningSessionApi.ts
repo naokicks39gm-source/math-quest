@@ -44,6 +44,14 @@ export type LearningSessionProblem = {
   source: "skill" | "weakness";
 };
 
+export type LearningSessionHistoryEntry = {
+  problemId: string;
+  question: string;
+  userAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+};
+
 export type LearningSession = {
   mode: "skill" | "adaptive";
   skillId?: string;
@@ -53,6 +61,8 @@ export type LearningSession = {
   attemptCount: number;
   combo: number;
   failCount: number;
+  history: LearningSessionHistoryEntry[];
+  recentProblems: string[];
   problems: LearningSessionProblem[];
   index: number;
   correct: number;
@@ -90,6 +100,8 @@ export type SessionResult = {
   cleared: boolean;
   newlyUnlockedSkillIds: string[];
   earnedXp: number;
+  history: LearningSessionHistoryEntry[];
+  recentProblems: string[];
   recommendation: Recommendation;
 };
 
@@ -112,6 +124,14 @@ export type LearningSessionAnswerRequest = {
   index: number;
   answer: string;
   correct: boolean;
+};
+
+export type LearningSessionStartRequest = {
+  state?: LearningState;
+  mode?: "skill" | "adaptive";
+  skillId?: string;
+  carryoverHistory?: LearningSessionHistoryEntry[];
+  recentProblems?: string[];
 };
 
 export type LearningSessionFinishResponse = {

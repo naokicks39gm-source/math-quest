@@ -23,7 +23,7 @@ const normalizeNumberCompareAnswer = (problem: GeneratedProblem): GeneratedProbl
   return withRuntimeMeta(
     {
       ...problem,
-      question: `${a} と ${b}\n小さいほうは？`,
+      question: `${a} と ${b}\nどちらが小さい？`,
       answer: String(Math.min(a, b))
     },
     difficulty

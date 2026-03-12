@@ -175,6 +175,7 @@ const buildCandidates = (
   nowMs: number,
   options?: {
     ignoreDifficulty?: boolean;
+    excludedProblemIds?: string[];
   }
 ) => {
   const patterns = sortPatternsByPriority(skillId, patternKeys, state, nowMs, targetDifficulty);
@@ -183,6 +184,9 @@ const buildCandidates = (
     patterns.flatMap((pattern) =>
       shuffle(generateRuntimeProblems(pattern, PROBLEMS_PER_PATTERN))
         .filter((problem) => {
+          if (options?.excludedProblemIds?.includes(problem.id)) {
+            return false;
+          }
           if (options?.ignoreDifficulty) {
             return true;
           }
@@ -254,7 +258,8 @@ const topUpWithRandomSkillPatterns = (
   skillId: string,
   studentDifficulty: number,
   patternCounts: Map<string, number>,
-  maxPatternPerSession: number
+  maxPatternPerSession: number,
+  excludedProblemIds: string[]
 ) => {
   const resolvedPatterns = shuffle(resolveSkillPatterns(skillId));
   if (resolvedPatterns.length === 0) {
@@ -283,7 +288,9 @@ const topUpWithRandomSkillPatterns = (
     );
 
     const uniqueBatch = generated.filter(
-      (candidate) => !selected.some((entry) => entry.problem.id === candidate.problem.id)
+      (candidate) =>
+        !excludedProblemIds.includes(candidate.problem.id) &&
+        !selected.some((entry) => entry.problem.id === candidate.problem.id)
     );
     const additions = uniqueBatch.length > 0 ? uniqueBatch : generated;
 
@@ -330,12 +337,13 @@ const buildSessionOnce = (
   const usedPatternKeys = new Set<string>();
   const patternCounts = new Map<string, number>();
   const nowMs = now();
+  const excludedProblemIds = state.session?.recentProblems ?? [];
 
   const weakPatternBuckets = partitionPatternKeysByCooldown(state, weakPatternKeys, nowMs);
   const skillPatternBuckets = partitionPatternKeysByCooldown(state, skillPatternKeys, nowMs);
 
-  const weaknessCandidates = buildCandidates(state, skillId, weakPatternBuckets.available, "weakness", targetDifficulty, nowMs);
-  const skillCandidates = buildCandidates(state, skillId, skillPatternBuckets.available, "skill", targetDifficulty, nowMs);
+  const weaknessCandidates = buildCandidates(state, skillId, weakPatternBuckets.available, "weakness", targetDifficulty, nowMs, { excludedProblemIds });
+  const skillCandidates = buildCandidates(state, skillId, skillPatternBuckets.available, "skill", targetDifficulty, nowMs, { excludedProblemIds });
 
   const selectedWeak = takeProblems(weaknessCandidates, WEAK_TARGET, usedPatternKeys, patternCounts, maxPatternPerSession);
   const selectedSkill = takeProblems(skillCandidates, SKILL_TARGET, usedPatternKeys, patternCounts, maxPatternPerSession);
@@ -353,9 +361,12 @@ const buildSessionOnce = (
       weakPatternBuckets.cooldown,
       "weakness",
       targetDifficulty,
-      nowMs
+      nowMs,
+      { excludedProblemIds }
     );
-    const cooldownSkillCandidates = buildCandidates(state, skillId, skillPatternBuckets.cooldown, "skill", targetDifficulty, nowMs);
+    const cooldownSkillCandidates = buildCandidates(state, skillId, skillPatternBuckets.cooldown, "skill", targetDifficulty, nowMs, {
+      excludedProblemIds
+    });
     const cooldownCombined = uniqueByProblemId([...cooldownSkillCandidates, ...cooldownWeaknessCandidates]);
     for (const problem of cooldownCombined) {
       if (selected.length >= SESSION_SIZE) {
@@ -376,8 +387,8 @@ const buildSessionOnce = (
     const combined = uniqueByProblemId([
       ...skillCandidates,
       ...weaknessCandidates,
-      ...buildCandidates(state, skillId, skillPatternBuckets.cooldown, "skill", targetDifficulty, nowMs),
-      ...buildCandidates(state, skillId, weakPatternBuckets.cooldown, "weakness", targetDifficulty, nowMs)
+      ...buildCandidates(state, skillId, skillPatternBuckets.cooldown, "skill", targetDifficulty, nowMs, { excludedProblemIds }),
+      ...buildCandidates(state, skillId, weakPatternBuckets.cooldown, "weakness", targetDifficulty, nowMs, { excludedProblemIds })
     ]);
     for (const problem of combined) {
       if (selected.length >= SESSION_SIZE) {
@@ -393,7 +404,10 @@ const buildSessionOnce = (
   if (selected.length < SESSION_SIZE) {
     const relaxedCombined = uniqueByProblemId([
       ...buildCandidates(state, skillId, skillPatternKeys, "skill", targetDifficulty, nowMs, { ignoreDifficulty: true }),
-      ...buildCandidates(state, skillId, weakPatternKeys, "weakness", targetDifficulty, nowMs, { ignoreDifficulty: true })
+      ...buildCandidates(state, skillId, weakPatternKeys, "weakness", targetDifficulty, nowMs, {
+        ignoreDifficulty: true,
+        excludedProblemIds
+      })
     ]);
     for (const problem of relaxedCombined) {
       if (selected.length >= SESSION_SIZE) {
@@ -411,7 +425,7 @@ const buildSessionOnce = (
   }
 
   if (selected.length < SESSION_SIZE) {
-    topUpWithRandomSkillPatterns(selected, skillId, targetDifficulty, patternCounts, maxPatternPerSession);
+    topUpWithRandomSkillPatterns(selected, skillId, targetDifficulty, patternCounts, maxPatternPerSession, excludedProblemIds);
   }
 
   const orderedProblems = reorderProblemsWithPatternDiversity(shuffle(selected)).slice(0, SESSION_SIZE);
@@ -424,6 +438,8 @@ const buildSessionOnce = (
     attemptCount: 0,
     combo: 0,
     failCount: 0,
+    history: state.session?.history ?? [],
+    recentProblems: excludedProblemIds.slice(-5),
     problems: orderedProblems,
     index: 0,
     correct: 0,

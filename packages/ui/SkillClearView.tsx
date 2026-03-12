@@ -7,6 +7,12 @@ type SkillClearViewProps = {
   skillXp: number;
   requiredXP: number;
   nextSkillTitle?: string | null;
+  history: {
+    question: string;
+    userAnswer: string;
+    correctAnswer: string;
+    isCorrect: boolean;
+  }[];
   onNextSkill?: () => void;
   onRetry: () => void;
   onDone: () => void;
@@ -19,6 +25,7 @@ export default function SkillClearView({
   skillXp,
   requiredXP,
   nextSkillTitle,
+  history,
   onNextSkill,
   onRetry,
   onDone
@@ -47,6 +54,21 @@ export default function SkillClearView({
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <div className="text-xs font-semibold tracking-[0.15em] text-amber-700">{nextLabel}</div>
           <div className="mt-2 text-lg font-bold text-slate-900">{nextSkillTitle}</div>
+        </div>
+      ) : null}
+
+      {history.length > 0 ? (
+        <div className="mt-4 max-h-[32vh] overflow-y-auto text-left">
+          {history.map((entry, index) => (
+            <div key={`${entry.question}-${index}`} className="mb-2 rounded-xl border border-slate-200 p-3">
+              <div className="whitespace-pre-line text-sm font-bold text-slate-900">{entry.question}</div>
+              <div className="mt-1 text-sm text-slate-700">こたえ：{entry.userAnswer || "なし"}</div>
+              <div className="text-sm text-slate-700">せいかい：{entry.correctAnswer}</div>
+              <div className={`mt-1 text-sm font-bold ${entry.isCorrect ? "text-emerald-600" : "text-rose-600"}`}>
+                {entry.isCorrect ? "〇" : "×"}
+              </div>
+            </div>
+          ))}
         </div>
       ) : null}
 
