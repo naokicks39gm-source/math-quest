@@ -65,6 +65,7 @@ const localModuleReplacements = [
   ['from "./skillProgressTypes"', 'from "./skillProgressTypes.mjs"'],
   ['from "./sessionTypes"', 'from "./sessionTypes.mjs"'],
   ['from "./studentStore"', 'from "./studentStore.mjs"'],
+  ['from "./progress-utils"', 'from "./progress-utils.mjs"'],
   ['from "./patternProgressTracker"', 'from "./patternProgressTracker.mjs"'],
   ['from "./skillProgressTracker"', 'from "./skillProgressTracker.mjs"'],
   ['from "./difficultyController"', 'from "./difficultyController.mjs"'],
@@ -197,6 +198,7 @@ const loadLearningEngineModules = async () => {
     "skillProgressTypes",
     "sessionTypes",
     "studentStore",
+    "progress-utils",
     "patternProgressTracker",
     "skillProgressTracker",
     "difficultyController",
@@ -252,6 +254,8 @@ test("studentStore only exposes client load and serialize helpers", async () => 
     assert.equal(serialized.version, 1);
     assert.equal(serialized.engineVersion, 1);
     assert.equal(serialized.student.difficulty, 2);
+    assert.deepEqual(serialized.skillMastery, {});
+    assert.deepEqual(serialized.skillXP, {});
     assert.deepEqual(serialized.unlockedSkills, ["E1_NUMBER_COUNT"]);
   });
 
@@ -439,6 +443,40 @@ test("studentStore backfills unlockedSkills for legacy states", async () => {
   });
 
   assert.deepEqual(state.unlockedSkills, ["E1_NUMBER_COUNT"]);
+  assert.deepEqual(state.skillMastery, {});
+  assert.deepEqual(state.skillXP, {});
+});
+
+test("getRecommendedSkill prefers the lowest difficulty unlocked unmastered skill and falls back safely", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+
+  const unlockedState = studentStore.serializeState({
+    version: 1,
+    engineVersion: 1,
+    student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xpTotal: 0, xpSession: 0, level: 1 },
+    patternProgress: {},
+    skillProgress: {
+      E1_NUMBER_COUNT: { skillId: "E1_NUMBER_COUNT", mastery: 1, mastered: true },
+      E1_NUMBER_ORDER: { skillId: "E1_NUMBER_ORDER", mastery: 0.1, mastered: false },
+      E1_NUMBER_COMPARE: { skillId: "E1_NUMBER_COMPARE", mastery: 0.2, mastered: false }
+    },
+    unlockedSkills: ["E1_NUMBER_COUNT", "E1_NUMBER_ORDER", "E1_NUMBER_COMPARE"]
+  });
+
+  assert.equal(learningEngine.getRecommendedSkill(unlockedState), "E1_NUMBER_ORDER");
+
+  const fallbackState = studentStore.serializeState({
+    version: 1,
+    engineVersion: 1,
+    student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xpTotal: 0, xpSession: 0, level: 1 },
+    patternProgress: {},
+    skillProgress: {
+      E1_NUMBER_COUNT: { skillId: "E1_NUMBER_COUNT", mastery: 1, mastered: true }
+    },
+    unlockedSkills: ["E1_NUMBER_COUNT"]
+  });
+
+  assert.equal(learningEngine.getRecommendedSkill(fallbackState), "E1_NUMBER_ORDER");
 });
 
 test("sessionBuilder creates a five-problem session from explicit state", async () => {

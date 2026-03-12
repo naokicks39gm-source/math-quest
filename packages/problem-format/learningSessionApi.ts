@@ -60,6 +60,8 @@ export type LearningState = {
   student: LearningStudentState;
   patternProgress: Record<string, LearningPatternProgress>;
   skillProgress: Record<string, LearningSkillProgress>;
+  skillMastery: Record<string, number>;
+  skillXP: Record<string, number>;
   unlockedSkills: string[];
   session?: LearningSession;
 };

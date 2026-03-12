@@ -1,11 +1,13 @@
 import skillsData from "./skills.json";
-import type { Skill, SkillTreeNode } from "./skillTypes";
+import type { Skill, SkillNode } from "./skillTypes";
 
 const skills = skillsData as Skill[];
 
 type SkillTreeState = {
   unlockedSkills?: string[];
   skillProgress?: Record<string, { mastery?: number; mastered?: boolean } | undefined>;
+  skillMastery?: Record<string, number | undefined>;
+  skillXP?: Record<string, number | undefined>;
 };
 
 export function getSkill(id: string): Skill | undefined {
@@ -24,13 +26,15 @@ export function getRootSkills(): Skill[] {
   return skills.filter((skill) => !skill.prerequisite || skill.prerequisite.length === 0);
 }
 
-export function getSkillTree(state?: SkillTreeState): SkillTreeNode[] {
+export function getSkillTree(state?: SkillTreeState): SkillNode[] {
   const unlockedSkills = new Set(state?.unlockedSkills ?? []);
   const skillProgress = state?.skillProgress ?? {};
+  const skillMastery = state?.skillMastery ?? {};
+  const skillXP = state?.skillXP ?? {};
 
   return skills.map((skill) => {
     const progress = skillProgress[skill.id];
-    const mastery = progress?.mastery ?? 0;
+    const mastery = skillMastery[skill.id] ?? progress?.mastery ?? 0;
 
     return {
       id: skill.id,
@@ -38,7 +42,10 @@ export function getSkillTree(state?: SkillTreeState): SkillTreeNode[] {
       difficulty: skill.difficulty,
       prerequisite: skill.prerequisite ?? [],
       unlocked: unlockedSkills.has(skill.id),
-      mastered: progress?.mastered === true || mastery >= 0.8
+      mastered: progress?.mastered === true || mastery >= 0.8,
+      mastery,
+      xp: skillXP[skill.id] ?? 0,
+      nextSkills: getNextSkills(skill.id).map((nextSkill) => nextSkill.id)
     };
   });
 }

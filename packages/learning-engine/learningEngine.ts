@@ -39,6 +39,7 @@ export type SessionResult = {
 type SkillDefinition = {
   id: string;
   prerequisite?: string[];
+  difficulty: number;
 };
 
 const WEAK_PATTERN_THRESHOLD = 2;
@@ -141,6 +142,15 @@ const getSkillProgressSnapshot = (state: LearningState, skillId: string): SkillP
     mastered: false
   };
 
+export function getRecommendedSkill(state: LearningState): string | undefined {
+  const currentState = serializeState(state);
+  const unresolvedSkills = skills.filter((skill) => !isSkillMastered(currentState.skillProgress, skill.id));
+  const unlockedCandidates = unresolvedSkills.filter((skill) => isSkillUnlocked(currentState, skill.id));
+  const prioritized = unlockedCandidates.sort((left, right) => left.difficulty - right.difficulty);
+
+  return prioritized[0]?.id ?? unresolvedSkills[0]?.id;
+}
+
 export function startSession(state: LearningState, options: StartSessionOptions): { state: LearningState; session: Session } {
   const currentState = serializeState(state);
 
@@ -217,6 +227,10 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     student,
     patternProgress,
     skillProgress,
+    skillMastery: {
+      ...currentState.skillMastery,
+      [currentProblem.skillId]: skillProgress[currentProblem.skillId]?.mastery ?? 0
+    },
     unlockedSkills: currentState.unlockedSkills,
     session: nextSession
   });
@@ -245,6 +259,12 @@ export function finishSession(state: LearningState): { state: LearningState; res
       : currentState.unlockedSkills;
   const recommendedState = serializeState({
     ...currentState,
+    skillMastery: sessionSkillId
+      ? {
+          ...currentState.skillMastery,
+          [sessionSkillId]: skillProgressAfter?.mastery ?? 0
+        }
+      : currentState.skillMastery,
     unlockedSkills
   });
   const recommendation = recommendNextAction(recommendedState);
@@ -267,6 +287,12 @@ export function finishSession(state: LearningState): { state: LearningState; res
       ...currentState.student,
       xpSession: 0
     },
+    skillMastery: sessionSkillId
+      ? {
+          ...currentState.skillMastery,
+          [sessionSkillId]: skillProgressAfter?.mastery ?? 0
+        }
+      : currentState.skillMastery,
     unlockedSkills,
     session: undefined
   });
@@ -296,10 +322,15 @@ export function recommendNextAction(state: LearningState): Recommendation {
     };
   }
 
-  const nextSkillId = getNextRecommendedSkillId({
-    ...currentState,
-    skillProgress: setLockedSkills(currentState.skillProgress)
-  });
+  const nextSkillId =
+    getRecommendedSkill({
+      ...currentState,
+      skillProgress: setLockedSkills(currentState.skillProgress)
+    }) ??
+    getNextRecommendedSkillId({
+      ...currentState,
+      skillProgress: setLockedSkills(currentState.skillProgress)
+    });
 
   if (nextSkillId) {
     return {

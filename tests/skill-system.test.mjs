@@ -169,6 +169,12 @@ test("getSkillTree reflects unlocked and mastered flags from state", async () =>
 
   const nodes = skillTree.getSkillTree({
     unlockedSkills: ["E1_NUMBER_COUNT", "E1_ADD_BASIC"],
+    skillMastery: {
+      E1_ADD_BASIC: 0.8
+    },
+    skillXP: {
+      E1_ADD_BASIC: 40
+    },
     skillProgress: {
       E1_NUMBER_COUNT: { mastery: 0.7, mastered: false },
       E1_ADD_BASIC: { mastery: 0.8, mastered: false },
@@ -184,7 +190,10 @@ test("getSkillTree reflects unlocked and mastered flags from state", async () =>
       difficulty: 3,
       prerequisite: ["E1_NUMBER_COMPOSE", "E1_ADD_NEAR_DOUBLES"],
       unlocked: true,
-      mastered: true
+      mastered: true,
+      mastery: 0.8,
+      xp: 40,
+      nextSkills: ["E1_ADD_10", "E1_SUB_BASIC"]
     }
   );
   assert.deepEqual(
@@ -195,7 +204,10 @@ test("getSkillTree reflects unlocked and mastered flags from state", async () =>
       difficulty: 5,
       prerequisite: ["E1_ADD_10", "E1_SUB_BASIC"],
       unlocked: false,
-      mastered: true
+      mastered: true,
+      mastery: 0.2,
+      xp: 0,
+      nextSkills: []
     }
   );
 });

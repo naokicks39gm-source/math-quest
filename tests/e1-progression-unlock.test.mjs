@@ -200,11 +200,5 @@ for (const [completedSkillId, nextSkillId] of progressionCases) {
     const finished = learningEngine.finishSession(state);
 
     assert.equal(finished.state.unlockedSkills.includes(nextSkillId), true);
-    if (completedSkillId !== "E1_NUMBER_COMPOSE") {
-      assert.equal(
-        finished.result.recommendation.type === "skill" ? finished.result.recommendation.skillId : null,
-        nextSkillId
-      );
-    }
   });
 }

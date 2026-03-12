@@ -26,6 +26,8 @@ export type LearningState = {
   student: StudentState;
   patternProgress: Record<string, PatternProgress>;
   skillProgress: Record<string, SkillProgress>;
+  skillMastery: Record<string, number>;
+  skillXP: Record<string, number>;
   unlockedSkills: string[];
   session?: Session;
 };
@@ -65,6 +67,8 @@ const createInitialState = (): LearningState => ({
   student: createInitialStudentState(),
   patternProgress: {},
   skillProgress: {},
+  skillMastery: {},
+  skillXP: {},
   unlockedSkills: [...INITIAL_UNLOCKED_SKILLS]
 });
 
@@ -135,6 +139,18 @@ const parseSkillProgress = (value: unknown): Record<string, SkillProgress> => {
         }
       ];
     });
+
+  return Object.fromEntries(entries);
+};
+
+const parseNumberMap = (value: unknown): Record<string, number> => {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const entries = Object.entries(value)
+    .filter(([, entry]) => typeof entry === "number" && Number.isFinite(entry))
+    .map(([key, entry]) => [key, Math.max(0, entry as number)]);
 
   return Object.fromEntries(entries);
 };
@@ -269,6 +285,8 @@ const sanitizeState = (value: unknown): LearningState => {
     student: parseStudentState(value.student),
     patternProgress: parsePatternProgress(value.patternProgress),
     skillProgress: parseSkillProgress(value.skillProgress),
+    skillMastery: parseNumberMap(value.skillMastery),
+    skillXP: parseNumberMap(value.skillXP),
     unlockedSkills: parseUnlockedSkills(value.unlockedSkills),
     session: parseSession(value.session)
   };

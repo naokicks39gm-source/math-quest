@@ -7,6 +7,7 @@ export * from "./difficultyController";
 export * from "./weaknessAnalyzer";
 export * from "./sessionBuilder";
 export * from "./learningEngine";
+export * from "./progress-utils";
 export { updatePatternProgress as updatePatternProgressEntry } from "./patternProgressTracker";
 export * from "./skillProgressTracker";
 export * from "./skill-unlock";
