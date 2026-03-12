@@ -35,7 +35,7 @@ import { getElementaryLearningAid, isElementaryGrade, type ElementaryLearningAid
 import ElementaryKeypad from "@/components/keypad/ElementaryKeypad";
 import JuniorKeypad from "@/components/keypad/JuniorKeypad";
 import HighSchoolKeypad from "@/components/keypad/HighSchoolKeypad";
-import { QuestHeader, SessionResultView, SkillProgressBar, SkillTreeView } from "packages/ui";
+import { QuestHeader, SkillClearView, SkillProgressBar, SkillTreeView } from "packages/ui";
 import { VARIABLE_SYMBOLS } from "packages/keypad";
 import { generateProblems } from "packages/problem-engine/dsl-engine";
 import type {
@@ -1816,7 +1816,6 @@ function QuestPageInner() {
   const [learningSession, setLearningSession] = useState<Session | null>(null);
   const [learningResult, setLearningResult] = useState<LearningSessionFinishResponse["result"] | null>(null);
   const [learningResultSkillId, setLearningResultSkillId] = useState<string | null>(null);
-  const [newlyUnlockedSkillIds, setNewlyUnlockedSkillIds] = useState<string[]>([]);
   const [learningLoading, setLearningLoading] = useState(false);
   const [learningError, setLearningError] = useState<string | null>(null);
   const [learningSessionId, setLearningSessionId] = useState<string | null>(null);
@@ -1880,10 +1879,6 @@ function QuestPageInner() {
         .map((entry) => entry.patternId)
     : [];
   const currentSessionSeed = toDiagnosticSeed(learningSessionId);
-  const handleContinueLearning = (skillId: string) => {
-    console.log("HANDLE CONTINUE", skillId);
-    void startLearningSession(skillId);
-  };
   const recommendedLearningSkillId = useMemo(() => {
     if (!learningResult || !learningState) {
       return null;
@@ -1909,25 +1904,13 @@ function QuestPageInner() {
     if (!currentLearningSkillId) return null;
     return skillTree.find((skill) => skill.id === currentLearningSkillId) ?? null;
   }, [currentLearningSkillId, skillTree]);
+  const currentSkillRequiredXP = currentSkillNode?.requiredXP ?? getPracticeSkill(currentLearningSkillId ?? "")?.requiredXP ?? 100;
+  const currentSkillXP = currentSkillNode?.xp ?? (currentLearningSkillId ? learningState?.skillXP[currentLearningSkillId] ?? 0 : 0);
   const recommendedSkillNode = useMemo(() => {
     const unresolvedSkills = skillTree.filter((skill) => !skill.mastered);
     const unlockedCandidates = unresolvedSkills.filter((skill) => skill.unlocked);
-    const prioritized = [...unlockedCandidates].sort((left, right) => left.difficulty - right.difficulty);
-
-    return prioritized[0] ?? unresolvedSkills[0] ?? null;
+    return unlockedCandidates[0] ?? unresolvedSkills[0] ?? null;
   }, [skillTree]);
-  const newlyUnlockedSkillTitles = useMemo(
-    () =>
-      newlyUnlockedSkillIds
-        .map((skillId) => skillTree.find((skill) => skill.id === skillId)?.title ?? getPracticeSkill(skillId)?.title ?? skillId),
-    [newlyUnlockedSkillIds, skillTree]
-  );
-  const showSkillCompleteModal =
-    status === "cleared" &&
-    isLearningSessionMode &&
-    learningResult != null &&
-    (learningResult.skillProgressAfter?.mastery ?? 0) >= 0.8;
-  const showSessionResultView = isLearningSessionMode && learningResult != null && !showSkillCompleteModal;
   const showCurrentSkillSummary = currentSkillNode != null && learningSession == null && status !== "playing";
   const useFastLearningLoop = isLearningSessionMode;
   const correctCount = useMemo(
@@ -2028,7 +2011,6 @@ function QuestPageInner() {
     setLearningState(null);
     setLearningSession(null);
     setLearningResult(null);
-    setNewlyUnlockedSkillIds([]);
     setLearningSessionId(null);
     setLearningError(null);
     setQuestionResults({});
@@ -2080,7 +2062,6 @@ function QuestPageInner() {
     setLearningError(null);
     setLearningResult(null);
     setLearningResultSkillId(null);
-    setNewlyUnlockedSkillIds([]);
     setLearningSession(null);
     setLearningState(null);
     setLearningSessionId(null);
@@ -2134,7 +2115,6 @@ function QuestPageInner() {
     setLearningError(null);
     setLearningResult(null);
     setLearningResultSkillId(null);
-    setNewlyUnlockedSkillIds([]);
     setQuestionResults({});
     setStatus("playing");
     resetQuestionUi();
@@ -2216,7 +2196,6 @@ function QuestPageInner() {
   const finishQuestLearningSession = async () => {
     if (!learningState || !learningSessionId) return null;
     const completedSkillId = learningSession?.skillId ?? learningResultSkillId ?? null;
-    const unlockedBefore = new Set(learningState.unlockedSkills);
     const response = await fetch("/api/learning/session/finish", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2237,7 +2216,11 @@ function QuestPageInner() {
       skillId: completedSkillId ?? skillIdFromQuery,
       expiresAt: data.expiresAt
     });
-    setNewlyUnlockedSkillIds(data.state.unlockedSkills.filter((skillId) => !unlockedBefore.has(skillId)));
+    if (!data.result.cleared && completedSkillId) {
+      finishGuardRef.current = false;
+      await startLearningSession(completedSkillId);
+      return data;
+    }
     clearLearningRecovery();
     setLearningSessionId(null);
     updateDailyStreak();
@@ -2245,7 +2228,7 @@ function QuestPageInner() {
     setLearningResultSkillId(completedSkillId ?? skillIdFromQuery);
     setLearningResult(data.result);
     setStatus("cleared");
-    setMessage("クリアー！");
+    setMessage("できた！");
     return data;
   };
 
@@ -2486,7 +2469,7 @@ function QuestPageInner() {
     Boolean(normalizedLearningSession) &&
     (
       currentLearningIndex >= (normalizedLearningSession?.session.problems.length ?? 0) ||
-      currentLearningIndex >= 5
+      currentSkillXP >= currentSkillRequiredXP
     );
   const currentEntry = learningProblem
     ? adaptLearningSessionProblem(learningProblem)
@@ -3250,7 +3233,7 @@ function QuestPageInner() {
     if (status !== "playing") return;
     if (isLearningSessionMode) {
       if (!learningSession) return;
-      if (learningSession.index >= learningSession.problems.length) {
+      if (currentSkillXP >= currentSkillRequiredXP || learningSession.index >= learningSession.problems.length) {
         void finishQuestLearningSession().catch((error: unknown) => {
           const message = error instanceof Error ? error.message : "learning_session_finish_failed";
           setLearningError(message);
@@ -4955,7 +4938,7 @@ function QuestPageInner() {
 
       {status === "playing" && (
         <div className="fixed left-1/2 top-2 z-40 w-full max-w-md -translate-x-1/2 px-4">
-          {selectedPath && (
+          {!isLearningSessionMode && selectedPath && (
             <div className="w-full relative">
               <button
                 type="button"
@@ -5086,8 +5069,8 @@ function QuestPageInner() {
               <div className="mb-2 flex items-start justify-between gap-3">
                 <QuestHeader
                   skillTitle={getPracticeSkill(currentLearningSkillId ?? "")?.title ?? currentLearningSkillId ?? "-"}
-                  index={learningSession.index}
-                  total={learningSession.problems.length}
+                  skillXP={currentSkillXP}
+                  requiredXP={currentSkillRequiredXP}
                   xpTotal={learningState?.student.xpTotal ?? 0}
                 />
                 {skillTree.length > 0 ? (
@@ -5317,29 +5300,23 @@ function QuestPageInner() {
         {learningLoading ? (
           <div className="w-full text-center rounded-2xl border border-sky-200 bg-sky-50 px-4 py-6 shadow-sm">
             <div className="text-base font-black text-sky-700">Learning session を準備中です</div>
-            <div className="mt-2 text-sm text-sky-700">5問セッションを読み込んでいます...</div>
+            <div className="mt-2 text-sm text-sky-700">れんしゅうを じゅんびしています...</div>
           </div>
         ) : status === 'cleared' ? (
-          showSessionResultView ? (
+          isLearningSessionMode && learningResult ? (
             <div className="w-full max-w-3xl">
-              <SessionResultView
-                skillId={currentLearningSkillId}
-                recommendedSkillId={recommendedLearningSkillId}
-                skillName={currentLearningSkillTitle}
-                score={learningResult.score}
-                totalQuestions={learningResult.totalQuestions}
-                earnedXp={learningResult.score * 10}
-                difficultyBefore={learningResult.difficultyBefore}
-                difficultyAfter={learningResult.difficultyAfter}
-                weakPatternsDetected={learningResult.weakPatternsDetected}
-                skillProgressBefore={learningResult.skillProgressBefore}
-                skillProgressAfter={learningResult.skillProgressAfter}
+              <SkillClearView
+                skillTitle={currentLearningSkillTitle}
+                earnedXp={learningResult.earnedXp}
+                skillXp={learningResult.skillXpAfter}
+                requiredXP={learningResult.requiredXP}
+                nextSkillTitle={recommendedSkillNode?.title ?? null}
+                onNextSkill={recommendedLearningSkillId ? () => router.push(`/quest?skillId=${encodeURIComponent(recommendedLearningSkillId)}`) : undefined}
                 onRetry={() => {
                   if (!currentLearningSkillId) return;
                   void startLearningSession(currentLearningSkillId);
                 }}
-                onContinueLearning={handleContinueLearning}
-                onBackToSkills={() => router.push("/skills")}
+                onDone={() => router.push("/skills")}
               />
             </div>
           ) : (
@@ -5765,49 +5742,6 @@ function QuestPageInner() {
           document.body
         )
         : null}
-      {showSkillCompleteModal && typeof document !== "undefined"
-        ? createPortal(
-          <div className="fixed inset-0 z-[140] flex items-center justify-center bg-emerald-950/40 p-4 backdrop-blur-sm">
-            <section className="w-full max-w-md rounded-[32px] border border-emerald-300 bg-white/95 p-8 text-center shadow-[0_24px_80px_rgba(5,150,105,0.22)] backdrop-blur">
-              <div className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-600">Success</div>
-              <h2 className="mt-3 text-4xl font-black text-emerald-700">Skill Complete!</h2>
-              <p className="mt-4 text-xl font-bold text-slate-900">{currentLearningSkillTitle}</p>
-              <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">XP Gain</div>
-                <div className="mt-2 text-2xl font-black text-emerald-700">+50 XP</div>
-              </div>
-              {newlyUnlockedSkillTitles.length > 0 ? (
-                <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Next Skill Unlocked</div>
-                  <div className="mt-2 text-lg font-bold text-slate-900">{newlyUnlockedSkillTitles.join(" / ")}</div>
-                </div>
-              ) : null}
-              <div className="mt-6 flex flex-wrap justify-center gap-3">
-                {recommendedLearningSkillId ? (
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/quest?skillId=${encodeURIComponent(recommendedLearningSkillId)}`)}
-                    className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
-                  >
-                    Next Skill
-                  </button>
-                ) : null}
-                {currentLearningSkillId ? (
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/quest?skillId=${encodeURIComponent(currentLearningSkillId)}`)}
-                    className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
-                  >
-                    Continue
-                  </button>
-                ) : null}
-              </div>
-            </section>
-          </div>,
-          document.body
-        )
-        : null}
-
       <QuestSettingsPanel
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}

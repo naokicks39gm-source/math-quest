@@ -7,6 +7,7 @@ export type PracticeSkill = {
   title: string;
   grade: string;
   patterns: string[];
+  requiredXP: number;
   difficultyLabel: string;
   difficultyValue: number;
   problemCount: number;
@@ -27,6 +28,7 @@ export const practiceSkills: PracticeSkill[] = skills.map((skill, index) => ({
   title: skill.title,
   grade: skill.grade,
   patterns: skill.patterns,
+  requiredXP: skill.requiredXP ?? 100,
   difficultyLabel: difficultyLabels[skill.difficulty] ?? `Lv ${skill.difficulty}`,
   difficultyValue: skill.difficulty,
   problemCount: 5

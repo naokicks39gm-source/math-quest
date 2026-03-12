@@ -55,9 +55,10 @@ test("E1 curriculum design uses the agreed public shape only", () => {
     assert.equal(skill.grade, "E1", skill.id);
 
     const expectedKeys = skill.prerequisite
-      ? ["grade", "id", "patterns", "prerequisite", "title"]
-      : ["grade", "id", "patterns", "title"];
+      ? ["grade", "id", "patterns", "prerequisite", "requiredXP", "title"]
+      : ["grade", "id", "patterns", "requiredXP", "title"];
     assert.deepEqual(keys, expectedKeys, skill.id);
+    assert.equal(skill.requiredXP, 100, skill.id);
   }
 });
 
@@ -88,21 +89,21 @@ test("E1 curriculum design keeps number concepts ahead of calculation skills", (
   assert.deepEqual(skillById.get("E1_NUMBER_COMPARE")?.prerequisite, ["E1_NUMBER_ORDER"]);
   assert.deepEqual(skillById.get("E1_NUMBER_COMPOSE")?.prerequisite, ["E1_NUMBER_COMPARE"]);
   assert.deepEqual(skillById.get("E1_NUMBER_DECOMPOSE")?.prerequisite, ["E1_NUMBER_COMPOSE"]);
-  assert.deepEqual(skillById.get("E1_NUMBER_LINE")?.prerequisite, ["E1_NUMBER_ORDER"]);
+  assert.deepEqual(skillById.get("E1_NUMBER_LINE")?.prerequisite, ["E1_NUMBER_DECOMPOSE"]);
 
-  assert.deepEqual(skillById.get("E1_ADD_ZERO")?.prerequisite, ["E1_NUMBER_COUNT"]);
+  assert.deepEqual(skillById.get("E1_ADD_ZERO")?.prerequisite, ["E1_NUMBER_LINE"]);
   assert.deepEqual(skillById.get("E1_ADD_ONE")?.prerequisite, ["E1_ADD_ZERO"]);
   assert.deepEqual(skillById.get("E1_ADD_DOUBLES")?.prerequisite, ["E1_ADD_ONE"]);
   assert.deepEqual(skillById.get("E1_ADD_NEAR_DOUBLES")?.prerequisite, ["E1_ADD_DOUBLES"]);
 
-  assert.deepEqual(skillById.get("E1_ADD_BASIC")?.prerequisite, ["E1_NUMBER_COMPOSE", "E1_ADD_NEAR_DOUBLES"]);
+  assert.deepEqual(skillById.get("E1_ADD_BASIC")?.prerequisite, ["E1_ADD_NEAR_DOUBLES"]);
   assert.deepEqual(skillById.get("E1_ADD_10")?.prerequisite, ["E1_ADD_BASIC"]);
   assert.deepEqual(skillById.get("E1_ADD_CARRY")?.prerequisite, ["E1_ADD_10"]);
 
-  assert.deepEqual(skillById.get("E1_SUB_BASIC")?.prerequisite, ["E1_NUMBER_DECOMPOSE", "E1_ADD_BASIC"]);
+  assert.deepEqual(skillById.get("E1_SUB_BASIC")?.prerequisite, ["E1_ADD_CARRY"]);
   assert.deepEqual(skillById.get("E1_SUB_FACTS")?.prerequisite, ["E1_SUB_BASIC"]);
   assert.deepEqual(skillById.get("E1_SUB_BORROW")?.prerequisite, ["E1_SUB_FACTS"]);
-  assert.deepEqual(skillById.get("E1_FACT_FAMILY")?.prerequisite, ["E1_ADD_10", "E1_SUB_FACTS"]);
+  assert.deepEqual(skillById.get("E1_FACT_FAMILY")?.prerequisite, ["E1_SUB_BORROW"]);
 });
 
 test("E1 curriculum design keeps the intended skill families", () => {

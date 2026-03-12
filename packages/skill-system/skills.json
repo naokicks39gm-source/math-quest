@@ -4,7 +4,8 @@
     "title": "1〜20をかぞえる",
     "grade": "E1",
     "patterns": ["E1_NUMBER_COUNT"],
-    "difficulty": 1
+    "difficulty": 1,
+    "requiredXP": 100
   },
   {
     "id": "E1_NUMBER_ORDER",
@@ -12,7 +13,8 @@
     "grade": "E1",
     "patterns": ["E1_NUMBER_ORDER"],
     "prerequisite": ["E1_NUMBER_COUNT"],
-    "difficulty": 1
+    "difficulty": 1,
+    "requiredXP": 100
   },
   {
     "id": "E1_NUMBER_COMPARE",
@@ -20,7 +22,8 @@
     "grade": "E1",
     "patterns": ["E1_NUMBER_COMPARE"],
     "prerequisite": ["E1_NUMBER_ORDER"],
-    "difficulty": 2
+    "difficulty": 2,
+    "requiredXP": 100
   },
   {
     "id": "E1_NUMBER_COMPOSE",
@@ -28,7 +31,8 @@
     "grade": "E1",
     "patterns": ["E1_NUMBER_COMPOSE"],
     "prerequisite": ["E1_NUMBER_COMPARE"],
-    "difficulty": 2
+    "difficulty": 2,
+    "requiredXP": 100
   },
   {
     "id": "E1_NUMBER_DECOMPOSE",
@@ -36,23 +40,26 @@
     "grade": "E1",
     "patterns": ["E1_NUMBER_DECOMPOSE"],
     "prerequisite": ["E1_NUMBER_COMPOSE"],
-    "difficulty": 2
+    "difficulty": 2,
+    "requiredXP": 100
   },
   {
     "id": "E1_NUMBER_LINE",
     "title": "数直線",
     "grade": "E1",
     "patterns": ["E1_NUMBER_LINE"],
-    "prerequisite": ["E1_NUMBER_ORDER"],
-    "difficulty": 2
+    "prerequisite": ["E1_NUMBER_DECOMPOSE"],
+    "difficulty": 2,
+    "requiredXP": 100
   },
   {
     "id": "E1_ADD_ZERO",
     "title": "0のたし算",
     "grade": "E1",
     "patterns": ["E1_ADD_ZERO"],
-    "prerequisite": ["E1_NUMBER_COUNT"],
-    "difficulty": 1
+    "prerequisite": ["E1_NUMBER_LINE"],
+    "difficulty": 1,
+    "requiredXP": 100
   },
   {
     "id": "E1_ADD_ONE",
@@ -60,7 +67,8 @@
     "grade": "E1",
     "patterns": ["E1_ADD_ONE"],
     "prerequisite": ["E1_ADD_ZERO"],
-    "difficulty": 1
+    "difficulty": 1,
+    "requiredXP": 100
   },
   {
     "id": "E1_ADD_DOUBLES",
@@ -68,7 +76,8 @@
     "grade": "E1",
     "patterns": ["E1_ADD_DOUBLES"],
     "prerequisite": ["E1_ADD_ONE"],
-    "difficulty": 2
+    "difficulty": 2,
+    "requiredXP": 100
   },
   {
     "id": "E1_ADD_NEAR_DOUBLES",
@@ -76,15 +85,17 @@
     "grade": "E1",
     "patterns": ["E1_ADD_NEAR_DOUBLES"],
     "prerequisite": ["E1_ADD_DOUBLES"],
-    "difficulty": 2
+    "difficulty": 2,
+    "requiredXP": 100
   },
   {
     "id": "E1_ADD_BASIC",
     "title": "1桁のたし算",
     "grade": "E1",
     "patterns": ["E1_ADD_BASIC"],
-    "prerequisite": ["E1_NUMBER_COMPOSE", "E1_ADD_NEAR_DOUBLES"],
-    "difficulty": 3
+    "prerequisite": ["E1_ADD_NEAR_DOUBLES"],
+    "difficulty": 3,
+    "requiredXP": 100
   },
   {
     "id": "E1_ADD_10",
@@ -92,15 +103,17 @@
     "grade": "E1",
     "patterns": ["E1_ADD_10"],
     "prerequisite": ["E1_ADD_BASIC"],
-    "difficulty": 3
+    "difficulty": 3,
+    "requiredXP": 100
   },
   {
     "id": "E1_SUB_BASIC",
     "title": "借りなしのひき算",
     "grade": "E1",
     "patterns": ["E1_SUB_BASIC"],
-    "prerequisite": ["E1_NUMBER_DECOMPOSE", "E1_ADD_BASIC"],
-    "difficulty": 3
+    "prerequisite": ["E1_ADD_CARRY"],
+    "difficulty": 3,
+    "requiredXP": 100
   },
   {
     "id": "E1_SUB_FACTS",
@@ -108,15 +121,17 @@
     "grade": "E1",
     "patterns": ["E1_SUB_FACTS"],
     "prerequisite": ["E1_SUB_BASIC"],
-    "difficulty": 3
+    "difficulty": 3,
+    "requiredXP": 100
   },
   {
     "id": "E1_FACT_FAMILY",
     "title": "たし算とひき算の関係",
     "grade": "E1",
     "patterns": ["E1_FACT_FAMILY"],
-    "prerequisite": ["E1_ADD_10", "E1_SUB_FACTS"],
-    "difficulty": 4
+    "prerequisite": ["E1_SUB_BORROW"],
+    "difficulty": 4,
+    "requiredXP": 100
   },
   {
     "id": "E1_ADD_CARRY",
@@ -124,7 +139,8 @@
     "grade": "E1",
     "patterns": ["E1_ADD_CARRY"],
     "prerequisite": ["E1_ADD_10"],
-    "difficulty": 4
+    "difficulty": 4,
+    "requiredXP": 100
   },
   {
     "id": "E1_SUB_BORROW",
@@ -132,7 +148,8 @@
     "grade": "E1",
     "patterns": ["E1_SUB_BORROW"],
     "prerequisite": ["E1_SUB_FACTS"],
-    "difficulty": 4
+    "difficulty": 4,
+    "requiredXP": 100
   },
   {
     "id": "E2_ADD_2DIGIT",

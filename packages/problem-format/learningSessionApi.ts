@@ -48,6 +48,7 @@ export type LearningSession = {
   mode: "skill" | "adaptive";
   skillId?: string;
   startedDifficulty: number;
+  skillXpBefore?: number;
   problems: LearningSessionProblem[];
   index: number;
   correct: number;
@@ -79,6 +80,12 @@ export type SessionResult = {
   weakPatternsDetected: number;
   skillProgressBefore: LearningSkillProgress | null;
   skillProgressAfter: LearningSkillProgress | null;
+  skillXpBefore: number;
+  skillXpAfter: number;
+  requiredXP: number;
+  cleared: boolean;
+  newlyUnlockedSkillIds: string[];
+  earnedXp: number;
   recommendation: Recommendation;
 };
 

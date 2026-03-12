@@ -6,5 +6,6 @@ export { default as ProblemCard } from "./ProblemCard";
 export { default as AnswerInput } from "./AnswerInput";
 export { default as ResultView } from "./ResultView";
 export { default as SessionResultView } from "./SessionResultView";
+export { default as SkillClearView } from "./SkillClearView";
 export { default as SkillTreeView } from "./SkillTreeView";
 export { default as QuestHeader } from "./QuestHeader";

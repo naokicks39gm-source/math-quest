@@ -447,7 +447,7 @@ test("studentStore backfills unlockedSkills for legacy states", async () => {
   assert.deepEqual(state.skillXP, {});
 });
 
-test("getRecommendedSkill prefers the lowest difficulty unlocked unmastered skill and falls back safely", async () => {
+test("getRecommendedSkill prefers the first unlocked unmastered skill in curriculum order and falls back safely", async () => {
   const { learningEngine, studentStore } = await loadLearningEngineModules();
 
   const unlockedState = studentStore.serializeState({
@@ -904,8 +904,9 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(answered.state.student.xpSession, 10);
   assert.equal(answered.state.student.level, 2);
   assert.equal(answered.session.index, 1);
-  assert.equal(answered.state.skillProgress.E1_NUMBER_COUNT?.mastery, 2 / 3);
+  assert.equal(answered.state.skillProgress.E1_NUMBER_COUNT?.mastery, 0.1);
   assert.equal(answered.state.skillProgress.E1_NUMBER_COUNT?.mastered, false);
+  assert.equal(answered.state.skillXP.E1_NUMBER_COUNT, 10);
 
   const recommendedSkill = learningEngine.recommendNextAction(answered.state);
   assert.deepEqual(recommendedSkill, {
@@ -933,29 +934,38 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(finished.state.engineVersion, 1);
   assert.equal(finished.state.session, undefined);
   assert.equal(finished.state.student.xpTotal, 10);
-  assert.equal(finished.state.student.xpSession, 0);
+  assert.equal(finished.state.student.xpSession, 10);
   assert.equal(finished.state.student.level, 2);
   assert.equal(finished.result.totalQuestions, 5);
   assert.equal(finished.result.skillProgressBefore?.skillId, "E1_NUMBER_COUNT");
   assert.equal(finished.result.skillProgressBefore?.mastery, 0);
   assert.equal(finished.result.skillProgressAfter?.skillId, "E1_NUMBER_COUNT");
-  assert.equal(finished.result.skillProgressAfter?.mastery, 2 / 3);
+  assert.equal(finished.result.skillProgressAfter?.mastery, 0.1);
+  assert.equal(finished.result.skillXpBefore, 0);
+  assert.equal(finished.result.skillXpAfter, 10);
+  assert.equal(finished.result.requiredXP, 100);
+  assert.equal(finished.result.cleared, false);
+  assert.equal(finished.result.earnedXp, 10);
+  assert.deepEqual(finished.result.newlyUnlockedSkillIds, []);
   assert.deepEqual(finished.state.unlockedSkills, ["E1_NUMBER_COUNT"]);
 
   const source = fs.readFileSync(path.join(root, "packages/learning-engine/learningEngine.ts"), "utf8");
-  assert.equal(source.includes('console.log("skillMastery"'), true);
-  assert.equal(source.includes('console.log("studentXP"'), true);
+  assert.equal(source.includes('console.log("skillMastery"'), false);
+  assert.equal(source.includes('console.log("studentXP"'), false);
 });
 
-test("finishSession unlocks the next skill when mastery reaches 0.8", async () => {
+test("finishSession unlocks the next skill when required XP is reached", async () => {
   const { learningEngine, studentStore } = await loadLearningEngineModules();
   const state = studentStore.serializeState({
     version: 1,
     engineVersion: 1,
-    student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 5, xpTotal: 50, xpSession: 50, level: 3 },
+    student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 5, xpTotal: 100, xpSession: 50, level: 3 },
     patternProgress: {},
     skillProgress: {
-      E1_ADD_BASIC: { skillId: "E1_ADD_BASIC", mastery: 0.8, mastered: true }
+      E1_ADD_BASIC: { skillId: "E1_ADD_BASIC", mastery: 1, mastered: true }
+    },
+    skillXP: {
+      E1_ADD_BASIC: 100
     },
     unlockedSkills: ["E1_ADD_BASIC"],
     session: {
@@ -965,18 +975,18 @@ test("finishSession unlocks the next skill when mastery reaches 0.8", async () =
       problems: [],
       index: 0,
       correct: 5,
-      wrong: 0
+      wrong: 0,
+      skillXpBefore: 50
     }
   });
 
   const finished = learningEngine.finishSession(state);
 
-  assert.deepEqual(finished.state.unlockedSkills, ["E1_ADD_BASIC", "E1_ADD_10", "E1_SUB_BASIC"]);
-  assert.equal(
-    finished.result.recommendation.type === "skill" &&
-      ["E1_ADD_10", "E1_SUB_BASIC"].includes(finished.result.recommendation.skillId),
-    true
-  );
+  assert.deepEqual(finished.state.unlockedSkills, ["E1_ADD_BASIC", "E1_ADD_10"]);
+  assert.deepEqual(finished.result.newlyUnlockedSkillIds, ["E1_ADD_10"]);
+  assert.equal(finished.result.cleared, true);
+  assert.equal(finished.result.skillXpAfter, 100);
+  assert.equal(finished.result.recommendation.type === "skill" && finished.result.recommendation.skillId, "E1_ADD_10");
 });
 
 test("number skills resolve as runtime session candidates", async () => {
@@ -1031,7 +1041,7 @@ test("number skill sessions honor runtime difficulty filtering", async () => {
   );
 });
 
-test("progression treats mastery below 0.8 as still in progress", async () => {
+test("progression treats required XP below target as still in progress", async () => {
   const { learningEngine, studentStore } = await loadLearningEngineModules();
   const state = studentStore.serializeState({
     version: 1,
@@ -1039,7 +1049,10 @@ test("progression treats mastery below 0.8 as still in progress", async () => {
     student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 4, xpTotal: 40, xpSession: 0, level: 3 },
     patternProgress: {},
     skillProgress: {
-      E1_NUMBER_COUNT: { skillId: "E1_NUMBER_COUNT", mastery: 0.76, mastered: true }
+      E1_NUMBER_COUNT: { skillId: "E1_NUMBER_COUNT", mastery: 0.76, mastered: false }
+    },
+    skillXP: {
+      E1_NUMBER_COUNT: 76
     },
     unlockedSkills: ["E1_NUMBER_COUNT"]
   });

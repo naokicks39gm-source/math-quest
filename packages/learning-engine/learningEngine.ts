@@ -33,6 +33,12 @@ export type SessionResult = {
   weakPatternsDetected: number;
   skillProgressBefore: SkillProgress | null;
   skillProgressAfter: SkillProgress | null;
+  skillXpBefore: number;
+  skillXpAfter: number;
+  requiredXP: number;
+  cleared: boolean;
+  newlyUnlockedSkillIds: string[];
+  earnedXp: number;
   recommendation: Recommendation;
 };
 
@@ -40,11 +46,16 @@ type SkillDefinition = {
   id: string;
   prerequisite?: string[];
   difficulty: number;
+  requiredXP?: number;
 };
 
 const WEAK_PATTERN_THRESHOLD = 2;
 
 const skills = skillsData as SkillDefinition[];
+const DEFAULT_REQUIRED_XP = 100;
+
+const getRequiredXP = (skillId: string) => skills.find((skill) => skill.id === skillId)?.requiredXP ?? DEFAULT_REQUIRED_XP;
+const computeXpMastery = (skillId: string, skillXP: number) => Math.max(0, Math.min(skillXP / getRequiredXP(skillId), 1));
 
 const isSkillMastered = (skillProgress: LearningState["skillProgress"], skillId: string) =>
   (skillProgress[skillId]?.mastery ?? 0) >= PROGRESSION_UNLOCK_THRESHOLD;
@@ -146,9 +157,7 @@ export function getRecommendedSkill(state: LearningState): string | undefined {
   const currentState = serializeState(state);
   const unresolvedSkills = skills.filter((skill) => !isSkillMastered(currentState.skillProgress, skill.id));
   const unlockedCandidates = unresolvedSkills.filter((skill) => isSkillUnlocked(currentState, skill.id));
-  const prioritized = unlockedCandidates.sort((left, right) => left.difficulty - right.difficulty);
-
-  return prioritized[0]?.id ?? unresolvedSkills[0]?.id;
+  return unlockedCandidates[0]?.id ?? unresolvedSkills[0]?.id;
 }
 
 export function startSession(state: LearningState, options: StartSessionOptions): { state: LearningState; session: Session } {
@@ -162,7 +171,8 @@ export function startSession(state: LearningState, options: StartSessionOptions)
     options.mode === "adaptive" ? resolveAdaptiveSkillId(currentState, options.skillId) : (options.skillId as string);
   const session = {
     ...buildSession(currentState, skillId, currentState.student.difficulty, options.mode),
-    skillProgressBefore: getSkillProgressSnapshot(currentState, skillId)
+    skillProgressBefore: getSkillProgressSnapshot(currentState, skillId),
+    skillXpBefore: currentState.skillXP[skillId] ?? 0
   };
   const nextState = serializeState({
     ...currentState,
@@ -212,13 +222,19 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     .map((pattern) => patternProgress[pattern.key]?.mastery)
     .filter((mastery): mastery is number => mastery !== undefined);
 
+  const nextSkillXPValue = (currentState.skillXP[currentProblem.skillId] ?? 0) + (result.correct ? 10 : 0);
+  const nextSkillMasteryValue = computeXpMastery(currentProblem.skillId, nextSkillXPValue);
   const skillProgress = setLockedSkills({
     ...currentState.skillProgress,
-    [currentProblem.skillId]: updateSkillProgress(
-      currentState.skillProgress[currentProblem.skillId],
-      currentProblem.skillId,
-      patternMasteries
-    )
+    [currentProblem.skillId]: {
+      ...updateSkillProgress(
+        currentState.skillProgress[currentProblem.skillId],
+        currentProblem.skillId,
+        patternMasteries
+      ),
+      mastery: nextSkillMasteryValue,
+      mastered: nextSkillXPValue >= getRequiredXP(currentProblem.skillId)
+    }
   });
 
   const nextSession = advanceSession(currentState.session, result.correct);
@@ -229,7 +245,11 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     skillProgress,
     skillMastery: {
       ...currentState.skillMastery,
-      [currentProblem.skillId]: skillProgress[currentProblem.skillId]?.mastery ?? 0
+      [currentProblem.skillId]: nextSkillMasteryValue
+    },
+    skillXP: {
+      ...currentState.skillXP,
+      [currentProblem.skillId]: nextSkillXPValue
     },
     unlockedSkills: currentState.unlockedSkills,
     session: nextSession
@@ -253,23 +273,36 @@ export function finishSession(state: LearningState): { state: LearningState; res
     ? (session.skillProgressBefore ?? getSkillProgressSnapshot(currentState, sessionSkillId))
     : null;
   const skillProgressAfter = sessionSkillId ? getSkillProgressSnapshot(currentState, sessionSkillId) : null;
+  const skillXpBefore = session.skillXpBefore ?? (sessionSkillId ? currentState.skillXP[sessionSkillId] ?? 0 : 0);
+  const skillXpAfter = sessionSkillId ? currentState.skillXP[sessionSkillId] ?? 0 : 0;
+  const requiredXP = sessionSkillId ? getRequiredXP(sessionSkillId) : DEFAULT_REQUIRED_XP;
+  const cleared = skillXpAfter >= requiredXP;
   const unlockedSkills =
-    sessionSkillId && (skillProgressAfter?.mastery ?? 0) >= PROGRESSION_UNLOCK_THRESHOLD
+    sessionSkillId && cleared
       ? unlockNextSkills(currentState, sessionSkillId)
       : currentState.unlockedSkills;
+  const newlyUnlockedSkillIds = unlockedSkills.filter((skillId) => !currentState.unlockedSkills.includes(skillId));
   const recommendedState = serializeState({
     ...currentState,
     skillMastery: sessionSkillId
       ? {
           ...currentState.skillMastery,
-          [sessionSkillId]: skillProgressAfter?.mastery ?? 0
+          [sessionSkillId]: computeXpMastery(sessionSkillId, skillXpAfter)
         }
       : currentState.skillMastery,
+    skillProgress: sessionSkillId
+      ? {
+          ...currentState.skillProgress,
+          [sessionSkillId]: {
+            skillId: sessionSkillId,
+            mastery: computeXpMastery(sessionSkillId, skillXpAfter),
+            mastered: cleared
+          }
+        }
+      : currentState.skillProgress,
     unlockedSkills
   });
   const recommendation = recommendNextAction(recommendedState);
-  console.log("skillMastery", skillProgressAfter?.mastery ?? 0);
-  console.log("studentXP", currentState.student.xpTotal);
   const result: SessionResult = {
     score: session.correct,
     totalQuestions: session.problems.length,
@@ -278,6 +311,12 @@ export function finishSession(state: LearningState): { state: LearningState; res
     weakPatternsDetected: countWeakPatterns(currentState),
     skillProgressBefore,
     skillProgressAfter,
+    skillXpBefore,
+    skillXpAfter,
+    requiredXP,
+    cleared,
+    newlyUnlockedSkillIds,
+    earnedXp: currentState.student.xpSession,
     recommendation
   };
 
@@ -285,12 +324,22 @@ export function finishSession(state: LearningState): { state: LearningState; res
     ...currentState,
     student: {
       ...currentState.student,
-      xpSession: 0
+      xpSession: cleared ? 0 : currentState.student.xpSession
     },
+    skillProgress: sessionSkillId
+      ? {
+          ...currentState.skillProgress,
+          [sessionSkillId]: {
+            skillId: sessionSkillId,
+            mastery: computeXpMastery(sessionSkillId, skillXpAfter),
+            mastered: cleared
+          }
+        }
+      : currentState.skillProgress,
     skillMastery: sessionSkillId
       ? {
           ...currentState.skillMastery,
-          [sessionSkillId]: skillProgressAfter?.mastery ?? 0
+          [sessionSkillId]: computeXpMastery(sessionSkillId, skillXpAfter)
         }
       : currentState.skillMastery,
     unlockedSkills,

@@ -41,6 +41,14 @@ export default function SkillCard({ skill, onSelect }: SkillCardProps) {
         : status === "AVAILABLE"
           ? "bg-amber-100 text-amber-700"
           : "bg-slate-200 text-slate-600";
+  const statusLabel =
+    status === "MASTERED"
+      ? "クリア！"
+      : status === "LEARNING"
+        ? "れんしゅう中"
+        : status === "AVAILABLE"
+          ? "つぎ"
+          : "これから";
 
   return (
     <button
@@ -59,7 +67,7 @@ export default function SkillCard({ skill, onSelect }: SkillCardProps) {
           <div className="mt-1 text-lg font-bold text-slate-900">{skill.title}</div>
         </div>
         <div className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${statusClass}`}>
-          {status}
+          {statusLabel}
         </div>
       </div>
       {mastery !== undefined ? (

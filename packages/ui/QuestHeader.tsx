@@ -2,20 +2,20 @@
 
 type Props = {
   skillTitle: string;
-  index: number;
-  total: number;
+  skillXP: number;
+  requiredXP: number;
   xpTotal: number;
 };
 
 export default function QuestHeader({
   skillTitle,
-  index,
-  total,
+  skillXP,
+  requiredXP,
   xpTotal
 }: Props) {
-  const completed = Math.min(index + 1, total);
-  const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
-  const isMastered = total > 0 && completed >= total;
+  const safeRequiredXP = Math.max(1, requiredXP);
+  const progressPercent = Math.round((Math.min(skillXP, safeRequiredXP) / safeRequiredXP) * 100);
+  const isMastered = skillXP >= safeRequiredXP;
 
   return (
     <div className="min-w-0 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 shadow-sm">
@@ -23,16 +23,18 @@ export default function QuestHeader({
         <div className="min-w-0">
           <div className="truncate text-2xl font-bold text-slate-900">{skillTitle}</div>
           <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-slate-600">
-            <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200">
+            <span className="shrink-0">XP {skillXP} / {safeRequiredXP}</span>
+          </div>
+          <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-slate-600">
+            <div className="h-2 w-28 overflow-hidden rounded-full bg-slate-200">
               <div
                 className="h-full rounded-full bg-sky-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <div>{completed} / {total}</div>
             {isMastered ? (
-              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold uppercase tracking-[0.12em] text-green-700">
-                MASTERED
+              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">
+                クリア！
               </span>
             ) : null}
           </div>

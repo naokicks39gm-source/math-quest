@@ -67,28 +67,31 @@ test("getSkillTree returns UI-ready node state for E1 skills", async () => {
     id: "E1_NUMBER_ORDER",
     title: "数の順番理解",
     difficulty: 1,
+    requiredXP: 100,
     prerequisite: ["E1_NUMBER_COUNT"],
     unlocked: true,
     mastered: false,
-    mastery: 0.5,
+    mastery: 0,
     xp: 0,
-    nextSkills: ["E1_NUMBER_COMPARE", "E1_NUMBER_LINE"],
-    status: "LEARNING"
+    nextSkills: ["E1_NUMBER_COMPARE"],
+    status: "AVAILABLE"
   });
   assert.deepEqual(addBasicNode, {
     id: "E1_ADD_BASIC",
     title: "1桁のたし算",
     difficulty: 3,
-    prerequisite: ["E1_NUMBER_COMPOSE", "E1_ADD_NEAR_DOUBLES"],
+    requiredXP: 100,
+    prerequisite: ["E1_ADD_NEAR_DOUBLES"],
     unlocked: true,
     mastered: true,
-    mastery: 0.9,
+    mastery: 1,
     xp: 120,
-    nextSkills: ["E1_ADD_10", "E1_SUB_BASIC"],
+    nextSkills: ["E1_ADD_10"],
     status: "MASTERED"
   });
   assert.equal(factFamilyNode?.mastery, 0);
   assert.equal(factFamilyNode?.xp, 0);
+  assert.equal(factFamilyNode?.requiredXP, 100);
   assert.deepEqual(factFamilyNode?.nextSkills, []);
   assert.equal(factFamilyNode?.status, "LOCKED");
 });

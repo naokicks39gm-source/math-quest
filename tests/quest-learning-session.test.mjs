@@ -23,7 +23,7 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes("setLearningSession({"), true);
   assert.equal(source.includes("const currentLearningIndex = normalizedLearningSession?.index ?? 0;"), true);
   assert.equal(source.includes("currentLearningIndex >= (normalizedLearningSession?.session.problems.length ?? 0)"), true);
-  assert.equal(source.includes("currentLearningIndex >= 5"), true);
+  assert.equal(source.includes("currentSkillXP >= currentSkillRequiredXP"), true);
   assert.equal(source.includes("await finishQuestLearningSession();"), true);
   assert.equal(source.includes('console.error("finish failed", error);'), true);
   assert.equal(source.includes("if (finishGuardRef.current) {"), true);
@@ -56,5 +56,6 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes("sessionStartTrackedRef.current = true;"), true);
   assert.equal(source.includes('if (isLearningSessionMode) {'), true);
   assert.equal(source.includes('return postJson("/api/session/answer", {'), true);
-  assert.equal(source.includes("<SessionResultView"), true);
+  assert.equal(source.includes("<SkillClearView"), true);
+  assert.equal(source.includes('!isLearningSessionMode && selectedPath && ('), true);
 });

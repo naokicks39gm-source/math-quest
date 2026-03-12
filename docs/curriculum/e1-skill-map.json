@@ -14,70 +14,80 @@
       "id": "E1_NUMBER_COUNT",
       "title": "1〜20をかぞえる",
       "grade": "E1",
-      "patterns": ["E1-NUM-COUNT-01"]
+      "patterns": ["E1-NUM-COUNT-01"],
+      "requiredXP": 100
     },
     {
       "id": "E1_NUMBER_ORDER",
       "title": "数の順番理解",
       "grade": "E1",
       "patterns": ["E1-NUM-ORDER-01"],
-      "prerequisite": ["E1_NUMBER_COUNT"]
+      "prerequisite": ["E1_NUMBER_COUNT"],
+      "requiredXP": 100
     },
     {
       "id": "E1_NUMBER_COMPARE",
       "title": "数の大小比較",
       "grade": "E1",
       "patterns": ["E1-NUM-COMPARE-01"],
-      "prerequisite": ["E1_NUMBER_ORDER"]
+      "prerequisite": ["E1_NUMBER_ORDER"],
+      "requiredXP": 100
     },
     {
       "id": "E1_NUMBER_COMPOSE",
       "title": "10の合成",
       "grade": "E1",
       "patterns": ["E1-NUM-COMPOSE-01"],
-      "prerequisite": ["E1_NUMBER_COMPARE"]
+      "prerequisite": ["E1_NUMBER_COMPARE"],
+      "requiredXP": 100
     },
     {
       "id": "E1_NUMBER_DECOMPOSE",
       "title": "10の分解",
       "grade": "E1",
       "patterns": ["E1-NUM-DECOMPOSE-01"],
-      "prerequisite": ["E1_NUMBER_COMPOSE"]
+      "prerequisite": ["E1_NUMBER_COMPOSE"],
+      "requiredXP": 100
     },
     {
       "id": "E1_NUMBER_LINE",
       "title": "数直線",
       "grade": "E1",
       "patterns": ["E1-NUM-LINE-01"],
-      "prerequisite": ["E1_NUMBER_ORDER"]
+      "prerequisite": ["E1_NUMBER_DECOMPOSE"],
+      "requiredXP": 100
     },
     {
       "id": "E1_ADD_ZERO",
       "title": "0のたし算",
       "grade": "E1",
       "patterns": ["E1-ADD-ZERO-01"],
-      "prerequisite": ["E1_NUMBER_COUNT"]
+      "prerequisite": ["E1_NUMBER_LINE"],
+      "requiredXP": 100
     },
     {
       "id": "E1_ADD_ONE",
-      "title": "+1計算",
+      "title": "1をたす",
       "grade": "E1",
       "patterns": ["E1-ADD-ONE-01"],
-      "prerequisite": ["E1_ADD_ZERO"]
+      "prerequisite": ["E1_ADD_ZERO"],
+      "requiredXP": 100
     },
     {
       "id": "E1_ADD_DOUBLES",
       "title": "同じ数どうしのたし算",
       "grade": "E1",
       "patterns": ["E1-ADD-DOUBLES-01"],
-      "prerequisite": ["E1_ADD_ONE"]
+      "prerequisite": ["E1_ADD_ONE"],
+      "requiredXP": 100
     },
     {
       "id": "E1_ADD_NEAR_DOUBLES",
       "title": "ニアダブル",
       "grade": "E1",
       "patterns": ["E1-ADD-NEAR-DOUBLES-01"],
-      "prerequisite": ["E1_ADD_DOUBLES"]
+      "prerequisite": ["E1_ADD_DOUBLES"],
+      "requiredXP": 100
     },
     {
       "id": "E1_ADD_BASIC",
@@ -90,14 +100,16 @@
         "E1-ADD-BASIC-04",
         "E1-ADD-BASIC-05"
       ],
-      "prerequisite": ["E1_NUMBER_COMPOSE", "E1_ADD_NEAR_DOUBLES"]
+      "prerequisite": ["E1_ADD_NEAR_DOUBLES"],
+      "requiredXP": 100
     },
     {
       "id": "E1_ADD_10",
       "title": "10を作るたし算",
       "grade": "E1",
       "patterns": ["E1-ADD-MAKE10"],
-      "prerequisite": ["E1_ADD_BASIC"]
+      "prerequisite": ["E1_ADD_BASIC"],
+      "requiredXP": 100
     },
     {
       "id": "E1_SUB_BASIC",
@@ -110,14 +122,16 @@
         "E1-SUB-BASIC-04",
         "E1-SUB-BASIC-05"
       ],
-      "prerequisite": ["E1_NUMBER_DECOMPOSE", "E1_ADD_BASIC"]
+      "prerequisite": ["E1_ADD_CARRY"],
+      "requiredXP": 100
     },
     {
       "id": "E1_SUB_FACTS",
       "title": "ひき算基本",
       "grade": "E1",
       "patterns": ["E1-SUB-FACTS-01"],
-      "prerequisite": ["E1_SUB_BASIC"]
+      "prerequisite": ["E1_SUB_BASIC"],
+      "requiredXP": 100
     },
     {
       "id": "E1_FACT_FAMILY",
@@ -128,21 +142,24 @@
         "E1-FACT-FAMILY-02",
         "E1-FACT-FAMILY-03"
       ],
-      "prerequisite": ["E1_ADD_10", "E1_SUB_FACTS"]
+      "prerequisite": ["E1_SUB_BORROW"],
+      "requiredXP": 100
     },
     {
       "id": "E1_ADD_CARRY",
       "title": "くり上がりのたし算",
       "grade": "E1",
       "patterns": ["E1-ADD-CARRY"],
-      "prerequisite": ["E1_ADD_10"]
+      "prerequisite": ["E1_ADD_10"],
+      "requiredXP": 100
     },
     {
       "id": "E1_SUB_BORROW",
       "title": "くり下がりのひき算",
       "grade": "E1",
       "patterns": ["E1-SUB-BORROW-01"],
-      "prerequisite": ["E1_SUB_FACTS"]
+      "prerequisite": ["E1_SUB_FACTS"],
+      "requiredXP": 100
     }
   ]
 }

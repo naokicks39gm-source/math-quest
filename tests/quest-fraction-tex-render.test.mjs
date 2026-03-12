@@ -26,8 +26,8 @@ test("quest prompt and clear list use shared math rendering path", () => {
   assert.match(source, /const keepEquals = shouldKeepEqualsForE13Plus\(typeId, typeLabel\);/);
   assert.match(source, /const forceEquals = shouldForceEqualsForElementaryE2Plus\(typeId\);/);
   assert.match(source, /className="mx-\[0\.08em\] inline-flex h-\[0\.98em\] w-\[0\.98em\] items-center justify-center rounded-\[0\.16em\] border-2 border-emerald-100 align-\[-0\.04em\]"/);
-  assert.match(source, /const displayTexRaw = keepEquals \? tex : trimTrailingEquationEquals\(tex\);/);
-  assert.match(source, /const displayTex = forceEquals \? ensureTrailingEquationEquals\(displayTexRaw\) : displayTexRaw;/);
+  assert.match(source, /const displayTexRaw = shouldKeepPromptEquals \? tex : trimTrailingEquationEquals\(tex\);/);
+  assert.match(source, /const displayTex = shouldForcePromptEquals \? ensureTrailingEquationEquals\(displayTexRaw\) : displayTexRaw;/);
   assert.match(source, /toEquationTex\(trimTrailingEquationEquals\(r\.promptTex\.trim\(\)\)\)/);
   assert.match(source, /return renderMaybeMath\(formattedPrompt\);/);
   assert.match(source, /renderMaybeMath\(formatPrompt\(r\.prompt\)\)/);
@@ -43,7 +43,7 @@ test("quest card uses responsive layout to avoid answer overflow", () => {
   assert.match(source, /const qaAnswerOffsetPx = 0;/);
   assert.match(source, /const qaPromptFontPx = isE2EqualShareType \? 20 : isSecondaryQuest \? QA_PROMPT_FONT_STEPS\[0\] : QA_PROMPT_FONT_STEPS\[2\];/);
   assert.match(source, /const qaAnswerFontPx = isSecondaryQuest \? QA_ANSWER_FONT_STEPS\[0\] : QA_ANSWER_FONT_STEPS\[2\];/);
-  assert.match(source, /useSingleLineQa[\s\S]*\? "relative z-10 w-full flex items-center justify-start gap-2 sm:gap-3"/);
+  assert.match(source, /useSingleLineQa[\s\S]*\? "relative z-10 w-full flex flex-wrap items-center justify-start gap-2 sm:gap-3"/);
   assert.match(source, /useSingleLineQa[\s\S]*: "relative z-10 w-full flex flex-col justify-center gap-1 sm:gap-2"/);
   assert.match(source, /style=\{\(isSecondaryQuest \|\| isE2EqualShareType\) \? \{ fontSize: `\$\{qaPromptFontPx\}px` \} : undefined\}/);
   assert.match(source, /aria-label=\"recognized-answer\"/);

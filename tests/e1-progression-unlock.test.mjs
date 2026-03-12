@@ -174,7 +174,10 @@ const buildFinishedState = (studentStore, skillId, unlockedSkills = [skillId]) =
     student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 5, xpTotal: 50, xpSession: 50, level: 3 },
     patternProgress: {},
     skillProgress: {
-      [skillId]: { skillId, mastery: 0.8, mastered: true }
+      [skillId]: { skillId, mastery: 1, mastered: true }
+    },
+    skillXP: {
+      [skillId]: 100
     },
     unlockedSkills,
     session: {
@@ -192,16 +195,17 @@ const progressionCases = [
   ["E1_NUMBER_COUNT", "E1_NUMBER_ORDER"],
   ["E1_NUMBER_ORDER", "E1_NUMBER_COMPARE"],
   ["E1_NUMBER_COMPARE", "E1_NUMBER_COMPOSE"],
-  ["E1_NUMBER_COMPOSE", "E1_ADD_BASIC"]
+  ["E1_NUMBER_COMPOSE", "E1_NUMBER_DECOMPOSE"]
 ];
 
 for (const [completedSkillId, nextSkillId] of progressionCases) {
-  test(`${completedSkillId} mastery >= 0.8 unlocks ${nextSkillId}`, async () => {
+  test(`${completedSkillId} required XP clear unlocks ${nextSkillId}`, async () => {
     const { learningEngine, studentStore } = await loadModules();
     const state = buildFinishedState(studentStore, completedSkillId);
 
     const finished = learningEngine.finishSession(state);
 
     assert.equal(finished.state.unlockedSkills.includes(nextSkillId), true);
+    assert.deepEqual(finished.result.newlyUnlockedSkillIds, [nextSkillId]);
   });
 }

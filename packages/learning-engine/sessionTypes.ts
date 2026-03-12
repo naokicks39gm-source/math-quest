@@ -26,6 +26,7 @@ export type Session = {
   skillId?: string;
   startedDifficulty: number;
   skillProgressBefore?: SkillProgress;
+  skillXpBefore?: number;
   problems: SessionProblem[];
   index: number;
   correct: number;

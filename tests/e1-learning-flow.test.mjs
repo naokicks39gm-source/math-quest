@@ -160,16 +160,19 @@ const loadModules = async () => {
   };
 };
 
-test("ADD_BASIC completion recommends a next skill and starts that next session", async () => {
+test("ADD_BASIC completion recommends the single next skill and starts that next session", async () => {
   const { learningEngine, studentStore } = await loadModules();
   const state = studentStore.serializeState({
     version: 1,
     engineVersion: 1,
-    student: { difficulty: 3, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 5, xpTotal: 50, xpSession: 50, level: 3 },
+    student: { difficulty: 3, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 5, xpTotal: 100, xpSession: 50, level: 3 },
     patternProgress: {},
     skillProgress: {
-      E1_NUMBER_DECOMPOSE: { skillId: "E1_NUMBER_DECOMPOSE", mastery: 0.8, mastered: true },
-      E1_ADD_BASIC: { skillId: "E1_ADD_BASIC", mastery: 0.8, mastered: true }
+      E1_NUMBER_DECOMPOSE: { skillId: "E1_NUMBER_DECOMPOSE", mastery: 1, mastered: true },
+      E1_ADD_BASIC: { skillId: "E1_ADD_BASIC", mastery: 1, mastered: true }
+    },
+    skillXP: {
+      E1_ADD_BASIC: 100
     },
     unlockedSkills: ["E1_NUMBER_DECOMPOSE", "E1_ADD_BASIC"],
     session: {
@@ -179,7 +182,8 @@ test("ADD_BASIC completion recommends a next skill and starts that next session"
       problems: [],
       index: 0,
       correct: 5,
-      wrong: 0
+      wrong: 0,
+      skillXpBefore: 50
     }
   });
 
@@ -187,7 +191,8 @@ test("ADD_BASIC completion recommends a next skill and starts that next session"
   const recommendation = finished.result.recommendation;
 
   assert.equal(recommendation.type, "skill");
-  assert.equal(["E1_ADD_10", "E1_SUB_BASIC"].includes(recommendation.skillId), true);
+  assert.equal(recommendation.skillId, "E1_ADD_10");
+  assert.deepEqual(finished.result.newlyUnlockedSkillIds, ["E1_ADD_10"]);
 
   const next = learningEngine.startSession(finished.state, { mode: "skill", skillId: recommendation.skillId });
 

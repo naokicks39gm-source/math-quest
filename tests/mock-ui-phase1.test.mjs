@@ -74,13 +74,13 @@ test("skill list and detail pages use skill-system-based catalog", () => {
   assert.equal(progressPageSource.includes('import { loadStateFromClient } from "packages/learning-engine/studentStore";'), true);
   assert.equal(progressPageSource.includes("state.skillProgress[skill.id]"), true);
   assert.equal(progressPageSource.includes('router.push(`/quest?skillId=${encodeURIComponent(skill.id)}`)'), true);
-  assert.equal(progressPageSource.includes("mastery >= 0.75"), true);
+  assert.equal(progressPageSource.includes("mastery >= 0.8"), true);
   assert.equal(progressPageSource.includes("mastery > 0"), true);
-  assert.equal(progressPageSource.includes('return "not_started";'), true);
-  assert.equal(progressPageSource.includes("getSkillSortRank"), true);
+  assert.equal(progressPageSource.includes('return "not_started";'), false);
+  assert.equal(progressPageSource.includes("getSkillSortRank"), false);
   assert.equal(progressPageSource.includes("const getRecommendedSkill"), true);
   assert.equal(progressPageSource.includes("skill.patterns.length > 0"), true);
-  assert.equal(progressPageSource.includes('.filter((skill) => (skill.mastery ?? 0) < 0.75 && skill.patterns.length > 0)'), true);
+  assert.equal(progressPageSource.includes('.filter((skill) => skill.unlocked === true && (skill.mastery ?? 0) < 0.8 && skill.patterns.length > 0)'), true);
   assert.equal(progressPageSource.includes("Recommended"), true);
   assert.equal(progressPageSource.includes("Start Practice"), true);
   assert.equal(progressPageSource.includes(") : null}"), true);
@@ -94,7 +94,7 @@ test("skill list and detail pages use skill-system-based catalog", () => {
   assert.equal(progressPageSource.includes("🔥 {streak.streak} day streak"), true);
   assert.equal(progressPageSource.includes("left.mastery ?? 0"), true);
   assert.equal(progressPageSource.includes("right.mastery ?? 0"), true);
-  assert.equal(progressPageSource.includes('leftBucket === "learning" && rightBucket === "learning"'), true);
+  assert.equal(progressPageSource.includes('leftBucket === "learning" && rightBucket === "learning"'), false);
   assert.equal(progressPageSource.includes("left.title.localeCompare"), true);
   assert.equal(reviewPageSource.includes('import { loadStateFromClient } from "packages/learning-engine/studentStore";'), true);
   assert.equal(reviewPageSource.includes('trackAnalyticsEvent("review_open")'), true);
@@ -183,8 +183,8 @@ test("quest and review support weak pattern practice flow", () => {
   assert.equal(questSource.includes('trackAnalyticsEvent("session_start")'), true);
   assert.equal(questSource.includes('trackAnalyticsEvent("session_finish")'), true);
   assert.equal(questSource.includes("sessionStartTrackedRef.current"), true);
-  assert.equal(questSource.includes("earnedXp={learningResult.score * 10}"), true);
-  assert.equal(questSource.includes("xpSession={learningState?.student.xpSession ?? 0}"), true);
+  assert.equal(questSource.includes("earnedXp={learningResult.earnedXp}"), true);
+  assert.equal(questSource.includes("xpSession={learningState?.student.xpSession ?? 0}"), false);
   assert.equal(questSource.includes("xpTotal={learningState?.student.xpTotal ?? 0}"), true);
   assert.equal(questSource.includes("studentXP: {learningState?.student.xpTotal ?? 0}"), true);
   assert.equal(questSource.includes("sessionXP: {learningState?.student.xpSession ?? 0}"), true);
@@ -269,12 +269,15 @@ test("skills ui components expose mastery progress and status", () => {
   const uiIndexSource = read("packages/ui/index.ts");
 
   assert.equal(skillCardSource.includes('import SkillProgressBar from "packages/ui/SkillProgressBar";'), true);
-  assert.equal(skillCardSource.includes('mastery >= 0.75 ? "mastered" : "learning"'), true);
+  assert.equal(skillCardSource.includes('status === "MASTERED"'), true);
+  assert.equal(skillCardSource.includes('status === "LEARNING"'), true);
+  assert.equal(skillCardSource.includes('status === "AVAILABLE"'), true);
   assert.equal(skillCardSource.includes("skill.grade"), true);
   assert.equal(skillCardSource.includes("const masteryPercent = mastery !== undefined ? Math.round(mastery * 100) : 0;"), true);
   assert.equal(skillCardSource.includes("{masteryPercent}%"), true);
   assert.equal(progressBarSource.includes("type SkillProgressBarProps = {"), true);
   assert.equal(progressBarSource.includes("mastery: number;"), true);
+  assert.equal(progressBarSource.includes('tone?: "danger" | "warning" | "success";'), true);
   assert.equal(progressBarSource.includes("normalizedMastery * 100"), true);
   assert.equal(uiIndexSource.includes('export { default as SkillProgressBar } from "./SkillProgressBar";'), true);
 });

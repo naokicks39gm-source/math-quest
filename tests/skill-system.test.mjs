@@ -150,13 +150,11 @@ test("skill tree exposes typed skill relationships", async () => {
     title: "1〜20をかぞえる",
     grade: "E1",
     patterns: ["E1_NUMBER_COUNT"],
-    difficulty: 1
+    difficulty: 1,
+    requiredXP: 100
   });
-  assert.deepEqual(skillTree.getPrerequisites("E1_FACT_FAMILY"), ["E1_ADD_10", "E1_SUB_FACTS"]);
-  assert.deepEqual(
-    new Set(skillTree.getNextSkills("E1_NUMBER_COUNT").map((skill) => skill.id)),
-    new Set(["E1_NUMBER_ORDER", "E1_ADD_ZERO"])
-  );
+  assert.deepEqual(skillTree.getPrerequisites("E1_FACT_FAMILY"), ["E1_SUB_BORROW"]);
+  assert.deepEqual(skillTree.getNextSkills("E1_NUMBER_COUNT").map((skill) => skill.id), ["E1_NUMBER_ORDER"]);
   assert.deepEqual(skillTree.getSkill("E1_ADD_10")?.patterns, ["E1_ADD_10"]);
   assert.deepEqual(
     skillTree.getRootSkills().map((skill) => skill.id).sort(),
@@ -188,12 +186,14 @@ test("getSkillTree reflects unlocked and mastered flags from state", async () =>
       id: "E1_ADD_BASIC",
       title: "1桁のたし算",
       difficulty: 3,
-      prerequisite: ["E1_NUMBER_COMPOSE", "E1_ADD_NEAR_DOUBLES"],
+      requiredXP: 100,
+      prerequisite: ["E1_ADD_NEAR_DOUBLES"],
       unlocked: true,
-      mastered: true,
-      mastery: 0.8,
+      mastered: false,
+      mastery: 0.4,
       xp: 40,
-      nextSkills: ["E1_ADD_10", "E1_SUB_BASIC"]
+      nextSkills: ["E1_ADD_10"],
+      status: "LEARNING"
     }
   );
   assert.deepEqual(
@@ -202,12 +202,14 @@ test("getSkillTree reflects unlocked and mastered flags from state", async () =>
       id: "E1_FACT_FAMILY",
       title: "たし算とひき算の関係",
       difficulty: 4,
-      prerequisite: ["E1_ADD_10", "E1_SUB_FACTS"],
+      requiredXP: 100,
+      prerequisite: ["E1_SUB_BORROW"],
       unlocked: false,
       mastered: true,
-      mastery: 0.2,
+      mastery: 0,
       xp: 0,
-      nextSkills: []
+      nextSkills: [],
+      status: "MASTERED"
     }
   );
 });

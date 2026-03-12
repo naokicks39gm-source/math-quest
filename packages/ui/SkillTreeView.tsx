@@ -11,6 +11,13 @@ type SkillTreeViewProps = {
   onSkillClick?: (skillId: string) => void;
 };
 
+const getStatusLabel = (status: SkillNode["status"]) => {
+  if (status === "MASTERED") return "クリア！";
+  if (status === "LEARNING") return "れんしゅう中";
+  if (status === "AVAILABLE") return "つぎ";
+  return "これから";
+};
+
 const clampMastery = (mastery: number) => Math.max(0, Math.min(1, mastery));
 const getMasteryTone = (mastery: number): "danger" | "warning" | "success" => {
   const percent = clampMastery(mastery) * 100;
@@ -68,8 +75,8 @@ export default function SkillTreeView({ skills, currentSkillId, focusSkillId, on
   return (
     <section className="max-h-[90vh] overflow-y-auto overscroll-contain rounded-[32px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
       <div className="text-sm font-semibold uppercase tracking-[0.35em] text-sky-600">Skill Tree</div>
-      <h2 className="mt-3 text-4xl font-black text-slate-900">Learning Progress</h2>
-      <p className="mt-4 text-base font-medium text-slate-600">Unlocked paths, mastery, and next skills.</p>
+      <h2 className="mt-3 text-4xl font-black text-slate-900">すすみかた</h2>
+      <p className="mt-4 text-base font-medium text-slate-600">いまのスキルと、つぎにすすむスキルです。</p>
 
       <div className="mt-6 space-y-4">
         {visibleSkills.map((skill) => {
@@ -117,34 +124,36 @@ export default function SkillTreeView({ skills, currentSkillId, focusSkillId, on
                           : "bg-slate-200 text-slate-600"
                   }`}
                 >
-                  {statusLabel}
+                  {getStatusLabel(statusLabel)}
                 </div>
               </div>
 
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Difficulty</div>
-                  <div className="mt-2 text-lg font-bold text-slate-900">{skill.difficulty}</div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">XP</div>
+                  <div className="mt-2 text-lg font-bold text-slate-900">
+                    {skill.xp} / {skill.requiredXP}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">XP</div>
-                  <div className="mt-2 text-lg font-bold text-slate-900">{skill.xp}</div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">あと少し！</div>
+                  <div className="mt-2 text-lg font-bold text-slate-900">{Math.max(skill.requiredXP - skill.xp, 0)}</div>
                 </div>
               </div>
 
               <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Mastery</div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">すすみぐあい</div>
                   <div className="text-sm font-bold text-slate-900">{masteryPercent}%</div>
                 </div>
                 <SkillProgressBar mastery={mastery} tone={tone} />
               </div>
 
               <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Next</div>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">つぎ</div>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {skill.nextSkills.length > 0 ? (
-                    skill.nextSkills.map((nextSkillId) => (
+                  {skill.nextSkills.slice(0, 1).length > 0 ? (
+                    skill.nextSkills.slice(0, 1).map((nextSkillId) => (
                       <span
                         key={nextSkillId}
                         className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
@@ -158,7 +167,7 @@ export default function SkillTreeView({ skills, currentSkillId, focusSkillId, on
                       </span>
                     ))
                   ) : (
-                    <span className="text-sm font-medium text-slate-500">No next skills</span>
+                    <span className="text-sm font-medium text-slate-500">さいごまでできたよ</span>
                   )}
                 </div>
               </div>
