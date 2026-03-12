@@ -52,14 +52,23 @@ const createSkillSystemStub = (outputPath) => {
     outputPath,
     [
       'const skillPatterns = {',
+      '  E1_NUMBER_COUNT: ["E1_NUMBER_COUNT"],',
+      '  E1_NUMBER_ORDER: ["E1_NUMBER_ORDER"],',
+      '  E1_NUMBER_COMPARE: ["E1_NUMBER_COMPARE"],',
+      '  E1_NUMBER_COMPOSE: ["E1_NUMBER_COMPOSE"],',
+      '  E1_NUMBER_DECOMPOSE: ["E1_NUMBER_DECOMPOSE"],',
+      '  E1_NUMBER_LINE: ["E1_NUMBER_LINE"],',
+      '  E1_ADD_ZERO: ["E1_ADD_ZERO"],',
+      '  E1_ADD_ONE: ["E1_ADD_ONE"],',
+      '  E1_ADD_DOUBLES: ["E1_ADD_DOUBLES"],',
+      '  E1_ADD_NEAR_DOUBLES: ["E1_ADD_NEAR_DOUBLES"],',
       '  E1_ADD_BASIC: ["E1_ADD_BASIC"],',
       '  E1_ADD_10: ["E1_ADD_10"],',
       '  E1_ADD_CARRY: ["E1_ADD_CARRY"],',
       '  E1_SUB_BASIC: ["E1_SUB_BASIC"],',
+      '  E1_SUB_FACTS: ["E1_SUB_FACTS"],',
+      '  E1_FACT_FAMILY: ["E1_FACT_FAMILY"],',
       '  E1_SUB_BORROW: ["E1_SUB_BORROW"],',
-      '  E1_NUMBER_COMPARE: ["E1_NUMBER_COMPARE"],',
-      '  E1_NUMBER_COMPOSE: ["E1_NUMBER_COMPOSE"],',
-      '  E1_NUMBER_DECOMPOSE: ["E1_NUMBER_DECOMPOSE"]',
       "};",
       "export const getPatterns = (skillId) => {",
       "  const patterns = skillPatterns[skillId];",
@@ -73,12 +82,21 @@ const createSkillSystemStub = (outputPath) => {
 
 const createProblemEngineStub = (outputPath) => {
   const ranges = [
+    ['"E1-NUM-COUNT-"', 1, 1, "1"],
+    ['"E1-NUM-ORDER-"', 1, 1, "1"],
     ['"E1-ADD-BASIC-"', 1, 10, "(index <= 8 ? 1 : 2)"],
     ['"E1-SUB-BASIC-"', 1, 10, "(index <= 7 ? 1 : 2)"],
+    ['"E1-SUB-FACTS-"', 1, 1, "2"],
+    ['"E1-FACT-FAMILY-"', 1, 3, "3"],
     ['"E1-SUB-BORROW-"', 1, 10, "(index <= 4 ? 2 : 3)"],
     ['"E1-NUM-COMPARE-"', 1, 1, "1"],
     ['"E1-NUM-COMPOSE-"', 1, 1, "1"],
-    ['"E1-NUM-DECOMPOSE-"', 1, 1, "1"]
+    ['"E1-NUM-DECOMPOSE-"', 1, 1, "1"],
+    ['"E1-NUM-LINE-"', 1, 1, "1"],
+    ['"E1-ADD-ZERO-"', 1, 1, "1"],
+    ['"E1-ADD-ONE-"', 1, 1, "1"],
+    ['"E1-ADD-DOUBLES-"', 1, 1, "2"],
+    ['"E1-ADD-NEAR-DOUBLES-"', 1, 1, "2"]
   ];
 
   fs.writeFileSync(
@@ -99,13 +117,13 @@ const createProblemEngineStub = (outputPath) => {
       '    patternKey: pattern.key,',
       '    question: `${pattern.key} question ${index}`,',
       '    answer: `${index}`,',
-      '    variables: pattern.key === "E1-NUM-COMPARE-01" ? { a: index, b: index + 1 } : pattern.key === "E1-NUM-COMPOSE-01" ? { a: index % 5, b: 10 - (index % 5) } : pattern.key === "E1-NUM-DECOMPOSE-01" ? { whole: 10, known: index % 5 } : undefined,',
+      '    variables: pattern.key === "E1-NUM-COUNT-01" ? { n: index % 21 } : pattern.key === "E1-NUM-ORDER-01" ? { a: index % 21, b: (index % 21) + 1 } : pattern.key === "E1-NUM-COMPARE-01" ? { a: index, b: index + 1 } : pattern.key === "E1-NUM-COMPOSE-01" ? { a: index % 10, b: 10 - (index % 10) } : pattern.key === "E1-NUM-DECOMPOSE-01" ? { whole: 10, a: index % 10, b: 10 - (index % 10) } : pattern.key === "E1-NUM-LINE-01" ? { start: index % 10, move: 1 + (index % 10) } : undefined,',
       "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2 }",
       "  }));",
       "export const generateRuntimeProblems = (pattern, count) =>",
       "  generateProblems(pattern, count).map((problem) => ({",
       "    ...problem,",
-      "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? ((problem.variables.a ?? 0) < (problem.variables.b ?? 0) ? \"LESS\" : \"GREATER\") : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String((problem.variables.whole ?? 0) - (problem.variables.known ?? 0)) : problem.answer,",
+      "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? ((problem.variables.a ?? 0) < (problem.variables.b ?? 0) ? \"LESS\" : \"GREATER\") : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String(problem.variables.b ?? 0) : pattern.key === \"E1-NUM-COUNT-01\" ? String(problem.variables.n ?? 0) : pattern.key === \"E1-NUM-ORDER-01\" ? `[${Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)},${Math.max(problem.variables.a ?? 0, problem.variables.b ?? 0)}]` : pattern.key === \"E1-NUM-LINE-01\" ? String((problem.variables.start ?? 0) + (problem.variables.move ?? 0)) : problem.answer,",
       "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\" }",
       "  }));"
     ].join("\n"),
@@ -195,14 +213,23 @@ const loadModules = async () => {
 };
 
 const e1SkillCases = [
+  ["E1_NUMBER_COUNT", "E1-NUM-COUNT-"],
+  ["E1_NUMBER_ORDER", "E1-NUM-ORDER-"],
+  ["E1_NUMBER_COMPARE", "E1-NUM-COMPARE-"],
+  ["E1_NUMBER_COMPOSE", "E1-NUM-COMPOSE-"],
+  ["E1_NUMBER_DECOMPOSE", "E1-NUM-DECOMPOSE-"],
+  ["E1_NUMBER_LINE", "E1-NUM-LINE-"],
+  ["E1_ADD_ZERO", "E1-ADD-ZERO-"],
+  ["E1_ADD_ONE", "E1-ADD-ONE-"],
+  ["E1_ADD_DOUBLES", "E1-ADD-DOUBLES-"],
+  ["E1_ADD_NEAR_DOUBLES", "E1-ADD-NEAR-DOUBLES-"],
   ["E1_ADD_BASIC", "E1-ADD-BASIC-"],
   ["E1_ADD_10", "E1-ADD-MAKE10"],
   ["E1_ADD_CARRY", "E1-ADD-CARRY"],
   ["E1_SUB_BASIC", "E1-SUB-BASIC-"],
+  ["E1_SUB_FACTS", "E1-SUB-FACTS-"],
+  ["E1_FACT_FAMILY", "E1-FACT-FAMILY-"],
   ["E1_SUB_BORROW", "E1-SUB-BORROW-"],
-  ["E1_NUMBER_COMPARE", "E1-NUM-COMPARE-"],
-  ["E1_NUMBER_COMPOSE", "E1-NUM-COMPOSE-"],
-  ["E1_NUMBER_DECOMPOSE", "E1-NUM-DECOMPOSE-"]
 ];
 
 test("learningEngine.startSession generates valid five-problem sessions for runtime E1 skills", async () => {

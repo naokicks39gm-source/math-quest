@@ -1,0 +1,64 @@
+[
+  {
+    "key": "E1-MUL-BASIC-01",
+    "template": "{a} × {b}",
+    "variables": {
+      "a": [
+        1,
+        5
+      ],
+      "b": [
+        1,
+        5
+      ]
+    },
+    "answer": "a * b"
+  },
+  {
+    "key": "E1-MUL-BASIC-02",
+    "template": "{a} × {b}",
+    "variables": {
+      "a": [
+        2,
+        9
+      ],
+      "b": [
+        2,
+        5
+      ]
+    },
+    "constraints": [
+      "a * b <= 30"
+    ],
+    "answer": "a * b"
+  },
+  {
+    "key": "E1-MUL-BASIC-03",
+    "template": "{a} × {b}",
+    "variables": {
+      "a": [
+        2,
+        9
+      ],
+      "b": [
+        6,
+        9
+      ]
+    },
+    "constraints": [
+      "a * b <= 54"
+    ],
+    "answer": "a * b"
+  },
+  {
+    "key": "E1-MUL-BASIC-04",
+    "template": "{a} × 10",
+    "variables": {
+      "a": [
+        2,
+        9
+      ]
+    },
+    "answer": "a * 10"
+  }
+]

@@ -90,7 +90,7 @@ test("pattern catalog loader can load all patterns in a level directory", async 
   const catalog = adapters.loadPatternCatalog("E1");
   assert.equal(Array.isArray(catalog), true);
   assert.equal(catalog.length >= 30, true);
-  assert.equal(catalog[0].key, "E1-ADD-BASIC-01");
+  assert.equal(catalog[0].key, "E1-ADD-ZERO-01");
 });
 
 test("loaded catalog entries follow minimal DSL shape", async () => {

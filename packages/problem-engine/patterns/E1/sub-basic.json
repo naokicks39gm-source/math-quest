@@ -3,17 +3,12 @@
     "key": "E1-SUB-BASIC-01",
     "template": "{a} - {b}",
     "variables": {
-      "a": [
-        1,
-        9
-      ],
-      "b": [
-        0,
-        4
-      ]
+      "a": [0, 9],
+      "b": [0, 9]
     },
     "constraints": [
-      "a >= b"
+      "a >= b",
+      "a - b <= 4"
     ],
     "answer": "a - b"
   },
@@ -21,18 +16,13 @@
     "key": "E1-SUB-BASIC-02",
     "template": "{a} - {b}",
     "variables": {
-      "a": [
-        5,
-        9
-      ],
-      "b": [
-        1,
-        5
-      ]
+      "a": [2, 9],
+      "b": [0, 7]
     },
     "constraints": [
       "a >= b",
-      "a - b <= 9"
+      "a - b >= 1",
+      "a - b <= 5"
     ],
     "answer": "a - b"
   },
@@ -40,18 +30,12 @@
     "key": "E1-SUB-BASIC-03",
     "template": "{a} - {b}",
     "variables": {
-      "a": [
-        2,
-        9
-      ],
-      "b": [
-        1,
-        8
-      ]
+      "a": [3, 9],
+      "b": [1, 8]
     },
     "constraints": [
       "a >= b",
-      "a - b >= 1"
+      "a > b"
     ],
     "answer": "a - b"
   },
@@ -59,17 +43,11 @@
     "key": "E1-SUB-BASIC-04",
     "template": "{a} - {b}",
     "variables": {
-      "a": [
-        4,
-        9
-      ],
-      "b": [
-        1,
-        7
-      ]
+      "a": [4, 9],
+      "b": [0, 8]
     },
     "constraints": [
-      "a > b",
+      "a >= b",
       "a - b >= 2"
     ],
     "answer": "a - b"
@@ -78,113 +56,64 @@
     "key": "E1-SUB-BASIC-05",
     "template": "{a} - {b}",
     "variables": {
-      "a": [
-        6,
-        9
-      ],
-      "b": [
-        1,
-        6
-      ]
-    },
-    "constraints": [
-      "a > b"
-    ],
-    "answer": "a - b"
-  },
-  {
-    "key": "E1-SUB-BASIC-06",
-    "template": "{a} - {b}",
-    "variables": {
-      "a": [
-        3,
-        8
-      ],
-      "b": [
-        0,
-        5
-      ]
-    },
-    "constraints": [
-      "a >= b",
-      "a - b <= 5"
-    ],
-    "answer": "a - b"
-  },
-  {
-    "key": "E1-SUB-BASIC-07",
-    "template": "{a} - {b}",
-    "variables": {
-      "a": [
-        7,
-        9
-      ],
-      "b": [
-        0,
-        8
-      ]
-    },
-    "constraints": [
-      "a >= b",
-      "a - b >= 1"
-    ],
-    "answer": "a - b"
-  },
-  {
-    "key": "E1-SUB-BASIC-08",
-    "template": "{a} - {b}",
-    "variables": {
-      "a": [
-        5,
-        9
-      ],
-      "b": [
-        1,
-        7
-      ]
-    },
-    "constraints": [
-      "a > b",
-      "a - b <= 6"
-    ],
-    "answer": "a - b"
-  },
-  {
-    "key": "E1-SUB-BASIC-09",
-    "template": "{a} - {b}",
-    "variables": {
-      "a": [
-        8,
-        9
-      ],
-      "b": [
-        0,
-        8
-      ]
-    },
-    "constraints": [
-      "a > b",
-      "a - b >= 3"
-    ],
-    "answer": "a - b"
-  },
-  {
-    "key": "E1-SUB-BASIC-10",
-    "template": "{a} - {b}",
-    "variables": {
-      "a": [
-        1,
-        9
-      ],
-      "b": [
-        0,
-        9
-      ]
+      "a": [5, 9],
+      "b": [0, 9]
     },
     "constraints": [
       "a >= b",
       "a - b <= 9"
     ],
     "answer": "a - b"
+  },
+  {
+    "key": "E1-SUB-FACTS-01",
+    "template": "{a} - {b}",
+    "variables": {
+      "a": [1, 10],
+      "b": [0, 10]
+    },
+    "constraints": [
+      "a >= b"
+    ],
+    "answer": "a - b"
+  },
+  {
+    "key": "E1-FACT-FAMILY-01",
+    "template": "{a} + {b} = ?",
+    "variables": {
+      "a": [0, 9],
+      "b": [0, 9],
+      "c": [0, 18]
+    },
+    "constraints": [
+      "c == a + b"
+    ],
+    "answer": "c"
+  },
+  {
+    "key": "E1-FACT-FAMILY-02",
+    "template": "{c} - {a} = ?",
+    "variables": {
+      "a": [0, 9],
+      "b": [0, 9],
+      "c": [0, 18]
+    },
+    "constraints": [
+      "c == a + b"
+    ],
+    "answer": "b"
+  },
+  {
+    "key": "E1-FACT-FAMILY-03",
+    "template": "{c} - {b} = ?",
+    "variables": {
+      "a": [0, 9],
+      "b": [0, 9],
+      "c": [0, 18]
+    },
+    "constraints": [
+      "c == a + b"
+    ],
+    "answer": "a"
   }
 ]

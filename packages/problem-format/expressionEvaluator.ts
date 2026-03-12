@@ -69,6 +69,8 @@ const lcm = (a: number, b: number) => {
 
 const FUNCTIONS: Record<string, (...args: number[]) => number> = {
   abs: (x) => Math.abs(x),
+  min: (...args) => Math.min(...args),
+  max: (...args) => Math.max(...args),
   sign: (x) => (x === 0 ? 0 : x > 0 ? 1 : -1),
   pow: (x, n) => x ** n,
   gcd: (a, b) => gcd(a, b),

@@ -17,29 +17,26 @@ const skills = skillsData as Skill[];
 
 const asPatternCatalog = (patterns: unknown): PatternDSL[] => patterns as PatternDSL[];
 
+const byPrefix = (patterns: PatternDSL[], prefix: string) => patterns.filter((pattern) => pattern.key.startsWith(prefix));
+
 const patternCatalog: Record<string, PatternDSL[]> = {
-  // Number concept skills stay design-first; only concepts with a reasonable runtime proxy are wired.
-  E1_ADD_BASIC: asPatternCatalog(addBasicPatterns),
-  E1_ADD_10: asPatternCatalog(addMake10Patterns),
-  E1_ADD_CARRY: asPatternCatalog(addCarryPatterns),
-  E1_SUB_BASIC: asPatternCatalog(subBasicPatterns),
-  E1_SUB_BORROW: asPatternCatalog(subBorrowPatterns),
-  E1_NUMBER_COUNT: asPatternCatalog(numberComparePatterns),
-  E1_NUMBER_COMPARE: asPatternCatalog(numberComparePatterns),
-  E1_NUMBER_ORDER: asPatternCatalog(numberComparePatterns),
+  E1_NUMBER_COUNT: byPrefix(asPatternCatalog(numberComparePatterns), "E1-NUM-COUNT-"),
+  E1_NUMBER_ORDER: byPrefix(asPatternCatalog(numberComparePatterns), "E1-NUM-ORDER-"),
+  E1_NUMBER_COMPARE: byPrefix(asPatternCatalog(numberComparePatterns), "E1-NUM-COMPARE-"),
   E1_NUMBER_COMPOSE: asPatternCatalog(numberComposePatterns),
   E1_NUMBER_DECOMPOSE: asPatternCatalog(numberDecomposePatterns),
-  E1_NUMBER_LINE: asPatternCatalog(numberComparePatterns),
-  E1_ADD_ZERO: asPatternCatalog(addBasicPatterns),
-  E1_ADD_ONE: asPatternCatalog(addBasicPatterns),
-  E1_ADD_TWO: asPatternCatalog(addBasicPatterns),
-  E1_ADD_DOUBLES: asPatternCatalog(addBasicPatterns),
-  E1_ADD_NEAR_DOUBLES: asPatternCatalog(addBasicPatterns),
-  E1_FACT_FAMILY: [
-    ...asPatternCatalog(addMake10Patterns),
-    ...asPatternCatalog(subBasicPatterns),
-    ...asPatternCatalog(numberDecomposePatterns)
-  ],
+  E1_NUMBER_LINE: byPrefix(asPatternCatalog(numberComparePatterns), "E1-NUM-LINE-"),
+  E1_ADD_ZERO: byPrefix(asPatternCatalog(addBasicPatterns), "E1-ADD-ZERO-"),
+  E1_ADD_ONE: byPrefix(asPatternCatalog(addBasicPatterns), "E1-ADD-ONE-"),
+  E1_ADD_DOUBLES: byPrefix(asPatternCatalog(addBasicPatterns), "E1-ADD-DOUBLES-"),
+  E1_ADD_NEAR_DOUBLES: byPrefix(asPatternCatalog(addBasicPatterns), "E1-ADD-NEAR-DOUBLES-"),
+  E1_ADD_BASIC: byPrefix(asPatternCatalog(addBasicPatterns), "E1-ADD-BASIC-"),
+  E1_ADD_10: asPatternCatalog(addMake10Patterns),
+  E1_ADD_CARRY: asPatternCatalog(addCarryPatterns),
+  E1_SUB_BASIC: byPrefix(asPatternCatalog(subBasicPatterns), "E1-SUB-BASIC-"),
+  E1_SUB_FACTS: byPrefix(asPatternCatalog(subBasicPatterns), "E1-SUB-FACTS-"),
+  E1_FACT_FAMILY: byPrefix(asPatternCatalog(subBasicPatterns), "E1-FACT-FAMILY-"),
+  E1_SUB_BORROW: asPatternCatalog(subBorrowPatterns),
   E2_ADD_2DIGIT: asPatternCatalog(add2DigitPatterns),
   E2_SUB_2DIGIT: asPatternCatalog(sub2DigitPatterns)
 };

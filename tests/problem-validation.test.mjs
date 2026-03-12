@@ -244,14 +244,23 @@ test("problem validation harness validates 1000 generated problems for supported
   const { harness } = await loadValidationModules();
 
   for (const skillId of [
+    "E1_NUMBER_COUNT",
+    "E1_NUMBER_ORDER",
+    "E1_NUMBER_COMPARE",
+    "E1_NUMBER_COMPOSE",
+    "E1_NUMBER_DECOMPOSE",
+    "E1_NUMBER_LINE",
+    "E1_ADD_ZERO",
+    "E1_ADD_ONE",
+    "E1_ADD_DOUBLES",
+    "E1_ADD_NEAR_DOUBLES",
     "E1_ADD_BASIC",
     "E1_ADD_10",
     "E1_ADD_CARRY",
     "E1_SUB_BASIC",
+    "E1_SUB_FACTS",
     "E1_SUB_BORROW",
-    "E1_NUMBER_COMPARE",
-    "E1_NUMBER_COMPOSE",
-    "E1_NUMBER_DECOMPOSE"
+    "E1_FACT_FAMILY"
   ]) {
     const summary = harness.validateSkillGenerator(skillId, 1000);
     assert.equal(summary.skillId, skillId);
@@ -277,7 +286,7 @@ test("problem validator applies skill-specific arithmetic rules", async () => {
 
   const result = validator.validateProblem(invalidProblem, pattern, skill);
   assert.equal(result.valid, false);
-  assert.equal(result.error, "sum not 10");
+  assert.equal(result.error, "constraint violation");
 });
 
 test("problem validation keeps common rules and unresolved skill patterns fail fast", async () => {
@@ -336,8 +345,40 @@ test("problem batch validator detects low variety batches", async () => {
   assert.equal(result.error, "low problem variety");
 });
 
-test("number rules validate compare/compose/decompose semantics", async () => {
+test("number rules validate count/order/compare/compose/decompose/line semantics", async () => {
   const { numberRules } = await loadValidationModules();
+
+  assert.equal(
+    numberRules.validateNumberCount({
+      problem: {
+        id: "count-1",
+        question: "7 を かぞえると いくつ？",
+        answer: "7",
+        patternKey: "E1-NUM-COUNT-01",
+        variables: { n: 7 },
+        meta: { difficulty: 1 }
+      },
+      pattern: { key: "E1-NUM-COUNT-01" },
+      skill: { id: "E1_NUMBER_COUNT", title: "かずをかぞえる", grade: "E1", patterns: ["E1_NUMBER_COUNT"] }
+    }).valid,
+    true
+  );
+
+  assert.equal(
+    numberRules.validateNumberOrder({
+      problem: {
+        id: "order-1",
+        question: "8 と 3 を ちいさい じゅんに ならべると？",
+        answer: "[3,8]",
+        patternKey: "E1-NUM-ORDER-01",
+        variables: { a: 8, b: 3 },
+        meta: { difficulty: 1 }
+      },
+      pattern: { key: "E1-NUM-ORDER-01" },
+      skill: { id: "E1_NUMBER_ORDER", title: "数の順番", grade: "E1", patterns: ["E1_NUMBER_ORDER"] }
+    }).valid,
+    true
+  );
 
   assert.equal(
     numberRules.validateNumberCompare({
@@ -386,17 +427,57 @@ test("number rules validate compare/compose/decompose semantics", async () => {
     }).valid,
     true
   );
+
+  assert.equal(
+    numberRules.validateNumberLine({
+      problem: {
+        id: "line-1",
+        question: "3 から 5 すすめると どこ？",
+        answer: "8",
+        patternKey: "E1-NUM-LINE-01",
+        variables: { start: 3, move: 5 },
+        meta: { difficulty: 1 }
+      },
+      pattern: { key: "E1-NUM-LINE-01" },
+      skill: { id: "E1_NUMBER_LINE", title: "数直線", grade: "E1", patterns: ["E1_NUMBER_LINE"] }
+    }).valid,
+    true
+  );
 });
 
 test("problem validator applies number skill semantic rules", async () => {
   const { tree, validator } = await loadValidationModules();
   const compareSkill = tree.getSkill("E1_NUMBER_COMPARE");
+  const orderSkill = tree.getSkill("E1_NUMBER_ORDER");
   const composeSkill = tree.getSkill("E1_NUMBER_COMPOSE");
   const decomposeSkill = tree.getSkill("E1_NUMBER_DECOMPOSE");
 
   assert.ok(compareSkill);
+  assert.ok(orderSkill);
   assert.ok(composeSkill);
   assert.ok(decomposeSkill);
+
+  assert.equal(
+    validator.validateProblem(
+      {
+        id: "order-invalid",
+        question: "8 と 3 を ちいさい じゅんに ならべると？",
+        answer: "[8,3]",
+        patternKey: "E1-NUM-ORDER-01",
+        variables: { a: 8, b: 3 },
+        meta: { difficulty: 1 }
+      },
+      {
+        key: "E1-NUM-ORDER-01",
+        template: "{a} と {b} を ちいさい じゅんに ならべると？",
+        variables: { a: [0, 20], b: [0, 20] },
+        constraints: ["a != b"],
+        answer: "[min(a,b), max(a,b)]"
+      },
+      orderSkill
+    ).error,
+    "wrong answer"
+  );
 
   assert.equal(
     validator.validateProblem(
@@ -418,16 +499,16 @@ test("problem validator applies number skill semantic rules", async () => {
     validator.validateProblem(
       {
         id: "compose-invalid",
-        question: "7 + 4 =",
+        question: "7 + 3 =",
         answer: "11",
         patternKey: "E1-NUM-COMPOSE-01",
-        variables: { a: 7, b: 4 },
-        meta: { difficulty: 1 }
+        variables: { a: 7, b: 3 },
+        meta: { difficulty: 2 }
       },
-      { key: "E1-NUM-COMPOSE-01" },
+      { key: "E1-NUM-COMPOSE-01", template: "{a} + {b} =", variables: { a: [0, 10], b: [0, 10] }, constraints: ["b == 10 - a"], answer: "a + b" },
       composeSkill
     ).error,
-    "compose range mismatch"
+    "wrong answer"
   );
 
   assert.equal(
@@ -437,10 +518,10 @@ test("problem validator applies number skill semantic rules", async () => {
         question: "10 は7と？でできます。",
         answer: "-3",
         patternKey: "E1-NUM-DECOMPOSE-01",
-        variables: { whole: 10, known: 7 },
+        variables: { whole: 10, a: 7, b: 3 },
         meta: { difficulty: 1 }
       },
-      { key: "E1-NUM-DECOMPOSE-01" },
+      { key: "E1-NUM-DECOMPOSE-01", template: "{whole} は {a} と ？", variables: { whole: [10, 10], a: [0, 10], b: [0, 10] }, constraints: ["whole == 10", "b == whole - a"], answer: "b" },
       decomposeSkill
     ).error,
     "negative not allowed"
@@ -449,7 +530,7 @@ test("problem validator applies number skill semantic rules", async () => {
 
 test("runtime-backed number skills use runtime generator path in validation harness", () => {
   const source = fs.readFileSync(path.join(root, "packages/problem-validation/generatorTest.ts"), "utf8");
-  assert.equal(source.includes('const runtimeMandatorySkills = new Set(["E1_NUMBER_COMPARE", "E1_NUMBER_COMPOSE", "E1_NUMBER_DECOMPOSE"]);'), true);
+  assert.equal(source.includes('const runtimeMandatorySkills = new Set(["E1_NUMBER_COMPARE"]);'), true);
   assert.equal(source.includes("generateRuntimeProblems(pattern, perPatternCount)"), true);
 });
 
@@ -516,6 +597,21 @@ test("runtime number patterns assign tuned difficulty bands", async () => {
 
   assert.equal(
     problemEngine.computeNumberDifficulty({
+      patternKey: "E1-NUM-ORDER-01",
+      variables: { a: 2, b: 3 }
+    }),
+    1
+  );
+  assert.equal(
+    problemEngine.computeNumberDifficulty({
+      patternKey: "E1-NUM-ORDER-01",
+      variables: { a: 12, b: 18 }
+    }),
+    2
+  );
+
+  assert.equal(
+    problemEngine.computeNumberDifficulty({
       patternKey: "E1-NUM-COMPARE-01",
       variables: { a: 3, b: 5 }
     }),
@@ -565,6 +661,20 @@ test("runtime number patterns assign tuned difficulty bands", async () => {
     }),
     2
   );
+  assert.equal(
+    problemEngine.computeNumberDifficulty({
+      patternKey: "E1-NUM-LINE-01",
+      variables: { start: 2, move: 3 }
+    }),
+    1
+  );
+  assert.equal(
+    problemEngine.computeNumberDifficulty({
+      patternKey: "E1-NUM-LINE-01",
+      variables: { start: 10, move: 9 }
+    }),
+    2
+  );
 });
 
 test("runtime number source produces expected difficulty distributions", async () => {
@@ -581,7 +691,7 @@ test("runtime number source produces expected difficulty distributions", async (
     key: "E1-NUM-COMPOSE-01",
     template: "{a} + {b} =",
     variables: { a: [0, 10], b: [0, 10] },
-    constraints: ["a + b <= 10"],
+    constraints: ["b == 10 - a"],
     answer: "a + b"
   };
   const decomposePattern = {
@@ -603,6 +713,6 @@ test("runtime number source produces expected difficulty distributions", async (
   );
 
   assert.deepEqual([...compareDifficulties].sort(), [1, 2, 3]);
-  assert.deepEqual([...composeDifficulties].sort(), [1, 2]);
+  assert.deepEqual([...composeDifficulties].sort(), [2]);
   assert.deepEqual([...decomposeDifficulties].sort(), [1, 2]);
 });

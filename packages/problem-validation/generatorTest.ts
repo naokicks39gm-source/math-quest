@@ -14,97 +14,35 @@ import type { Skill } from "packages/skill-system/skillTypes";
 
 import { validateProblem, validateProblemBatch } from "./problemValidator";
 
+const byPrefix = (patterns: PatternDSL[], prefix: string) => patterns.filter((pattern) => pattern.key.startsWith(prefix));
+
 const patternCatalog: Record<string, PatternDSL[]> = {
-  E1_ADD_BASIC: addBasicPatterns as unknown as PatternDSL[],
-  E1_ADD_10: addMake10Patterns as unknown as PatternDSL[],
-  E1_ADD_CARRY: addCarryPatterns as unknown as PatternDSL[],
-  E1_SUB_BASIC: subBasicPatterns as unknown as PatternDSL[],
-  E1_SUB_BORROW: subBorrowPatterns as unknown as PatternDSL[],
-  E1_NUMBER_COMPARE: numberComparePatterns as unknown as PatternDSL[],
+  E1_NUMBER_COUNT: byPrefix(numberComparePatterns as unknown as PatternDSL[], "E1-NUM-COUNT-"),
+  E1_NUMBER_ORDER: byPrefix(numberComparePatterns as unknown as PatternDSL[], "E1-NUM-ORDER-"),
+  E1_NUMBER_COMPARE: byPrefix(numberComparePatterns as unknown as PatternDSL[], "E1-NUM-COMPARE-"),
   E1_NUMBER_COMPOSE: numberComposePatterns as unknown as PatternDSL[],
   E1_NUMBER_DECOMPOSE: numberDecomposePatterns as unknown as PatternDSL[],
+  E1_NUMBER_LINE: byPrefix(numberComparePatterns as unknown as PatternDSL[], "E1-NUM-LINE-"),
+  E1_ADD_ZERO: byPrefix(addBasicPatterns as unknown as PatternDSL[], "E1-ADD-ZERO-"),
+  E1_ADD_ONE: byPrefix(addBasicPatterns as unknown as PatternDSL[], "E1-ADD-ONE-"),
+  E1_ADD_DOUBLES: byPrefix(addBasicPatterns as unknown as PatternDSL[], "E1-ADD-DOUBLES-"),
+  E1_ADD_NEAR_DOUBLES: byPrefix(addBasicPatterns as unknown as PatternDSL[], "E1-ADD-NEAR-DOUBLES-"),
+  E1_ADD_BASIC: byPrefix(addBasicPatterns as unknown as PatternDSL[], "E1-ADD-BASIC-"),
+  E1_ADD_10: addMake10Patterns as unknown as PatternDSL[],
+  E1_ADD_CARRY: addCarryPatterns as unknown as PatternDSL[],
+  E1_SUB_BASIC: byPrefix(subBasicPatterns as unknown as PatternDSL[], "E1-SUB-BASIC-"),
+  E1_SUB_FACTS: byPrefix(subBasicPatterns as unknown as PatternDSL[], "E1-SUB-FACTS-"),
+  E1_FACT_FAMILY: byPrefix(subBasicPatterns as unknown as PatternDSL[], "E1-FACT-FAMILY-"),
+  E1_SUB_BORROW: subBorrowPatterns as unknown as PatternDSL[],
   E2_ADD_2DIGIT: add2DigitPatterns as unknown as PatternDSL[],
   E2_SUB_2DIGIT: sub2DigitPatterns as unknown as PatternDSL[]
 };
 
-const runtimeMandatorySkills = new Set(["E1_NUMBER_COMPARE", "E1_NUMBER_COMPOSE", "E1_NUMBER_DECOMPOSE"]);
-
-const syntheticNumberPatterns: Record<string, PatternDSL> = {
-  NUM_COMPARE_UP_TO_20: {
-    key: "NUM_COMPARE_UP_TO_20",
-    template: "{a} ? {b}",
-    variables: { a: [0, 20], b: [0, 20] },
-    answer: "LESS_OR_GREATER"
-  },
-  NUM_COMP_10: {
-    key: "NUM_COMP_10",
-    template: "{a} + {b} =",
-    variables: { a: [0, 10], b: [0, 10] },
-    answer: "a + b"
-  },
-  NUM_DECOMP_10: {
-    key: "NUM_DECOMP_10",
-    template: "{whole} は{known}と？でできます。",
-    variables: { whole: [10, 10], known: [0, 10] },
-    answer: "whole - known"
-  }
-};
+const runtimeMandatorySkills = new Set(["E1_NUMBER_COMPARE"]);
 
 export type SkillValidationSummary = {
   skillId: string;
   checked: number;
-};
-
-const buildSyntheticNumberProblems = (patternId: string, count: number): GeneratedProblem[] => {
-  if (patternId === "NUM_COMPARE_UP_TO_20") {
-    return Array.from({ length: count }, (_, index) => {
-      const a = index % 21;
-      let b = (index * 13 + 5) % 21;
-      if (a === b) {
-        b = (b + 1) % 21;
-      }
-      return {
-        id: `NUM_COMPARE_UP_TO_20:${index}`,
-        question: `${a} ? ${b}`,
-        answer: a < b ? "LESS" : "GREATER",
-        patternKey: patternId,
-        variables: { a, b },
-        meta: { difficulty: 1 }
-      };
-    });
-  }
-
-  if (patternId === "NUM_COMP_10") {
-    return Array.from({ length: count }, (_, index) => {
-      const a = index % 11;
-      const b = 10 - a;
-      return {
-        id: `NUM_COMP_10:${index}`,
-        question: `${a} + ${b} =`,
-        answer: "10",
-        patternKey: patternId,
-        variables: { a, b },
-        meta: { difficulty: 1 }
-      };
-    });
-  }
-
-  if (patternId === "NUM_DECOMP_10") {
-    return Array.from({ length: count }, (_, index) => {
-      const known = index % 11;
-      const whole = 10;
-      return {
-        id: `NUM_DECOMP_10:${index}`,
-        question: `${whole} は${known}と？でできます。`,
-        answer: String(whole - known),
-        patternKey: patternId,
-        variables: { whole, known },
-        meta: { difficulty: 1 }
-      };
-    });
-  }
-
-  throw new Error(`Synthetic generator not found for pattern: ${patternId}`);
 };
 
 const resolvePatternsForSkill = (skill: Skill): PatternDSL[] =>
@@ -112,10 +50,6 @@ const resolvePatternsForSkill = (skill: Skill): PatternDSL[] =>
     const patterns = patternCatalog[patternId];
     if (patterns) {
       return patterns;
-    }
-    const synthetic = syntheticNumberPatterns[patternId];
-    if (synthetic) {
-      return [synthetic];
     }
     throw new Error(`Pattern not found for skill pattern: ${patternId}`);
   });
@@ -137,9 +71,7 @@ export function validateSkillGenerator(skillId: string, totalCount: number = 100
   for (const pattern of patterns) {
     const problems = runtimeMandatorySkills.has(skillId)
       ? generateRuntimeProblems(pattern, perPatternCount)
-      : pattern.key in syntheticNumberPatterns
-        ? buildSyntheticNumberProblems(pattern.key, perPatternCount)
-        : generateProblems(pattern, perPatternCount);
+      : generateProblems(pattern, perPatternCount);
     for (const problem of problems) {
       const result = validateProblem(problem, pattern, skill);
       if (!result.valid) {

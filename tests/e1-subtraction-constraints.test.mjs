@@ -65,7 +65,7 @@ const loadDslEngine = async () => {
 test("E1_SUB_BASIC generates only one-digit subtraction with answers 0..9", async () => {
   const { dslEngine, subBasicPatterns } = await loadDslEngine();
 
-  for (const pattern of subBasicPatterns) {
+  for (const pattern of subBasicPatterns.filter((entry) => entry.key.startsWith("E1-SUB-BASIC-"))) {
     const generated = dslEngine.generateProblems(pattern, 50);
     for (const problem of generated) {
       const a = problem.variables?.a;
@@ -84,7 +84,7 @@ test("E1_SUB_BASIC generates only one-digit subtraction with answers 0..9", asyn
 test("E1_SUB_BORROW stays within 10..20 and never emits 30+ minuends", async () => {
   const { dslEngine, subBorrowPatterns } = await loadDslEngine();
 
-  for (const pattern of subBorrowPatterns) {
+  for (const pattern of subBorrowPatterns.filter((entry) => entry.key.startsWith("E1-SUB-BORROW-"))) {
     const generated = dslEngine.generateProblems(pattern, 50);
     for (const problem of generated) {
       const a = problem.variables?.a;

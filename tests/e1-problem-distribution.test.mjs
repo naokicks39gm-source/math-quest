@@ -215,6 +215,7 @@ test("runtime E1 skills keep lightweight session distribution sanity", async () 
     if (
       skillId === "E1_ADD_10" ||
       skillId === "E1_ADD_CARRY" ||
+      skillId === "E1_SUB_BORROW" ||
       skillId === "E1_NUMBER_COMPARE" ||
       skillId === "E1_NUMBER_COMPOSE" ||
       skillId === "E1_NUMBER_DECOMPOSE"

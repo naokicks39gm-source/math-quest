@@ -72,6 +72,38 @@ export const validateNumberCompare: Rule = ({ problem }) => {
       };
 };
 
+export const validateNumberCount: Rule = ({ problem }) => {
+  if (resolvePatternFamily(problem.patternKey) !== "number_count") {
+    return { valid: false, error: "wrong number pattern family" };
+  }
+  const n = typeof problem.variables?.n === "number" ? problem.variables.n : Number(problem.answer);
+  const answer = Number(problem.answer);
+  if (!isFiniteNumber(n) || !Number.isFinite(answer)) {
+    return { valid: false, error: "count value missing" };
+  }
+  if (n < 0 || n > 20) {
+    return { valid: false, error: "count range mismatch" };
+  }
+  return answer === n ? pass : { valid: false, error: "count answer mismatch" };
+};
+
+export const validateNumberOrder: Rule = ({ problem }) => {
+  if (resolvePatternFamily(problem.patternKey) !== "number_order") {
+    return { valid: false, error: "wrong number pattern family" };
+  }
+  const a = typeof problem.variables?.a === "number" ? problem.variables.a : undefined;
+  const b = typeof problem.variables?.b === "number" ? problem.variables.b : undefined;
+  const answer = String(problem.answer ?? "").replace(/\s+/gu, "");
+  if (!isFiniteNumber(a) || !isFiniteNumber(b) || !answer) {
+    return { valid: false, error: "order operands missing" };
+  }
+  if (a === b) {
+    return { valid: false, error: "equal order unsupported" };
+  }
+  const expected = `[${Math.min(a, b)},${Math.max(a, b)}]`;
+  return answer === expected ? pass : { valid: false, error: "order answer mismatch" };
+};
+
 export const validateNumberCompose: Rule = ({ problem }) => {
   if (resolvePatternFamily(problem.patternKey) !== "number_compose") {
     return {
@@ -112,7 +144,7 @@ export const validateNumberCompose: Rule = ({ problem }) => {
     };
   }
 
-  return composeLeft + composeRight === answer
+  return composeLeft + composeRight === 10 && answer === 10
     ? pass
     : {
         valid: false,
@@ -129,14 +161,13 @@ export const validateNumberDecompose: Rule = ({ problem }) => {
   }
 
   const variables = problem.variables ?? {};
-  const whole =
-    typeof variables.whole === "number"
-      ? variables.whole
-      : parseLeadingNumbers(String(problem.question ?? ""))?.left;
+  const whole = typeof variables.whole === "number" ? variables.whole : parseLeadingNumbers(String(problem.question ?? ""))?.left;
   const known =
-    typeof variables.known === "number"
-      ? variables.known
-      : parseLeadingNumbers(String(problem.question ?? ""))?.right;
+    typeof variables.a === "number"
+      ? variables.a
+      : typeof variables.known === "number"
+        ? variables.known
+        : parseLeadingNumbers(String(problem.question ?? ""))?.right;
   const answer = Number(problem.answer);
 
   if (!isFiniteNumber(whole) || !isFiniteNumber(known) || !Number.isFinite(answer)) {
@@ -156,10 +187,31 @@ export const validateNumberDecompose: Rule = ({ problem }) => {
     };
   }
 
-  return decomposeKnown + answer === decomposeWhole
+  return decomposeWhole === 10 && decomposeKnown + answer === decomposeWhole
     ? pass
     : {
         valid: false,
         error: "decompose mismatch"
       };
+};
+
+export const validateNumberLine: Rule = ({ problem }) => {
+  if (resolvePatternFamily(problem.patternKey) !== "number_line") {
+    return { valid: false, error: "wrong number pattern family" };
+  }
+  const start = typeof problem.variables?.start === "number" ? problem.variables.start : undefined;
+  const move = typeof problem.variables?.move === "number" ? problem.variables.move : undefined;
+  const answer = Number(problem.answer);
+  if (!isFiniteNumber(start) || !isFiniteNumber(move) || !Number.isFinite(answer)) {
+    return { valid: false, error: "number line operands missing" };
+  }
+  if (start < 0 || start > 10 || move < 0 || move > 10) {
+    return { valid: false, error: "number line range mismatch" };
+  }
+  if (move < 1) {
+    return { valid: false, error: "number line move must be positive" };
+  }
+  return answer === start + move && answer <= 20
+    ? pass
+    : { valid: false, error: "number line answer mismatch" };
 };

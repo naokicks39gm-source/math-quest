@@ -1,0 +1,15 @@
+[
+  {
+    "key": "E1-ADD-CARRY",
+    "template": "{a} + {b}",
+    "variables": {
+      "a": [5, 9],
+      "b": [5, 9]
+    },
+    "constraints": [
+      "a + b >= 10",
+      "a + b <= 18"
+    ],
+    "answer": "a + b"
+  }
+]

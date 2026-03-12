@@ -238,8 +238,38 @@ export const renderTemplate = (template: string, vars: Record<string, number>) =
     }
   });
 
+const evaluateListAnswer = (answerExpr: string, vars: Record<string, number>) => {
+  const trimmed = answerExpr.trim();
+  if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) {
+    return null;
+  }
+
+  const inner = trimmed.slice(1, -1).trim();
+  if (!inner) {
+    return "[]";
+  }
+
+  const parts: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const char of inner) {
+    if (char === "," && depth === 0) {
+      parts.push(current.trim());
+      current = "";
+      continue;
+    }
+    if (char === "(") depth += 1;
+    if (char === ")") depth -= 1;
+    current += char;
+  }
+  if (current.trim()) {
+    parts.push(current.trim());
+  }
+  return `[${parts.map((part) => formatEvaluationValue(evaluateExpression(part, vars))).join(",")}]`;
+};
+
 export const evaluateAnswer = (answerExpr: string, vars: Record<string, number>) =>
-  formatEvaluationValue(evaluateExpression(answerExpr, vars));
+  evaluateListAnswer(answerExpr, vars) ?? formatEvaluationValue(evaluateExpression(answerExpr, vars));
 
 export const computeDifficulty = (problem: GeneratedProblem): number => {
   let score = 1;

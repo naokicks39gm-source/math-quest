@@ -152,7 +152,7 @@ test("skill tree exposes typed skill relationships", async () => {
     patterns: ["E1_NUMBER_COUNT"],
     difficulty: 1
   });
-  assert.deepEqual(skillTree.getPrerequisites("E1_FACT_FAMILY"), ["E1_ADD_10", "E1_SUB_BASIC"]);
+  assert.deepEqual(skillTree.getPrerequisites("E1_FACT_FAMILY"), ["E1_ADD_10", "E1_SUB_FACTS"]);
   assert.deepEqual(
     new Set(skillTree.getNextSkills("E1_NUMBER_COUNT").map((skill) => skill.id)),
     new Set(["E1_NUMBER_ORDER", "E1_ADD_ZERO"])
@@ -201,8 +201,8 @@ test("getSkillTree reflects unlocked and mastered flags from state", async () =>
     {
       id: "E1_FACT_FAMILY",
       title: "たし算とひき算の関係",
-      difficulty: 5,
-      prerequisite: ["E1_ADD_10", "E1_SUB_BASIC"],
+      difficulty: 4,
+      prerequisite: ["E1_ADD_10", "E1_SUB_FACTS"],
       unlocked: false,
       mastered: true,
       mastery: 0.2,
@@ -306,7 +306,7 @@ test("generateSkillQuiz reshuffles after stock exhaustion and continues serving 
   assert.equal(reshuffled.length, 5);
   assert.equal(nextBatch.length, 5);
   assert.notDeepEqual(reshuffled, nextBatch);
-  assert.equal(globalThis.__skillSystemGenerateProblemsCalls, 10);
+  assert.equal(globalThis.__skillSystemGenerateProblemsCalls, 5);
 });
 
 test("generateSkillQuiz returns empty array for non-positive count", async () => {
@@ -332,7 +332,7 @@ test("generateSkillQuiz throws for unresolved pattern entries", async () => {
 test("generateSkillQuiz returns GeneratedProblem-like items for new E1 and E2 skills", async () => {
   const { skillEngine } = await loadSkillSystemModules();
 
-  for (const skillId of ["E1_SUB_BASIC", "E1_SUB_BORROW", "E1_NUMBER_COMPARE", "E1_NUMBER_COMPOSE", "E1_NUMBER_DECOMPOSE", "E2_ADD_2DIGIT", "E2_SUB_2DIGIT"]) {
+  for (const skillId of ["E1_NUMBER_COUNT", "E1_NUMBER_ORDER", "E1_NUMBER_LINE", "E1_SUB_BASIC", "E1_SUB_FACTS", "E1_SUB_BORROW", "E1_NUMBER_COMPARE", "E1_NUMBER_COMPOSE", "E1_NUMBER_DECOMPOSE", "E1_FACT_FAMILY", "E2_ADD_2DIGIT", "E2_SUB_2DIGIT"]) {
     const generated = skillEngine.generateSkillQuiz(skillId, 5);
     assert.equal(generated.length, 5, skillId);
     for (const item of generated) {

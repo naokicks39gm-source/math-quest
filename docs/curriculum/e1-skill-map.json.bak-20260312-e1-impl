@@ -1,0 +1,154 @@
+{
+  "grade": "E1",
+  "phase": "curriculum-design",
+  "summary": "小学1年の算数を数概念から計算へ進む canonical Skill Map として定義する",
+  "designRules": [
+    "数概念を先に固めてから計算へ進む",
+    "1 skill = 1 concept",
+    "patterns は既存 problem-engine で最も近い候補を保持する",
+    "difficulty は runtime 実装側で 1-3 に正規化する",
+    "未実装 pattern を持つ skill は runtime で未配線のまま残してよい"
+  ],
+  "skills": [
+    {
+      "id": "E1_NUMBER_COUNT",
+      "title": "1〜20をかぞえる",
+      "grade": "E1",
+      "patterns": ["E1-ADD-BASIC-04"]
+    },
+    {
+      "id": "E1_NUMBER_ORDER",
+      "title": "数の順番理解",
+      "grade": "E1",
+      "patterns": ["E1-ADD-BASIC-02"],
+      "prerequisite": ["E1_NUMBER_COUNT"]
+    },
+    {
+      "id": "E1_NUMBER_COMPARE",
+      "title": "数の大小比較",
+      "grade": "E1",
+      "patterns": ["E1-NUM-COMPARE-01"],
+      "prerequisite": ["E1_NUMBER_ORDER"]
+    },
+    {
+      "id": "E1_NUMBER_COMPOSE",
+      "title": "数の合成",
+      "grade": "E1",
+      "patterns": ["E1-NUM-COMPOSE-01"],
+      "prerequisite": ["E1_NUMBER_COMPARE"]
+    },
+    {
+      "id": "E1_NUMBER_DECOMPOSE",
+      "title": "数の分解",
+      "grade": "E1",
+      "patterns": ["E1-NUM-DECOMPOSE-01"],
+      "prerequisite": ["E1_NUMBER_COMPOSE"]
+    },
+    {
+      "id": "E1_NUMBER_LINE",
+      "title": "数直線穴埋め",
+      "grade": "E1",
+      "patterns": ["E1-NUM-COMPARE-01"],
+      "prerequisite": ["E1_NUMBER_ORDER"]
+    },
+    {
+      "id": "E1_ADD_ZERO",
+      "title": "0のたし算",
+      "grade": "E1",
+      "patterns": ["E1-ADD-BASIC-04"],
+      "prerequisite": ["E1_NUMBER_COUNT"]
+    },
+    {
+      "id": "E1_ADD_ONE",
+      "title": "+1計算",
+      "grade": "E1",
+      "patterns": ["E1-ADD-BASIC-01"],
+      "prerequisite": ["E1_ADD_ZERO"]
+    },
+    {
+      "id": "E1_ADD_TWO",
+      "title": "+2計算",
+      "grade": "E1",
+      "patterns": ["E1-ADD-BASIC-06"],
+      "prerequisite": ["E1_ADD_ONE"]
+    },
+    {
+      "id": "E1_ADD_DOUBLES",
+      "title": "同じ数どうしのたし算",
+      "grade": "E1",
+      "patterns": ["E1-ADD-BASIC-08"],
+      "prerequisite": ["E1_ADD_TWO"]
+    },
+    {
+      "id": "E1_ADD_NEAR_DOUBLES",
+      "title": "近い数どうしのたし算",
+      "grade": "E1",
+      "patterns": ["E1-ADD-BASIC-05"],
+      "prerequisite": ["E1_ADD_DOUBLES"]
+    },
+    {
+      "id": "E1_ADD_BASIC",
+      "title": "1桁のたし算",
+      "grade": "E1",
+      "patterns": [
+        "E1-ADD-BASIC-01",
+        "E1-ADD-BASIC-02",
+        "E1-ADD-BASIC-03",
+        "E1-ADD-BASIC-04",
+        "E1-ADD-BASIC-05"
+      ],
+      "prerequisite": ["E1_NUMBER_COMPOSE", "E1_ADD_NEAR_DOUBLES"]
+    },
+    {
+      "id": "E1_ADD_10",
+      "title": "10を作るたし算",
+      "grade": "E1",
+      "patterns": ["E1-ADD-MAKE10"],
+      "prerequisite": ["E1_ADD_BASIC"]
+    },
+    {
+      "id": "E1_ADD_CARRY",
+      "title": "くり上がりのたし算",
+      "grade": "E1",
+      "patterns": ["E1-ADD-CARRY"],
+      "prerequisite": ["E1_ADD_10"]
+    },
+    {
+      "id": "E1_SUB_BASIC",
+      "title": "1桁のひき算",
+      "grade": "E1",
+      "patterns": [
+        "E1-SUB-BASIC-01",
+        "E1-SUB-BASIC-02",
+        "E1-SUB-BASIC-03",
+        "E1-SUB-BASIC-04",
+        "E1-SUB-BASIC-05"
+      ],
+      "prerequisite": ["E1_NUMBER_DECOMPOSE"]
+    },
+    {
+      "id": "E1_SUB_BORROW",
+      "title": "くり下がりのひき算",
+      "grade": "E1",
+      "patterns": [
+        "E1-SUB-BORROW-01",
+        "E1-SUB-BORROW-02",
+        "E1-SUB-BORROW-03",
+        "E1-SUB-BORROW-04",
+        "E1-SUB-BORROW-05"
+      ],
+      "prerequisite": ["E1_SUB_BASIC"]
+    },
+    {
+      "id": "E1_FACT_FAMILY",
+      "title": "たし算とひき算の関係",
+      "grade": "E1",
+      "patterns": [
+        "E1-ADD-MAKE10",
+        "E1-SUB-BASIC-01",
+        "E1-NUM-DECOMPOSE-01"
+      ],
+      "prerequisite": ["E1_ADD_10", "E1_SUB_BASIC"]
+    }
+  ]
+}

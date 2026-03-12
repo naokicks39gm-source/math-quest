@@ -42,6 +42,16 @@ export const mustBorrow: Rule = ({ problem, pattern }) => {
     ? pass
     : {
         valid: false,
-        error: "no borrow"
+      error: "no borrow"
       };
+};
+
+export const subFacts: Rule = ({ problem }) => {
+  const operands = readSubOperands("-", problem.variables);
+  if (!operands) {
+    return { valid: false, error: "missing subtraction operands" };
+  }
+  return operands[0] >= 0 && operands[0] <= 10 && operands[1] >= 0 && operands[1] <= 10 && operands[0] >= operands[1]
+    ? pass
+    : { valid: false, error: "sub facts range mismatch" };
 };

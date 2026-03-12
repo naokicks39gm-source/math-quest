@@ -99,14 +99,23 @@ const loadModules = async () => {
 };
 
 const runtimeE1Skills = [
+  "E1_NUMBER_COUNT",
+  "E1_NUMBER_ORDER",
+  "E1_NUMBER_COMPARE",
+  "E1_NUMBER_COMPOSE",
+  "E1_NUMBER_DECOMPOSE",
+  "E1_NUMBER_LINE",
+  "E1_ADD_ZERO",
+  "E1_ADD_ONE",
+  "E1_ADD_DOUBLES",
+  "E1_ADD_NEAR_DOUBLES",
   "E1_ADD_BASIC",
   "E1_ADD_10",
   "E1_ADD_CARRY",
   "E1_SUB_BASIC",
+  "E1_SUB_FACTS",
+  "E1_FACT_FAMILY",
   "E1_SUB_BORROW",
-  "E1_NUMBER_COMPARE",
-  "E1_NUMBER_COMPOSE",
-  "E1_NUMBER_DECOMPOSE"
 ];
 
 test("runtime E1 skills resolve non-empty pattern bundles", async () => {

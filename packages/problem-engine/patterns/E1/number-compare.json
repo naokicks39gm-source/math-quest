@@ -1,7 +1,31 @@
 [
   {
+    "key": "E1-NUM-COUNT-01",
+    "template": "{n} を かぞえると いくつ？",
+    "variables": {
+      "n": [0, 20]
+    },
+    "constraints": [
+      "n >= 0",
+      "n <= 20"
+    ],
+    "answer": "n"
+  },
+  {
+    "key": "E1-NUM-ORDER-01",
+    "template": "{a} と {b} を ちいさい じゅんに ならべると？",
+    "variables": {
+      "a": [0, 20],
+      "b": [0, 20]
+    },
+    "constraints": [
+      "a != b"
+    ],
+    "answer": "[min(a,b), max(a,b)]"
+  },
+  {
     "key": "E1-NUM-COMPARE-01",
-    "template": "{a}と{b}、どちらが大きい？",
+    "template": "{a} と {b}、どちらが大きい？",
     "variables": {
       "a": [0, 20],
       "b": [0, 20]
@@ -10,5 +34,18 @@
       "a != b"
     ],
     "answer": "a < b"
+  },
+  {
+    "key": "E1-NUM-LINE-01",
+    "template": "{start} から {move} すすめると どこ？",
+    "variables": {
+      "start": [0, 10],
+      "move": [1, 10]
+    },
+    "constraints": [
+      "move >= 1",
+      "start + move <= 20"
+    ],
+    "answer": "start + move"
   }
 ]

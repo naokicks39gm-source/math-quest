@@ -92,24 +92,24 @@ test("E1 curriculum design keeps number concepts ahead of calculation skills", (
 
   assert.deepEqual(skillById.get("E1_ADD_ZERO")?.prerequisite, ["E1_NUMBER_COUNT"]);
   assert.deepEqual(skillById.get("E1_ADD_ONE")?.prerequisite, ["E1_ADD_ZERO"]);
-  assert.deepEqual(skillById.get("E1_ADD_TWO")?.prerequisite, ["E1_ADD_ONE"]);
-  assert.deepEqual(skillById.get("E1_ADD_DOUBLES")?.prerequisite, ["E1_ADD_TWO"]);
+  assert.deepEqual(skillById.get("E1_ADD_DOUBLES")?.prerequisite, ["E1_ADD_ONE"]);
   assert.deepEqual(skillById.get("E1_ADD_NEAR_DOUBLES")?.prerequisite, ["E1_ADD_DOUBLES"]);
 
   assert.deepEqual(skillById.get("E1_ADD_BASIC")?.prerequisite, ["E1_NUMBER_COMPOSE", "E1_ADD_NEAR_DOUBLES"]);
   assert.deepEqual(skillById.get("E1_ADD_10")?.prerequisite, ["E1_ADD_BASIC"]);
   assert.deepEqual(skillById.get("E1_ADD_CARRY")?.prerequisite, ["E1_ADD_10"]);
 
-  assert.deepEqual(skillById.get("E1_SUB_BASIC")?.prerequisite, ["E1_NUMBER_DECOMPOSE"]);
-  assert.deepEqual(skillById.get("E1_SUB_BORROW")?.prerequisite, ["E1_SUB_BASIC"]);
-  assert.deepEqual(skillById.get("E1_FACT_FAMILY")?.prerequisite, ["E1_ADD_10", "E1_SUB_BASIC"]);
+  assert.deepEqual(skillById.get("E1_SUB_BASIC")?.prerequisite, ["E1_NUMBER_DECOMPOSE", "E1_ADD_BASIC"]);
+  assert.deepEqual(skillById.get("E1_SUB_FACTS")?.prerequisite, ["E1_SUB_BASIC"]);
+  assert.deepEqual(skillById.get("E1_SUB_BORROW")?.prerequisite, ["E1_SUB_FACTS"]);
+  assert.deepEqual(skillById.get("E1_FACT_FAMILY")?.prerequisite, ["E1_ADD_10", "E1_SUB_FACTS"]);
 });
 
 test("E1 curriculum design keeps the intended skill families", () => {
   const numberSkills = e1SkillMap.skills.filter((skill) => skill.id.startsWith("E1_NUMBER_"));
   const prepSkills = e1SkillMap.skills.filter((skill) => skill.id.startsWith("E1_ADD_") && !["E1_ADD_BASIC", "E1_ADD_10", "E1_ADD_CARRY"].includes(skill.id));
   const basicAndAppliedSkills = e1SkillMap.skills.filter((skill) =>
-    ["E1_ADD_BASIC", "E1_ADD_10", "E1_ADD_CARRY", "E1_SUB_BASIC", "E1_SUB_BORROW", "E1_FACT_FAMILY"].includes(skill.id)
+    ["E1_ADD_BASIC", "E1_ADD_10", "E1_ADD_CARRY", "E1_SUB_BASIC", "E1_SUB_FACTS", "E1_SUB_BORROW", "E1_FACT_FAMILY"].includes(skill.id)
   );
 
   assert.deepEqual(
@@ -125,10 +125,10 @@ test("E1 curriculum design keeps the intended skill families", () => {
   );
   assert.deepEqual(
     prepSkills.map((skill) => skill.id),
-    ["E1_ADD_ZERO", "E1_ADD_ONE", "E1_ADD_TWO", "E1_ADD_DOUBLES", "E1_ADD_NEAR_DOUBLES"]
+    ["E1_ADD_ZERO", "E1_ADD_ONE", "E1_ADD_DOUBLES", "E1_ADD_NEAR_DOUBLES"]
   );
   assert.deepEqual(
     basicAndAppliedSkills.map((skill) => skill.id),
-    ["E1_ADD_BASIC", "E1_ADD_10", "E1_ADD_CARRY", "E1_SUB_BASIC", "E1_SUB_BORROW", "E1_FACT_FAMILY"]
+    ["E1_ADD_BASIC", "E1_ADD_10", "E1_SUB_BASIC", "E1_SUB_FACTS", "E1_FACT_FAMILY", "E1_ADD_CARRY", "E1_SUB_BORROW"]
   );
 });

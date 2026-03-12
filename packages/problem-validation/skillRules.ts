@@ -11,27 +11,41 @@ import { difficultyMatchesPattern } from "./rules/difficultyRules";
 import { gradePedagogyRule } from "./rules/gradeRules";
 import { validateDistribution } from "./rules/distributionRules";
 import { singleDigitOperands, twoDigitOperands } from "./rules/digitRules";
-import { mustCarry } from "./rules/addRules";
-import { mustBorrow, noBorrow } from "./rules/subRules";
+import { addOne, addZero, doubles, mustCarry, nearDoubles } from "./rules/addRules";
+import { mustBorrow, noBorrow, subFacts } from "./rules/subRules";
 import { sumIs10 } from "./rules/sumRules";
-import { validateNumberCompare, validateNumberCompose, validateNumberDecompose } from "./rules/numberRules";
+import {
+  validateNumberCompare,
+  validateNumberCompose,
+  validateNumberCount,
+  validateNumberDecompose,
+  validateNumberLine,
+  validateNumberOrder
+} from "./rules/numberRules";
 
-export const commonSingleRules = [
+export const coreSingleRules = [
   hasQuestion,
   hasAnswer,
   hasDifficulty,
   patternKeyMatches,
   gradePedagogyRule,
   constraintsSatisfied,
-  mathCorrect,
   difficultyMatchesPattern
 ];
 
-export const numberCommonSingleRules = [hasQuestion, hasAnswer, hasDifficulty, patternKeyMatches, gradePedagogyRule];
+export const commonSingleRules = [...coreSingleRules, mathCorrect];
 
 export const commonBatchRules = [validateDistribution];
 
 export const skillRules: Record<string, SkillRuleSet> = {
+  E1_NUMBER_COUNT: {
+    single: [validateNumberCount],
+    batch: []
+  },
+  E1_NUMBER_ORDER: {
+    single: [validateNumberOrder],
+    batch: []
+  },
   E1_NUMBER_COMPARE: {
     single: [validateNumberCompare],
     batch: []
@@ -42,6 +56,26 @@ export const skillRules: Record<string, SkillRuleSet> = {
   },
   E1_NUMBER_DECOMPOSE: {
     single: [validateNumberDecompose],
+    batch: []
+  },
+  E1_NUMBER_LINE: {
+    single: [validateNumberLine],
+    batch: []
+  },
+  E1_ADD_ZERO: {
+    single: [addZero],
+    batch: []
+  },
+  E1_ADD_ONE: {
+    single: [addOne],
+    batch: []
+  },
+  E1_ADD_DOUBLES: {
+    single: [singleDigitOperands, doubles],
+    batch: []
+  },
+  E1_ADD_NEAR_DOUBLES: {
+    single: [singleDigitOperands, nearDoubles],
     batch: []
   },
   E1_ADD_BASIC: {
@@ -58,6 +92,14 @@ export const skillRules: Record<string, SkillRuleSet> = {
   },
   E1_SUB_BASIC: {
     single: [singleDigitOperands, noBorrow],
+    batch: []
+  },
+  E1_SUB_FACTS: {
+    single: [subFacts],
+    batch: []
+  },
+  E1_FACT_FAMILY: {
+    single: [],
     batch: []
   },
   E1_SUB_BORROW: {
@@ -80,7 +122,7 @@ export const skillRules: Record<string, SkillRuleSet> = {
 
 export const getRulesForSkill = (skillId: string): SkillRuleSet => {
   const configured = skillRules[skillId] ?? { single: [], batch: [] };
-  const baseSingleRules = skillId.startsWith("E1_NUMBER_") ? numberCommonSingleRules : commonSingleRules;
+  const baseSingleRules = skillId === "E1_NUMBER_COMPARE" ? coreSingleRules : commonSingleRules;
   return {
     single: [...baseSingleRules, ...configured.single],
     batch: [...commonBatchRules, ...configured.batch]

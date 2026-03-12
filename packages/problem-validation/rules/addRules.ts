@@ -38,10 +38,42 @@ export const mustCarry: Rule = ({ problem, pattern }) => {
     };
   }
 
-  return operands[0] + operands[1] >= 10
+  return operands[0] % 10 + operands[1] % 10 >= 10
     ? pass
     : {
         valid: false,
         error: "no carry"
       };
+};
+
+export const addZero: Rule = ({ problem }) => {
+  const operands = readAddOperands("+", problem.variables);
+  if (!operands) {
+    return { valid: false, error: "missing addition operands" };
+  }
+  return operands[1] === 0 ? pass : { valid: false, error: "second operand must be zero" };
+};
+
+export const addOne: Rule = ({ problem }) => {
+  const operands = readAddOperands("+", problem.variables);
+  if (!operands) {
+    return { valid: false, error: "missing addition operands" };
+  }
+  return operands[1] === 1 ? pass : { valid: false, error: "second operand must be one" };
+};
+
+export const doubles: Rule = ({ problem }) => {
+  const operands = readAddOperands("+", problem.variables);
+  if (!operands) {
+    return { valid: false, error: "missing addition operands" };
+  }
+  return operands[0] === operands[1] ? pass : { valid: false, error: "not doubles" };
+};
+
+export const nearDoubles: Rule = ({ problem }) => {
+  const operands = readAddOperands("+", problem.variables);
+  if (!operands) {
+    return { valid: false, error: "missing addition operands" };
+  }
+  return operands[1] === operands[0] + 1 ? pass : { valid: false, error: "not near doubles" };
 };

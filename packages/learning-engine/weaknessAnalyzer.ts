@@ -13,28 +13,26 @@ import { getPatterns as getSkillPatternBundles } from "packages/skill-system";
 
 import type { LearningState } from "./studentStore";
 
+const byPrefix = (patterns: PatternDSL[], prefix: string) => patterns.filter((pattern) => pattern.key.startsWith(prefix));
+
 const patternCatalog: Record<string, PatternDSL[]> = {
-  E1_NUMBER_COUNT: numberComparePatterns as unknown as PatternDSL[],
-  E1_NUMBER_COMPARE: numberComparePatterns as unknown as PatternDSL[],
-  E1_NUMBER_ORDER: numberComparePatterns as unknown as PatternDSL[],
+  E1_NUMBER_COUNT: byPrefix(numberComparePatterns as unknown as PatternDSL[], "E1-NUM-COUNT-"),
+  E1_NUMBER_ORDER: byPrefix(numberComparePatterns as unknown as PatternDSL[], "E1-NUM-ORDER-"),
+  E1_NUMBER_COMPARE: byPrefix(numberComparePatterns as unknown as PatternDSL[], "E1-NUM-COMPARE-"),
   E1_NUMBER_COMPOSE: numberComposePatterns as unknown as PatternDSL[],
   E1_NUMBER_DECOMPOSE: numberDecomposePatterns as unknown as PatternDSL[],
-  E1_NUMBER_LINE: numberComparePatterns as unknown as PatternDSL[],
-  E1_ADD_ZERO: addBasicPatterns as unknown as PatternDSL[],
-  E1_ADD_ONE: addBasicPatterns as unknown as PatternDSL[],
-  E1_ADD_TWO: addBasicPatterns as unknown as PatternDSL[],
-  E1_ADD_DOUBLES: addBasicPatterns as unknown as PatternDSL[],
-  E1_ADD_NEAR_DOUBLES: addBasicPatterns as unknown as PatternDSL[],
-  E1_ADD_BASIC: addBasicPatterns as unknown as PatternDSL[],
+  E1_NUMBER_LINE: byPrefix(numberComparePatterns as unknown as PatternDSL[], "E1-NUM-LINE-"),
+  E1_ADD_ZERO: byPrefix(addBasicPatterns as unknown as PatternDSL[], "E1-ADD-ZERO-"),
+  E1_ADD_ONE: byPrefix(addBasicPatterns as unknown as PatternDSL[], "E1-ADD-ONE-"),
+  E1_ADD_DOUBLES: byPrefix(addBasicPatterns as unknown as PatternDSL[], "E1-ADD-DOUBLES-"),
+  E1_ADD_NEAR_DOUBLES: byPrefix(addBasicPatterns as unknown as PatternDSL[], "E1-ADD-NEAR-DOUBLES-"),
+  E1_ADD_BASIC: byPrefix(addBasicPatterns as unknown as PatternDSL[], "E1-ADD-BASIC-"),
   E1_ADD_10: addMake10Patterns as unknown as PatternDSL[],
   E1_ADD_CARRY: addCarryPatterns as unknown as PatternDSL[],
-  E1_SUB_BASIC: subBasicPatterns as unknown as PatternDSL[],
+  E1_SUB_BASIC: byPrefix(subBasicPatterns as unknown as PatternDSL[], "E1-SUB-BASIC-"),
+  E1_SUB_FACTS: byPrefix(subBasicPatterns as unknown as PatternDSL[], "E1-SUB-FACTS-"),
+  E1_FACT_FAMILY: byPrefix(subBasicPatterns as unknown as PatternDSL[], "E1-FACT-FAMILY-"),
   E1_SUB_BORROW: subBorrowPatterns as unknown as PatternDSL[],
-  E1_FACT_FAMILY: [
-    ...(addMake10Patterns as unknown as PatternDSL[]),
-    ...(subBasicPatterns as unknown as PatternDSL[]),
-    ...(numberDecomposePatterns as unknown as PatternDSL[])
-  ],
   E2_ADD_2DIGIT: add2DigitPatterns as unknown as PatternDSL[],
   E2_SUB_2DIGIT: sub2DigitPatterns as unknown as PatternDSL[]
 };
