@@ -1,0 +1,14 @@
+[
+  {
+    "key": "E1-NUM-COMPARE-01",
+    "template": "{a}と{b}、どちらが大きい？",
+    "variables": {
+      "a": [0, 20],
+      "b": [0, 20]
+    },
+    "constraints": [
+      "a != b"
+    ],
+    "answer": "a < b"
+  }
+]

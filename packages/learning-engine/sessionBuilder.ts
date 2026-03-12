@@ -1,4 +1,4 @@
-import { generateProblems, getPatternMeta } from "packages/problem-engine";
+import { generateRuntimeProblems, getPatternMeta } from "packages/problem-engine";
 
 import type { Session, SessionProblem } from "./sessionTypes";
 import type { LearningState } from "./studentStore";
@@ -181,7 +181,7 @@ const buildCandidates = (
 
   return uniqueByProblemId(
     patterns.flatMap((pattern) =>
-      shuffle(generateProblems(pattern, PROBLEMS_PER_PATTERN))
+      shuffle(generateRuntimeProblems(pattern, PROBLEMS_PER_PATTERN))
         .filter((problem) => {
           if (options?.ignoreDifficulty) {
             return true;
@@ -272,7 +272,7 @@ const topUpWithRandomSkillPatterns = (
       attempts += 1;
       continue;
     }
-    const generated = shuffle(generateProblems(pattern, PROBLEMS_PER_PATTERN)).map(
+    const generated = shuffle(generateRuntimeProblems(pattern, PROBLEMS_PER_PATTERN)).map(
       (problem): SessionProblem => ({
         problem,
         skillId,

@@ -3,6 +3,9 @@ import addMake10Patterns from "packages/problem-engine/patterns/E1/add-make10.js
 import addCarryPatterns from "packages/problem-engine/patterns/E1/add-carry.json";
 import subBasicPatterns from "packages/problem-engine/patterns/E1/sub-basic.json";
 import subBorrowPatterns from "packages/problem-engine/patterns/E1/sub-borrow.json";
+import numberComparePatterns from "packages/problem-engine/patterns/E1/number-compare.json";
+import numberComposePatterns from "packages/problem-engine/patterns/E1/number-compose.json";
+import numberDecomposePatterns from "packages/problem-engine/patterns/E1/number-decompose.json";
 import add2DigitPatterns from "packages/problem-engine/patterns/E2/add-2digit.json";
 import sub2DigitPatterns from "packages/problem-engine/patterns/E2/sub-2digit.json";
 import type { PatternDSL } from "packages/problem-engine";
@@ -16,6 +19,9 @@ const patternCatalog: Record<string, PatternDSL[]> = {
   E1_ADD_CARRY: addCarryPatterns as unknown as PatternDSL[],
   E1_SUB_BASIC: subBasicPatterns as unknown as PatternDSL[],
   E1_SUB_BORROW: subBorrowPatterns as unknown as PatternDSL[],
+  E1_NUMBER_COMPARE: numberComparePatterns as unknown as PatternDSL[],
+  E1_NUMBER_COMPOSE: numberComposePatterns as unknown as PatternDSL[],
+  E1_NUMBER_DECOMPOSE: numberDecomposePatterns as unknown as PatternDSL[],
   E2_ADD_2DIGIT: add2DigitPatterns as unknown as PatternDSL[],
   E2_SUB_2DIGIT: sub2DigitPatterns as unknown as PatternDSL[]
 };

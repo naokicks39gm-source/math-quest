@@ -1,10 +1,13 @@
 import type { GeneratedProblem, PatternDSL } from "packages/problem-engine";
-import { generateProblems } from "packages/problem-engine";
+import { generateRuntimeProblems } from "packages/problem-engine";
 import addBasicPatterns from "packages/problem-engine/patterns/E1/add-basic.json";
 import addMake10Patterns from "packages/problem-engine/patterns/E1/add-make10.json";
 import addCarryPatterns from "packages/problem-engine/patterns/E1/add-carry.json";
 import subBasicPatterns from "packages/problem-engine/patterns/E1/sub-basic.json";
 import subBorrowPatterns from "packages/problem-engine/patterns/E1/sub-borrow.json";
+import numberComparePatterns from "packages/problem-engine/patterns/E1/number-compare.json";
+import numberComposePatterns from "packages/problem-engine/patterns/E1/number-compose.json";
+import numberDecomposePatterns from "packages/problem-engine/patterns/E1/number-decompose.json";
 import add2DigitPatterns from "packages/problem-engine/patterns/E2/add-2digit.json";
 import sub2DigitPatterns from "packages/problem-engine/patterns/E2/sub-2digit.json";
 import skillsData from "./skills.json";
@@ -20,6 +23,9 @@ const patternCatalog: Record<string, PatternDSL[]> = {
   E1_ADD_CARRY: asPatternCatalog(addCarryPatterns),
   E1_SUB_BASIC: asPatternCatalog(subBasicPatterns),
   E1_SUB_BORROW: asPatternCatalog(subBorrowPatterns),
+  E1_NUMBER_COMPARE: asPatternCatalog(numberComparePatterns),
+  E1_NUMBER_COMPOSE: asPatternCatalog(numberComposePatterns),
+  E1_NUMBER_DECOMPOSE: asPatternCatalog(numberDecomposePatterns),
   E2_ADD_2DIGIT: asPatternCatalog(add2DigitPatterns),
   E2_SUB_2DIGIT: asPatternCatalog(sub2DigitPatterns)
 };
@@ -56,7 +62,7 @@ const getPatternStock = (pattern: PatternDSL): PatternStockEntry => {
   }
 
   const entry = {
-    stock: shuffle(generateProblems(pattern, 200)),
+    stock: shuffle(generateRuntimeProblems(pattern, 200)),
     cursor: 0
   };
   patternStockCache.set(pattern.key, entry);

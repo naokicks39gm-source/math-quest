@@ -70,6 +70,9 @@ const loadSkillSystemModules = async () => {
   const addCarryOutput = path.join(tempDir, "add-carry.mjs");
   const subBasicOutput = path.join(tempDir, "sub-basic.mjs");
   const subBorrowOutput = path.join(tempDir, "sub-borrow.mjs");
+  const numberCompareOutput = path.join(tempDir, "number-compare.mjs");
+  const numberComposeOutput = path.join(tempDir, "number-compose.mjs");
+  const numberDecomposeOutput = path.join(tempDir, "number-decompose.mjs");
   const add2DigitOutput = path.join(tempDir, "add-2digit.mjs");
   const sub2DigitOutput = path.join(tempDir, "sub-2digit.mjs");
 
@@ -79,6 +82,9 @@ const loadSkillSystemModules = async () => {
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-carry.json"), addCarryOutput);
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-basic.json"), subBasicOutput);
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-borrow.json"), subBorrowOutput);
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/number-compare.json"), numberCompareOutput);
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/number-compose.json"), numberComposeOutput);
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/number-decompose.json"), numberDecomposeOutput);
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/add-2digit.json"), add2DigitOutput);
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/sub-2digit.json"), sub2DigitOutput);
 
@@ -103,7 +109,12 @@ const loadSkillSystemModules = async () => {
       '    ...item,',
       '    id: `${item.id}::${globalThis.__skillSystemGeneratedProblemIdCounter++}`',
       '  }));',
-      '};'
+      '};',
+      'export const generateRuntimeProblems = (...args) => generateProblems(...args).map((item) => ({',
+      '  ...item,',
+      '  answer: item.patternKey === "E1-NUM-COMPARE-01" ? ((item.variables?.a ?? 0) < (item.variables?.b ?? 0) ? "LESS" : "GREATER") : item.answer,',
+      '  meta: { ...(item.meta ?? {}), source: "runtime-pattern" }',
+      '}));'
     ].join("\n"),
     "utf8"
   );
@@ -118,6 +129,9 @@ const loadSkillSystemModules = async () => {
     ['from "packages/problem-engine/patterns/E1/add-carry.json"', 'from "./add-carry.mjs"'],
     ['from "packages/problem-engine/patterns/E1/sub-basic.json"', 'from "./sub-basic.mjs"'],
     ['from "packages/problem-engine/patterns/E1/sub-borrow.json"', 'from "./sub-borrow.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/number-compare.json"', 'from "./number-compare.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/number-compose.json"', 'from "./number-compose.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/number-decompose.json"', 'from "./number-decompose.mjs"'],
     ['from "packages/problem-engine/patterns/E2/add-2digit.json"', 'from "./add-2digit.mjs"'],
     ['from "packages/problem-engine/patterns/E2/sub-2digit.json"', 'from "./sub-2digit.mjs"'],
     ['from "./skills.json"', 'from "./skills.mjs"']
@@ -257,13 +271,25 @@ test("generateSkillQuiz throws for unresolved pattern entries", async () => {
 test("generateSkillQuiz returns GeneratedProblem-like items for new E1 and E2 skills", async () => {
   const { skillEngine } = await loadSkillSystemModules();
 
-  for (const skillId of ["E1_SUB_BASIC", "E1_SUB_BORROW", "E2_ADD_2DIGIT", "E2_SUB_2DIGIT"]) {
+  for (const skillId of ["E1_SUB_BASIC", "E1_SUB_BORROW", "E1_NUMBER_COMPARE", "E1_NUMBER_COMPOSE", "E1_NUMBER_DECOMPOSE", "E2_ADD_2DIGIT", "E2_SUB_2DIGIT"]) {
     const generated = skillEngine.generateSkillQuiz(skillId, 5);
     assert.equal(generated.length, 5, skillId);
     for (const item of generated) {
       assert.equal(typeof item.id, "string");
       assert.equal(typeof item.question, "string");
       assert.equal(typeof item.answer, "string");
+      assert.equal(typeof item.patternKey, "string");
+      assert.equal(typeof item.meta?.difficulty, "number");
     }
   }
+});
+
+test("generateSkillQuiz uses runtime compare answer format for E1_NUMBER_COMPARE", async () => {
+  const { skillEngine } = await loadSkillSystemModules();
+
+  const generated = skillEngine.generateSkillQuiz("E1_NUMBER_COMPARE", 5);
+
+  assert.equal(generated.length, 5);
+  assert.equal(generated.every((item) => item.patternKey === "E1-NUM-COMPARE-01"), true);
+  assert.equal(generated.every((item) => item.answer === "LESS" || item.answer === "GREATER"), true);
 });

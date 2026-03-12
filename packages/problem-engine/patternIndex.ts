@@ -4,6 +4,7 @@ import path from "node:path";
 const PATTERN_GRADES = ["E1", "E2", "J1", "H1"] as const;
 
 const CONCEPTS = [
+  "number",
   "addition",
   "subtraction",
   "multiplication",
@@ -144,6 +145,9 @@ const inferConcept = (fileName: string, key: string): PatternConcept => {
 
   if (normalized.includes("linear-fraction") || normalized.includes("lin-frac")) {
     return "fraction";
+  }
+  if (normalized.includes("number") || normalized.includes("num-")) {
+    return "number";
   }
   if (normalized.includes("add")) {
     return "addition";

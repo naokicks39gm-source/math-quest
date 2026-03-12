@@ -10,6 +10,7 @@ export {
   renderTemplate
 } from "packages/problem-engine/dsl-engine";
 export type { GeneratedProblem, Pattern, PatternDSL, Range } from "packages/problem-engine/dsl-engine";
+export { generateRuntimeProblem, generateRuntimeProblems } from "packages/problem-engine/runtimeProblems";
 export {
   parsePatternDSLMinimal,
   generateVariablesMinimal,

@@ -74,9 +74,9 @@ const profiles: Record<string, GradeProfile> = {
     },
     synthetic: [
       intType("E1.NA.NUM.NUM_COMPARE_UP_TO_20", "かずくらべ（20まで）", "NUM_COMPARE_UP_TO_20", [
-        { prompt: "14と9、どちらが大きい？", answer: "14" },
-        { prompt: "7と13、どちらが大きい？", answer: "13" },
-        { prompt: "10と12、どちらが大きい？", answer: "12" }
+        { prompt: "14と9、どちらが大きい？", answer: "GREATER" },
+        { prompt: "7と13、どちらが大きい？", answer: "LESS" },
+        { prompt: "10と12、どちらが大きい？", answer: "LESS" }
       ]),
       intType("E1.NA.NUM.NUM_DECOMP_10", "10のぶんかい", "NUM_DECOMP_10", [
         { prompt: "10 は7と？でできます。", answer: "3" },

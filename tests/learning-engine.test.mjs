@@ -85,6 +85,9 @@ const createSkillSystemStub = (outputPath) => {
       '  E1_ADD_CARRY: ["E1_ADD_CARRY"],',
       '  E1_SUB_BASIC: ["E1_SUB_BASIC"],',
       '  E1_SUB_BORROW: ["E1_SUB_BORROW"],',
+      '  E1_NUMBER_COMPARE: ["E1_NUMBER_COMPARE"],',
+      '  E1_NUMBER_COMPOSE: ["E1_NUMBER_COMPOSE"],',
+      '  E1_NUMBER_DECOMPOSE: ["E1_NUMBER_DECOMPOSE"],',
       '  E2_ADD_2DIGIT: ["E2_ADD_2DIGIT"],',
       '  E2_SUB_2DIGIT: ["E2_SUB_2DIGIT"],',
       '  H1_BINOMIAL: ["EXPAND_BINOMIAL_BASIC"]',
@@ -111,7 +114,10 @@ const createProblemEngineStub = (outputPath) => {
       '  "E1-ADD-BASIC-04": 1,',
       '  "E1-ADD-BASIC-05": 2,',
       '  "E1-ADD-MAKE10": 2,',
-      '  "E1-ADD-CARRY": 2',
+      '  "E1-ADD-CARRY": 2,',
+      '  "E1-NUM-COMPARE-01": 1,',
+      '  "E1-NUM-COMPOSE-01": 1,',
+      '  "E1-NUM-DECOMPOSE-01": 1',
       "};",
       "export const getPatternMeta = (key) =>",
       "  difficultyByPattern[key] ? { key, difficulty: difficultyByPattern[key] } : undefined;",
@@ -121,9 +127,17 @@ const createProblemEngineStub = (outputPath) => {
       '    id: `${pattern.key}::${generationBatch}::${index}`,',
       '    question: `${pattern.key} question ${generationBatch}-${index}`,',
       '    answer: `${index}`,',
+      '    patternKey: pattern.key,',
+      '    variables: pattern.key === "E1-NUM-COMPARE-01" ? { a: index, b: index + 1 } : pattern.key === "E1-NUM-COMPOSE-01" ? { a: index % 5, b: 10 - (index % 5) } : pattern.key === "E1-NUM-DECOMPOSE-01" ? { whole: 10, known: index % 5 } : undefined,',
       "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2 }",
       "  }));",
-      "};"
+      "};",
+      "export const generateRuntimeProblems = (pattern, count) =>",
+      "  generateProblems(pattern, count).map((problem) => ({",
+      "    ...problem,",
+      "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? ((problem.variables.a ?? 0) < (problem.variables.b ?? 0) ? \"LESS\" : \"GREATER\") : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String((problem.variables.whole ?? 0) - (problem.variables.known ?? 0)) : problem.answer,",
+      "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\" }",
+      "  }));"
     ].join("\n"),
     "utf8"
   );
@@ -138,6 +152,9 @@ const loadLearningEngineModules = async () => {
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-carry.json"), path.join(tempDir, "add-carry.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-basic.json"), path.join(tempDir, "sub-basic.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-borrow.json"), path.join(tempDir, "sub-borrow.mjs"));
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/number-compare.json"), path.join(tempDir, "number-compare.mjs"));
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/number-compose.json"), path.join(tempDir, "number-compose.mjs"));
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/number-decompose.json"), path.join(tempDir, "number-decompose.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/add-2digit.json"), path.join(tempDir, "add-2digit.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/sub-2digit.json"), path.join(tempDir, "sub-2digit.mjs"));
   writeJsonModule(path.join(root, "packages/skill-system/skills.json"), path.join(tempDir, "skills.mjs"));
@@ -154,6 +171,9 @@ const loadLearningEngineModules = async () => {
     ['from "packages/problem-engine/patterns/E1/add-carry.json"', 'from "./add-carry.mjs"'],
     ['from "packages/problem-engine/patterns/E1/sub-basic.json"', 'from "./sub-basic.mjs"'],
     ['from "packages/problem-engine/patterns/E1/sub-borrow.json"', 'from "./sub-borrow.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/number-compare.json"', 'from "./number-compare.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/number-compose.json"', 'from "./number-compose.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/number-decompose.json"', 'from "./number-decompose.mjs"'],
     ['from "packages/problem-engine/patterns/E2/add-2digit.json"', 'from "./add-2digit.mjs"'],
     ['from "packages/problem-engine/patterns/E2/sub-2digit.json"', 'from "./sub-2digit.mjs"']
   ];
@@ -907,6 +927,18 @@ test("finishSession unlocks the next skill when mastery reaches 0.8", async () =
     skillId: "E1_ADD_10",
     reason: "next_skill"
   });
+});
+
+test("number skills resolve as runtime session candidates", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  const initial = studentStore.createLearningState();
+
+  for (const skillId of ["E1_NUMBER_COMPARE", "E1_NUMBER_COMPOSE", "E1_NUMBER_DECOMPOSE"]) {
+    const started = learningEngine.startSession(initial, { mode: "skill", skillId });
+    assert.equal(started.session.skillId, skillId, skillId);
+    assert.equal(started.session.problems.length, 5, skillId);
+    assert.equal(started.session.problems.every((problem) => problem.skillId === skillId), true, skillId);
+  }
 });
 
 test("progression treats mastery below 0.8 as still in progress", async () => {

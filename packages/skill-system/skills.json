@@ -38,6 +38,30 @@
     "difficulty": 2
   },
   {
+    "id": "E1_NUMBER_COMPARE",
+    "title": "数のくらべ",
+    "grade": "E1",
+    "patterns": ["E1_NUMBER_COMPARE"],
+    "prerequisite": ["E1_SUB_BORROW"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_NUMBER_COMPOSE",
+    "title": "数のごうせい",
+    "grade": "E1",
+    "patterns": ["E1_NUMBER_COMPOSE"],
+    "prerequisite": ["E1_NUMBER_COMPARE"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_NUMBER_DECOMPOSE",
+    "title": "数のぶんかい",
+    "grade": "E1",
+    "patterns": ["E1_NUMBER_DECOMPOSE"],
+    "prerequisite": ["E1_NUMBER_COMPOSE"],
+    "difficulty": 1
+  },
+  {
     "id": "E2_ADD_2DIGIT",
     "title": "2桁のたし算",
     "grade": "E2",

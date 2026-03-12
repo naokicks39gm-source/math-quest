@@ -243,7 +243,7 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
           type,
           item: {
             prompt: `${a}と${b}、どちらが大きい？`,
-            answer: String(Math.max(a, b))
+            answer: a < b ? "LESS" : "GREATER"
           }
         });
         continue;

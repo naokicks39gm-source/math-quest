@@ -57,7 +57,10 @@ const createSkillSystemStub = (outputPath) => {
       '  E1_ADD_10: ["E1_ADD_10"],',
       '  E1_ADD_CARRY: ["E1_ADD_CARRY"],',
       '  E1_SUB_BASIC: ["E1_SUB_BASIC"],',
-      '  E1_SUB_BORROW: ["E1_SUB_BORROW"]',
+      '  E1_SUB_BORROW: ["E1_SUB_BORROW"],',
+      '  E1_NUMBER_COMPARE: ["E1_NUMBER_COMPARE"],',
+      '  E1_NUMBER_COMPOSE: ["E1_NUMBER_COMPOSE"],',
+      '  E1_NUMBER_DECOMPOSE: ["E1_NUMBER_DECOMPOSE"]',
       "};",
       "export const getPatterns = (skillId) => {",
       "  const patterns = skillPatterns[skillId];",
@@ -73,7 +76,10 @@ const createProblemEngineStub = (outputPath) => {
   const ranges = [
     ['"E1-ADD-BASIC-"', 1, 10, "(index <= 8 ? 1 : 2)"],
     ['"E1-SUB-BASIC-"', 1, 10, "(index <= 7 ? 1 : 2)"],
-    ['"E1-SUB-BORROW-"', 1, 10, "(index <= 4 ? 2 : 3)"]
+    ['"E1-SUB-BORROW-"', 1, 10, "(index <= 4 ? 2 : 3)"],
+    ['"E1-NUM-COMPARE-"', 1, 1, "1"],
+    ['"E1-NUM-COMPOSE-"', 1, 1, "1"],
+    ['"E1-NUM-DECOMPOSE-"', 1, 1, "1"]
   ];
 
   fs.writeFileSync(
@@ -94,7 +100,14 @@ const createProblemEngineStub = (outputPath) => {
       '    patternKey: pattern.key,',
       '    question: `${pattern.key} question ${index}`,',
       '    answer: `${index}`,',
+      '    variables: pattern.key === "E1-NUM-COMPARE-01" ? { a: index, b: index + 1 } : pattern.key === "E1-NUM-COMPOSE-01" ? { a: index % 5, b: 10 - (index % 5) } : pattern.key === "E1-NUM-DECOMPOSE-01" ? { whole: 10, known: index % 5 } : undefined,',
       "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2 }",
+      "  }));",
+      "export const generateRuntimeProblems = (pattern, count) =>",
+      "  generateProblems(pattern, count).map((problem) => ({",
+      "    ...problem,",
+      "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? ((problem.variables.a ?? 0) < (problem.variables.b ?? 0) ? \"LESS\" : \"GREATER\") : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String((problem.variables.whole ?? 0) - (problem.variables.known ?? 0)) : problem.answer,",
+      "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\" }",
       "  }));"
     ].join("\n"),
     "utf8"
@@ -110,6 +123,9 @@ const loadModules = async () => {
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-carry.json"), path.join(tempDir, "add-carry.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-basic.json"), path.join(tempDir, "sub-basic.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/sub-borrow.json"), path.join(tempDir, "sub-borrow.mjs"));
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/number-compare.json"), path.join(tempDir, "number-compare.mjs"));
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/number-compose.json"), path.join(tempDir, "number-compose.mjs"));
+  writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/number-decompose.json"), path.join(tempDir, "number-decompose.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/add-2digit.json"), path.join(tempDir, "add-2digit.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/sub-2digit.json"), path.join(tempDir, "sub-2digit.mjs"));
   writeJsonModule(path.join(root, "packages/skill-system/skills.json"), path.join(tempDir, "skills.mjs"));
@@ -127,6 +143,9 @@ const loadModules = async () => {
     ['from "packages/problem-engine/patterns/E1/add-carry.json"', 'from "./add-carry.mjs"'],
     ['from "packages/problem-engine/patterns/E1/sub-basic.json"', 'from "./sub-basic.mjs"'],
     ['from "packages/problem-engine/patterns/E1/sub-borrow.json"', 'from "./sub-borrow.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/number-compare.json"', 'from "./number-compare.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/number-compose.json"', 'from "./number-compose.mjs"'],
+    ['from "packages/problem-engine/patterns/E1/number-decompose.json"', 'from "./number-decompose.mjs"'],
     ['from "packages/problem-engine/patterns/E2/add-2digit.json"', 'from "./add-2digit.mjs"'],
     ['from "packages/problem-engine/patterns/E2/sub-2digit.json"', 'from "./sub-2digit.mjs"']
   ];
@@ -166,7 +185,10 @@ const e1SkillCases = [
   ["E1_ADD_10", "E1-ADD-MAKE10"],
   ["E1_ADD_CARRY", "E1-ADD-CARRY"],
   ["E1_SUB_BASIC", "E1-SUB-BASIC-"],
-  ["E1_SUB_BORROW", "E1-SUB-BORROW-"]
+  ["E1_SUB_BORROW", "E1-SUB-BORROW-"],
+  ["E1_NUMBER_COMPARE", "E1-NUM-COMPARE-"],
+  ["E1_NUMBER_COMPOSE", "E1-NUM-COMPOSE-"],
+  ["E1_NUMBER_DECOMPOSE", "E1-NUM-DECOMPOSE-"]
 ];
 
 test("runtime E1 skills keep lightweight session distribution sanity", async () => {
@@ -190,7 +212,13 @@ test("runtime E1 skills keep lightweight session distribution sanity", async () 
       }
     }
 
-    if (skillId === "E1_ADD_10" || skillId === "E1_ADD_CARRY") {
+    if (
+      skillId === "E1_ADD_10" ||
+      skillId === "E1_ADD_CARRY" ||
+      skillId === "E1_NUMBER_COMPARE" ||
+      skillId === "E1_NUMBER_COMPOSE" ||
+      skillId === "E1_NUMBER_DECOMPOSE"
+    ) {
       assert.equal(patternCounts.size >= 1, true, `${skillId} unique patterns: ${patternCounts.size}`);
       assert.equal(patternCounts.size <= 1, true, `${skillId} unique patterns: ${patternCounts.size}`);
       continue;

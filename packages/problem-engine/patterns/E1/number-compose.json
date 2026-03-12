@@ -1,0 +1,14 @@
+[
+  {
+    "key": "E1-NUM-COMPOSE-01",
+    "template": "{a} + {b} =",
+    "variables": {
+      "a": [0, 10],
+      "b": [0, 10]
+    },
+    "constraints": [
+      "a + b <= 10"
+    ],
+    "answer": "a + b"
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "key": "E1-NUM-DECOMPOSE-01",
+    "template": "{whole} は{known}と？でできます。",
+    "variables": {
+      "whole": [10, 10],
+      "known": [0, 10]
+    },
+    "constraints": [
+      "known <= whole"
+    ],
+    "answer": "whole - known"
+  }
+]
