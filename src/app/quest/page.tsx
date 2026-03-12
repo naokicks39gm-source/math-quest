@@ -583,6 +583,9 @@ const renderPrompt = (item: ExampleItem, typeId?: string, typeLabel?: string) =>
   const formattedPrompt = formatPrompt(item.prompt, shouldKeepPromptEquals, shouldForcePromptEquals);
   const slotPrompt = renderPromptWithSlotBox(formattedPrompt);
   if (slotPrompt) return slotPrompt;
+  if (formattedPrompt.includes("\n")) {
+    return <span className="inline-block whitespace-pre-line break-words text-center leading-tight">{formattedPrompt}</span>;
+  }
   return renderMaybeMath(formattedPrompt);
 };
 
@@ -2158,7 +2161,7 @@ function QuestPageInner() {
       const message = error instanceof Error ? error.message : "learning_session_start_failed";
       setLearningError(message);
       setStatus("blocked");
-      setQuizBuildError(`Learning session を開始できませんでした: ${message}`);
+      setQuizBuildError(`れんしゅうを はじめられませんでした: ${message}`);
     } finally {
       setLearningLoading(false);
     }
@@ -2591,7 +2594,7 @@ function QuestPageInner() {
         finishGuardRef.current = false;
         setLearningError(message);
         setStatus("blocked");
-        setQuizBuildError(`Learning session を完了できませんでした: ${message}`);
+        setQuizBuildError(`れんしゅうを おえられませんでした: ${message}`);
       }
     })();
   }, [shouldAutoFinishLearningSession]);
@@ -3188,6 +3191,13 @@ function QuestPageInner() {
     setPendingGradeId((prev) => (prev === currentGradeId ? prev : currentGradeId));
   }, [currentGradeId]);
   useEffect(() => {
+    if (!isLearningSessionMode) {
+      return;
+    }
+    setCombo(learningSession?.combo ?? 0);
+  }, [isLearningSessionMode, learningSession?.combo]);
+
+  useEffect(() => {
     setShowSecondaryHint(false);
     setShowSecondaryExplanation(false);
     setShowElementaryHint(false);
@@ -3206,10 +3216,21 @@ function QuestPageInner() {
     }
     if (practiceResult?.ok === false && currentLearningAttemptCount >= 2) {
       if (isSecondaryQuest) {
+        setShowSecondaryHint(false);
         setShowSecondaryExplanation(true);
       }
       if (isElementaryGrade(currentGradeId)) {
+        setShowElementaryHint(false);
         setShowElementaryExplanation(true);
+      }
+      return;
+    }
+    if (practiceResult?.ok === false && currentLearningAttemptCount >= 1) {
+      if (isSecondaryQuest) {
+        setShowSecondaryHint(true);
+      }
+      if (isElementaryGrade(currentGradeId)) {
+        setShowElementaryHint(true);
       }
     }
   }, [
@@ -3336,7 +3357,7 @@ function QuestPageInner() {
           const message = error instanceof Error ? error.message : "learning_session_finish_failed";
           setLearningError(message);
           setStatus("blocked");
-          setQuizBuildError(`Learning session を完了できませんでした: ${message}`);
+          setQuizBuildError(`れんしゅうを おえられませんでした: ${message}`);
         });
         return;
       }
@@ -3803,7 +3824,7 @@ function QuestPageInner() {
           const message = error instanceof Error ? error.message : "learning_session_answer_failed";
           setLearningError(message);
           setStatus("blocked");
-          setQuizBuildError(`Learning session の回答登録に失敗しました: ${message}`);
+          setQuizBuildError(`こたえの とうろくに しっぱいしました: ${message}`);
         });
     }
 
@@ -3812,7 +3833,7 @@ function QuestPageInner() {
       setCombo(newCombo);
       const charData = CHARACTERS[character];
       let hitMsg = charData.hits[Math.floor(Math.random() * charData.hits.length)];
-      if (newCombo >= 3) hitMsg += ` (Combo x${newCombo}!)`;
+      if (newCombo >= 3) hitMsg += ` （れんぞく ${newCombo} かい！）`;
       setMessage(hitMsg);
       if (useFastLearningLoop) {
         queueAdvanceAfterFeedback(verdict);
@@ -3825,10 +3846,6 @@ function QuestPageInner() {
         }, AUTO_ADVANCE_MS);
       }
     } else {
-      if (!useFastLearningLoop && isSecondaryQuest) {
-        setShowSecondaryHint(false);
-        setShowSecondaryExplanation(true);
-      }
       setCombo(0);
       const charData = CHARACTERS[character];
       setMessage(charData.misses[Math.floor(Math.random() * charData.misses.length)]);
@@ -4377,7 +4394,7 @@ function QuestPageInner() {
           const message = error instanceof Error ? error.message : "learning_session_answer_failed";
           setLearningError(message);
           setStatus("blocked");
-          setQuizBuildError(`Learning session の回答登録に失敗しました: ${message}`);
+          setQuizBuildError(`こたえの とうろくに しっぱいしました: ${message}`);
         }
       }
       setQuestionResults((prev) => ({
@@ -4422,10 +4439,6 @@ function QuestPageInner() {
           }, AUTO_ADVANCE_MS);
         }
       } else {
-        if (!useFastLearningLoop && isSecondaryQuest) {
-          setShowSecondaryHint(false);
-          setShowSecondaryExplanation(true);
-        }
         setCombo(0);
         if (useFastLearningLoop && !isLearningSessionMode) {
           queueAdvanceAfterFeedback(verdict);
@@ -5165,7 +5178,7 @@ function QuestPageInner() {
                     onClick={() => setShowSkillTree((prev) => !prev)}
                     className="shrink-0 rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-700 shadow-sm transition hover:bg-sky-50"
                   >
-                    {showSkillTree ? "Hide Skill Tree" : "Skill Tree"}
+                    {showSkillTree ? "とじる" : "すすみかた"}
                   </button>
                 ) : null}
               </div>
@@ -5174,12 +5187,12 @@ function QuestPageInner() {
               <section className="mb-4 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Current Skill</div>
+                    <div className="text-xs font-semibold tracking-[0.2em] text-slate-500">いまの べんきょう</div>
                     <div className="mt-2 text-lg font-bold text-slate-900">{currentSkillNode.title}</div>
                     <SkillProgressBar mastery={currentSkillNode.mastery} />
                     <div className="mt-2 flex items-center justify-between text-sm font-semibold text-slate-600">
                       <span>{Math.round(currentSkillNode.mastery * 100)}%</span>
-                      <span>XP {currentSkillNode.xp}</span>
+                      <span>ポイント {currentSkillNode.xp}</span>
                     </div>
                     <div className="mt-4">
                       <button
@@ -5190,17 +5203,17 @@ function QuestPageInner() {
                         }}
                         className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
                       >
-                        Continue Current Skill
+                        もういちど
                       </button>
                     </div>
                   </div>
                   {recommendedSkillNode ? (
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Next Skill</div>
+                      <div className="text-xs font-semibold tracking-[0.2em] text-slate-500">つぎの べんきょう</div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <div className="text-lg font-bold text-slate-900">{recommendedSkillNode.title}</div>
-                        <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-green-700">
-                          NEXT
+                        <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
+                          つぎ
                         </span>
                       </div>
                       <div className="mt-4">
@@ -5209,7 +5222,7 @@ function QuestPageInner() {
                           onClick={() => router.push(`/quest?skillId=${encodeURIComponent(recommendedSkillNode.id)}`)}
                           className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
                         >
-                          Start Next Skill
+                          つぎへ
                         </button>
                       </div>
                     </div>
@@ -5238,7 +5251,7 @@ function QuestPageInner() {
               <div className="pointer-events-none absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_12%_20%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_70%,rgba(255,255,255,0.10),transparent_34%),repeating-linear-gradient(12deg,rgba(255,255,255,0.05)_0px,rgba(255,255,255,0.05)_2px,transparent_2px,transparent_8px)]" />
               {combo >= 2 && (
                 <div className="pointer-events-none absolute top-2 right-2 -rotate-12 rounded-md border border-yellow-200/70 bg-yellow-300/90 px-2 py-0.5 text-[10px] sm:text-xs font-black tracking-wide text-emerald-950 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
-                  {combo} COMBO!
+                  れんぞく {combo} かい
                 </div>
               )}
               <div className="pointer-events-none absolute bottom-0 left-3 flex items-end gap-2">
@@ -5385,7 +5398,7 @@ function QuestPageInner() {
       <div className="flex flex-col items-center space-y-3 my-2 flex-1 justify-start w-full">
         {learningLoading ? (
           <div className="w-full text-center rounded-2xl border border-sky-200 bg-sky-50 px-4 py-6 shadow-sm">
-            <div className="text-base font-black text-sky-700">Learning session を準備中です</div>
+            <div className="text-base font-black text-sky-700">れんしゅうを じゅんびちゅうです</div>
             <div className="mt-2 text-sm text-sky-700">れんしゅうを じゅんびしています...</div>
           </div>
         ) : status === 'cleared' ? (
@@ -5393,6 +5406,7 @@ function QuestPageInner() {
             <div className="w-full max-w-3xl">
               <SkillClearView
                 skillTitle={currentLearningSkillTitle}
+                gradeLevel={currentSkillNode?.gradeLevel ?? getPracticeSkill(currentLearningSkillId ?? "")?.gradeLevel ?? "1"}
                 earnedXp={learningResult.earnedXp}
                 skillXp={learningResult.skillXpAfter}
                 requiredXP={learningResult.requiredXP}
@@ -5400,6 +5414,7 @@ function QuestPageInner() {
                 onNextSkill={recommendedLearningSkillId ? () => router.push(`/quest?skillId=${encodeURIComponent(recommendedLearningSkillId)}`) : undefined}
                 onRetry={() => {
                   if (!currentLearningSkillId) return;
+                  router.push(`/quest?skillId=${encodeURIComponent(currentLearningSkillId)}`);
                   void startLearningSession(currentLearningSkillId);
                 }}
                 onDone={() => router.push("/skills")}

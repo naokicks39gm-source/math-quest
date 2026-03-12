@@ -29,6 +29,7 @@ const buildSkillItems = (state: ReturnType<typeof loadStateFromClient>): SkillCa
         code: skill.code,
         title: skill.title,
         grade: skill.grade,
+        gradeLevel: skill.gradeLevel,
         mastery,
         mastered,
         unlocked,
@@ -68,6 +69,7 @@ export default function SkillsPage() {
       code: skill.code,
       title: skill.title,
       grade: skill.grade,
+      gradeLevel: skill.gradeLevel,
       mastery: 0,
       mastered: false,
       unlocked: skill.id === practiceSkills[0]?.id,
@@ -100,31 +102,28 @@ export default function SkillsPage() {
       <div className="mx-auto max-w-4xl">
         {recommendedSkill ? (
           <section className="mb-6 rounded-[32px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
-            <div className="text-sm font-semibold uppercase tracking-[0.35em] text-sky-600">Recommended</div>
+            <div className="text-sm font-semibold tracking-[0.2em] text-sky-600">おすすめ</div>
             <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">
-                {recommendedSkill.grade ?? recommendedSkill.code ?? recommendedSkill.id}
-              </div>
               <h2 className="mt-2 text-2xl font-black text-slate-900">{recommendedSkill.title}</h2>
-              <p className="mt-2 text-sm text-slate-600">mastery {((recommendedSkill.mastery ?? 0) * 100).toFixed(0)}%</p>
+              <p className="mt-2 text-sm text-slate-600">すすみぐあい {((recommendedSkill.mastery ?? 0) * 100).toFixed(0)}%</p>
               <button
                 type="button"
                 onClick={() => handleSelect(recommendedSkill)}
                 className="mt-4 rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
               >
-                Start Practice
+                はじめる
               </button>
             </div>
           </section>
         ) : null}
         <section className="rounded-[32px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
-          <div className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-600">Learning Progress</div>
-          <h1 className="mt-3 text-4xl font-black text-slate-900">Skill List</h1>
+          <div className="text-sm font-semibold tracking-[0.2em] text-emerald-600">いまの すすみぐあい</div>
+          <h1 className="mt-3 text-4xl font-black text-slate-900">べんきょう いちらん</h1>
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <div className="rounded-full bg-slate-900 px-4 py-2 text-sm font-black text-white">XP {xp}</div>
-            {streak ? <p className="text-lg font-bold text-amber-600">🔥 {streak.streak} day streak</p> : null}
+            <div className="rounded-full bg-slate-900 px-4 py-2 text-sm font-black text-white">ポイント {xp}</div>
+            {streak ? <p className="text-lg font-bold text-amber-600">🔥 {streak.streak} にち れんぞく</p> : null}
           </div>
-          <p className="mt-3 text-sm text-slate-600">進捗を見ながら、次に進める skill を選べます。</p>
+          <p className="mt-3 text-sm text-slate-600">すすみぐあいを みながら、つぎの べんきょうを えらべます。</p>
           <div className="mt-8">
             <SkillList skills={skills} onSelect={handleSelect} />
           </div>

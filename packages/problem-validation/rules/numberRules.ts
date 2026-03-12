@@ -16,7 +16,7 @@ const parseLeadingNumbers = (question: string) => {
   return { left, right };
 };
 
-const normalizeAnswer = (answer: string) => String(answer).trim().toUpperCase();
+const normalizeAnswer = (answer: string) => String(answer).trim();
 
 export const validateNumberCompare: Rule = ({ problem }) => {
   if (resolvePatternFamily(problem.patternKey) !== "number_compare") {
@@ -32,7 +32,7 @@ export const validateNumberCompare: Rule = ({ problem }) => {
   const left = typeof variables.a === "number" ? variables.a : parseLeadingNumbers(question)?.left;
   const right = typeof variables.b === "number" ? variables.b : parseLeadingNumbers(question)?.right;
 
-  if (!question.includes("?") && !question.includes("くらべ") && !question.includes("どちらが大きい")) {
+  if (!question.includes("?") && !question.includes("くらべ") && !question.includes("小さいほう")) {
     return {
       valid: false,
       error: "not compare prompt"
@@ -56,14 +56,14 @@ export const validateNumberCompare: Rule = ({ problem }) => {
     };
   }
 
-  if (answer !== "LESS" && answer !== "GREATER") {
+  if (!/^-?\d+$/u.test(answer)) {
     return {
       valid: false,
       error: "invalid compare answer"
     };
   }
 
-  const expected = compareLeft < compareRight ? "LESS" : "GREATER";
+  const expected = String(Math.min(compareLeft, compareRight));
   return answer === expected
     ? pass
     : {

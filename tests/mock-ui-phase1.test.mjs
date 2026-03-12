@@ -81,8 +81,8 @@ test("skill list and detail pages use skill-system-based catalog", () => {
   assert.equal(progressPageSource.includes("const getRecommendedSkill"), true);
   assert.equal(progressPageSource.includes("skill.patterns.length > 0"), true);
   assert.equal(progressPageSource.includes('.filter((skill) => skill.unlocked === true && (skill.mastery ?? 0) < 0.8 && skill.patterns.length > 0)'), true);
-  assert.equal(progressPageSource.includes("Recommended"), true);
-  assert.equal(progressPageSource.includes("Start Practice"), true);
+  assert.equal(progressPageSource.includes("おすすめ"), true);
+  assert.equal(progressPageSource.includes("はじめる"), true);
   assert.equal(progressPageSource.includes(") : null}"), true);
   assert.equal(progressPageSource.includes('import { readDailyStreak, type DailyStreak } from "@/lib/streak";'), true);
   assert.equal(progressPageSource.includes('import { readXp, type StoredXp } from "@/lib/xp";'), false);
@@ -90,8 +90,8 @@ test("skill list and detail pages use skill-system-based catalog", () => {
   assert.equal(progressPageSource.includes("const nextXp = state.student.xpTotal ?? 0;"), true);
   assert.equal(progressPageSource.includes("setXp(nextXp);"), true);
   assert.equal(progressPageSource.includes('console.log("studentXP", nextXp);'), true);
-  assert.equal(progressPageSource.includes("XP {xp}"), true);
-  assert.equal(progressPageSource.includes("🔥 {streak.streak} day streak"), true);
+  assert.equal(progressPageSource.includes("ポイント {xp}"), true);
+  assert.equal(progressPageSource.includes("🔥 {streak.streak} にち れんぞく"), true);
   assert.equal(progressPageSource.includes("left.mastery ?? 0"), true);
   assert.equal(progressPageSource.includes("right.mastery ?? 0"), true);
   assert.equal(progressPageSource.includes('leftBucket === "learning" && rightBucket === "learning"'), false);
@@ -272,7 +272,7 @@ test("skills ui components expose mastery progress and status", () => {
   assert.equal(skillCardSource.includes('status === "MASTERED"'), true);
   assert.equal(skillCardSource.includes('status === "LEARNING"'), true);
   assert.equal(skillCardSource.includes('status === "AVAILABLE"'), true);
-  assert.equal(skillCardSource.includes("skill.grade"), true);
+  assert.equal(skillCardSource.includes("すすみぐあい"), true);
   assert.equal(skillCardSource.includes("const masteryPercent = mastery !== undefined ? Math.round(mastery * 100) : 0;"), true);
   assert.equal(skillCardSource.includes("{masteryPercent}%"), true);
   assert.equal(progressBarSource.includes("type SkillProgressBarProps = {"), true);

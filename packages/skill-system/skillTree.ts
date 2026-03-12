@@ -4,6 +4,18 @@ import type { Skill, SkillNode, SkillStatus } from "./skillTypes";
 const skills = skillsData as Skill[];
 const DEFAULT_REQUIRED_XP = 100;
 
+const resolveGradeLevel = (skill: Skill): "1" | "2" | "3" => {
+  if (skill.gradeLevel === "1" || skill.gradeLevel === "2" || skill.gradeLevel === "3") {
+    return skill.gradeLevel;
+  }
+  if (skill.grade.startsWith("E1")) return "1";
+  if (skill.grade.startsWith("E2")) return "2";
+  return "3";
+};
+
+export const getDisplaySkillTitle = (skill: Skill): string =>
+  resolveGradeLevel(skill) === "1" ? (skill.titleKana ?? skill.title) : skill.title;
+
 type SkillTreeState = {
   unlockedSkills?: string[];
   skillProgress?: Record<string, { mastery?: number; mastered?: boolean } | undefined>;
@@ -63,7 +75,8 @@ export function getSkillTree(state?: SkillTreeState): SkillNode[] {
 
     return {
       id: skill.id,
-      title: skill.title,
+      title: getDisplaySkillTitle(skill),
+      gradeLevel: resolveGradeLevel(skill),
       difficulty: skill.difficulty,
       requiredXP,
       prerequisite: skill.prerequisite ?? [],

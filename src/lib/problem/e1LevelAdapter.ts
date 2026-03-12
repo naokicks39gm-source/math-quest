@@ -23,7 +23,7 @@ export type E1LevelOption = {
 };
 
 export const E1_LEVEL_OPTIONS: E1LevelOption[] = [
-  { levelId: "E1-1", title: "どちらが大きい" },
+  { levelId: "E1-1", title: "小さいほう" },
   { levelId: "E1-2", title: "10のぶんかい" },
   { levelId: "E1-3", title: "10のごうせい" },
   { levelId: "E1-4", title: "たし算（答え10まで）" },
@@ -69,9 +69,9 @@ const explanationCompare = (left: number, right: number) =>
     [
       numberedStep(1, `${left}こ`, dotLines(left)),
       numberedStep(2, `${right}こ`, dotLines(right)),
-      numberedStep(3, "くらべる", `おおきいのは ${right}`)
+      numberedStep(3, "くらべる", `ちいさいのは ${left}`)
     ],
-    `おおきいのは ${right}`
+    `ちいさいのは ${left}`
   );
 
 const explanationComposeTen = (known: number, missing: number) =>
@@ -270,8 +270,8 @@ const generateOne = (levelId: E1LevelId): E1Item => {
     const left = randInt(1, 19);
     const right = randInt(left + 1, 20);
     return {
-      prompt: `${left} と ${right}\nどちらが大きい？`,
-      answer: `${right}`,
+      prompt: `${left} と ${right}\n小さいほうは？`,
+      answer: `${left}`,
       memo_explanation: explanationCompare(left, right)
     };
   }

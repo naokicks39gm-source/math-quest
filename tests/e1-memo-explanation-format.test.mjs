@@ -15,7 +15,7 @@ test("E1 memo explanations use dots and short block format", () => {
   assert.equal(source.includes("const explanationSub"), true);
   assert.equal(source.includes("まず10をつくる"), true);
   assert.equal(source.includes("こたえ"), true);
-  assert.equal(source.includes("おおきいのは"), true);
+  assert.equal(source.includes("ちいさいのは"), true);
   assert.equal(source.includes("`${right} > ${left}`"), false);
 });
 

@@ -9,6 +9,7 @@ export type SkillCardItem = {
   title: string;
   code?: string;
   grade?: string;
+  gradeLevel?: "1" | "2" | "3";
   mastery?: number;
   mastered?: boolean;
   unlocked?: boolean;
@@ -43,7 +44,7 @@ export default function SkillCard({ skill, onSelect }: SkillCardProps) {
           : "bg-slate-200 text-slate-600";
   const statusLabel =
     status === "MASTERED"
-      ? "クリア！"
+      ? "クリア"
       : status === "LEARNING"
         ? "れんしゅう中"
         : status === "AVAILABLE"
@@ -63,10 +64,9 @@ export default function SkillCard({ skill, onSelect }: SkillCardProps) {
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-sm font-semibold tracking-[0.2em] text-slate-500">{skill.code ?? skill.grade ?? skill.id}</div>
           <div className="mt-1 text-lg font-bold text-slate-900">{skill.title}</div>
         </div>
-        <div className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${statusClass}`}>
+        <div className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}>
           {statusLabel}
         </div>
       </div>
@@ -74,7 +74,7 @@ export default function SkillCard({ skill, onSelect }: SkillCardProps) {
         <>
           <SkillProgressBar mastery={mastery} />
           <div className="mt-2 flex items-center justify-between text-sm text-slate-600">
-            <span>{skill.grade ?? "Skill"}</span>
+            <span>すすみぐあい</span>
             <span>{masteryPercent}%</span>
           </div>
         </>

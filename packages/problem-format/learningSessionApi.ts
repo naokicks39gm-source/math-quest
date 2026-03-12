@@ -48,8 +48,11 @@ export type LearningSession = {
   mode: "skill" | "adaptive";
   skillId?: string;
   startedDifficulty: number;
+  currentDifficulty: number;
   skillXpBefore?: number;
   attemptCount: number;
+  combo: number;
+  failCount: number;
   problems: LearningSessionProblem[];
   index: number;
   correct: number;

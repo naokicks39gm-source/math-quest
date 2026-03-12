@@ -14,7 +14,8 @@ test("answer operations are locked while secondary explanation is open", () => {
   assert.match(source, /isAnswerLocked=\{isAnswerLockedByExplanation\}/);
   assert.match(source, /canSubmit=\{canSubmitResolved\}/);
   assert.match(hsKeypadSource, /disabled=\{baseDisabled \|\| !canSubmit\}/);
-  assert.match(source, /if \(!useFastLearningLoop && isSecondaryQuest\) \{\s*setShowSecondaryHint\(false\);\s*setShowSecondaryExplanation\(true\);\s*\}/);
+  assert.match(source, /if \(practiceResult\?\.ok === false && currentLearningAttemptCount >= 2\) \{/);
+  assert.match(source, /setShowSecondaryExplanation\(true\)/);
 });
 
 test("skip from explanation is recorded and advances to next question", () => {

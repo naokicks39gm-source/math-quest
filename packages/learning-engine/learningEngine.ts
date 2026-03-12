@@ -1,7 +1,6 @@
 import skillsData from "packages/skill-system/skills.json";
 import { generateRuntimeProblems } from "packages/problem-engine";
 
-import { updateDifficulty } from "./difficultyController";
 import { updatePatternProgress as nextPatternProgress } from "./patternProgressTracker";
 import { getNextRecommendedSkillId } from "./progression-engine";
 import { updateSkillProgress } from "./skillProgressTracker";
@@ -54,9 +53,26 @@ const WEAK_PATTERN_THRESHOLD = 2;
 
 const skills = skillsData as SkillDefinition[];
 const DEFAULT_REQUIRED_XP = 100;
+const XP_BASE = 30;
+const XP_COMBO_STEP = 5;
+const XP_MAX_BONUS = 20;
+const DIFFICULTY_MULTIPLIERS = {
+  1: 1,
+  2: 1.1,
+  3: 1.25,
+  4: 1.4,
+  5: 1.6
+} as const;
 
 const getRequiredXP = (skillId: string) => skills.find((skill) => skill.id === skillId)?.requiredXP ?? DEFAULT_REQUIRED_XP;
 const computeXpMastery = (skillId: string, skillXP: number) => Math.max(0, Math.min(skillXP / getRequiredXP(skillId), 1));
+const clampSessionDifficulty = (difficulty: number) => Math.max(1, Math.min(5, Math.trunc(difficulty)));
+const getDifficultyMultiplier = (difficulty: number) =>
+  DIFFICULTY_MULTIPLIERS[clampSessionDifficulty(difficulty) as keyof typeof DIFFICULTY_MULTIPLIERS];
+const computeAdaptiveXpGain = (combo: number, difficulty: number) => {
+  const comboBonus = Math.min(Math.max(0, combo) * XP_COMBO_STEP, XP_MAX_BONUS);
+  return Math.round((XP_BASE + comboBonus) * getDifficultyMultiplier(difficulty));
+};
 
 const isSkillMastered = (skillProgress: LearningState["skillProgress"], skillId: string) =>
   (skillProgress[skillId]?.mastery ?? 0) >= PROGRESSION_UNLOCK_THRESHOLD;
@@ -106,24 +122,11 @@ const setLockedSkills = (skillProgress: LearningState["skillProgress"]) => {
   return next;
 };
 
-const advanceSession = (session: Session | undefined, correct: boolean): Session | undefined => {
-  if (!session) {
-    return undefined;
-  }
-
-  const currentProblem = session.problems[session.index];
-  const nextIndex = correct && currentProblem ? session.index + 1 : session.index;
-
-  return {
-    ...session,
-    index: Math.min(nextIndex, session.problems.length),
-    correct: session.correct + (correct ? 1 : 0),
-    wrong: session.wrong + (correct ? 0 : 1),
-    attemptCount: correct ? 0 : session.attemptCount + 1
-  };
-};
-
-const buildReplacementProblem = (state: LearningState, currentProblem: SessionProblem): SessionProblem => {
+const buildReplacementProblem = (
+  state: LearningState,
+  currentProblem: SessionProblem,
+  targetDifficulty: number
+): SessionProblem => {
   const patterns = resolveSkillPatterns(currentProblem.skillId);
   const matchedPattern = patterns.find((pattern) => pattern.key === currentProblem.patternKey);
 
@@ -133,14 +136,17 @@ const buildReplacementProblem = (state: LearningState, currentProblem: SessionPr
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const candidates = generateRuntimeProblems(matchedPattern, 12).filter(
-      (problem) => problem.id !== currentProblem.problem.id
+      (problem) =>
+        problem.id !== currentProblem.problem.id &&
+        problem.question !== currentProblem.problem.question &&
+        (typeof problem.meta?.difficulty !== "number" || clampSessionDifficulty(problem.meta.difficulty) <= targetDifficulty)
     );
     const replacement = candidates[attempt] ?? candidates[0];
     if (replacement) {
       return {
         ...currentProblem,
         problem: replacement,
-        difficulty: Math.max(1, Math.min(5, Math.trunc(replacement.meta?.difficulty ?? currentProblem.difficulty)))
+        difficulty: clampSessionDifficulty(replacement.meta?.difficulty ?? targetDifficulty)
       };
     }
   }
@@ -225,16 +231,23 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     throw new Error("session_problem_not_found");
   }
 
+  const nextAttemptCount = result.correct ? 0 : session.attemptCount + 1;
+  const nextCombo = result.correct ? session.combo + 1 : 0;
+  const rawFailCount = result.correct ? 0 : session.failCount + 1;
+  const loweredDifficulty = !result.correct && rawFailCount >= 2;
+  const nextFailCount = result.correct ? 0 : loweredDifficulty ? 0 : rawFailCount;
+  const nextDifficulty = result.correct
+    ? clampSessionDifficulty(session.currentDifficulty + (nextCombo >= 3 ? 1 : 0))
+    : clampSessionDifficulty(session.currentDifficulty - (loweredDifficulty ? 1 : 0));
+  const xpGain = result.correct ? computeAdaptiveXpGain(nextCombo, session.currentDifficulty) : 0;
   const student = updateXP(
-    updateDifficulty(
-      {
-        ...currentState.student,
-        solved: currentState.student.solved + 1,
-        correct: currentState.student.correct + (result.correct ? 1 : 0)
-      },
-      result.correct
-    ),
-    result.correct ? 1 : 0
+    {
+      ...currentState.student,
+      difficulty: nextDifficulty,
+      solved: currentState.student.solved + 1,
+      correct: currentState.student.correct + (result.correct ? 1 : 0)
+    },
+    xpGain
   );
 
   const patternProgress = {
@@ -250,7 +263,7 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     .map((pattern) => patternProgress[pattern.key]?.mastery)
     .filter((mastery): mastery is number => mastery !== undefined);
 
-  const nextSkillXPValue = (currentState.skillXP[currentProblem.skillId] ?? 0) + (result.correct ? 10 : 0);
+  const nextSkillXPValue = (currentState.skillXP[currentProblem.skillId] ?? 0) + xpGain;
   const nextSkillMasteryValue = computeXpMastery(currentProblem.skillId, nextSkillXPValue);
   const skillProgress = setLockedSkills({
     ...currentState.skillProgress,
@@ -265,13 +278,22 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     }
   });
 
-  const nextSessionBase = advanceSession(currentState.session, result.correct);
+  const nextSessionBase: Session = {
+    ...session,
+    currentDifficulty: nextDifficulty,
+    combo: nextCombo,
+    failCount: nextFailCount,
+    attemptCount: nextAttemptCount,
+    index: Math.min(result.correct ? session.index + 1 : session.index, session.problems.length),
+    correct: session.correct + (result.correct ? 1 : 0),
+    wrong: session.wrong + (result.correct ? 0 : 1)
+  };
   const nextSession =
-    !result.correct && nextSessionBase
+    !result.correct
       ? {
           ...nextSessionBase,
           problems: nextSessionBase.problems.map((problem, index) =>
-            index === nextSessionBase.index ? buildReplacementProblem(currentState, currentProblem) : problem
+            index === nextSessionBase.index ? buildReplacementProblem(currentState, currentProblem, nextDifficulty) : problem
           )
         }
       : nextSessionBase;
@@ -344,7 +366,7 @@ export function finishSession(state: LearningState): { state: LearningState; res
     score: session.correct,
     totalQuestions: session.problems.length,
     difficultyBefore: session.startedDifficulty,
-    difficultyAfter: currentState.student.difficulty,
+    difficultyAfter: session.currentDifficulty,
     weakPatternsDetected: countWeakPatterns(currentState),
     skillProgressBefore,
     skillProgressAfter,
@@ -361,6 +383,7 @@ export function finishSession(state: LearningState): { state: LearningState; res
     ...currentState,
     student: {
       ...currentState.student,
+      difficulty: session.currentDifficulty,
       xpSession: cleared ? 0 : currentState.student.xpSession
     },
     skillProgress: sessionSkillId

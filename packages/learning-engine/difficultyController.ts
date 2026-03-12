@@ -12,7 +12,7 @@ export function updateDifficulty(studentState: StudentState, correct: boolean): 
   }
 
   if (next.correctStreak >= 3) {
-    next.difficulty = Math.min(4, next.difficulty + 1);
+    next.difficulty = Math.min(5, next.difficulty + 1);
     next.correctStreak = 0;
   }
 

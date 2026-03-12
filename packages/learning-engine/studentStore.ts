@@ -49,8 +49,8 @@ export function computeLevel(xpTotal: number): number {
   return Math.floor(Math.sqrt(Math.max(0, xpTotal) / 10)) + 1;
 }
 
-export function updateXP(studentState: StudentState, correctCount: number): StudentState {
-  const gain = Math.max(0, Math.trunc(correctCount)) * 10;
+export function updateXP(studentState: StudentState, xpGain: number): StudentState {
+  const gain = Math.max(0, Math.trunc(xpGain));
   const xpTotal = studentState.xpTotal + gain;
 
   return {
@@ -83,7 +83,7 @@ const parseStudentState = (value: unknown): StudentState => {
   }
 
   return {
-    difficulty: Math.max(1, Math.min(4, Math.trunc(parseNumber(value.difficulty, 1)))),
+    difficulty: Math.max(1, Math.min(5, Math.trunc(parseNumber(value.difficulty, 1)))),
     correctStreak: Math.max(0, Math.trunc(parseNumber(value.correctStreak, 0))),
     wrongStreak: Math.max(0, Math.trunc(parseNumber(value.wrongStreak, 0))),
     solved: Math.max(0, Math.trunc(parseNumber(value.solved, 0))),
@@ -250,7 +250,7 @@ const parseSession = (value: unknown): Session | undefined => {
       problem: parseGeneratedProblem(problem.problem)!,
       skillId: problem.skillId as string,
       patternKey: problem.patternKey as string,
-      difficulty: Math.max(1, Math.min(4, Math.trunc(problem.difficulty as number))),
+      difficulty: Math.max(1, Math.min(5, Math.trunc(problem.difficulty as number))),
       source: problem.source as "skill" | "weakness"
     }));
 
@@ -258,9 +258,12 @@ const parseSession = (value: unknown): Session | undefined => {
     mode: value.mode,
     skillId: typeof value.skillId === "string" ? value.skillId : undefined,
     startedDifficulty: Math.max(1, Math.min(5, Math.trunc(parseNumber(value.startedDifficulty, 1)))),
+    currentDifficulty: Math.max(1, Math.min(5, Math.trunc(parseNumber(value.currentDifficulty, parseNumber(value.startedDifficulty, 1))))),
     skillProgressBefore: parseSingleSkillProgress(value.skillProgressBefore),
     skillXpBefore: Math.max(0, Math.trunc(parseNumber(value.skillXpBefore, 0))),
     attemptCount: Math.max(0, Math.trunc(parseNumber(value.attemptCount, 0))),
+    combo: Math.max(0, Math.trunc(parseNumber(value.combo, 0))),
+    failCount: Math.max(0, Math.trunc(parseNumber(value.failCount, 0))),
     problems,
     index: Math.max(0, Math.trunc(parseNumber(value.index, 0))),
     correct: Math.max(0, Math.trunc(parseNumber(value.correct, 0))),

@@ -106,7 +106,8 @@ const createProblemEngineStub = (outputPath) => {
       "export const generateRuntimeProblems = (pattern, count) =>",
       "  generateProblems(pattern, count).map((problem) => ({",
       "    ...problem,",
-      "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? ((problem.variables.a ?? 0) < (problem.variables.b ?? 0) ? \"LESS\" : \"GREATER\") : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String((problem.variables.whole ?? 0) - (problem.variables.known ?? 0)) : problem.answer,",
+      "    question: pattern.key === \"E1-NUM-COMPARE-01\" ? `${problem.variables.a ?? 0} と ${problem.variables.b ?? 0}\\n小さいほうは？` : problem.question,",
+      "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? String(Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String((problem.variables.whole ?? 0) - (problem.variables.known ?? 0)) : problem.answer,",
       "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\" }",
       "  }));"
     ].join("\n"),

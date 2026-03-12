@@ -25,9 +25,12 @@ export type Session = {
   mode: "skill" | "adaptive";
   skillId?: string;
   startedDifficulty: number;
+  currentDifficulty: number;
   skillProgressBefore?: SkillProgress;
   skillXpBefore?: number;
   attemptCount: number;
+  combo: number;
+  failCount: number;
   problems: SessionProblem[];
   index: number;
   correct: number;

@@ -40,7 +40,8 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes("}, FEEDBACK_FLASH_MS);"), true);
   assert.equal(source.includes("}, AUTO_ADVANCE_MS);"), true);
   assert.equal(source.includes("queueAdvanceAfterFeedback(verdict);"), true);
-  assert.equal(source.includes("!useFastLearningLoop && isSecondaryQuest"), true);
+  assert.equal(source.includes("currentLearningAttemptCount >= 1"), true);
+  assert.equal(source.includes("currentLearningAttemptCount >= 2"), true);
   assert.equal(source.includes("!useFastLearningLoop && ("), true);
   assert.equal(source.includes("{resultMark === \"correct\" ? \"Correct\" : \"Incorrect\"}"), true);
   assert.equal(source.includes("!shouldAutoFinishLearningSession && (quizItems.length === 0 || !currentItem)"), true);

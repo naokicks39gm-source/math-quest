@@ -112,7 +112,8 @@ const loadSkillSystemModules = async () => {
       '};',
       'export const generateRuntimeProblems = (...args) => generateProblems(...args).map((item) => ({',
       '  ...item,',
-      '  answer: item.patternKey === "E1-NUM-COMPARE-01" ? ((item.variables?.a ?? 0) < (item.variables?.b ?? 0) ? "LESS" : "GREATER") : item.answer,',
+      '  question: item.patternKey === "E1-NUM-COMPARE-01" ? `${item.variables?.a ?? 0} と ${item.variables?.b ?? 0}\\n小さいほうは？` : item.question,',
+      '  answer: item.patternKey === "E1-NUM-COMPARE-01" ? String(Math.min(item.variables?.a ?? 0, item.variables?.b ?? 0)) : item.answer,',
       '  meta: { ...(item.meta ?? {}), source: "runtime-pattern" }',
       '}));'
     ].join("\n"),
@@ -148,7 +149,9 @@ test("skill tree exposes typed skill relationships", async () => {
   assert.deepEqual(skillTree.getSkill("E1_NUMBER_COUNT"), {
     id: "E1_NUMBER_COUNT",
     title: "1〜20をかぞえる",
+    titleKana: "1〜20をかぞえる",
     grade: "E1",
+    gradeLevel: "1",
     patterns: ["E1_NUMBER_COUNT"],
     difficulty: 1,
     requiredXP: 100
@@ -184,7 +187,8 @@ test("getSkillTree reflects unlocked and mastered flags from state", async () =>
     nodes.find((node) => node.id === "E1_ADD_BASIC"),
     {
       id: "E1_ADD_BASIC",
-      title: "1桁のたし算",
+      title: "1けたの たしざん",
+      gradeLevel: "1",
       difficulty: 3,
       requiredXP: 100,
       prerequisite: ["E1_ADD_NEAR_DOUBLES"],
@@ -200,7 +204,8 @@ test("getSkillTree reflects unlocked and mastered flags from state", async () =>
     nodes.find((node) => node.id === "E1_FACT_FAMILY"),
     {
       id: "E1_FACT_FAMILY",
-      title: "たし算とひき算の関係",
+      title: "たしざんと ひきざんの かんけい",
+      gradeLevel: "1",
       difficulty: 4,
       requiredXP: 100,
       prerequisite: ["E1_SUB_BORROW"],
@@ -354,5 +359,5 @@ test("generateSkillQuiz uses runtime compare answer format for E1_NUMBER_COMPARE
 
   assert.equal(generated.length, 5);
   assert.equal(generated.every((item) => item.patternKey === "E1-NUM-COMPARE-01"), true);
-  assert.equal(generated.every((item) => item.answer === "LESS" || item.answer === "GREATER"), true);
+  assert.equal(generated.every((item) => item.answer === String(Math.min(item.variables?.a ?? 0, item.variables?.b ?? 0))), true);
 });

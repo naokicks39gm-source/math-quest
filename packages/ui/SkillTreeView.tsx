@@ -12,7 +12,7 @@ type SkillTreeViewProps = {
 };
 
 const getStatusLabel = (status: SkillNode["status"]) => {
-  if (status === "MASTERED") return "クリア！";
+  if (status === "MASTERED") return "クリア";
   if (status === "LEARNING") return "れんしゅう中";
   if (status === "AVAILABLE") return "つぎ";
   return "これから";
@@ -71,12 +71,13 @@ export default function SkillTreeView({ skills, currentSkillId, focusSkillId, on
   const nextSkillIds = new Set(currentSkill?.nextSkills ?? []);
   const visibleSkillIds = collectVisibleSkillIds(skills, focusSkillId);
   const visibleSkills = skills.filter((skill) => visibleSkillIds.has(skill.id));
+  const skillTitleMap = new Map(skills.map((skill) => [skill.id, skill.title] as const));
 
   return (
     <section className="max-h-[90vh] overflow-y-auto overscroll-contain rounded-[32px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
-      <div className="text-sm font-semibold uppercase tracking-[0.35em] text-sky-600">Skill Tree</div>
+      <div className="text-sm font-semibold tracking-[0.2em] text-sky-600">べんきょうの すすみかた</div>
       <h2 className="mt-3 text-4xl font-black text-slate-900">すすみかた</h2>
-      <p className="mt-4 text-base font-medium text-slate-600">いまのスキルと、つぎにすすむスキルです。</p>
+      <p className="mt-4 text-base font-medium text-slate-600">いまの べんきょうと、つぎに すすむ べんきょうです。</p>
 
       <div className="mt-6 space-y-4">
         {visibleSkills.map((skill) => {
@@ -103,18 +104,17 @@ export default function SkillTreeView({ skills, currentSkillId, focusSkillId, on
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{skill.id}</div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <div className="text-lg font-bold text-slate-900">{skill.title}</div>
                     {isNext ? (
-                      <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-green-700">
-                        NEXT
+                      <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
+                        つぎ
                       </span>
                     ) : null}
                   </div>
                 </div>
                 <div
-                  className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
                     statusLabel === "MASTERED"
                       ? "bg-emerald-100 text-emerald-700"
                       : statusLabel === "LEARNING"
@@ -130,27 +130,27 @@ export default function SkillTreeView({ skills, currentSkillId, focusSkillId, on
 
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">XP</div>
+                  <div className="text-xs font-semibold tracking-[0.2em] text-slate-500">ポイント</div>
                   <div className="mt-2 text-lg font-bold text-slate-900">
                     {skill.xp} / {skill.requiredXP}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">あと少し！</div>
+                  <div className="text-xs font-semibold tracking-[0.2em] text-slate-500">あと どれくらい</div>
                   <div className="mt-2 text-lg font-bold text-slate-900">{Math.max(skill.requiredXP - skill.xp, 0)}</div>
                 </div>
               </div>
 
               <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">すすみぐあい</div>
+                  <div className="text-xs font-semibold tracking-[0.2em] text-slate-500">すすみぐあい</div>
                   <div className="text-sm font-bold text-slate-900">{masteryPercent}%</div>
                 </div>
                 <SkillProgressBar mastery={mastery} tone={tone} />
               </div>
 
               <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">つぎ</div>
+                <div className="text-xs font-semibold tracking-[0.2em] text-slate-500">つぎ</div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {skill.nextSkills.slice(0, 1).length > 0 ? (
                     skill.nextSkills.slice(0, 1).map((nextSkillId) => (
@@ -159,11 +159,11 @@ export default function SkillTreeView({ skills, currentSkillId, focusSkillId, on
                         className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
                       >
                         {nextSkillIds.has(nextSkillId) ? (
-                          <span className="mr-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-green-700">
-                            NEXT
+                          <span className="mr-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                            つぎ
                           </span>
                         ) : null}
-                        {nextSkillId}
+                        {skillTitleMap.get(nextSkillId) ?? nextSkillId}
                       </span>
                     ))
                   ) : (

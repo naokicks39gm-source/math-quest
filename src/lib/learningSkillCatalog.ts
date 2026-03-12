@@ -6,6 +6,7 @@ export type PracticeSkill = {
   code: string;
   title: string;
   grade: string;
+  gradeLevel: "1" | "2" | "3";
   patterns: string[];
   requiredXP: number;
   difficultyLabel: string;
@@ -14,6 +15,18 @@ export type PracticeSkill = {
 };
 
 const skills = skillsData as Skill[];
+
+const resolveGradeLevel = (skill: Skill): "1" | "2" | "3" => {
+  if (skill.gradeLevel === "1" || skill.gradeLevel === "2" || skill.gradeLevel === "3") {
+    return skill.gradeLevel;
+  }
+  if (skill.grade.startsWith("E1")) return "1";
+  if (skill.grade.startsWith("E2")) return "2";
+  return "3";
+};
+
+const getDisplaySkillTitle = (skill: Skill) =>
+  resolveGradeLevel(skill) === "1" ? (skill.titleKana ?? skill.title) : skill.title;
 
 const difficultyLabels: Record<number, string> = {
   1: "Easy",
@@ -25,8 +38,9 @@ const difficultyLabels: Record<number, string> = {
 export const practiceSkills: PracticeSkill[] = skills.map((skill, index) => ({
   id: skill.id,
   code: `${skill.grade}-${String(index + 1).padStart(2, "0")}`,
-  title: skill.title,
+  title: getDisplaySkillTitle(skill),
   grade: skill.grade,
+  gradeLevel: resolveGradeLevel(skill),
   patterns: skill.patterns,
   requiredXP: skill.requiredXP ?? 100,
   difficultyLabel: difficultyLabels[skill.difficulty] ?? `Lv ${skill.difficulty}`,

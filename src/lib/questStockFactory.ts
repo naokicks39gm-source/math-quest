@@ -242,8 +242,8 @@ const buildPatternFallbackEntries = (type: TypeDef, patternId: string, targetCou
         out.push({
           type,
           item: {
-            prompt: `${a}と${b}、どちらが大きい？`,
-            answer: a < b ? "LESS" : "GREATER"
+            prompt: `${a} と ${b}\n小さいほうは？`,
+            answer: String(Math.min(a, b))
           }
         });
         continue;

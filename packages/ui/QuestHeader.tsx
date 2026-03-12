@@ -23,7 +23,7 @@ export default function QuestHeader({
         <div className="min-w-0">
           <div className="truncate text-2xl font-bold text-slate-900">{skillTitle}</div>
           <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-slate-600">
-            <span className="shrink-0">XP {skillXP} / {safeRequiredXP}</span>
+            <span className="shrink-0">ポイント {skillXP} / {safeRequiredXP}</span>
           </div>
           <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-slate-600">
             <div className="h-2 w-28 overflow-hidden rounded-full bg-slate-200">
@@ -34,13 +34,13 @@ export default function QuestHeader({
             </div>
             {isMastered ? (
               <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">
-                クリア！
+                クリア
               </span>
             ) : null}
           </div>
         </div>
         <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-700">
-          XP {xpTotal}
+          ポイント {xpTotal}
         </span>
       </div>
     </div>

@@ -145,7 +145,8 @@ const createProblemEngineStub = (outputPath) => {
       "export const generateRuntimeProblems = (pattern, count) =>",
       "  generateProblems(pattern, count).map((problem) => ({",
       "    ...problem,",
-      "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? ((problem.variables.a ?? 0) < (problem.variables.b ?? 0) ? \"LESS\" : \"GREATER\") : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String((problem.variables.whole ?? 0) - (problem.variables.known ?? 0)) : problem.answer,",
+      "    question: pattern.key === \"E1-NUM-COMPARE-01\" ? `${problem.variables.a ?? 0} と ${problem.variables.b ?? 0}\\n小さいほうは？` : problem.question,",
+      "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? String(Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String((problem.variables.whole ?? 0) - (problem.variables.known ?? 0)) : problem.answer,",
       "    meta: {",
       "      ...(problem.meta ?? {}),",
       "      difficulty: pattern.key === \"E1-NUM-COMPARE-01\" ? Math.max((problem.variables.a ?? 0), (problem.variables.b ?? 0)) <= 5 ? 1 : Math.max((problem.variables.a ?? 0), (problem.variables.b ?? 0)) <= 10 ? 2 : 3 : pattern.key === \"E1-NUM-COMPOSE-01\" ? ((problem.variables.a ?? 0) + (problem.variables.b ?? 0) <= 5 ? 1 : 2) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? ((problem.variables.whole ?? 0) <= 5 ? 1 : 2) : (problem.meta?.difficulty ?? 2),",
@@ -337,9 +338,9 @@ test("studentStore only exposes client load and serialize helpers", async () => 
     { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xpTotal: 5, xpSession: 0, level: 1 },
     2
   );
-  assert.equal(xpUpdated.xpTotal, 25);
-  assert.equal(xpUpdated.xpSession, 20);
-  assert.equal(xpUpdated.level, 2);
+  assert.equal(xpUpdated.xpTotal, 7);
+  assert.equal(xpUpdated.xpSession, 2);
+  assert.equal(xpUpdated.level, 1);
   assert.equal(studentStore.computeLevel(0), 1);
   assert.equal(studentStore.computeLevel(10), 2);
 });
@@ -502,7 +503,7 @@ test("sessionBuilder creates a five-problem session from explicit state", async 
   assert.equal(session.problems.some((problem) => problem.source === "weakness"), true);
 });
 
-test("sessionBuilder computes targetDifficulty from skillProgress mastery", async () => {
+test("sessionBuilder uses the requested session difficulty as the target difficulty", async () => {
   const { studentStore, sessionBuilder } = await loadLearningEngineModules();
 
   assert.equal(sessionBuilder.computeTargetDifficulty(0), 1);
@@ -520,7 +521,7 @@ test("sessionBuilder computes targetDifficulty from skillProgress mastery", asyn
     }
   });
 
-  const session = sessionBuilder.buildSession(highMasteryState, "E1_ADD_BASIC", 1);
+  const session = sessionBuilder.buildSession(highMasteryState, "E1_ADD_BASIC", 5);
   assert.equal(session.startedDifficulty, 5);
   assert.equal(session.problems.length, 5);
 });
@@ -585,8 +586,8 @@ test("sessionBuilder sorts patterns by weakness before applying priority tiebrea
 
   const source = fs.readFileSync(path.join(root, "packages/learning-engine/sessionBuilder.ts"), "utf8");
   assert.equal(source.includes("const sortPatternsByWeakness"), true);
-  assert.equal(source.includes('"weakPatterns"'), true);
-  assert.equal(source.includes('"patternRecency"'), true);
+  assert.equal(source.includes('"weakPatterns"'), false);
+  assert.equal(source.includes('"patternRecency"'), false);
 });
 
 test("sessionBuilder lowers priority for very recent patterns with similar mastery", async () => {
@@ -836,7 +837,7 @@ test("sessionBuilder uses targetDifficulty as an upper bound for candidate filte
   const session = sessionBuilder.buildSession(state, "E1_ADD_BASIC", 4);
 
   assert.equal(session.problems.length, 5);
-  assert.equal(session.startedDifficulty, 5);
+  assert.equal(session.startedDifficulty, 4);
   assert.equal(session.problems.every((problem) => problem.difficulty <= session.startedDifficulty), true);
 });
 
@@ -872,11 +873,11 @@ test("sessionBuilder limits repeated patterns for multi-pattern skills", async (
   assert.equal(Object.values(counts).every((count) => count <= 2), true);
 });
 
-test("sessionBuilder source includes patternUsage diversity guard logging", () => {
+test("sessionBuilder source keeps diversity reorder without patternUsage logging", () => {
   const source = fs.readFileSync(path.join(root, "packages/learning-engine/sessionBuilder.ts"), "utf8");
 
-  assert.equal(source.includes("const patternUsage = Object.fromEntries(patternCounts);"), true);
-  assert.equal(source.includes('console.log("patternUsage", patternUsage);'), true);
+  assert.equal(source.includes("const patternUsage = Object.fromEntries(patternCounts);"), false);
+  assert.equal(source.includes('console.log("patternUsage", patternUsage);'), false);
   assert.equal(source.includes("const reorderProblemsWithPatternDiversity"), true);
 });
 
@@ -895,20 +896,24 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(started.session.problems.length, 5);
   assert.equal(started.state.session?.problems.length, 5);
   assert.equal(started.session.attemptCount, 0);
+  assert.equal(started.session.combo, 0);
+  assert.equal(started.session.failCount, 0);
 
   const answered = learningEngine.recordAnswer(started.state, { correct: true });
   assert.equal(answered.state.version, 1);
   assert.equal(answered.state.engineVersion, 1);
   assert.equal(answered.state.student.solved, 1);
   assert.equal(answered.state.student.correct, 1);
-  assert.equal(answered.state.student.xpTotal, 10);
-  assert.equal(answered.state.student.xpSession, 10);
+  assert.equal(answered.state.student.xpTotal, 35);
+  assert.equal(answered.state.student.xpSession, 35);
   assert.equal(answered.state.student.level, 2);
   assert.equal(answered.session.index, 1);
-  assert.equal(answered.state.skillProgress.E1_NUMBER_COUNT?.mastery, 0.1);
+  assert.equal(answered.state.skillProgress.E1_NUMBER_COUNT?.mastery, 0.35);
   assert.equal(answered.state.skillProgress.E1_NUMBER_COUNT?.mastered, false);
-  assert.equal(answered.state.skillXP.E1_NUMBER_COUNT, 10);
+  assert.equal(answered.state.skillXP.E1_NUMBER_COUNT, 35);
   assert.equal(answered.session.attemptCount, 0);
+  assert.equal(answered.session.combo, 1);
+  assert.equal(answered.session.currentDifficulty, 1);
 
   const recommendedSkill = learningEngine.recommendNextAction(answered.state);
   assert.deepEqual(recommendedSkill, {
@@ -935,19 +940,19 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(finished.state.version, 1);
   assert.equal(finished.state.engineVersion, 1);
   assert.equal(finished.state.session, undefined);
-  assert.equal(finished.state.student.xpTotal, 10);
-  assert.equal(finished.state.student.xpSession, 10);
+  assert.equal(finished.state.student.xpTotal, 35);
+  assert.equal(finished.state.student.xpSession, 35);
   assert.equal(finished.state.student.level, 2);
   assert.equal(finished.result.totalQuestions, 5);
   assert.equal(finished.result.skillProgressBefore?.skillId, "E1_NUMBER_COUNT");
   assert.equal(finished.result.skillProgressBefore?.mastery, 0);
   assert.equal(finished.result.skillProgressAfter?.skillId, "E1_NUMBER_COUNT");
-  assert.equal(finished.result.skillProgressAfter?.mastery, 0.1);
+  assert.equal(finished.result.skillProgressAfter?.mastery, 0.35);
   assert.equal(finished.result.skillXpBefore, 0);
-  assert.equal(finished.result.skillXpAfter, 10);
+  assert.equal(finished.result.skillXpAfter, 35);
   assert.equal(finished.result.requiredXP, 100);
   assert.equal(finished.result.cleared, false);
-  assert.equal(finished.result.earnedXp, 10);
+  assert.equal(finished.result.earnedXp, 35);
   assert.deepEqual(finished.result.newlyUnlockedSkillIds, []);
   assert.deepEqual(finished.state.unlockedSkills, ["E1_NUMBER_COUNT"]);
 
@@ -974,7 +979,10 @@ test("finishSession unlocks the next skill when required XP is reached", async (
       mode: "skill",
       skillId: "E1_ADD_BASIC",
       startedDifficulty: 1,
+      currentDifficulty: 1,
       attemptCount: 0,
+      combo: 0,
+      failCount: 0,
       problems: [],
       index: 0,
       correct: 5,
@@ -1112,6 +1120,8 @@ test("learning mode incorrect answers keep the current index and swap in a simil
 
   assert.equal(wrongOnce.session.index, 0);
   assert.equal(wrongOnce.session.attemptCount, 1);
+  assert.equal(wrongOnce.session.combo, 0);
+  assert.equal(wrongOnce.session.failCount, 1);
   assert.equal(wrongOnce.state.skillXP.E1_ADD_BASIC ?? 0, 0);
   assert.equal(secondProblem.patternKey, firstProblem.patternKey);
   assert.notEqual(secondProblem.problem.id, firstProblem.problem.id);
@@ -1121,6 +1131,8 @@ test("learning mode incorrect answers keep the current index and swap in a simil
 
   assert.equal(wrongTwice.session.index, 0);
   assert.equal(wrongTwice.session.attemptCount, 2);
+  assert.equal(wrongTwice.session.currentDifficulty, 1);
+  assert.equal(wrongTwice.session.failCount, 0);
   assert.equal(thirdProblem.patternKey, firstProblem.patternKey);
   assert.notEqual(thirdProblem.problem.id, secondProblem.problem.id);
 
@@ -1128,10 +1140,45 @@ test("learning mode incorrect answers keep the current index and swap in a simil
 
   assert.equal(correctAfterRetry.session.index, 1);
   assert.equal(correctAfterRetry.session.attemptCount, 0);
-  assert.equal(correctAfterRetry.state.skillXP.E1_ADD_BASIC, 10);
+  assert.equal(correctAfterRetry.session.combo, 1);
+  assert.equal(correctAfterRetry.state.skillXP.E1_ADD_BASIC, 35);
 });
 
-test("adaptive start works without skillId and difficulty remains within 1..4", async () => {
+test("adaptive XP clears a skill within three consecutive correct answers", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  let state = learningEngine.startSession(studentStore.createLearningState(), { mode: "skill", skillId: "E1_NUMBER_COUNT" }).state;
+
+  state = learningEngine.recordAnswer(state, { correct: true }).state;
+  state = learningEngine.recordAnswer(state, { correct: true }).state;
+  const third = learningEngine.recordAnswer(state, { correct: true });
+
+  assert.equal(third.state.skillXP.E1_NUMBER_COUNT, 120);
+  assert.equal(third.session.currentDifficulty, 2);
+
+  const finished = learningEngine.finishSession(third.state);
+  assert.equal(finished.result.cleared, true);
+  assert.equal(finished.result.skillXpAfter >= finished.result.requiredXP, true);
+});
+
+test("session difficulty rises after three correct answers and falls after two misses", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  let state = learningEngine.startSession(studentStore.createLearningState(), { mode: "skill", skillId: "E1_ADD_BASIC" }).state;
+
+  state = learningEngine.recordAnswer(state, { correct: true }).state;
+  state = learningEngine.recordAnswer(state, { correct: true }).state;
+  const raised = learningEngine.recordAnswer(state, { correct: true });
+  assert.equal(raised.session.currentDifficulty, 2);
+
+  const firstMiss = learningEngine.recordAnswer(raised.state, { correct: false });
+  assert.equal(firstMiss.session.currentDifficulty, 2);
+  assert.equal(firstMiss.session.failCount, 1);
+
+  const secondMiss = learningEngine.recordAnswer(firstMiss.state, { correct: false });
+  assert.equal(secondMiss.session.currentDifficulty, 1);
+  assert.equal(secondMiss.session.failCount, 0);
+});
+
+test("adaptive start works without skillId and session difficulty remains within 1..5", async () => {
   const { learningEngine, studentStore } = await loadLearningEngineModules();
   const initial = studentStore.createLearningState();
 
@@ -1147,5 +1194,6 @@ test("adaptive start works without skillId and difficulty remains within 1..4", 
     student: { ...adaptive.state.student, difficulty: 4, correctStreak: 2, wrongStreak: 0 }
   });
   const answered = learningEngine.recordAnswer(highDifficultyState, { correct: true });
-  assert.equal(answered.state.student.difficulty, 4);
+  assert.equal(answered.state.student.difficulty, 1);
+  assert.equal(answered.session.currentDifficulty >= 1 && answered.session.currentDifficulty <= 5, true);
 });

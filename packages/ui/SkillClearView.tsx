@@ -2,6 +2,7 @@
 
 type SkillClearViewProps = {
   skillTitle: string;
+  gradeLevel?: "1" | "2" | "3";
   earnedXp: number;
   skillXp: number;
   requiredXP: number;
@@ -13,6 +14,7 @@ type SkillClearViewProps = {
 
 export default function SkillClearView({
   skillTitle,
+  gradeLevel = "1",
   earnedXp,
   skillXp,
   requiredXP,
@@ -21,19 +23,21 @@ export default function SkillClearView({
   onRetry,
   onDone
 }: SkillClearViewProps) {
+  const nextLabel = gradeLevel === "1" ? "つぎのべんきょう" : "つぎの勉強";
+
   return (
     <section className="rounded-[32px] border border-emerald-300 bg-white/95 p-8 text-center shadow-[0_24px_80px_rgba(5,150,105,0.22)] backdrop-blur">
-      <div className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-600">Clear</div>
+      <div className="text-sm font-semibold tracking-[0.2em] text-emerald-600">クリア</div>
       <h2 className="mt-3 text-4xl font-black text-emerald-700">クリア！</h2>
       <p className="mt-4 text-xl font-bold text-slate-900">{skillTitle}</p>
 
       <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">今回ふえた XP</div>
-        <div className="mt-2 text-2xl font-black text-emerald-700">+{earnedXp} XP</div>
+        <div className="text-xs font-semibold tracking-[0.15em] text-emerald-700">もらったポイント</div>
+        <div className="mt-2 text-2xl font-black text-emerald-700">+{earnedXp} ポイント</div>
       </div>
 
       <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4">
-        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">いまの XP</div>
+        <div className="text-xs font-semibold tracking-[0.15em] text-sky-700">いまのポイント</div>
         <div className="mt-2 text-lg font-bold text-slate-900">
           {skillXp} / {requiredXP}
         </div>
@@ -41,7 +45,7 @@ export default function SkillClearView({
 
       {nextSkillTitle ? (
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">つぎのスキル</div>
+          <div className="text-xs font-semibold tracking-[0.15em] text-amber-700">{nextLabel}</div>
           <div className="mt-2 text-lg font-bold text-slate-900">{nextSkillTitle}</div>
         </div>
       ) : null}
@@ -53,7 +57,7 @@ export default function SkillClearView({
             onClick={onNextSkill}
             className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
           >
-            つぎのスキルにすすむ
+            つぎへ
           </button>
         ) : null}
         <button
@@ -61,14 +65,14 @@ export default function SkillClearView({
           onClick={onRetry}
           className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
         >
-          もういちど れんしゅうする
+          もういちど
         </button>
         <button
           type="button"
           onClick={onDone}
           className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
         >
-          おわりにする
+          おわる
         </button>
       </div>
     </section>

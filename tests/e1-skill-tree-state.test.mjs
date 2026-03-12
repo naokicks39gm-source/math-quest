@@ -65,7 +65,8 @@ test("getSkillTree returns UI-ready node state for E1 skills", async () => {
 
   assert.deepEqual(orderNode, {
     id: "E1_NUMBER_ORDER",
-    title: "数の順番理解",
+    title: "かずの じゅんばん",
+    gradeLevel: "1",
     difficulty: 1,
     requiredXP: 100,
     prerequisite: ["E1_NUMBER_COUNT"],
@@ -78,7 +79,8 @@ test("getSkillTree returns UI-ready node state for E1 skills", async () => {
   });
   assert.deepEqual(addBasicNode, {
     id: "E1_ADD_BASIC",
-    title: "1桁のたし算",
+    title: "1けたの たしざん",
+    gradeLevel: "1",
     difficulty: 3,
     requiredXP: 100,
     prerequisite: ["E1_ADD_NEAR_DOUBLES"],

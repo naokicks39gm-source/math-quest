@@ -321,24 +321,9 @@ const buildSessionOnce = (
   now: () => number = Date.now
 ): Session => {
   const skillProgress = state.skillProgress[skillId]?.mastery ?? 0;
-  const targetDifficulty = computeTargetDifficulty(skillProgress);
-  console.log("targetDifficulty", targetDifficulty);
+  const targetDifficulty = clampDifficulty(studentDifficulty > 0 ? studentDifficulty : computeTargetDifficulty(skillProgress));
   const skillPatterns = resolveSkillPatterns(skillId);
   const maxPatternPerSession = computeMaxPatternPerSession(skillPatterns.length);
-  console.log(
-    "weakPatterns",
-    skillPatterns.map((pattern) => ({
-      id: pattern.key,
-      mastery: state.patternProgress[pattern.key]?.mastery ?? 0
-    }))
-  );
-  console.log(
-    "patternRecency",
-    skillPatterns.map((pattern) => ({
-      id: pattern.key,
-      lastSeenAt: state.patternProgress[pattern.key]?.lastSeenAt ?? null
-    }))
-  );
   const weakPatterns = getWeakPatterns(state, skillId);
   const skillPatternKeys = new Set(skillPatterns.map((pattern) => pattern.key));
   const weakPatternKeys = new Set(weakPatterns.map((pattern) => pattern.patternKey));
@@ -429,15 +414,16 @@ const buildSessionOnce = (
     topUpWithRandomSkillPatterns(selected, skillId, targetDifficulty, patternCounts, maxPatternPerSession);
   }
 
-  const patternUsage = Object.fromEntries(patternCounts);
-  console.log("patternUsage", patternUsage);
   const orderedProblems = reorderProblemsWithPatternDiversity(shuffle(selected)).slice(0, SESSION_SIZE);
 
   return {
     mode,
     skillId,
     startedDifficulty: targetDifficulty,
+    currentDifficulty: targetDifficulty,
     attemptCount: 0,
+    combo: 0,
+    failCount: 0,
     problems: orderedProblems,
     index: 0,
     correct: 0,

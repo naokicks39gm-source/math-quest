@@ -25,7 +25,7 @@
   },
   {
     "key": "E1-NUM-COMPARE-01",
-    "template": "{a} と {b}、どちらが大きい？",
+    "template": "{a} と {b}\n小さいほうは？",
     "variables": {
       "a": [0, 20],
       "b": [0, 20]
@@ -33,7 +33,7 @@
     "constraints": [
       "a != b"
     ],
-    "answer": "a < b"
+    "answer": "min(a, b)"
   },
   {
     "key": "E1-NUM-LINE-01",

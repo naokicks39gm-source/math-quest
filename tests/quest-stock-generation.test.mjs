@@ -61,8 +61,8 @@ test("NUM patterns have deterministic fallback generation", () => {
   assert.equal(source.includes('patternId === "NUM_COMPARE_UP_TO_20"'), true);
   assert.equal(source.includes('patternId === "NUM_DECOMP_10"'), true);
   assert.equal(source.includes('patternId === "NUM_COMP_10"'), true);
-  assert.equal(source.includes("どちらが大きい？"), true);
-  assert.equal(source.includes('? "LESS" : "GREATER"'), true);
+  assert.equal(source.includes("小さいほうは？"), true);
+  assert.equal(source.includes("String(Math.min(a, b))"), true);
 });
 
 test("DIV_EQUAL_SHARE_BASIC has deterministic fallback generation and strategy mapping", () => {
