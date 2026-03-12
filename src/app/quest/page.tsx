@@ -35,7 +35,7 @@ import { getElementaryLearningAid, isElementaryGrade, type ElementaryLearningAid
 import ElementaryKeypad from "@/components/keypad/ElementaryKeypad";
 import JuniorKeypad from "@/components/keypad/JuniorKeypad";
 import HighSchoolKeypad from "@/components/keypad/HighSchoolKeypad";
-import { QuestHeader, SessionResultView } from "packages/ui";
+import { QuestHeader, SessionResultView, SkillProgressBar, SkillTreeView } from "packages/ui";
 import { VARIABLE_SYMBOLS } from "packages/keypad";
 import { generateProblems } from "packages/problem-engine/dsl-engine";
 import type {
@@ -49,6 +49,7 @@ import {
   loadStateFromClient,
   type LearningState
 } from "packages/learning-engine/studentStore";
+import { getSkillTree } from "packages/skill-system/skillTree";
 import type { Session, SessionProblem } from "packages/learning-engine/sessionTypes";
 import {
   loadMnistModel,
@@ -1815,6 +1816,7 @@ function QuestPageInner() {
   const forcedExpectedFormRef = useRef<ExpectedForm | null>(null);
   const [quizItems, setQuizItems] = useState<QuestEntry[]>([]);
   const [retryNonce, setRetryNonce] = useState(0);
+  const [showSkillTree, setShowSkillTree] = useState(false);
   const [visibleCanvasSize, setVisibleCanvasSize] = useState(DEFAULT_VISIBLE_CANVAS_SIZE);
   const [memoCanvasSize, setMemoCanvasSize] = useState({ width: DEFAULT_VISIBLE_CANVAS_SIZE, height: DEFAULT_VISIBLE_CANVAS_SIZE });
   const [calcZoom, setCalcZoom] = useState(1);
@@ -1880,6 +1882,21 @@ function QuestPageInner() {
       )?.id ?? null
     );
   }, [learningResult, learningState]);
+  const skillTree = useMemo(() => {
+    if (!learningState) return [];
+    return getSkillTree(learningState);
+  }, [learningState]);
+  const currentSkillNode = useMemo(() => {
+    if (!currentLearningSkillId) return null;
+    return skillTree.find((skill) => skill.id === currentLearningSkillId) ?? null;
+  }, [currentLearningSkillId, skillTree]);
+  const recommendedSkillNode = useMemo(() => {
+    const unresolvedSkills = skillTree.filter((skill) => !skill.mastered);
+    const unlockedCandidates = unresolvedSkills.filter((skill) => skill.unlocked);
+    const prioritized = [...unlockedCandidates].sort((left, right) => left.difficulty - right.difficulty);
+
+    return prioritized[0] ?? unresolvedSkills[0] ?? null;
+  }, [skillTree]);
   const useFastLearningLoop = isLearningSessionMode;
   const correctCount = useMemo(
     () => clearResults.filter(([, result]) => result.everWrong !== true).length,
@@ -5039,6 +5056,74 @@ function QuestPageInner() {
                 xpTotal={learningState?.student.xpTotal ?? 0}
               />
             )}
+            {currentSkillNode ? (
+              <section className="mb-4 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Current Skill</div>
+                    <div className="mt-2 text-lg font-bold text-slate-900">{currentSkillNode.title}</div>
+                    <SkillProgressBar mastery={currentSkillNode.mastery} />
+                    <div className="mt-2 flex items-center justify-between text-sm font-semibold text-slate-600">
+                      <span>{Math.round(currentSkillNode.mastery * 100)}%</span>
+                      <span>XP {currentSkillNode.xp}</span>
+                    </div>
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!currentLearningSkillId) return;
+                          router.push(`/quest?skillId=${encodeURIComponent(currentLearningSkillId)}`);
+                        }}
+                        className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
+                      >
+                        Continue Current Skill
+                      </button>
+                    </div>
+                  </div>
+                  {recommendedSkillNode ? (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Next Skill</div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <div className="text-lg font-bold text-slate-900">{recommendedSkillNode.title}</div>
+                        <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-green-700">
+                          NEXT
+                        </span>
+                      </div>
+                      <div className="mt-4">
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/quest?skillId=${encodeURIComponent(recommendedSkillNode.id)}`)}
+                          className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
+                        >
+                          Start Next Skill
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
+            {skillTree.length > 0 ? (
+              <div className="mb-4">
+                <button
+                  type="button"
+                  onClick={() => setShowSkillTree((prev) => !prev)}
+                  className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
+                >
+                  {showSkillTree ? "Hide Skill Tree" : "Skill Tree"}
+                </button>
+                {showSkillTree ? (
+                  <div className="mt-4">
+                    <SkillTreeView
+                      skills={skillTree}
+                      currentSkillId={currentLearningSkillId ?? undefined}
+                      focusSkillId={currentLearningSkillId ?? undefined}
+                      onSkillClick={(skillId) => router.push(`/quest?skillId=${encodeURIComponent(skillId)}`)}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div
               ref={currentCardRef}
               className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 py-4 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] h-[200px] sm:h-[185px] flex items-center justify-center"
