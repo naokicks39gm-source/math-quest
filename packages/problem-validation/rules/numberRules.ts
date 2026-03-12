@@ -1,3 +1,4 @@
+import { resolvePatternFamily } from "packages/problem-engine";
 import type { Rule } from "../types";
 
 const pass = { valid: true } as const;
@@ -18,6 +19,13 @@ const parseLeadingNumbers = (question: string) => {
 const normalizeAnswer = (answer: string) => String(answer).trim().toUpperCase();
 
 export const validateNumberCompare: Rule = ({ problem }) => {
+  if (resolvePatternFamily(problem.patternKey) !== "number_compare") {
+    return {
+      valid: false,
+      error: "wrong number pattern family"
+    };
+  }
+
   const question = String(problem.question ?? "");
   const answer = normalizeAnswer(problem.answer ?? "");
   const variables = problem.variables ?? {};
@@ -65,6 +73,13 @@ export const validateNumberCompare: Rule = ({ problem }) => {
 };
 
 export const validateNumberCompose: Rule = ({ problem }) => {
+  if (resolvePatternFamily(problem.patternKey) !== "number_compose") {
+    return {
+      valid: false,
+      error: "wrong number pattern family"
+    };
+  }
+
   const variables = problem.variables ?? {};
   const question = String(problem.question ?? "");
   const parsed = parseLeadingNumbers(question);
@@ -106,6 +121,13 @@ export const validateNumberCompose: Rule = ({ problem }) => {
 };
 
 export const validateNumberDecompose: Rule = ({ problem }) => {
+  if (resolvePatternFamily(problem.patternKey) !== "number_decompose") {
+    return {
+      valid: false,
+      error: "wrong number pattern family"
+    };
+  }
+
   const variables = problem.variables ?? {};
   const whole =
     typeof variables.whole === "number"

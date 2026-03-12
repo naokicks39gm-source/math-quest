@@ -1,4 +1,6 @@
 export { buildDslEntriesForType, generateDslArtifactsForType } from "packages/problem-engine/adapters";
+export { computeNumberDifficulty } from "packages/problem-engine/difficulty/numberDifficulty";
+export { resolvePatternFamily } from "packages/problem-engine/patternFamilyResolver";
 export { getPatternMeta } from "packages/problem-engine/patternCatalog";
 export {
   evaluateAnswer,

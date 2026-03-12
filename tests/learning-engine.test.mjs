@@ -128,7 +128,7 @@ const createProblemEngineStub = (outputPath) => {
       '    question: `${pattern.key} question ${generationBatch}-${index}`,',
       '    answer: `${index}`,',
       '    patternKey: pattern.key,',
-      '    variables: pattern.key === "E1-NUM-COMPARE-01" ? { a: index, b: index + 1 } : pattern.key === "E1-NUM-COMPOSE-01" ? { a: index % 5, b: 10 - (index % 5) } : pattern.key === "E1-NUM-DECOMPOSE-01" ? { whole: 10, known: index % 5 } : undefined,',
+      '    variables: pattern.key === "E1-NUM-COMPARE-01" ? { a: index % 20, b: (index % 20) + 1 } : pattern.key === "E1-NUM-COMPOSE-01" ? { a: index % 6, b: (index * 2) % (11 - (index % 6)) } : pattern.key === "E1-NUM-DECOMPOSE-01" ? { whole: (index % 10) + 1, known: ((index * 3) % ((index % 10) + 1)) } : undefined,',
       "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2 }",
       "  }));",
       "};",
@@ -136,7 +136,11 @@ const createProblemEngineStub = (outputPath) => {
       "  generateProblems(pattern, count).map((problem) => ({",
       "    ...problem,",
       "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? ((problem.variables.a ?? 0) < (problem.variables.b ?? 0) ? \"LESS\" : \"GREATER\") : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String((problem.variables.whole ?? 0) - (problem.variables.known ?? 0)) : problem.answer,",
-      "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\" }",
+      "    meta: {",
+      "      ...(problem.meta ?? {}),",
+      "      difficulty: pattern.key === \"E1-NUM-COMPARE-01\" ? Math.max((problem.variables.a ?? 0), (problem.variables.b ?? 0)) <= 5 ? 1 : Math.max((problem.variables.a ?? 0), (problem.variables.b ?? 0)) <= 10 ? 2 : 3 : pattern.key === \"E1-NUM-COMPOSE-01\" ? ((problem.variables.a ?? 0) + (problem.variables.b ?? 0) <= 5 ? 1 : 2) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? ((problem.variables.whole ?? 0) <= 5 ? 1 : 2) : (problem.meta?.difficulty ?? 2),",
+      "      source: \"runtime-pattern\"",
+      "    }",
       "  }));"
     ].join("\n"),
     "utf8"
@@ -939,6 +943,46 @@ test("number skills resolve as runtime session candidates", async () => {
     assert.equal(started.session.problems.length, 5, skillId);
     assert.equal(started.session.problems.every((problem) => problem.skillId === skillId), true, skillId);
   }
+});
+
+test("number skill sessions honor runtime difficulty filtering", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  const baseState = studentStore.createLearningState();
+  const hardStudent = studentStore.serializeState({
+    ...baseState,
+    student: {
+      ...baseState.student,
+      difficulty: 3
+    },
+    skillProgress: {
+      E1_NUMBER_COMPARE: { skillId: "E1_NUMBER_COMPARE", mastery: 0.45, mastered: false }
+    }
+  });
+  const easyStudent = studentStore.serializeState({
+    ...baseState,
+    student: {
+      ...baseState.student,
+      difficulty: 1
+    }
+  });
+
+  const hardCompare = learningEngine.startSession(hardStudent, { mode: "skill", skillId: "E1_NUMBER_COMPARE" });
+  const easyCompose = learningEngine.startSession(easyStudent, { mode: "skill", skillId: "E1_NUMBER_COMPOSE" });
+  const easyDecompose = learningEngine.startSession(easyStudent, { mode: "skill", skillId: "E1_NUMBER_DECOMPOSE" });
+
+  assert.equal(hardCompare.session.startedDifficulty, 3);
+  assert.equal(
+    hardCompare.session.problems.every((problem) => (problem.problem.meta?.difficulty ?? 0) <= 3),
+    true
+  );
+  assert.equal(
+    easyCompose.session.problems.every((problem) => (problem.problem.meta?.difficulty ?? 0) <= 1),
+    true
+  );
+  assert.equal(
+    easyDecompose.session.problems.every((problem) => (problem.problem.meta?.difficulty ?? 0) <= 1),
+    true
+  );
 });
 
 test("progression treats mastery below 0.8 as still in progress", async () => {

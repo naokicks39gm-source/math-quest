@@ -1,35 +1,41 @@
 import { generateProblems, type GeneratedProblem, type PatternDSL } from "./dsl-engine";
+import { computeNumberDifficulty } from "./difficulty/numberDifficulty";
 
 const NUMBER_COMPARE_PATTERN_KEYS = new Set(["E1-NUM-COMPARE-01"]);
+
+const withRuntimeMeta = (problem: GeneratedProblem, difficulty?: number): GeneratedProblem => ({
+  ...problem,
+  meta: {
+    ...problem.meta,
+    source: problem.meta?.source ?? "runtime-pattern",
+    ...(typeof difficulty === "number" ? { difficulty } : {})
+  }
+});
 
 const normalizeNumberCompareAnswer = (problem: GeneratedProblem): GeneratedProblem => {
   const a = problem.variables?.a;
   const b = problem.variables?.b;
+  const difficulty = computeNumberDifficulty(problem);
   if (typeof a !== "number" || typeof b !== "number" || a === b) {
-    return problem;
+    return withRuntimeMeta(problem, difficulty);
   }
 
-  return {
-    ...problem,
-    answer: a < b ? "LESS" : "GREATER",
-    meta: {
-      ...problem.meta,
-      source: problem.meta?.source ?? "runtime-pattern"
-    }
-  };
+  return withRuntimeMeta(
+    {
+      ...problem,
+      answer: a < b ? "LESS" : "GREATER"
+    },
+    difficulty
+  );
 };
 
 const normalizeGeneratedProblem = (problem: GeneratedProblem): GeneratedProblem => {
   if (problem.patternKey && NUMBER_COMPARE_PATTERN_KEYS.has(problem.patternKey)) {
     return normalizeNumberCompareAnswer(problem);
   }
-  return {
-    ...problem,
-    meta: {
-      ...problem.meta,
-      source: problem.meta?.source ?? "runtime-pattern"
-    }
-  };
+
+  const difficulty = computeNumberDifficulty(problem);
+  return withRuntimeMeta(problem, difficulty);
 };
 
 export const generateRuntimeProblem = (pattern: PatternDSL): GeneratedProblem =>

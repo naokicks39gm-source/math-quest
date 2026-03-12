@@ -73,14 +73,31 @@ const loadValidationModules = async () => {
     [['from "./patternIndex.ts"', 'from "./patternIndex.mjs"']]
   );
   await transpileTsModule(
+    path.join(root, "packages/problem-engine/patternFamilyResolver.ts"),
+    path.join(tempDir, "patternFamilyResolver.mjs")
+  );
+  await transpileTsModule(
+    path.join(root, "packages/problem-engine/difficulty/numberDifficulty.ts"),
+    path.join(tempDir, "numberDifficulty.mjs"),
+    [
+      ['from "../dsl-engine"', 'from "./dsl-engine.mjs"'],
+      ['from "../patternFamilyResolver"', 'from "./patternFamilyResolver.mjs"']
+    ]
+  );
+  await transpileTsModule(
     path.join(root, "packages/problem-engine/runtimeProblems.ts"),
     path.join(tempDir, "runtimeProblems.mjs"),
-    [['from "./dsl-engine"', 'from "./dsl-engine.mjs"']]
+    [
+      ['from "./dsl-engine"', 'from "./dsl-engine.mjs"'],
+      ['from "./difficulty/numberDifficulty"', 'from "./numberDifficulty.mjs"']
+    ]
   );
   fs.writeFileSync(
     path.join(tempDir, "problem-engine.mjs"),
     [
       'export { getPatternMeta } from "./patternCatalog.mjs";',
+      'export { computeNumberDifficulty } from "./numberDifficulty.mjs";',
+      'export { resolvePatternFamily } from "./patternFamilyResolver.mjs";',
       'export { evaluateAnswer, evaluateConstraints, generateProblems } from "./dsl-engine.mjs";',
       'export { generateRuntimeProblem, generateRuntimeProblems } from "./runtimeProblems.mjs";',
       'export * from "./dsl-engine.mjs";'
@@ -154,7 +171,10 @@ const loadValidationModules = async () => {
   await transpileTsModule(
     path.join(root, "packages/problem-validation/rules/numberRules.ts"),
     path.join(tempDir, "numberRules.mjs"),
-    [['from "../types"', 'from "./types.mjs"']]
+    [
+      ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+      ['from "../types"', 'from "./types.mjs"']
+    ]
   );
   await transpileTsModule(
     path.join(root, "packages/problem-validation/skillRules.ts"),
@@ -205,6 +225,8 @@ const loadValidationModules = async () => {
 
   const modules = {
     dsl: await import(`${pathToFileURL(path.join(tempDir, "dsl-engine.mjs")).href}?t=${Date.now()}`),
+    problemEngine: await import(`${pathToFileURL(path.join(tempDir, "problem-engine.mjs")).href}?t=${Date.now()}`),
+    runtimeProblems: await import(`${pathToFileURL(path.join(tempDir, "runtimeProblems.mjs")).href}?t=${Date.now()}`),
     tree: await import(`${pathToFileURL(path.join(tempDir, "skillTree.mjs")).href}?t=${Date.now()}`),
     validator: await import(`${pathToFileURL(path.join(tempDir, "problemValidator.mjs")).href}?t=${Date.now()}`),
     harness: await import(`${pathToFileURL(path.join(tempDir, "generatorTest.mjs")).href}?t=${Date.now()}`),
@@ -429,4 +451,158 @@ test("runtime-backed number skills use runtime generator path in validation harn
   const source = fs.readFileSync(path.join(root, "packages/problem-validation/generatorTest.ts"), "utf8");
   assert.equal(source.includes('const runtimeMandatorySkills = new Set(["E1_NUMBER_COMPARE", "E1_NUMBER_COMPOSE", "E1_NUMBER_DECOMPOSE"]);'), true);
   assert.equal(source.includes("generateRuntimeProblems(pattern, perPatternCount)"), true);
+});
+
+test("runtimeProblems delegates number difficulty to shared module", () => {
+  const source = fs.readFileSync(path.join(root, "packages/problem-engine/runtimeProblems.ts"), "utf8");
+  assert.equal(source.includes('from "./difficulty/numberDifficulty"'), true);
+  assert.equal(source.includes("const computeCompareDifficulty"), false);
+  assert.equal(source.includes("const computeComposeDifficulty"), false);
+  assert.equal(source.includes("const computeDecomposeDifficulty"), false);
+  assert.equal(source.includes("export const computeNumberDifficulty"), false);
+});
+
+test("resolvePatternFamily normalizes current and future number keys", async () => {
+  const { problemEngine } = await loadValidationModules();
+
+  assert.equal(problemEngine.resolvePatternFamily("E1-NUM-COMPARE-01"), "number_compare");
+  assert.equal(problemEngine.resolvePatternFamily("E1-NUM-COMPOSE-01"), "number_compose");
+  assert.equal(problemEngine.resolvePatternFamily("E1-NUM-DECOMPOSE-01"), "number_decompose");
+  assert.equal(problemEngine.resolvePatternFamily("number_compare.v2"), "number_compare");
+  assert.equal(problemEngine.resolvePatternFamily("UNKNOWN-PATTERN-01"), "unknown_pattern");
+  assert.equal(problemEngine.resolvePatternFamily(undefined), undefined);
+});
+
+test("patternFamilyResolver uses registry mapping instead of startsWith branching", () => {
+  const source = fs.readFileSync(
+    path.join(root, "packages/problem-engine/patternFamilyResolver.ts"),
+    "utf8"
+  );
+
+  assert.equal(source.includes("const patternFamilyMap"), true);
+  assert.equal(source.includes("startsWith("), false);
+  assert.equal(source.includes("patternFamilyMap[candidate]"), true);
+  assert.equal(source.includes('e1_num_compare: "number_compare"'), true);
+  assert.equal(source.includes('number_compare: "number_compare"'), true);
+});
+
+test("numberDifficulty resolves difficulty from patternKey family mapping, not skillId", () => {
+  const source = fs.readFileSync(
+    path.join(root, "packages/problem-engine/difficulty/numberDifficulty.ts"),
+    "utf8"
+  );
+
+  assert.equal(source.includes("problem.skillId"), false);
+  assert.equal(source.includes('from "../patternFamilyResolver"'), true);
+  assert.equal(source.includes("NUMBER_PATTERN_FAMILIES"), false);
+  assert.equal(source.includes("resolveNumberPatternFamily"), false);
+  assert.equal(source.includes("resolvePatternFamily(problem.patternKey)"), true);
+  assert.equal(source.includes('patternFamily === "number_compare"'), true);
+  assert.equal(source.includes('patternFamily === "number_compose"'), true);
+  assert.equal(source.includes('patternFamily === "number_decompose"'), true);
+});
+
+test("numberRules use shared pattern family resolver", () => {
+  const source = fs.readFileSync(path.join(root, "packages/problem-validation/rules/numberRules.ts"), "utf8");
+
+  assert.equal(source.includes('import { resolvePatternFamily } from "packages/problem-engine";'), true);
+  assert.equal(source.includes('resolvePatternFamily(problem.patternKey) !== "number_compare"'), true);
+  assert.equal(source.includes('resolvePatternFamily(problem.patternKey) !== "number_compose"'), true);
+  assert.equal(source.includes('resolvePatternFamily(problem.patternKey) !== "number_decompose"'), true);
+});
+
+test("runtime number patterns assign tuned difficulty bands", async () => {
+  const { problemEngine } = await loadValidationModules();
+
+  assert.equal(
+    problemEngine.computeNumberDifficulty({
+      patternKey: "E1-NUM-COMPARE-01",
+      variables: { a: 3, b: 5 }
+    }),
+    1
+  );
+  assert.equal(
+    problemEngine.computeNumberDifficulty({
+      patternKey: "E1-NUM-COMPARE-01",
+      variables: { a: 6, b: 10 }
+    }),
+    2
+  );
+  assert.equal(
+    problemEngine.computeNumberDifficulty({
+      patternKey: "E1-NUM-COMPARE-01",
+      variables: { a: 11, b: 20 }
+    }),
+    3
+  );
+
+  assert.equal(
+    problemEngine.computeNumberDifficulty({
+      patternKey: "E1-NUM-COMPOSE-01",
+      variables: { a: 2, b: 3 }
+    }),
+    1
+  );
+  assert.equal(
+    problemEngine.computeNumberDifficulty({
+      patternKey: "E1-NUM-COMPOSE-01",
+      variables: { a: 4, b: 6 }
+    }),
+    2
+  );
+
+  assert.equal(
+    problemEngine.computeNumberDifficulty({
+      patternKey: "E1-NUM-DECOMPOSE-01",
+      variables: { whole: 5, known: 2 }
+    }),
+    1
+  );
+  assert.equal(
+    problemEngine.computeNumberDifficulty({
+      patternKey: "E1-NUM-DECOMPOSE-01",
+      variables: { whole: 10, known: 7 }
+    }),
+    2
+  );
+});
+
+test("runtime number source produces expected difficulty distributions", async () => {
+  const { runtimeProblems } = await loadValidationModules();
+
+  const comparePattern = {
+    key: "E1-NUM-COMPARE-01",
+    template: "{a} ? {b}",
+    variables: { a: [0, 20], b: [0, 20] },
+    constraints: ["a != b"],
+    answer: "a < b"
+  };
+  const composePattern = {
+    key: "E1-NUM-COMPOSE-01",
+    template: "{a} + {b} =",
+    variables: { a: [0, 10], b: [0, 10] },
+    constraints: ["a + b <= 10"],
+    answer: "a + b"
+  };
+  const decomposePattern = {
+    key: "E1-NUM-DECOMPOSE-01",
+    template: "{whole} は{known}と？でできます。",
+    variables: { whole: [1, 10], known: [0, 10] },
+    constraints: ["known <= whole"],
+    answer: "whole - known"
+  };
+
+  const compareDifficulties = new Set(
+    runtimeProblems.generateRuntimeProblems(comparePattern, 1000).map((problem) => problem.meta?.difficulty)
+  );
+  const composeDifficulties = new Set(
+    runtimeProblems.generateRuntimeProblems(composePattern, 1000).map((problem) => problem.meta?.difficulty)
+  );
+  const decomposeDifficulties = new Set(
+    runtimeProblems.generateRuntimeProblems(decomposePattern, 1000).map((problem) => problem.meta?.difficulty)
+  );
+
+  assert.deepEqual([...compareDifficulties].sort(), [1, 2, 3]);
+  assert.deepEqual([...composeDifficulties].sort(), [1, 2]);
+  assert.deepEqual([...decomposeDifficulties].sort(), [1, 2]);
 });
