@@ -43,3 +43,8 @@ next-env.d.ts
 
 # datasets
 /data/mnist
+
+# local backups and temp artifacts
+tmp/
+*.bak
+*.bak-*
