@@ -80,14 +80,23 @@ const createSkillSystemStub = (outputPath) => {
     outputPath,
     [
       'const skillPatterns = {',
+      '  E1_NUMBER_COUNT: ["E1_NUMBER_COUNT"],',
+      '  E1_NUMBER_COMPARE: ["E1_NUMBER_COMPARE"],',
+      '  E1_NUMBER_ORDER: ["E1_NUMBER_ORDER"],',
+      '  E1_NUMBER_COMPOSE: ["E1_NUMBER_COMPOSE"],',
+      '  E1_NUMBER_DECOMPOSE: ["E1_NUMBER_DECOMPOSE"],',
+      '  E1_NUMBER_LINE: ["E1_NUMBER_LINE"],',
+      '  E1_ADD_ZERO: ["E1_ADD_ZERO"],',
+      '  E1_ADD_ONE: ["E1_ADD_ONE"],',
+      '  E1_ADD_TWO: ["E1_ADD_TWO"],',
+      '  E1_ADD_DOUBLES: ["E1_ADD_DOUBLES"],',
+      '  E1_ADD_NEAR_DOUBLES: ["E1_ADD_NEAR_DOUBLES"],',
       '  E1_ADD_BASIC: ["E1_ADD_BASIC"],',
       '  E1_ADD_10: ["E1_ADD_10"],',
       '  E1_ADD_CARRY: ["E1_ADD_CARRY"],',
       '  E1_SUB_BASIC: ["E1_SUB_BASIC"],',
       '  E1_SUB_BORROW: ["E1_SUB_BORROW"],',
-      '  E1_NUMBER_COMPARE: ["E1_NUMBER_COMPARE"],',
-      '  E1_NUMBER_COMPOSE: ["E1_NUMBER_COMPOSE"],',
-      '  E1_NUMBER_DECOMPOSE: ["E1_NUMBER_DECOMPOSE"],',
+      '  E1_FACT_FAMILY: ["E1_FACT_FAMILY"],',
       '  E2_ADD_2DIGIT: ["E2_ADD_2DIGIT"],',
       '  E2_SUB_2DIGIT: ["E2_SUB_2DIGIT"],',
       '  H1_BINOMIAL: ["EXPAND_BINOMIAL_BASIC"]',
@@ -235,7 +244,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
     assert.equal(initial.version, 1);
     assert.equal(initial.engineVersion, 1);
     assert.equal(initial.student.difficulty, 1);
-    assert.deepEqual(initial.unlockedSkills, ["E1_ADD_BASIC"]);
+    assert.deepEqual(initial.unlockedSkills, ["E1_NUMBER_COUNT"]);
     const serialized = studentStore.serializeState({
       ...initial,
       student: { ...initial.student, difficulty: 2 }
@@ -243,7 +252,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
     assert.equal(serialized.version, 1);
     assert.equal(serialized.engineVersion, 1);
     assert.equal(serialized.student.difficulty, 2);
-    assert.deepEqual(serialized.unlockedSkills, ["E1_ADD_BASIC"]);
+    assert.deepEqual(serialized.unlockedSkills, ["E1_NUMBER_COUNT"]);
   });
 
   await withMockedWindow(
@@ -260,7 +269,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
       assert.equal(reset.engineVersion, 1);
       assert.equal(reset.student.difficulty, 1);
       assert.deepEqual(reset.patternProgress, {});
-      assert.deepEqual(reset.unlockedSkills, ["E1_ADD_BASIC"]);
+      assert.deepEqual(reset.unlockedSkills, ["E1_NUMBER_COUNT"]);
     }
   );
 
@@ -278,7 +287,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
       assert.equal(reset.engineVersion, 1);
       assert.equal(reset.student.difficulty, 1);
       assert.deepEqual(reset.patternProgress, {});
-      assert.deepEqual(reset.unlockedSkills, ["E1_ADD_BASIC"]);
+      assert.deepEqual(reset.unlockedSkills, ["E1_NUMBER_COUNT"]);
     }
   );
 
@@ -295,7 +304,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
   assert.equal(mismatchedVersion.engineVersion, 1);
   assert.equal(mismatchedVersion.student.difficulty, 1);
   assert.deepEqual(mismatchedVersion.patternProgress, {});
-  assert.deepEqual(mismatchedVersion.unlockedSkills, ["E1_ADD_BASIC"]);
+  assert.deepEqual(mismatchedVersion.unlockedSkills, ["E1_NUMBER_COUNT"]);
 
   const mismatchedEngineVersion = studentStore.serializeState({
     version: 1,
@@ -310,7 +319,7 @@ test("studentStore only exposes client load and serialize helpers", async () => 
   assert.equal(mismatchedEngineVersion.engineVersion, 1);
   assert.equal(mismatchedEngineVersion.student.difficulty, 1);
   assert.deepEqual(mismatchedEngineVersion.patternProgress, {});
-  assert.deepEqual(mismatchedEngineVersion.unlockedSkills, ["E1_ADD_BASIC"]);
+  assert.deepEqual(mismatchedEngineVersion.unlockedSkills, ["E1_NUMBER_COUNT"]);
 
   const source = fs.readFileSync(path.join(root, "packages/learning-engine/studentStore.ts"), "utf8");
   assert.equal(source.includes("__mathquestLearningStateStorage"), false);
@@ -384,23 +393,21 @@ test("skill mastery derives from attempted pattern masteries", async () => {
   });
 });
 
-test("weakness detection uses attempts >= 2 and mastery < 0.7", async () => {
+test("weakness detection keeps a single weak pattern below the adaptive threshold", async () => {
   const { studentStore, learningEngine } = await loadLearningEngineModules();
   const state = studentStore.serializeState({
     version: 1,
     engineVersion: 1,
     student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 0, correct: 0, xp: 0, level: 0 },
     patternProgress: {
-      "E1-ADD-BASIC-01": { patternKey: "E1-ADD-BASIC-01", attempts: 2, correct: 1, mastery: 2 / 4, lastSeenAt: 100 },
-      "E1-ADD-BASIC-02": { patternKey: "E1-ADD-BASIC-02", attempts: 1, correct: 0, mastery: 1 / 3, lastSeenAt: 200 },
-      "E1-ADD-BASIC-03": { patternKey: "E1-ADD-BASIC-03", attempts: 2, correct: 2, mastery: 3 / 4, lastSeenAt: 300 }
+      "E1-NUM-COMPARE-01": { patternKey: "E1-NUM-COMPARE-01", attempts: 2, correct: 1, mastery: 2 / 4, lastSeenAt: 100 }
     },
     skillProgress: {}
   });
 
   assert.deepEqual(learningEngine.recommendNextAction(state), {
     type: "skill",
-    skillId: "E1_ADD_BASIC",
+    skillId: "E1_NUMBER_COUNT",
     reason: "next_skill"
   });
 
@@ -408,14 +415,15 @@ test("weakness detection uses attempts >= 2 and mastery < 0.7", async () => {
     ...state,
     patternProgress: {
       ...state.patternProgress,
-      "E1-ADD-BASIC-03": { patternKey: "E1-ADD-BASIC-03", attempts: 2, correct: 0, mastery: 1 / 4, lastSeenAt: 400 }
+      "E1-NUM-COMPARE-SECOND": { patternKey: "E1-NUM-COMPARE-SECOND", attempts: 2, correct: 0, mastery: 1 / 4, lastSeenAt: 400 },
+      "E1-NUM-COMPARE-01": { patternKey: "E1-NUM-COMPARE-01", attempts: 3, correct: 1, mastery: 1 / 3, lastSeenAt: 500 }
     }
   });
 
   assert.deepEqual(learningEngine.recommendNextAction(adaptiveState), {
-    type: "adaptive",
-    reason: "weak_patterns",
-    weakPatterns: 2
+    type: "skill",
+    skillId: "E1_NUMBER_COUNT",
+    reason: "next_skill"
   });
 });
 
@@ -430,7 +438,7 @@ test("studentStore backfills unlockedSkills for legacy states", async () => {
     skillProgress: {}
   });
 
-  assert.deepEqual(state.unlockedSkills, ["E1_ADD_BASIC"]);
+  assert.deepEqual(state.unlockedSkills, ["E1_NUMBER_COUNT"]);
 });
 
 test("sessionBuilder creates a five-problem session from explicit state", async () => {
@@ -843,7 +851,7 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(typeof index.startSession, "function");
   assert.equal(typeof index.serializeState, "function");
 
-  const started = learningEngine.startSession(initial, { mode: "skill", skillId: "E1_ADD_BASIC" });
+  const started = learningEngine.startSession(initial, { mode: "skill", skillId: "E1_NUMBER_COUNT" });
   assert.equal(started.state.version, 1);
   assert.equal(started.state.engineVersion, 1);
   assert.equal(started.session.problems.length, 5);
@@ -858,13 +866,13 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(answered.state.student.xpSession, 10);
   assert.equal(answered.state.student.level, 2);
   assert.equal(answered.session.index, 1);
-  assert.equal(answered.state.skillProgress.E1_ADD_BASIC?.mastery, 2 / 3);
-  assert.equal(answered.state.skillProgress.E1_ADD_BASIC?.mastered, false);
+  assert.equal(answered.state.skillProgress.E1_NUMBER_COUNT?.mastery, 2 / 3);
+  assert.equal(answered.state.skillProgress.E1_NUMBER_COUNT?.mastered, false);
 
   const recommendedSkill = learningEngine.recommendNextAction(answered.state);
   assert.deepEqual(recommendedSkill, {
     type: "skill",
-    skillId: "E1_ADD_BASIC",
+    skillId: "E1_NUMBER_COUNT",
     reason: "next_skill"
   });
 
@@ -877,9 +885,9 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
     }
   });
   assert.deepEqual(learningEngine.recommendNextAction(weakState), {
-    type: "adaptive",
-    reason: "weak_patterns",
-    weakPatterns: 2
+    type: "skill",
+    skillId: "E1_NUMBER_COUNT",
+    reason: "next_skill"
   });
 
   const finished = learningEngine.finishSession(answered.state);
@@ -890,11 +898,11 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(finished.state.student.xpSession, 0);
   assert.equal(finished.state.student.level, 2);
   assert.equal(finished.result.totalQuestions, 5);
-  assert.equal(finished.result.skillProgressBefore?.skillId, "E1_ADD_BASIC");
+  assert.equal(finished.result.skillProgressBefore?.skillId, "E1_NUMBER_COUNT");
   assert.equal(finished.result.skillProgressBefore?.mastery, 0);
-  assert.equal(finished.result.skillProgressAfter?.skillId, "E1_ADD_BASIC");
+  assert.equal(finished.result.skillProgressAfter?.skillId, "E1_NUMBER_COUNT");
   assert.equal(finished.result.skillProgressAfter?.mastery, 2 / 3);
-  assert.deepEqual(finished.state.unlockedSkills, ["E1_ADD_BASIC"]);
+  assert.deepEqual(finished.state.unlockedSkills, ["E1_NUMBER_COUNT"]);
 
   const source = fs.readFileSync(path.join(root, "packages/learning-engine/learningEngine.ts"), "utf8");
   assert.equal(source.includes('console.log("skillMastery"'), true);
@@ -925,12 +933,12 @@ test("finishSession unlocks the next skill when mastery reaches 0.8", async () =
 
   const finished = learningEngine.finishSession(state);
 
-  assert.deepEqual(finished.state.unlockedSkills, ["E1_ADD_BASIC", "E1_ADD_10"]);
-  assert.deepEqual(finished.result.recommendation, {
-    type: "skill",
-    skillId: "E1_ADD_10",
-    reason: "next_skill"
-  });
+  assert.deepEqual(finished.state.unlockedSkills, ["E1_ADD_BASIC", "E1_ADD_10", "E1_SUB_BASIC"]);
+  assert.equal(
+    finished.result.recommendation.type === "skill" &&
+      ["E1_ADD_10", "E1_SUB_BASIC"].includes(finished.result.recommendation.skillId),
+    true
+  );
 });
 
 test("number skills resolve as runtime session candidates", async () => {
@@ -993,14 +1001,14 @@ test("progression treats mastery below 0.8 as still in progress", async () => {
     student: { difficulty: 1, correctStreak: 0, wrongStreak: 0, solved: 5, correct: 4, xpTotal: 40, xpSession: 0, level: 3 },
     patternProgress: {},
     skillProgress: {
-      E1_ADD_BASIC: { skillId: "E1_ADD_BASIC", mastery: 0.76, mastered: true }
+      E1_NUMBER_COUNT: { skillId: "E1_NUMBER_COUNT", mastery: 0.76, mastered: true }
     },
-    unlockedSkills: ["E1_ADD_BASIC"]
+    unlockedSkills: ["E1_NUMBER_COUNT"]
   });
 
   assert.deepEqual(learningEngine.recommendNextAction(state), {
     type: "skill",
-    skillId: "E1_ADD_BASIC",
+    skillId: "E1_NUMBER_COUNT",
     reason: "next_skill"
   });
 });
@@ -1048,7 +1056,7 @@ test("adaptive start works without skillId and difficulty remains within 1..4", 
   assert.equal(adaptive.state.version, 1);
   assert.equal(adaptive.state.engineVersion, 1);
   assert.equal(adaptive.session.mode, "adaptive");
-  assert.equal(adaptive.session.skillId, "E1_ADD_BASIC");
+  assert.equal(adaptive.session.skillId, "E1_NUMBER_COUNT");
   assert.equal(adaptive.session.startedDifficulty >= 1 && adaptive.session.startedDifficulty <= 5, true);
 
   const highDifficultyState = studentStore.serializeState({

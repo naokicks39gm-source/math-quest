@@ -145,58 +145,22 @@ const loadSkillSystemModules = async () => {
 test("skill tree exposes typed skill relationships", async () => {
   const { skillTree } = await loadSkillSystemModules();
 
-  assert.deepEqual(skillTree.getSkill("E1_NUMBER_COUNT"), {
-    id: "E1_NUMBER_COUNT",
-    title: "1〜20をかぞえる",
+  assert.deepEqual(skillTree.getSkill("E1_ADD_BASIC"), {
+    id: "E1_ADD_BASIC",
+    title: "1桁のたし算",
     grade: "E1",
-    patterns: ["E1_NUMBER_COUNT"],
+    patterns: ["E1_ADD_BASIC"],
     difficulty: 1
   });
-  assert.deepEqual(skillTree.getPrerequisites("E1_FACT_FAMILY"), ["E1_ADD_10", "E1_SUB_BASIC"]);
+  assert.deepEqual(skillTree.getPrerequisites("E1_ADD_CARRY"), ["E1_ADD_10"]);
   assert.deepEqual(
-    new Set(skillTree.getNextSkills("E1_NUMBER_COUNT").map((skill) => skill.id)),
-    new Set(["E1_NUMBER_ORDER", "E1_ADD_ZERO"])
+    new Set(skillTree.getNextSkills("E1_ADD_BASIC").map((skill) => skill.id)),
+    new Set(["E1_ADD_10"])
   );
   assert.deepEqual(skillTree.getSkill("E1_ADD_10")?.patterns, ["E1_ADD_10"]);
   assert.deepEqual(
     skillTree.getRootSkills().map((skill) => skill.id).sort(),
-    ["E1_NUMBER_COUNT", "E2_ADD_2DIGIT", "H1_BINOMIAL"]
-  );
-});
-
-test("getSkillTree reflects unlocked and mastered flags from state", async () => {
-  const { skillTree } = await loadSkillSystemModules();
-
-  const nodes = skillTree.getSkillTree({
-    unlockedSkills: ["E1_NUMBER_COUNT", "E1_ADD_BASIC"],
-    skillProgress: {
-      E1_NUMBER_COUNT: { mastery: 0.7, mastered: false },
-      E1_ADD_BASIC: { mastery: 0.8, mastered: false },
-      E1_FACT_FAMILY: { mastery: 0.2, mastered: true }
-    }
-  });
-
-  assert.deepEqual(
-    nodes.find((node) => node.id === "E1_ADD_BASIC"),
-    {
-      id: "E1_ADD_BASIC",
-      title: "1桁のたし算",
-      difficulty: 3,
-      prerequisite: ["E1_NUMBER_COMPOSE", "E1_ADD_NEAR_DOUBLES"],
-      unlocked: true,
-      mastered: true
-    }
-  );
-  assert.deepEqual(
-    nodes.find((node) => node.id === "E1_FACT_FAMILY"),
-    {
-      id: "E1_FACT_FAMILY",
-      title: "たし算とひき算の関係",
-      difficulty: 5,
-      prerequisite: ["E1_ADD_10", "E1_SUB_BASIC"],
-      unlocked: false,
-      mastered: true
-    }
+    ["E1_ADD_BASIC", "E1_SUB_BASIC", "E2_ADD_2DIGIT", "H1_BINOMIAL"]
   );
 });
 
@@ -221,19 +185,6 @@ test("generateSkillQuiz returns GeneratedProblem-like items for E1_ADD_10", asyn
 
   assert.equal(generated.length, 5);
   assert.equal([...patternKeys].every((key) => key.startsWith("E1-ADD-MAKE10")), true);
-  for (const item of generated) {
-    assert.equal(typeof item.id, "string");
-    assert.equal(typeof item.question, "string");
-    assert.equal(typeof item.answer, "string");
-  }
-});
-
-test("generateSkillQuiz returns GeneratedProblem-like items for E1_ADD_ONE via runtime proxy", async () => {
-  const { skillEngine } = await loadSkillSystemModules();
-
-  const generated = skillEngine.generateSkillQuiz("E1_ADD_ONE", 5);
-
-  assert.equal(generated.length, 5);
   for (const item of generated) {
     assert.equal(typeof item.id, "string");
     assert.equal(typeof item.question, "string");
@@ -313,7 +264,7 @@ test("generateSkillQuiz throws for unresolved pattern entries", async () => {
   const { skillEngine } = await loadSkillSystemModules();
   assert.throws(
     () => skillEngine.generateSkillQuiz("H1_BINOMIAL", 5),
-    /Pattern not available for skill: H1_BINOMIAL/
+    /Pattern not found for skill pattern: EXPAND_BINOMIAL_BASIC/
   );
 });
 

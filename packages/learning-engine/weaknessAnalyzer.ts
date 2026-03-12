@@ -14,14 +14,27 @@ import { getPatterns as getSkillPatternBundles } from "packages/skill-system";
 import type { LearningState } from "./studentStore";
 
 const patternCatalog: Record<string, PatternDSL[]> = {
+  E1_NUMBER_COUNT: numberComparePatterns as unknown as PatternDSL[],
+  E1_NUMBER_COMPARE: numberComparePatterns as unknown as PatternDSL[],
+  E1_NUMBER_ORDER: numberComparePatterns as unknown as PatternDSL[],
+  E1_NUMBER_COMPOSE: numberComposePatterns as unknown as PatternDSL[],
+  E1_NUMBER_DECOMPOSE: numberDecomposePatterns as unknown as PatternDSL[],
+  E1_NUMBER_LINE: numberComparePatterns as unknown as PatternDSL[],
+  E1_ADD_ZERO: addBasicPatterns as unknown as PatternDSL[],
+  E1_ADD_ONE: addBasicPatterns as unknown as PatternDSL[],
+  E1_ADD_TWO: addBasicPatterns as unknown as PatternDSL[],
+  E1_ADD_DOUBLES: addBasicPatterns as unknown as PatternDSL[],
+  E1_ADD_NEAR_DOUBLES: addBasicPatterns as unknown as PatternDSL[],
   E1_ADD_BASIC: addBasicPatterns as unknown as PatternDSL[],
   E1_ADD_10: addMake10Patterns as unknown as PatternDSL[],
   E1_ADD_CARRY: addCarryPatterns as unknown as PatternDSL[],
   E1_SUB_BASIC: subBasicPatterns as unknown as PatternDSL[],
   E1_SUB_BORROW: subBorrowPatterns as unknown as PatternDSL[],
-  E1_NUMBER_COMPARE: numberComparePatterns as unknown as PatternDSL[],
-  E1_NUMBER_COMPOSE: numberComposePatterns as unknown as PatternDSL[],
-  E1_NUMBER_DECOMPOSE: numberDecomposePatterns as unknown as PatternDSL[],
+  E1_FACT_FAMILY: [
+    ...(addMake10Patterns as unknown as PatternDSL[]),
+    ...(subBasicPatterns as unknown as PatternDSL[]),
+    ...(numberDecomposePatterns as unknown as PatternDSL[])
+  ],
   E2_ADD_2DIGIT: add2DigitPatterns as unknown as PatternDSL[],
   E2_SUB_2DIGIT: sub2DigitPatterns as unknown as PatternDSL[]
 };

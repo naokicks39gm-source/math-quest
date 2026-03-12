@@ -30,7 +30,7 @@ export type LearningState = {
   session?: Session;
 };
 
-export const INITIAL_UNLOCKED_SKILLS = ["E1_ADD_BASIC"] as const;
+export const INITIAL_UNLOCKED_SKILLS = ["E1_NUMBER_COUNT"] as const;
 
 const createInitialStudentState = (): StudentState => ({
   difficulty: 1,

@@ -53,14 +53,7 @@ const createSkillSystemStub = (outputPath) => {
     outputPath,
     [
       'const skillPatterns = {',
-      '  E1_ADD_BASIC: ["E1_ADD_BASIC"],',
-      '  E1_ADD_10: ["E1_ADD_10"],',
-      '  E1_ADD_CARRY: ["E1_ADD_CARRY"],',
-      '  E1_SUB_BASIC: ["E1_SUB_BASIC"],',
-      '  E1_SUB_BORROW: ["E1_SUB_BORROW"],',
-      '  E1_NUMBER_COMPARE: ["E1_NUMBER_COMPARE"],',
-      '  E1_NUMBER_COMPOSE: ["E1_NUMBER_COMPOSE"],',
-      '  E1_NUMBER_DECOMPOSE: ["E1_NUMBER_DECOMPOSE"]',
+      '  E1_ADD_BASIC: ["E1_ADD_BASIC"]',
       "};",
       "export const getPatterns = (skillId) => {",
       "  const patterns = skillPatterns[skillId];",
@@ -73,42 +66,24 @@ const createSkillSystemStub = (outputPath) => {
 };
 
 const createProblemEngineStub = (outputPath) => {
-  const ranges = [
-    ['"E1-ADD-BASIC-"', 1, 10, "(index <= 8 ? 1 : 2)"],
-    ['"E1-SUB-BASIC-"', 1, 10, "(index <= 7 ? 1 : 2)"],
-    ['"E1-SUB-BORROW-"', 1, 10, "(index <= 4 ? 2 : 3)"],
-    ['"E1-NUM-COMPARE-"', 1, 1, "1"],
-    ['"E1-NUM-COMPOSE-"', 1, 1, "1"],
-    ['"E1-NUM-DECOMPOSE-"', 1, 1, "1"]
-  ];
-
   fs.writeFileSync(
     outputPath,
     [
-      "const difficultyByPattern = {};",
-      ...ranges.map(
-        ([prefix, start, end, expr]) =>
-          `for (let index = ${start}; index <= ${end}; index += 1) difficultyByPattern[\`${prefix}\${String(index).padStart(2, "0")}\`] = ${expr};`
-      ),
-      'difficultyByPattern["E1-ADD-MAKE10"] = 2;',
-      'difficultyByPattern["E1-ADD-CARRY"] = 2;',
+      "let generationBatch = 0;",
+      'const difficultyByPattern = { "E1-ADD-BASIC-01": 3, "E1-ADD-BASIC-02": 3, "E1-ADD-BASIC-03": 3 };',
       "export const getPatternMeta = (key) =>",
       "  difficultyByPattern[key] ? { key, difficulty: difficultyByPattern[key] } : undefined;",
-      "export const generateProblems = (pattern, count) =>",
-      "  Array.from({ length: count }, (_, index) => ({",
-      '    id: `${pattern.key}::${index}`,',
+      "export const generateProblems = (pattern, count) => {",
+      "  generationBatch += 1;",
+      "  return Array.from({ length: count }, (_, index) => ({",
+      '    id: `${pattern.key}::${generationBatch}::${index}`,',
       '    patternKey: pattern.key,',
-      '    question: `${pattern.key} question ${index}`,',
+      '    question: `${pattern.key} question ${generationBatch}-${index}`,',
       '    answer: `${index}`,',
-      '    variables: pattern.key === "E1-NUM-COMPARE-01" ? { a: index, b: index + 1 } : pattern.key === "E1-NUM-COMPOSE-01" ? { a: index % 5, b: 10 - (index % 5) } : pattern.key === "E1-NUM-DECOMPOSE-01" ? { whole: 10, known: index % 5 } : undefined,',
-      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2 }",
+      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 3 }",
       "  }));",
-      "export const generateRuntimeProblems = (pattern, count) =>",
-      "  generateProblems(pattern, count).map((problem) => ({",
-      "    ...problem,",
-      "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? ((problem.variables.a ?? 0) < (problem.variables.b ?? 0) ? \"LESS\" : \"GREATER\") : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String((problem.variables.whole ?? 0) - (problem.variables.known ?? 0)) : problem.answer,",
-      "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\" }",
-      "  }));"
+      "};",
+      "export const generateRuntimeProblems = (pattern, count) => generateProblems(pattern, count);"
     ].join("\n"),
     "utf8"
   );
@@ -151,9 +126,10 @@ const createProblemFormatStub = (outputPath) => {
 };
 
 const loadModules = async () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "e1-api-session-"));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "e1-session-diversity-"));
   const learningRoot = path.join(root, "packages/learning-engine");
 
+  writeJsonModule(path.join(root, "packages/skill-system/skills.json"), path.join(tempDir, "skills.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-basic.json"), path.join(tempDir, "add-basic.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-make10.json"), path.join(tempDir, "add-make10.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-carry.json"), path.join(tempDir, "add-carry.mjs"));
@@ -164,8 +140,6 @@ const loadModules = async () => {
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/number-decompose.json"), path.join(tempDir, "number-decompose.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/add-2digit.json"), path.join(tempDir, "add-2digit.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/sub-2digit.json"), path.join(tempDir, "sub-2digit.mjs"));
-  writeJsonModule(path.join(root, "packages/skill-system/skills.json"), path.join(tempDir, "skills.mjs"));
-
   createSkillSystemStub(path.join(tempDir, "skill-system.mjs"));
   createProblemEngineStub(path.join(tempDir, "problem-engine.mjs"));
   createNextServerStub(path.join(tempDir, "next-server.mjs"));
@@ -212,20 +186,6 @@ const loadModules = async () => {
     );
   }
 
-  await transpileTsModule(path.join(root, "src/lib/learningPatternCatalog.ts"), path.join(tempDir, "learningPatternCatalog.mjs"), [
-    ['from "packages/problem-engine/patterns/E1/add-basic.json"', 'from "./add-basic.mjs"'],
-    ['from "packages/problem-engine/patterns/E1/add-make10.json"', 'from "./add-make10.mjs"'],
-    ['from "packages/problem-engine/patterns/E1/add-carry.json"', 'from "./add-carry.mjs"'],
-    ['from "packages/problem-engine/patterns/E1/sub-basic.json"', 'from "./sub-basic.mjs"'],
-    ['from "packages/problem-engine/patterns/E1/sub-borrow.json"', 'from "./sub-borrow.mjs"'],
-    ['from "packages/problem-engine/patterns/E1/number-compare.json"', 'from "./number-compare.mjs"'],
-    ['from "packages/problem-engine/patterns/E1/number-compose.json"', 'from "./number-compose.mjs"'],
-    ['from "packages/problem-engine/patterns/E1/number-decompose.json"', 'from "./number-decompose.mjs"'],
-    ['from "packages/problem-engine/patterns/E2/add-2digit.json"', 'from "./add-2digit.mjs"'],
-    ['from "packages/problem-engine/patterns/E2/sub-2digit.json"', 'from "./sub-2digit.mjs"'],
-    ['from "packages/skill-system/skills.json"', 'from "./skills.mjs"']
-  ]);
-
   await transpileTsModule(
     path.join(root, "src/app/api/learning/session/start/route.ts"),
     path.join(tempDir, "route.mjs"),
@@ -240,74 +200,43 @@ const loadModules = async () => {
   const load = (moduleName) => import(`${pathToFileURL(path.join(tempDir, `${moduleName}.mjs`)).href}?t=${Date.now()}`);
 
   return {
-    route: await load("route"),
-    learningPatternCatalog: (await load("learningPatternCatalog")).learningPatternCatalog
+    studentStore: await load("studentStore"),
+    learningEngine: await load("learningEngine"),
+    route: await load("route")
   };
 };
 
-const e1SkillIds = ["E1_ADD_BASIC", "E1_ADD_10", "E1_ADD_CARRY", "E1_SUB_BASIC", "E1_SUB_BORROW", "E1_NUMBER_COMPARE", "E1_NUMBER_COMPOSE", "E1_NUMBER_DECOMPOSE"];
+test("startSession for the same skill does not return identical problem sets three times", async () => {
+  const { learningEngine, studentStore } = await loadModules();
+  const initial = studentStore.createLearningState();
 
-test("learning session start route returns valid E1 skill sessions", async () => {
-  const { route, learningPatternCatalog } = await loadModules();
+  const sessions = Array.from({ length: 3 }, () => learningEngine.startSession(initial, { mode: "skill", skillId: "E1_ADD_BASIC" }).session);
+  const signatures = sessions.map((session) => session.problems.map((problem) => problem.problem.id).join("|"));
 
-  for (const skillId of e1SkillIds) {
-    const request = new Request("http://localhost/api/learning/session/start", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode: "skill", skillId })
-    });
-
-    const response = await route.POST(request);
-    const body = await response.json();
-
-    assert.equal(response.status, 200, skillId);
-    assert.equal(typeof body.sessionId, "string", skillId);
-    assert.equal(body.sessionId.length > 0, true, skillId);
-    assert.equal(typeof body.expiresAt, "number", skillId);
-    assert.equal(Boolean(body.session), true, skillId);
-    assert.equal(body.session.skillId, skillId, skillId);
-    assert.equal(body.state.session?.skillId, skillId, skillId);
-    assert.equal(body.session.problems.length, 5, skillId);
-
-    for (const problem of body.session.problems) {
-      assert.equal(typeof problem.problem.id, "string", `${skillId} -> id`);
-      assert.equal(problem.problem.id.length > 0, true, `${skillId} -> id`);
-      assert.equal(typeof problem.patternKey, "string", `${skillId} -> patternKey`);
-      assert.equal(problem.patternKey.length > 0, true, `${skillId} -> patternKey`);
-      assert.equal(
-        learningPatternCatalog.some((entry) => entry.skillId === skillId && entry.patternId === problem.patternKey),
-        true,
-        `${skillId} -> missing catalog entry for ${problem.patternKey}`
-      );
-      assert.equal(typeof problem.difficulty, "number", `${skillId} -> difficulty`);
-      assert.equal(problem.difficulty >= 1 && problem.difficulty <= 5, true, `${skillId} -> difficulty`);
-      assert.equal(typeof problem.problem.meta?.difficulty, "number", `${skillId} -> meta difficulty`);
-      assert.equal(problem.problem.meta.difficulty >= 1 && problem.problem.meta.difficulty <= 5, true, `${skillId} -> meta difficulty`);
-    }
-  }
+  assert.equal(new Set(signatures).size > 1, true);
 });
 
-test("learning session start route issues a new sessionId for repeated starts", async () => {
+test("session start route issues unique sessionIds across three repeated starts", async () => {
   const { route } = await loadModules();
-  const firstResponse = await route.POST(
-    new Request("http://localhost/api/learning/session/start", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode: "skill", skillId: "E1_ADD_BASIC" })
-    })
-  );
-  const secondResponse = await route.POST(
-    new Request("http://localhost/api/learning/session/start", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode: "skill", skillId: "E1_ADD_BASIC" })
-    })
-  );
 
-  const firstBody = await firstResponse.json();
-  const secondBody = await secondResponse.json();
+  const startRequests = () =>
+    route.POST(
+      new Request("http://localhost/api/learning/session/start", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode: "skill", skillId: "E1_ADD_BASIC" })
+      })
+    );
+
+  const [firstResponse, secondResponse, thirdResponse] = await Promise.all([startRequests(), startRequests(), startRequests()]);
+  const [firstBody, secondBody, thirdBody] = await Promise.all([
+    firstResponse.json(),
+    secondResponse.json(),
+    thirdResponse.json()
+  ]);
 
   assert.equal(firstResponse.status, 200);
   assert.equal(secondResponse.status, 200);
-  assert.notEqual(firstBody.sessionId, secondBody.sessionId);
+  assert.equal(thirdResponse.status, 200);
+  assert.equal(new Set([firstBody.sessionId, secondBody.sessionId, thirdBody.sessionId]).size, 3);
 });

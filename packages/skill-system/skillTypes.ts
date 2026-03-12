@@ -6,3 +6,12 @@ export type Skill = {
   prerequisite?: string[];
   difficulty: number;
 };
+
+export type SkillTreeNode = {
+  id: string;
+  title: string;
+  difficulty: number;
+  prerequisite: string[];
+  unlocked: boolean;
+  mastered: boolean;
+};

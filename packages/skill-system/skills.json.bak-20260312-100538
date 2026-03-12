@@ -1,0 +1,86 @@
+[
+  {
+    "id": "E1_ADD_BASIC",
+    "title": "1桁のたし算",
+    "grade": "E1",
+    "patterns": ["E1_ADD_BASIC"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_ADD_10",
+    "title": "10を作るたし算",
+    "grade": "E1",
+    "patterns": ["E1_ADD_10"],
+    "prerequisite": ["E1_ADD_BASIC"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_ADD_CARRY",
+    "title": "くり上がりのたし算",
+    "grade": "E1",
+    "patterns": ["E1_ADD_CARRY"],
+    "prerequisite": ["E1_ADD_10"],
+    "difficulty": 2
+  },
+  {
+    "id": "E1_SUB_BASIC",
+    "title": "1桁のひき算",
+    "grade": "E1",
+    "patterns": ["E1_SUB_BASIC"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_SUB_BORROW",
+    "title": "くり下がりのひき算",
+    "grade": "E1",
+    "patterns": ["E1_SUB_BORROW"],
+    "prerequisite": ["E1_SUB_BASIC"],
+    "difficulty": 2
+  },
+  {
+    "id": "E1_NUMBER_COMPARE",
+    "title": "数のくらべ",
+    "grade": "E1",
+    "patterns": ["E1_NUMBER_COMPARE"],
+    "prerequisite": ["E1_SUB_BORROW"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_NUMBER_COMPOSE",
+    "title": "数のごうせい",
+    "grade": "E1",
+    "patterns": ["E1_NUMBER_COMPOSE"],
+    "prerequisite": ["E1_NUMBER_COMPARE"],
+    "difficulty": 1
+  },
+  {
+    "id": "E1_NUMBER_DECOMPOSE",
+    "title": "数のぶんかい",
+    "grade": "E1",
+    "patterns": ["E1_NUMBER_DECOMPOSE"],
+    "prerequisite": ["E1_NUMBER_COMPOSE"],
+    "difficulty": 1
+  },
+  {
+    "id": "E2_ADD_2DIGIT",
+    "title": "2桁のたし算",
+    "grade": "E2",
+    "patterns": ["E2_ADD_2DIGIT"],
+    "difficulty": 2
+  },
+  {
+    "id": "E2_SUB_2DIGIT",
+    "title": "2桁のひき算",
+    "grade": "E2",
+    "patterns": ["E2_SUB_2DIGIT"],
+    "prerequisite": ["E2_ADD_2DIGIT"],
+    "difficulty": 2
+  },
+  {
+    "id": "H1_BINOMIAL",
+    "title": "二項展開",
+    "grade": "H1",
+    "patterns": ["EXPAND_BINOMIAL_BASIC"],
+    "difficulty": 4
+  }
+]

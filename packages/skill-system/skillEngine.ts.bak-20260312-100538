@@ -18,28 +18,14 @@ const skills = skillsData as Skill[];
 const asPatternCatalog = (patterns: unknown): PatternDSL[] => patterns as PatternDSL[];
 
 const patternCatalog: Record<string, PatternDSL[]> = {
-  // Number concept skills stay design-first; only concepts with a reasonable runtime proxy are wired.
   E1_ADD_BASIC: asPatternCatalog(addBasicPatterns),
   E1_ADD_10: asPatternCatalog(addMake10Patterns),
   E1_ADD_CARRY: asPatternCatalog(addCarryPatterns),
   E1_SUB_BASIC: asPatternCatalog(subBasicPatterns),
   E1_SUB_BORROW: asPatternCatalog(subBorrowPatterns),
-  E1_NUMBER_COUNT: asPatternCatalog(numberComparePatterns),
   E1_NUMBER_COMPARE: asPatternCatalog(numberComparePatterns),
-  E1_NUMBER_ORDER: asPatternCatalog(numberComparePatterns),
   E1_NUMBER_COMPOSE: asPatternCatalog(numberComposePatterns),
   E1_NUMBER_DECOMPOSE: asPatternCatalog(numberDecomposePatterns),
-  E1_NUMBER_LINE: asPatternCatalog(numberComparePatterns),
-  E1_ADD_ZERO: asPatternCatalog(addBasicPatterns),
-  E1_ADD_ONE: asPatternCatalog(addBasicPatterns),
-  E1_ADD_TWO: asPatternCatalog(addBasicPatterns),
-  E1_ADD_DOUBLES: asPatternCatalog(addBasicPatterns),
-  E1_ADD_NEAR_DOUBLES: asPatternCatalog(addBasicPatterns),
-  E1_FACT_FAMILY: [
-    ...asPatternCatalog(addMake10Patterns),
-    ...asPatternCatalog(subBasicPatterns),
-    ...asPatternCatalog(numberDecomposePatterns)
-  ],
   E2_ADD_2DIGIT: asPatternCatalog(add2DigitPatterns),
   E2_SUB_2DIGIT: asPatternCatalog(sub2DigitPatterns)
 };
@@ -61,7 +47,13 @@ const findSkill = (skillId: string): Skill => {
   return skill;
 };
 
-const resolvePatternsForSkillPattern = (patternId: string): PatternDSL[] => patternCatalog[patternId] ?? [];
+const resolvePatternsForSkillPattern = (patternId: string): PatternDSL[] => {
+  const patterns = patternCatalog[patternId];
+  if (!patterns) {
+    throw new Error(`Pattern not found for skill pattern: ${patternId}`);
+  }
+  return patterns;
+};
 
 const getPatternStock = (pattern: PatternDSL): PatternStockEntry => {
   const cached = patternStockCache.get(pattern.key);
@@ -125,9 +117,6 @@ export function generateSkillQuiz(skillId: string, count: number = 5): Generated
   }
 
   const patterns = skill.patterns.flatMap((skillPattern) => resolvePatternsForSkillPattern(skillPattern));
-  if (patterns.length === 0) {
-    throw new Error(`Pattern not available for skill: ${skillId}`);
-  }
   const shuffledPatterns = shuffle([...patterns]);
   const pool: GeneratedProblem[] = [];
   let addedInLastRound = true;
