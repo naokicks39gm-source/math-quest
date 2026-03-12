@@ -4,34 +4,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SkillList, type SkillCardItem } from "packages/ui";
 import { loadStateFromClient } from "packages/learning-engine/studentStore";
+import type { SkillStatus } from "packages/skill-system/skillTypes";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 import { practiceSkills } from "@/lib/learningSkillCatalog";
 import { readDailyStreak, type DailyStreak } from "@/lib/streak";
 
-const getSkillBucket = (mastery: number) => {
-  if (mastery >= 0.75) {
-    return "mastered";
-  }
-
-  if (mastery > 0) {
-    return "learning";
-  }
-
-  return "not_started";
-};
-
-const getSkillSortRank = (mastery: number) => {
-  const bucket = getSkillBucket(mastery);
-
-  if (bucket === "learning") {
-    return 0;
-  }
-
-  if (bucket === "not_started") {
-    return 1;
-  }
-
-  return 2;
+const resolveSkillStatus = (unlocked: boolean, mastery: number, mastered: boolean): SkillStatus => {
+  if (mastered || mastery >= 0.8) return "MASTERED";
+  if (!unlocked) return "LOCKED";
+  if (mastery > 0) return "LEARNING";
+  return "AVAILABLE";
 };
 
 const buildSkillItems = (state: ReturnType<typeof loadStateFromClient>): SkillCardItem[] => {
@@ -39,6 +21,8 @@ const buildSkillItems = (state: ReturnType<typeof loadStateFromClient>): SkillCa
     .map((skill) => {
       const progress = state.skillProgress[skill.id];
       const mastery = progress?.mastery ?? 0;
+      const mastered = progress?.mastered === true || mastery >= 0.8;
+      const unlocked = state.unlockedSkills.includes(skill.id);
 
       return {
         id: skill.id,
@@ -46,24 +30,10 @@ const buildSkillItems = (state: ReturnType<typeof loadStateFromClient>): SkillCa
         title: skill.title,
         grade: skill.grade,
         mastery,
-        mastered: progress?.mastered ?? false
+        mastered,
+        unlocked,
+        status: resolveSkillStatus(unlocked, mastery, mastered)
       };
-    })
-    .sort((left, right) => {
-      const rankDelta = getSkillSortRank(left.mastery ?? 0) - getSkillSortRank(right.mastery ?? 0);
-
-      if (rankDelta !== 0) {
-        return rankDelta;
-      }
-
-      const leftBucket = getSkillBucket(left.mastery ?? 0);
-      const rightBucket = getSkillBucket(right.mastery ?? 0);
-
-      if (leftBucket === "learning" && rightBucket === "learning") {
-        return (left.mastery ?? 0) - (right.mastery ?? 0);
-      }
-
-      return left.title.localeCompare(right.title, "ja");
     });
 };
 
@@ -74,10 +44,12 @@ const getRecommendedSkill = (items: SkillCardItem[]) =>
       return {
         ...skill,
         mastery: progress?.mastery ?? 0,
-        mastered: progress?.mastered ?? false
+        mastered: progress?.mastered ?? false,
+        unlocked: progress?.unlocked ?? false,
+        status: progress?.status
       };
     })
-    .filter((skill) => (skill.mastery ?? 0) < 0.75 && skill.patterns.length > 0)
+    .filter((skill) => skill.unlocked === true && (skill.mastery ?? 0) < 0.8 && skill.patterns.length > 0)
     .sort((left, right) => {
       const masteryDelta = (left.mastery ?? 0) - (right.mastery ?? 0);
       if (masteryDelta !== 0) {
@@ -97,7 +69,9 @@ export default function SkillsPage() {
       title: skill.title,
       grade: skill.grade,
       mastery: 0,
-      mastered: false
+      mastered: false,
+      unlocked: skill.id === practiceSkills[0]?.id,
+      status: skill.id === practiceSkills[0]?.id ? "AVAILABLE" : "LOCKED"
     }))
   );
 
@@ -115,6 +89,9 @@ export default function SkillsPage() {
   const recommendedSkill = getRecommendedSkill(skills);
 
   const handleSelect = (skill: SkillCardItem) => {
+    if (skill.status === "LOCKED") {
+      return;
+    }
     router.push(`/quest?skillId=${encodeURIComponent(skill.id)}`);
   };
 

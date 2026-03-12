@@ -7,6 +7,8 @@ export type Skill = {
   difficulty: number;
 };
 
+export type SkillStatus = "LOCKED" | "AVAILABLE" | "LEARNING" | "MASTERED";
+
 export type SkillNode = {
   id: string;
   title: string;
@@ -17,6 +19,7 @@ export type SkillNode = {
   mastery: number;
   xp: number;
   nextSkills: string[];
+  status: SkillStatus;
 };
 
 export type SkillTreeNode = SkillNode;

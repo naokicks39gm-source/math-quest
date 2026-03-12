@@ -277,6 +277,8 @@ const shouldKeepEqualsForE13Plus = (typeId?: string, typeLabel?: string) => {
 const shouldForceEqualsForElementaryE2Plus = (typeId?: string) =>
   Boolean(typeId && /^E[2-6]\./.test(typeId));
 
+const hasArithmeticOperator = (text?: string) => Boolean(text && /[+\-×÷]/.test(text));
+
 const formatPrompt = (prompt: string, keepEquals = false, forceEquals = false) => {
   const cleaned = prompt.replace(/を計算しなさい。$/g, "");
   const base = keepEquals ? cleaned.trim() : trimTrailingEquationEquals(cleaned);
@@ -492,9 +494,23 @@ const renderPromptWithSlotBox = (text: string): ReactNode | null => {
 const renderPrompt = (item: ExampleItem, typeId?: string, typeLabel?: string) => {
   const keepEquals = shouldKeepEqualsForE13Plus(typeId, typeLabel);
   const forceEquals = shouldForceEqualsForElementaryE2Plus(typeId);
+  const preserveArithmeticEquals = hasArithmeticOperator(item.prompt) || hasArithmeticOperator(item.prompt_tex);
+  const shouldKeepPromptEquals = keepEquals || preserveArithmeticEquals;
+  const shouldForcePromptEquals = forceEquals || preserveArithmeticEquals;
   if (typeId === "E2.NA.DIV.DIV_EQUAL_SHARE_BASIC") {
-    const text = formatPrompt(item.prompt, keepEquals, false).replace(/1人/u, "\n1人");
+    const text = formatPrompt(item.prompt, shouldKeepPromptEquals, shouldForcePromptEquals).replace(/1人/u, "\n1人");
     return <span className="inline-block whitespace-pre-line break-words leading-tight">{text}</span>;
+  }
+  if (typeId?.includes("E1_NUM_COUNT") || typeId?.includes("E1_NUMBER_COUNT") || typeId?.includes("E1-NUM-COUNT-")) {
+    const countFromPrompt = Number(item.prompt.match(/(\d+)/)?.[1] ?? item.answer);
+    const count = Number.isFinite(countFromPrompt) ? Math.max(0, Math.floor(countFromPrompt)) : 0;
+    const dots = Array.from({ length: count }, () => "●").join(" ");
+    return (
+      <span className="inline-flex flex-col items-center gap-2 whitespace-pre-line text-center leading-tight">
+        <span className="min-h-[1.5em]">{dots}</span>
+        <span>いくつ？</span>
+      </span>
+    );
   }
   if (typeId === "E1.NA.NUM.NUM_DECOMP_10") {
     const custom = renderNumDecompPrompt(item.prompt);
@@ -502,15 +518,15 @@ const renderPrompt = (item: ExampleItem, typeId?: string, typeLabel?: string) =>
   }
   const tex = item.prompt_tex?.trim();
   if (tex) {
-    const displayTexRaw = keepEquals ? tex : trimTrailingEquationEquals(tex);
-    const displayTex = forceEquals ? ensureTrailingEquationEquals(displayTexRaw) : displayTexRaw;
+    const displayTexRaw = shouldKeepPromptEquals ? tex : trimTrailingEquationEquals(tex);
+    const displayTex = shouldForcePromptEquals ? ensureTrailingEquationEquals(displayTexRaw) : displayTexRaw;
     return (
       <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
-        <InlineMath math={toEquationTex(displayTex)} renderError={() => <span>{formatPrompt(item.prompt, keepEquals, forceEquals)}</span>} />
+        <InlineMath math={toEquationTex(displayTex)} renderError={() => <span>{formatPrompt(item.prompt, shouldKeepPromptEquals, shouldForcePromptEquals)}</span>} />
       </span>
     );
   }
-  const formattedPrompt = formatPrompt(item.prompt, keepEquals, forceEquals);
+  const formattedPrompt = formatPrompt(item.prompt, shouldKeepPromptEquals, shouldForcePromptEquals);
   const slotPrompt = renderPromptWithSlotBox(formattedPrompt);
   if (slotPrompt) return slotPrompt;
   return renderMaybeMath(formattedPrompt);
@@ -1697,6 +1713,7 @@ const predictDigitEnsemble = (tensor: tf.Tensor2D) => {
 function QuestPageInner() {
   const router = useRouter();
   const params = useSearchParams();
+  const devMode = params.get("dev") === "1";
   const skillIdFromQuery = (params.get("skillId") ?? "").trim();
   const patternIdFromQuery = (params.get("patternId") ?? "").trim();
   const typeFromQuery = (params.get("type") ?? "").trim();
@@ -1799,6 +1816,7 @@ function QuestPageInner() {
   const [learningSession, setLearningSession] = useState<Session | null>(null);
   const [learningResult, setLearningResult] = useState<LearningSessionFinishResponse["result"] | null>(null);
   const [learningResultSkillId, setLearningResultSkillId] = useState<string | null>(null);
+  const [newlyUnlockedSkillIds, setNewlyUnlockedSkillIds] = useState<string[]>([]);
   const [learningLoading, setLearningLoading] = useState(false);
   const [learningError, setLearningError] = useState<string | null>(null);
   const [learningSessionId, setLearningSessionId] = useState<string | null>(null);
@@ -1886,6 +1904,7 @@ function QuestPageInner() {
     if (!learningState) return [];
     return getSkillTree(learningState);
   }, [learningState]);
+  const currentLearningSkillTitle = getPracticeSkill(currentLearningSkillId ?? "")?.title ?? currentLearningSkillId ?? "";
   const currentSkillNode = useMemo(() => {
     if (!currentLearningSkillId) return null;
     return skillTree.find((skill) => skill.id === currentLearningSkillId) ?? null;
@@ -1897,6 +1916,19 @@ function QuestPageInner() {
 
     return prioritized[0] ?? unresolvedSkills[0] ?? null;
   }, [skillTree]);
+  const newlyUnlockedSkillTitles = useMemo(
+    () =>
+      newlyUnlockedSkillIds
+        .map((skillId) => skillTree.find((skill) => skill.id === skillId)?.title ?? getPracticeSkill(skillId)?.title ?? skillId),
+    [newlyUnlockedSkillIds, skillTree]
+  );
+  const showSkillCompleteModal =
+    status === "cleared" &&
+    isLearningSessionMode &&
+    learningResult != null &&
+    (learningResult.skillProgressAfter?.mastery ?? 0) >= 0.8;
+  const showSessionResultView = isLearningSessionMode && learningResult != null && !showSkillCompleteModal;
+  const showCurrentSkillSummary = currentSkillNode != null && learningSession == null && status !== "playing";
   const useFastLearningLoop = isLearningSessionMode;
   const correctCount = useMemo(
     () => clearResults.filter(([, result]) => result.everWrong !== true).length,
@@ -1996,6 +2028,7 @@ function QuestPageInner() {
     setLearningState(null);
     setLearningSession(null);
     setLearningResult(null);
+    setNewlyUnlockedSkillIds([]);
     setLearningSessionId(null);
     setLearningError(null);
     setQuestionResults({});
@@ -2047,6 +2080,7 @@ function QuestPageInner() {
     setLearningError(null);
     setLearningResult(null);
     setLearningResultSkillId(null);
+    setNewlyUnlockedSkillIds([]);
     setLearningSession(null);
     setLearningState(null);
     setLearningSessionId(null);
@@ -2100,6 +2134,7 @@ function QuestPageInner() {
     setLearningError(null);
     setLearningResult(null);
     setLearningResultSkillId(null);
+    setNewlyUnlockedSkillIds([]);
     setQuestionResults({});
     setStatus("playing");
     resetQuestionUi();
@@ -2181,6 +2216,7 @@ function QuestPageInner() {
   const finishQuestLearningSession = async () => {
     if (!learningState || !learningSessionId) return null;
     const completedSkillId = learningSession?.skillId ?? learningResultSkillId ?? null;
+    const unlockedBefore = new Set(learningState.unlockedSkills);
     const response = await fetch("/api/learning/session/finish", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2201,6 +2237,7 @@ function QuestPageInner() {
       skillId: completedSkillId ?? skillIdFromQuery,
       expiresAt: data.expiresAt
     });
+    setNewlyUnlockedSkillIds(data.state.unlockedSkills.filter((skillId) => !unlockedBefore.has(skillId)));
     clearLearningRecovery();
     setLearningSessionId(null);
     updateDailyStreak();
@@ -5045,18 +5082,26 @@ function QuestPageInner() {
           )}
           {currentItem && currentType && (
             <div className="bg-slate-50/95 backdrop-blur-sm py-1">
-            {learningSession && learningProblem && (
-              <QuestHeader
-                skillTitle={getPracticeSkill(currentLearningSkillId ?? "")?.title ?? currentLearningSkillId ?? "-"}
-                patternId={learningProblem.patternKey ?? learningProblem.problem.meta?.source ?? "-"}
-                difficulty={learningProblem.difficulty ?? learningProblem.problem.meta?.difficulty ?? 0}
-                index={learningSession.index}
-                total={learningSession.problems.length}
-                xpSession={learningState?.student.xpSession ?? 0}
-                xpTotal={learningState?.student.xpTotal ?? 0}
-              />
-            )}
-            {currentSkillNode ? (
+            {learningSession && learningProblem ? (
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <QuestHeader
+                  skillTitle={getPracticeSkill(currentLearningSkillId ?? "")?.title ?? currentLearningSkillId ?? "-"}
+                  index={learningSession.index}
+                  total={learningSession.problems.length}
+                  xpTotal={learningState?.student.xpTotal ?? 0}
+                />
+                {skillTree.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowSkillTree((prev) => !prev)}
+                    className="shrink-0 rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-700 shadow-sm transition hover:bg-sky-50"
+                  >
+                    {showSkillTree ? "Hide Skill Tree" : "Skill Tree"}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            {showCurrentSkillSummary ? (
               <section className="mb-4 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -5104,16 +5149,9 @@ function QuestPageInner() {
               </section>
             ) : null}
             {skillTree.length > 0 ? (
-              <div className="mb-4">
-                <button
-                  type="button"
-                  onClick={() => setShowSkillTree((prev) => !prev)}
-                  className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
-                >
-                  {showSkillTree ? "Hide Skill Tree" : "Skill Tree"}
-                </button>
+              <div className="mb-4 min-h-0 overflow-hidden">
                 {showSkillTree ? (
-                  <div className="mt-4">
+                  <div className="min-h-0">
                     <SkillTreeView
                       skills={skillTree}
                       currentSkillId={currentLearningSkillId ?? undefined}
@@ -5156,7 +5194,7 @@ function QuestPageInner() {
                 ref={qaRowRef}
                 className={
                   useSingleLineQa
-                    ? "relative z-10 w-full flex items-center justify-start gap-2 sm:gap-3"
+                    ? "relative z-10 w-full flex flex-wrap items-center justify-start gap-2 sm:gap-3"
                     : "relative z-10 w-full flex flex-col justify-center gap-1 sm:gap-2"
                 }
               >
@@ -5165,7 +5203,7 @@ function QuestPageInner() {
                   style={(isSecondaryQuest || isE2EqualShareType) ? { fontSize: `${qaPromptFontPx}px` } : undefined}
                   className={
                     useSingleLineQa
-                      ? "min-w-0 w-auto max-w-full overflow-x-auto whitespace-nowrap text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
+                      ? "min-w-0 w-auto max-w-full whitespace-normal break-words text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
                       : isE1TwoLineQuestionLevel
                         ? "min-w-0 w-full whitespace-normal break-words text-[28px] sm:text-[32px] leading-tight font-extrabold text-emerald-50"
                         : isE2EqualShareType
@@ -5175,7 +5213,7 @@ function QuestPageInner() {
                 >
                   <span
                     ref={qaPromptContentRef}
-                    className={isE2EqualShareType || isE1TwoLineQuestionLevel ? "block whitespace-normal break-words align-middle" : "inline-block align-middle"}
+                    className={isE2EqualShareType || isE1TwoLineQuestionLevel ? "block whitespace-normal break-words align-middle" : "inline-block whitespace-normal break-words align-middle"}
                   >
                     {renderPrompt(currentItem, currentType?.type_id, currentType?.display_name ?? currentType?.type_name)}
                   </span>
@@ -5258,7 +5296,7 @@ function QuestPageInner() {
                         >
                           {fractionInput.enabled
                             ? renderFractionEditorValue(fractionInput)
-                            : renderAnswerWithSuperscript(displayedAnswer)}
+                            : renderAnswerWithSuperscript(displayedAnswer || "")}
                         </div>
                         {resultOverlay}
                       </div>
@@ -5282,12 +5320,12 @@ function QuestPageInner() {
             <div className="mt-2 text-sm text-sky-700">5問セッションを読み込んでいます...</div>
           </div>
         ) : status === 'cleared' ? (
-          isLearningSessionMode && learningResult ? (
+          showSessionResultView ? (
             <div className="w-full max-w-3xl">
               <SessionResultView
                 skillId={currentLearningSkillId}
                 recommendedSkillId={recommendedLearningSkillId}
-                skillName={getPracticeSkill(currentLearningSkillId ?? "")?.title ?? currentLearningSkillId ?? ""}
+                skillName={currentLearningSkillTitle}
                 score={learningResult.score}
                 totalQuestions={learningResult.totalQuestions}
                 earnedXp={learningResult.score * 10}
@@ -5448,7 +5486,7 @@ function QuestPageInner() {
                 </ul>
               </div>
             )}
-            {process.env.NODE_ENV !== "production" && (
+            {devMode && (
               <div className="w-full mb-2 rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-left">
                 {isLearningSessionMode ? (
                   <>
@@ -5723,6 +5761,48 @@ function QuestPageInner() {
           >
             <div className={`flex h-8 items-center justify-center text-sm font-bold ${plusMinusCandidate === "+" ? "bg-emerald-100 text-emerald-800" : "bg-white text-slate-700"}`}>+</div>
             <div className={`flex h-8 items-center justify-center text-sm font-bold border-t border-slate-200 ${plusMinusCandidate === "-" ? "bg-rose-100 text-rose-700" : "bg-white text-slate-700"}`}>-</div>
+          </div>,
+          document.body
+        )
+        : null}
+      {showSkillCompleteModal && typeof document !== "undefined"
+        ? createPortal(
+          <div className="fixed inset-0 z-[140] flex items-center justify-center bg-emerald-950/40 p-4 backdrop-blur-sm">
+            <section className="w-full max-w-md rounded-[32px] border border-emerald-300 bg-white/95 p-8 text-center shadow-[0_24px_80px_rgba(5,150,105,0.22)] backdrop-blur">
+              <div className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-600">Success</div>
+              <h2 className="mt-3 text-4xl font-black text-emerald-700">Skill Complete!</h2>
+              <p className="mt-4 text-xl font-bold text-slate-900">{currentLearningSkillTitle}</p>
+              <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">XP Gain</div>
+                <div className="mt-2 text-2xl font-black text-emerald-700">+50 XP</div>
+              </div>
+              {newlyUnlockedSkillTitles.length > 0 ? (
+                <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Next Skill Unlocked</div>
+                  <div className="mt-2 text-lg font-bold text-slate-900">{newlyUnlockedSkillTitles.join(" / ")}</div>
+                </div>
+              ) : null}
+              <div className="mt-6 flex flex-wrap justify-center gap-3">
+                {recommendedLearningSkillId ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/quest?skillId=${encodeURIComponent(recommendedLearningSkillId)}`)}
+                    className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
+                  >
+                    Next Skill
+                  </button>
+                ) : null}
+                {currentLearningSkillId ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/quest?skillId=${encodeURIComponent(currentLearningSkillId)}`)}
+                    className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
+                  >
+                    Continue
+                  </button>
+                ) : null}
+              </div>
+            </section>
           </div>,
           document.body
         )

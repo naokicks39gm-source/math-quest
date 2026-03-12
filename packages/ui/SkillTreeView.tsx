@@ -66,7 +66,7 @@ export default function SkillTreeView({ skills, currentSkillId, focusSkillId, on
   const visibleSkills = skills.filter((skill) => visibleSkillIds.has(skill.id));
 
   return (
-    <section className="rounded-[32px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
+    <section className="max-h-[90vh] overflow-y-auto overscroll-contain rounded-[32px] border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur">
       <div className="text-sm font-semibold uppercase tracking-[0.35em] text-sky-600">Skill Tree</div>
       <h2 className="mt-3 text-4xl font-black text-slate-900">Learning Progress</h2>
       <p className="mt-4 text-base font-medium text-slate-600">Unlocked paths, mastery, and next skills.</p>
@@ -75,7 +75,7 @@ export default function SkillTreeView({ skills, currentSkillId, focusSkillId, on
         {visibleSkills.map((skill) => {
           const mastery = clampMastery(skill.mastery ?? 0);
           const masteryPercent = Math.round(mastery * 100);
-          const statusLabel = skill.mastered ? "mastered" : skill.unlocked ? "unlocked" : "locked";
+          const statusLabel = skill.status;
           const isCurrent = skill.id === currentSkillId;
           const isNext = nextSkillIds.has(skill.id);
           const isClickable = skill.unlocked && Boolean(onSkillClick);
@@ -108,11 +108,13 @@ export default function SkillTreeView({ skills, currentSkillId, focusSkillId, on
                 </div>
                 <div
                   className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
-                    skill.mastered
+                    statusLabel === "MASTERED"
                       ? "bg-emerald-100 text-emerald-700"
-                      : skill.unlocked
+                      : statusLabel === "LEARNING"
                         ? "bg-sky-100 text-sky-700"
-                        : "bg-slate-200 text-slate-600"
+                        : statusLabel === "AVAILABLE"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-slate-200 text-slate-600"
                   }`}
                 >
                   {statusLabel}

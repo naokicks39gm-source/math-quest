@@ -1,5 +1,7 @@
 "use client";
 
+import type { SkillStatus } from "packages/skill-system/skillTypes";
+
 import SkillProgressBar from "packages/ui/SkillProgressBar";
 
 export type SkillCardItem = {
@@ -9,6 +11,8 @@ export type SkillCardItem = {
   grade?: string;
   mastery?: number;
   mastered?: boolean;
+  unlocked?: boolean;
+  status?: SkillStatus;
 };
 
 type SkillCardProps = {
@@ -19,24 +23,44 @@ type SkillCardProps = {
 export default function SkillCard({ skill, onSelect }: SkillCardProps) {
   const mastery = typeof skill.mastery === "number" ? Math.max(0, Math.min(1, skill.mastery)) : undefined;
   const masteryPercent = mastery !== undefined ? Math.round(mastery * 100) : 0;
-  const status = mastery !== undefined ? (mastery >= 0.75 ? "mastered" : "learning") : undefined;
+  const status =
+    skill.status ??
+    (skill.mastered || (mastery ?? 0) >= 0.8
+      ? "MASTERED"
+      : skill.unlocked === false
+        ? "LOCKED"
+        : (mastery ?? 0) > 0
+          ? "LEARNING"
+          : "AVAILABLE");
+  const isLocked = status === "LOCKED";
+  const statusClass =
+    status === "MASTERED"
+      ? "bg-emerald-50 text-emerald-700"
+      : status === "LEARNING"
+        ? "bg-sky-100 text-sky-700"
+        : status === "AVAILABLE"
+          ? "bg-amber-100 text-amber-700"
+          : "bg-slate-200 text-slate-600";
 
   return (
     <button
       type="button"
       onClick={() => onSelect(skill)}
-      className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      disabled={isLocked}
+      className={`w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition ${
+        isLocked
+          ? "cursor-not-allowed opacity-50"
+          : "cursor-pointer hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+      }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="text-sm font-semibold tracking-[0.2em] text-slate-500">{skill.code ?? skill.grade ?? skill.id}</div>
           <div className="mt-1 text-lg font-bold text-slate-900">{skill.title}</div>
         </div>
-        {status ? (
-          <div className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-            {status}
-          </div>
-        ) : null}
+        <div className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${statusClass}`}>
+          {status}
+        </div>
       </div>
       {mastery !== undefined ? (
         <>

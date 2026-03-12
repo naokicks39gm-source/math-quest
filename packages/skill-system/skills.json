@@ -56,7 +56,7 @@
   },
   {
     "id": "E1_ADD_ONE",
-    "title": "+1計算",
+    "title": "1をたす",
     "grade": "E1",
     "patterns": ["E1_ADD_ONE"],
     "prerequisite": ["E1_ADD_ZERO"],

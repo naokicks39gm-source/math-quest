@@ -41,9 +41,10 @@ export const unlockNextSkills = (state: LearningState, skillId: string): string[
   const unlocked = new Set(getUnlockedSkills(state));
 
   for (const nextSkillId of getUnlockableNextSkills(skillId)) {
-    unlocked.add(nextSkillId);
+    if (prerequisitesSatisfiedForProgression(state, nextSkillId)) {
+      unlocked.add(nextSkillId);
+    }
   }
 
   return [...unlocked];
 };
-

@@ -72,7 +72,8 @@ test("getSkillTree returns UI-ready node state for E1 skills", async () => {
     mastered: false,
     mastery: 0.5,
     xp: 0,
-    nextSkills: ["E1_NUMBER_COMPARE", "E1_NUMBER_LINE"]
+    nextSkills: ["E1_NUMBER_COMPARE", "E1_NUMBER_LINE"],
+    status: "LEARNING"
   });
   assert.deepEqual(addBasicNode, {
     id: "E1_ADD_BASIC",
@@ -83,9 +84,11 @@ test("getSkillTree returns UI-ready node state for E1 skills", async () => {
     mastered: true,
     mastery: 0.9,
     xp: 120,
-    nextSkills: ["E1_ADD_10", "E1_SUB_BASIC"]
+    nextSkills: ["E1_ADD_10", "E1_SUB_BASIC"],
+    status: "MASTERED"
   });
   assert.equal(factFamilyNode?.mastery, 0);
   assert.equal(factFamilyNode?.xp, 0);
   assert.deepEqual(factFamilyNode?.nextSkills, []);
+  assert.equal(factFamilyNode?.status, "LOCKED");
 });
