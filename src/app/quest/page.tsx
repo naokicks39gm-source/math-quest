@@ -491,6 +491,62 @@ const renderPromptWithSlotBox = (text: string): ReactNode | null => {
   return <span className="inline-flex items-baseline whitespace-nowrap">{nodes}</span>;
 };
 
+const parseCountValue = (item?: ExampleItem) => {
+  if (!item) return 0;
+  const countFromPrompt = Number(item.prompt.match(/(\d+)/)?.[1] ?? item.answer);
+  return Number.isFinite(countFromPrompt) ? Math.max(0, Math.floor(countFromPrompt)) : 0;
+};
+
+const renderCountDotGroups = (count: number) => {
+  const groups = Math.floor(count / 5);
+  const rest = count % 5;
+
+  return (
+    <span className="flex flex-col gap-3">
+      {Array.from({ length: groups }).map((_, groupIndex) => (
+        <span key={`count-group-${groupIndex}`} className="flex gap-2">
+          {Array.from({ length: 5 }).map((__, dotIndex) => (
+            <span key={`count-group-${groupIndex}-${dotIndex}`} className="h-4 w-4 rounded-full bg-white" />
+          ))}
+        </span>
+      ))}
+      {rest > 0 ? (
+        <span className="flex gap-2">
+          {Array.from({ length: rest }).map((_, dotIndex) => (
+            <span key={`count-rest-${dotIndex}`} className="h-4 w-4 rounded-full bg-white" />
+          ))}
+        </span>
+      ) : null}
+    </span>
+  );
+};
+
+const buildCountElementaryAid = (item?: ExampleItem): ElementaryLearningAid | null => {
+  const count = parseCountValue(item);
+  if (count <= 0) return null;
+
+  const fiveGroup = Math.floor(count / 5) * 5;
+  const rest = count - fiveGroup;
+  const conclusion = fiveGroup > 0 && rest > 0 ? `${fiveGroup} + ${rest} = ${count}` : `${count}`;
+
+  return {
+    kind: "abacus",
+    title: "かぞえかた",
+    steps:
+      fiveGroup > 0 && rest > 0
+        ? ["5を ひとまとまりで みる", `${fiveGroup}と あと${rest}`]
+        : ["1こずつ かぞえる", `${count}こ あります`],
+    conclusion,
+    cleanAnswerText: String(count),
+    visual: {
+      mode: "abacus",
+      result: count,
+      groupSize: 5,
+      groupedTotal: count
+    }
+  };
+};
+
 const renderPrompt = (item: ExampleItem, typeId?: string, typeLabel?: string) => {
   const keepEquals = shouldKeepEqualsForE13Plus(typeId, typeLabel);
   const forceEquals = shouldForceEqualsForElementaryE2Plus(typeId);
@@ -502,12 +558,10 @@ const renderPrompt = (item: ExampleItem, typeId?: string, typeLabel?: string) =>
     return <span className="inline-block whitespace-pre-line break-words leading-tight">{text}</span>;
   }
   if (typeId?.includes("E1_NUM_COUNT") || typeId?.includes("E1_NUMBER_COUNT") || typeId?.includes("E1-NUM-COUNT-")) {
-    const countFromPrompt = Number(item.prompt.match(/(\d+)/)?.[1] ?? item.answer);
-    const count = Number.isFinite(countFromPrompt) ? Math.max(0, Math.floor(countFromPrompt)) : 0;
-    const dots = Array.from({ length: count }, () => "●").join(" ");
+    const count = parseCountValue(item);
     return (
-      <span className="inline-flex flex-col items-center gap-2 whitespace-pre-line text-center leading-tight">
-        <span className="min-h-[1.5em]">{dots}</span>
+      <span className="inline-flex flex-col items-center gap-3 whitespace-pre-line text-center leading-tight">
+        <span className="min-h-[1.5em]">{renderCountDotGroups(count)}</span>
         <span>いくつ？</span>
       </span>
     );
@@ -1850,6 +1904,7 @@ function QuestPageInner() {
   const [isPinchingMemo, setIsPinchingMemo] = useState(false);
   const [showSecondaryHint, setShowSecondaryHint] = useState(false);
   const [showSecondaryExplanation, setShowSecondaryExplanation] = useState(false);
+  const [showElementaryHint, setShowElementaryHint] = useState(false);
   const [showElementaryExplanation, setShowElementaryExplanation] = useState(false);
   const [memoStrokes, setMemoStrokes] = useState<MemoStroke[]>([]);
   const [memoRedoStack, setMemoRedoStack] = useState<MemoStroke[]>([]);
@@ -3052,8 +3107,20 @@ function QuestPageInner() {
       }),
     [currentType?.type_id, currentType?.generation_params?.pattern_id, currentItem?.answer, currentItem?.prompt, currentItem?.prompt_tex]
   );
+  const currentLearningAttemptCount = learningSession?.attemptCount ?? 0;
+  const currentCountAid = useMemo(
+    () => buildCountElementaryAid(currentItem),
+    [currentItem]
+  );
+  const currentElementaryHintText = useMemo(() => {
+    if (currentCountAid) {
+      return "5とあといくつ？";
+    }
+    return "もういちど よく みてみよう";
+  }, [currentCountAid]);
   const currentElementaryAid = useMemo(
     () =>
+      currentCountAid ??
       buildMemoExplanationAid(currentItem?.memo_explanation) ??
       getElementaryLearningAid({
         gradeId: currentType?.type_id.split(".")[0] ?? "",
@@ -3064,6 +3131,7 @@ function QuestPageInner() {
         bDigits: currentType?.generation_params?.b_digits
       }),
     [
+      currentCountAid,
       currentItem?.memo_explanation,
       currentType?.type_id,
       currentType?.generation_params?.pattern_id,
@@ -3122,8 +3190,36 @@ function QuestPageInner() {
   useEffect(() => {
     setShowSecondaryHint(false);
     setShowSecondaryExplanation(false);
+    setShowElementaryHint(false);
     setShowElementaryExplanation(false);
   }, [currentType?.type_id, itemIndex]);
+  useEffect(() => {
+    if (!isLearningSessionMode || status !== "playing") {
+      return;
+    }
+    if (practiceResult?.ok === true) {
+      setShowSecondaryHint(false);
+      setShowSecondaryExplanation(false);
+      setShowElementaryHint(false);
+      setShowElementaryExplanation(false);
+      return;
+    }
+    if (practiceResult?.ok === false && currentLearningAttemptCount >= 2) {
+      if (isSecondaryQuest) {
+        setShowSecondaryExplanation(true);
+      }
+      if (isElementaryGrade(currentGradeId)) {
+        setShowElementaryExplanation(true);
+      }
+    }
+  }, [
+    currentLearningAttemptCount,
+    currentGradeId,
+    isLearningSessionMode,
+    isSecondaryQuest,
+    practiceResult?.ok,
+    status
+  ]);
   useEffect(() => {
     setShowGradeTypePicker(false);
   }, [currentType?.type_id, status]);
@@ -3149,15 +3245,16 @@ function QuestPageInner() {
   }, [showGradeTypePicker, expandedGradeList, pickerGradeId]);
   const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
   const isElementaryQuest = isElementaryGrade(currentGradeId);
+  const showLearningHint = isLearningSessionMode && status === "playing" && practiceResult?.ok === false && currentLearningAttemptCount >= 1;
+  const showLearningExplanation =
+    isLearningSessionMode && status === "playing" && practiceResult?.ok === false && currentLearningAttemptCount >= 2;
   const shouldShowElementaryExplanation =
     status === "playing" &&
-    !useFastLearningLoop &&
     isElementaryQuest &&
-    practiceResult?.ok === false &&
+    (showLearningExplanation || (!useFastLearningLoop && practiceResult?.ok === false)) &&
     Boolean(currentElementaryAid);
   const shouldRenderElementaryExplanationPanel =
     status === "playing" &&
-    !useFastLearningLoop &&
     isElementaryQuest &&
     Boolean(currentElementaryAid) &&
     (showElementaryExplanation || shouldShowElementaryExplanation);
@@ -3198,7 +3295,8 @@ function QuestPageInner() {
         answerLabel: "答え"
       };
   const emptyMessage = uiText.noItems;
-  const isAnswerLockedByExplanation = isSecondaryQuest && showSecondaryExplanation;
+  const isAnswerLockedByExplanation =
+    (isSecondaryQuest && showSecondaryExplanation) || (isElementaryQuest && shouldRenderElementaryExplanationPanel);
   const queueAdvanceAfterFeedback = (verdict: { ok: boolean }) => {
     if (advanceGuardRef.current) {
       return;
@@ -3734,7 +3832,7 @@ function QuestPageInner() {
       setCombo(0);
       const charData = CHARACTERS[character];
       setMessage(charData.misses[Math.floor(Math.random() * charData.misses.length)]);
-      if (useFastLearningLoop) {
+      if (useFastLearningLoop && !isLearningSessionMode) {
         queueAdvanceAfterFeedback(verdict);
       } else {
         if (wrongMarkTimerRef.current) {
@@ -3834,22 +3932,10 @@ function QuestPageInner() {
     setResultMark(null);
     setShowSecondaryExplanation(false);
     setShowSecondaryHint(false);
+    setShowElementaryHint(false);
+    setShowElementaryExplanation(false);
     if (isLearningSessionMode) {
-      void submitLearningAnswer(false, "")
-        .then((response) => {
-          if (!response) return;
-          if (response.session.index >= response.session.problems.length) {
-            return finishQuestLearningSession();
-          }
-          nextQuestion();
-          return null;
-        })
-        .catch((error: unknown) => {
-          const message = error instanceof Error ? error.message : "learning_session_answer_failed";
-          setLearningError(message);
-          setStatus("blocked");
-          setQuizBuildError(`Learning session の回答登録に失敗しました: ${message}`);
-        });
+      resetQuestionUi();
       return;
     }
     nextQuestion();
@@ -4341,7 +4427,7 @@ function QuestPageInner() {
           setShowSecondaryExplanation(true);
         }
         setCombo(0);
-        if (useFastLearningLoop) {
+        if (useFastLearningLoop && !isLearningSessionMode) {
           queueAdvanceAfterFeedback(verdict);
         } else {
           if (wrongMarkTimerRef.current) {
@@ -5517,23 +5603,27 @@ function QuestPageInner() {
             {(currentAid || (isElementaryQuest && currentElementaryAid)) && (
               isSecondaryQuest ? (
                 <section className="w-full">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowSecondaryHint((prev) => !prev)}
-                      className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-left text-base font-bold text-indigo-700"
-                    >
-                      {showSecondaryHint ? "ヒントを隠す" : "ヒントを見る"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowSecondaryExplanation((prev) => !prev)}
-                      className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left text-base font-bold text-violet-700"
-                    >
-                      {showSecondaryExplanation ? "解説を隠す" : "解説を見る"}
-                    </button>
+                  <div className={`grid gap-2 ${showLearningExplanation ? "grid-cols-1" : "grid-cols-2"}`}>
+                    {(!isLearningSessionMode || showLearningHint) && (
+                      <button
+                        type="button"
+                        onClick={() => setShowSecondaryHint((prev) => !prev)}
+                        className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-left text-base font-bold text-indigo-700"
+                      >
+                        {showSecondaryHint ? "ヒントを隠す" : "ヒントを見る"}
+                      </button>
+                    )}
+                    {(!isLearningSessionMode || showLearningExplanation) && (
+                      <button
+                        type="button"
+                        onClick={() => setShowSecondaryExplanation((prev) => !prev)}
+                        className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left text-base font-bold text-violet-700"
+                      >
+                        {showSecondaryExplanation ? "解説を隠す" : "解説を見る"}
+                      </button>
+                    )}
                   </div>
-                  {showSecondaryHint && (
+                  {(showSecondaryHint || (isLearningSessionMode && showLearningHint && !showLearningExplanation && showSecondaryHint)) && (
                     <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
                       <div className="text-sm font-bold text-amber-700">ヒント</div>
                       {currentAid!.hintLines && currentAid!.hintLines.length > 0 ? (
@@ -5562,13 +5652,32 @@ function QuestPageInner() {
                 </section>
               ) : isElementaryQuest && currentElementaryAid ? (
                 <section className="w-full">
-                  <button
-                    type="button"
-                    onClick={() => setShowElementaryExplanation((prev) => !prev)}
-                    className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left text-base font-bold text-emerald-700"
-                  >
-                    {showElementaryExplanation ? "解説を隠す" : "解説を見る"}
-                  </button>
+                  <div className="space-y-2">
+                    {(!isLearningSessionMode || showLearningHint) && (
+                      <button
+                        type="button"
+                        onClick={() => setShowElementaryHint((prev) => !prev)}
+                        className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-base font-bold text-amber-700"
+                      >
+                        {showElementaryHint ? "ヒントを隠す" : "ヒントを見る"}
+                      </button>
+                    )}
+                    {(!isLearningSessionMode || showLearningExplanation) && (
+                      <button
+                        type="button"
+                        onClick={() => setShowElementaryExplanation((prev) => !prev)}
+                        className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left text-base font-bold text-emerald-700"
+                      >
+                        {showElementaryExplanation ? "解説を隠す" : "解説を見る"}
+                      </button>
+                    )}
+                  </div>
+                  {showElementaryHint && (
+                    <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+                      <div className="text-sm font-bold text-amber-700">ヒント</div>
+                      <div className="mt-1 text-base font-semibold text-slate-800">{currentElementaryHintText}</div>
+                    </div>
+                  )}
                 </section>
               ) : (
                 isHighSchoolQuest ? (

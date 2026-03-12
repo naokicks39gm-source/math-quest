@@ -1,11 +1,12 @@
 import skillsData from "packages/skill-system/skills.json";
+import { generateRuntimeProblems } from "packages/problem-engine";
 
 import { updateDifficulty } from "./difficultyController";
 import { updatePatternProgress as nextPatternProgress } from "./patternProgressTracker";
 import { getNextRecommendedSkillId } from "./progression-engine";
 import { updateSkillProgress } from "./skillProgressTracker";
 import type { SkillProgress } from "./skillProgressTypes";
-import type { Session } from "./sessionTypes";
+import type { Session, SessionProblem } from "./sessionTypes";
 import { buildSession } from "./sessionBuilder";
 import { createLearningState, serializeState, updateXP, type LearningState } from "./studentStore";
 import { PROGRESSION_UNLOCK_THRESHOLD, isSkillUnlocked, unlockNextSkills } from "./skill-unlock";
@@ -111,14 +112,40 @@ const advanceSession = (session: Session | undefined, correct: boolean): Session
   }
 
   const currentProblem = session.problems[session.index];
-  const nextIndex = currentProblem ? session.index + 1 : session.index;
+  const nextIndex = correct && currentProblem ? session.index + 1 : session.index;
 
   return {
     ...session,
     index: Math.min(nextIndex, session.problems.length),
     correct: session.correct + (correct ? 1 : 0),
-    wrong: session.wrong + (correct ? 0 : 1)
+    wrong: session.wrong + (correct ? 0 : 1),
+    attemptCount: correct ? 0 : session.attemptCount + 1
   };
+};
+
+const buildReplacementProblem = (state: LearningState, currentProblem: SessionProblem): SessionProblem => {
+  const patterns = resolveSkillPatterns(currentProblem.skillId);
+  const matchedPattern = patterns.find((pattern) => pattern.key === currentProblem.patternKey);
+
+  if (!matchedPattern) {
+    return currentProblem;
+  }
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidates = generateRuntimeProblems(matchedPattern, 12).filter(
+      (problem) => problem.id !== currentProblem.problem.id
+    );
+    const replacement = candidates[attempt] ?? candidates[0];
+    if (replacement) {
+      return {
+        ...currentProblem,
+        problem: replacement,
+        difficulty: Math.max(1, Math.min(5, Math.trunc(replacement.meta?.difficulty ?? currentProblem.difficulty)))
+      };
+    }
+  }
+
+  return currentProblem;
 };
 
 const dedupeWeakPatterns = (patterns: WeakPattern[]): WeakPattern[] => {
@@ -172,7 +199,8 @@ export function startSession(state: LearningState, options: StartSessionOptions)
   const session = {
     ...buildSession(currentState, skillId, currentState.student.difficulty, options.mode),
     skillProgressBefore: getSkillProgressSnapshot(currentState, skillId),
-    skillXpBefore: currentState.skillXP[skillId] ?? 0
+    skillXpBefore: currentState.skillXP[skillId] ?? 0,
+    attemptCount: 0
   };
   const nextState = serializeState({
     ...currentState,
@@ -237,7 +265,16 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     }
   });
 
-  const nextSession = advanceSession(currentState.session, result.correct);
+  const nextSessionBase = advanceSession(currentState.session, result.correct);
+  const nextSession =
+    !result.correct && nextSessionBase
+      ? {
+          ...nextSessionBase,
+          problems: nextSessionBase.problems.map((problem, index) =>
+            index === nextSessionBase.index ? buildReplacementProblem(currentState, currentProblem) : problem
+          )
+        }
+      : nextSessionBase;
   const nextState = serializeState({
     ...currentState,
     student,

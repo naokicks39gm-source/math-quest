@@ -894,6 +894,7 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(started.state.engineVersion, 1);
   assert.equal(started.session.problems.length, 5);
   assert.equal(started.state.session?.problems.length, 5);
+  assert.equal(started.session.attemptCount, 0);
 
   const answered = learningEngine.recordAnswer(started.state, { correct: true });
   assert.equal(answered.state.version, 1);
@@ -907,6 +908,7 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(answered.state.skillProgress.E1_NUMBER_COUNT?.mastery, 0.1);
   assert.equal(answered.state.skillProgress.E1_NUMBER_COUNT?.mastered, false);
   assert.equal(answered.state.skillXP.E1_NUMBER_COUNT, 10);
+  assert.equal(answered.session.attemptCount, 0);
 
   const recommendedSkill = learningEngine.recommendNextAction(answered.state);
   assert.deepEqual(recommendedSkill, {
@@ -972,6 +974,7 @@ test("finishSession unlocks the next skill when required XP is reached", async (
       mode: "skill",
       skillId: "E1_ADD_BASIC",
       startedDifficulty: 1,
+      attemptCount: 0,
       problems: [],
       index: 0,
       correct: 5,
@@ -1097,6 +1100,35 @@ test("recordAnswer recomputes only the affected skill", async () => {
     mastery: 0.9,
     mastered: true
   });
+});
+
+test("learning mode incorrect answers keep the current index and swap in a similar problem", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  const started = learningEngine.startSession(studentStore.createLearningState(), { mode: "skill", skillId: "E1_ADD_BASIC" });
+  const firstProblem = started.session.problems[0];
+
+  const wrongOnce = learningEngine.recordAnswer(started.state, { correct: false });
+  const secondProblem = wrongOnce.session.problems[wrongOnce.session.index];
+
+  assert.equal(wrongOnce.session.index, 0);
+  assert.equal(wrongOnce.session.attemptCount, 1);
+  assert.equal(wrongOnce.state.skillXP.E1_ADD_BASIC ?? 0, 0);
+  assert.equal(secondProblem.patternKey, firstProblem.patternKey);
+  assert.notEqual(secondProblem.problem.id, firstProblem.problem.id);
+
+  const wrongTwice = learningEngine.recordAnswer(wrongOnce.state, { correct: false });
+  const thirdProblem = wrongTwice.session.problems[wrongTwice.session.index];
+
+  assert.equal(wrongTwice.session.index, 0);
+  assert.equal(wrongTwice.session.attemptCount, 2);
+  assert.equal(thirdProblem.patternKey, firstProblem.patternKey);
+  assert.notEqual(thirdProblem.problem.id, secondProblem.problem.id);
+
+  const correctAfterRetry = learningEngine.recordAnswer(wrongTwice.state, { correct: true });
+
+  assert.equal(correctAfterRetry.session.index, 1);
+  assert.equal(correctAfterRetry.session.attemptCount, 0);
+  assert.equal(correctAfterRetry.state.skillXP.E1_ADD_BASIC, 10);
 });
 
 test("adaptive start works without skillId and difficulty remains within 1..4", async () => {

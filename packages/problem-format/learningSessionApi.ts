@@ -49,6 +49,7 @@ export type LearningSession = {
   skillId?: string;
   startedDifficulty: number;
   skillXpBefore?: number;
+  attemptCount: number;
   problems: LearningSessionProblem[];
   index: number;
   correct: number;

@@ -7,7 +7,9 @@ const source = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"
 const hsKeypadSource = fs.readFileSync(path.join(process.cwd(), "src/components/keypad/HighSchoolKeypad.tsx"), "utf8");
 
 test("answer operations are locked while secondary explanation is open", () => {
-  assert.match(source, /const isAnswerLockedByExplanation = isSecondaryQuest && showSecondaryExplanation/);
+  assert.match(source, /const isAnswerLockedByExplanation =/);
+  assert.match(source, /\(isSecondaryQuest && showSecondaryExplanation\)/);
+  assert.match(source, /\(isElementaryQuest && shouldRenderElementaryExplanationPanel\)/);
   assert.match(source, /if \(status !== 'playing' \|\| isStarting \|\| isAnswerLockedByExplanation\) return;/);
   assert.match(source, /isAnswerLocked=\{isAnswerLockedByExplanation\}/);
   assert.match(source, /canSubmit=\{canSubmitResolved\}/);

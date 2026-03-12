@@ -12,7 +12,7 @@ test("secondary quest uses separate hint and explanation toggles", () => {
   assert.match(pageSource, /const isSecondaryQuest = \/\^\(J1\|J2\|J3\|H1\|H2\|H3\)\$\/\.test\(currentGradeId\)/);
   assert.match(pageSource, /ヒントを見る/);
   assert.match(pageSource, /解説を見る/);
-  assert.match(pageSource, /showSecondaryHint && \(/);
+  assert.match(pageSource, /\(showSecondaryHint \|\| \(isLearningSessionMode && showLearningHint && !showLearningExplanation && showSecondaryHint\)\) && \(/);
   assert.match(pageSource, /showSecondaryExplanation && \(/);
   assert.match(pageSource, /<SecondaryExplanationPanel[\s\S]*showNextButton/);
 });

@@ -260,6 +260,7 @@ const parseSession = (value: unknown): Session | undefined => {
     startedDifficulty: Math.max(1, Math.min(5, Math.trunc(parseNumber(value.startedDifficulty, 1)))),
     skillProgressBefore: parseSingleSkillProgress(value.skillProgressBefore),
     skillXpBefore: Math.max(0, Math.trunc(parseNumber(value.skillXpBefore, 0))),
+    attemptCount: Math.max(0, Math.trunc(parseNumber(value.attemptCount, 0))),
     problems,
     index: Math.max(0, Math.trunc(parseNumber(value.index, 0))),
     correct: Math.max(0, Math.trunc(parseNumber(value.correct, 0))),

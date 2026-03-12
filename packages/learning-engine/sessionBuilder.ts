@@ -437,6 +437,7 @@ const buildSessionOnce = (
     mode,
     skillId,
     startedDifficulty: targetDifficulty,
+    attemptCount: 0,
     problems: orderedProblems,
     index: 0,
     correct: 0,
