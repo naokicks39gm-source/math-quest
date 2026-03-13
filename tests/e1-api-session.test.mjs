@@ -158,6 +158,12 @@ const createDbStub = (outputPath) => {
       "export const persistedSessions = [];",
       "export const upsertLearningSession = (session) => {",
       "  persistedSessions.push(session);",
+      "  return session;",
+      "};",
+      "export const getLearningSessionById = (sessionId) =>",
+      "  persistedSessions.find((entry) => entry.sessionId === sessionId);",
+      "export const updateLearningSession = () => {",
+      "  return undefined;",
       "};"
     ].join("\n"),
     "utf8"
@@ -191,6 +197,44 @@ const loadModules = async () => {
   createNextServerStub(path.join(tempDir, "next-server.mjs"));
   createDbStub(path.join(tempDir, "db.mjs"));
   createProblemFormatStub(path.join(tempDir, "problem-format.mjs"));
+
+  await transpileTsModule(path.join(root, "packages/problem-hint/hintTypes.ts"), path.join(tempDir, "hintTypes.mjs"));
+  await transpileTsModule(path.join(root, "packages/problem-hint/hintRegistry.ts"), path.join(tempDir, "hintRegistry.mjs"), [
+    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+    ['from "./hintTypes"', 'from "./hintTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, "packages/problem-hint/generateHint.ts"), path.join(tempDir, "generateHint.mjs"), [
+    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+    ['from "./hintRegistry"', 'from "./hintRegistry.mjs"'],
+    ['from "./hintTypes"', 'from "./hintTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, "packages/problem-hint/index.ts"), path.join(tempDir, "problem-hint.mjs"), [
+    ['from "packages/problem-hint/generateHint"', 'from "./generateHint.mjs"'],
+    ['from "packages/problem-hint/hintTypes"', 'from "./hintTypes.mjs"']
+  ]);
+
+  await transpileTsModule(path.join(root, "packages/problem-explanation/explanationTypes.ts"), path.join(tempDir, "explanationTypes.mjs"));
+  await transpileTsModule(
+    path.join(root, "packages/problem-explanation/explanationRegistry.ts"),
+    path.join(tempDir, "explanationRegistry.mjs"),
+    [
+      ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+      ['from "./explanationTypes"', 'from "./explanationTypes.mjs"']
+    ]
+  );
+  await transpileTsModule(
+    path.join(root, "packages/problem-explanation/generateExplanation.ts"),
+    path.join(tempDir, "generateExplanation.mjs"),
+    [
+      ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+      ['from "./explanationRegistry"', 'from "./explanationRegistry.mjs"'],
+      ['from "./explanationTypes"', 'from "./explanationTypes.mjs"']
+    ]
+  );
+  await transpileTsModule(path.join(root, "packages/problem-explanation/index.ts"), path.join(tempDir, "problem-explanation.mjs"), [
+    ['from "packages/problem-explanation/generateExplanation"', 'from "./generateExplanation.mjs"'],
+    ['from "packages/problem-explanation/explanationTypes"', 'from "./explanationTypes.mjs"']
+  ]);
 
   const sharedReplacements = [
     ...localModuleReplacements,
@@ -251,7 +295,18 @@ const loadModules = async () => {
 
   await transpileTsModule(
     path.join(root, "src/app/api/learning/session/start/route.ts"),
-    path.join(tempDir, "route.mjs"),
+    path.join(tempDir, "start-route.mjs"),
+    [
+      ['from "next/server"', 'from "./next-server.mjs"'],
+      ['from "packages/learning-engine"', 'from "./index.mjs"'],
+      ['from "packages/problem-format"', 'from "./problem-format.mjs"'],
+      ['from "@/lib/server/db"', 'from "./db.mjs"']
+    ]
+  );
+
+  await transpileTsModule(
+    path.join(root, "src/app/api/learning/session/[sessionId]/route.ts"),
+    path.join(tempDir, "resume-route.mjs"),
     [
       ['from "next/server"', 'from "./next-server.mjs"'],
       ['from "packages/learning-engine"', 'from "./index.mjs"'],
@@ -263,7 +318,8 @@ const loadModules = async () => {
   const load = (moduleName) => import(`${pathToFileURL(path.join(tempDir, `${moduleName}.mjs`)).href}?t=${Date.now()}`);
 
   return {
-    route: await load("route"),
+    route: await load("start-route"),
+    resumeRoute: await load("resume-route"),
     learningPatternCatalog: (await load("learningPatternCatalog")).learningPatternCatalog
   };
 };
@@ -306,6 +362,11 @@ test("learning session start route returns valid E1 skill sessions", async () =>
       assert.equal(problem.difficulty >= 1 && problem.difficulty <= 5, true, `${skillId} -> difficulty`);
       assert.equal(typeof problem.problem.meta?.difficulty, "number", `${skillId} -> meta difficulty`);
       assert.equal(problem.problem.meta.difficulty >= 1 && problem.problem.meta.difficulty <= 5, true, `${skillId} -> meta difficulty`);
+      assert.equal(problem.problem.meta?.patternId, skillId, `${skillId} -> meta patternId`);
+      assert.equal(problem.problem.hint?.patternId, skillId, `${skillId} -> hint patternId`);
+      assert.equal(typeof problem.problem.hint?.text, "string", `${skillId} -> hint text`);
+      assert.equal(Array.isArray(problem.problem.explanation?.steps), true, `${skillId} -> explanation steps`);
+      assert.equal(problem.problem.explanation?.patternId, skillId, `${skillId} -> explanation patternId`);
     }
   }
 });
@@ -333,4 +394,27 @@ test("learning session start route issues a new sessionId for repeated starts", 
   assert.equal(firstResponse.status, 200);
   assert.equal(secondResponse.status, 200);
   assert.notEqual(firstBody.sessionId, secondBody.sessionId);
+});
+
+test("learning session resume route preserves hint and explanation shape", async () => {
+  const { route, resumeRoute } = await loadModules();
+  const startResponse = await route.POST(
+    new Request("http://localhost/api/learning/session/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "skill", skillId: "E1_ADD_BASIC" })
+    })
+  );
+  const started = await startResponse.json();
+
+  const resumeResponse = await resumeRoute.GET(new Request(`http://localhost/api/learning/session/${started.sessionId}`), {
+    params: Promise.resolve({ sessionId: started.sessionId })
+  });
+  const resumed = await resumeResponse.json();
+
+  assert.equal(resumeResponse.status, 200);
+  assert.equal(resumed.sessionId, started.sessionId);
+  assert.equal(resumed.session.problems.length, started.session.problems.length);
+  assert.equal(resumed.session.problems[0].problem.hint?.patternId, "E1_ADD_BASIC");
+  assert.equal(resumed.session.problems[0].problem.explanation?.patternId, "E1_ADD_BASIC");
 });

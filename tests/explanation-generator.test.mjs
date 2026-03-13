@@ -26,83 +26,84 @@ const loadExplanationModule = async () => {
   const os = await import("node:os");
   const { pathToFileURL } = await import("node:url");
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "problem-explanation-"));
-  const explanationTemplatesSource = path.join(root, "packages/problem-explanation/explanation-templates.ts");
-  const explanationGeneratorSource = path.join(root, "packages/problem-explanation/explanation-generator.ts");
-  const explanationTemplatesOutput = path.join(tempDir, "explanation-templates.mjs");
-  const explanationGeneratorOutput = path.join(tempDir, "explanation-generator.mjs");
-  const problemEngineStubOutput = path.join(tempDir, "problem-engine-stub.mjs");
+  const files = [
+    "packages/problem-explanation/explanationTypes.ts",
+    "packages/problem-explanation/explanationRegistry.ts",
+    "packages/problem-explanation/generateExplanation.ts"
+  ];
 
-  fs.writeFileSync(problemEngineStubOutput, "export {};\n", "utf8");
+  fs.writeFileSync(path.join(tempDir, "problem-engine-stub.mjs"), "export {};\n", "utf8");
 
-  await transpileTsModule(explanationTemplatesSource, explanationTemplatesOutput);
-  await transpileTsModule(explanationGeneratorSource, explanationGeneratorOutput, [
+  await transpileTsModule(path.join(root, files[0]), path.join(tempDir, "explanationTypes.mjs"));
+  await transpileTsModule(path.join(root, files[1]), path.join(tempDir, "explanationRegistry.mjs"), [
     ['from "packages/problem-engine"', 'from "./problem-engine-stub.mjs"'],
-    ['from "packages/problem-explanation/explanation-templates"', 'from "./explanation-templates.mjs"']
+    ['from "./explanationTypes"', 'from "./explanationTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, files[2]), path.join(tempDir, "generateExplanation.mjs"), [
+    ['from "packages/problem-engine"', 'from "./problem-engine-stub.mjs"'],
+    ['from "./explanationRegistry"', 'from "./explanationRegistry.mjs"'],
+    ['from "./explanationTypes"', 'from "./explanationTypes.mjs"']
   ]);
 
-  return import(`${pathToFileURL(explanationGeneratorOutput).href}?t=${Date.now()}`);
+  return {
+    module: await import(`${pathToFileURL(path.join(tempDir, "generateExplanation.mjs")).href}?t=${Date.now()}`),
+    registry: await import(`${pathToFileURL(path.join(tempDir, "explanationRegistry.mjs")).href}?t=${Date.now()}`)
+  };
 };
 
-test("generateExplanation resolves known pattern key by prefix", async () => {
-  const explanationModule = await loadExplanationModule();
+const expectedE1PatternIds = [
+  "E1_NUMBER_COUNT",
+  "E1_NUMBER_ORDER",
+  "E1_NUMBER_COMPARE",
+  "E1_NUMBER_COMPOSE",
+  "E1_NUMBER_DECOMPOSE",
+  "E1_NUMBER_LINE",
+  "E1_ADD_ZERO",
+  "E1_ADD_ONE",
+  "E1_ADD_DOUBLES",
+  "E1_ADD_NEAR_DOUBLES",
+  "E1_ADD_BASIC",
+  "E1_ADD_10",
+  "E1_ADD_CARRY",
+  "E1_SUB_BASIC",
+  "E1_SUB_FACTS",
+  "E1_SUB_BORROW",
+  "E1_FACT_FAMILY"
+];
+
+test("generateExplanation returns E1 explanation object", async () => {
+  const { module: explanationModule } = await loadExplanationModule();
   const explanation = explanationModule.generateExplanation({
-    id: "E1-ADD-BASIC-01:test:5",
-    question: "2 + 3",
-    answer: "5",
-    patternKey: "E1-ADD-BASIC-01",
-    variables: { a: 2, b: 3 }
+    id: "add:test:1",
+    question: "8 + 5",
+    answer: "13",
+    meta: { patternId: "E1_ADD_BASIC" }
   });
 
-  assert.equal(explanation, "2 + 3\n\nそのままたします\n\n2 + 3\n=\n5");
-});
-
-test("generateExplanation builds multiline make10 explanation when variables are present", async () => {
-  const explanationModule = await loadExplanationModule();
-  const explanation = explanationModule.generateExplanation({
-    id: "E1-ADD-MAKE10:test:10",
-    question: "8 + 2",
-    answer: "10",
-    patternKey: "E1-ADD-MAKE10",
-    variables: { a: 8, b: 2 }
+  assert.deepEqual(explanation, {
+    steps: ["10をつくる", "のこりをたす"],
+    summary: "こたえをだす",
+    patternId: "E1_ADD_BASIC"
   });
-
-  assert.equal(explanation.includes("まず10を作ります"), true);
-  assert.equal(explanation.includes("8 + 2 + 0"), true);
-  assert.equal(explanation.includes("10 + 0"), true);
-  assert.equal(explanation.endsWith("\n10"), true);
 });
 
-test("generateExplanation falls back to default explanation for unknown pattern keys", async () => {
-  const explanationModule = await loadExplanationModule();
+test("explanationRegistry covers all E1 pattern ids", async () => {
+  const { registry } = await loadExplanationModule();
+  assert.deepEqual(Object.keys(registry.explanationRegistry).sort(), [...expectedE1PatternIds].sort());
+});
+
+test("generateExplanation falls back for unknown patterns", async () => {
+  const { module: explanationModule } = await loadExplanationModule();
   const explanation = explanationModule.generateExplanation({
-    id: "UNKNOWN:test:0",
+    id: "unknown:test:1",
     question: "1 + 1",
     answer: "2",
     patternKey: "UNKNOWN-PATTERN-01"
   });
 
-  assert.equal(explanation, explanationModule.DEFAULT_EXPLANATION);
-});
-
-test("generateExplanation falls back to default explanation when pattern key is missing", async () => {
-  const explanationModule = await loadExplanationModule();
-  const explanation = explanationModule.generateExplanation({
-    id: "missing:test:0",
-    question: "1 + 1",
-    answer: "2"
+  assert.deepEqual(explanation, {
+    steps: ["もういちどかんがえてみよう"],
+    summary: "",
+    patternId: ""
   });
-
-  assert.equal(explanation, explanationModule.DEFAULT_EXPLANATION);
-});
-
-test("generateExplanation falls back to default explanation when template variables are missing", async () => {
-  const explanationModule = await loadExplanationModule();
-  const explanation = explanationModule.generateExplanation({
-    id: "E1-ADD-MAKE10:test:10",
-    question: "8 + 7",
-    answer: "10",
-    patternKey: "E1-ADD-MAKE10"
-  });
-
-  assert.equal(explanation, explanationModule.DEFAULT_EXPLANATION);
 });

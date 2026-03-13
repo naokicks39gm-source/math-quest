@@ -1,4 +1,6 @@
 import { generateRuntimeProblems, getPatternMeta } from "packages/problem-engine";
+import { generateExplanation } from "packages/problem-explanation";
+import { generateHint } from "packages/problem-hint";
 
 import type { Session, SessionProblem } from "./sessionTypes";
 import type { LearningState } from "./studentStore";
@@ -29,6 +31,27 @@ const shuffle = <T>(items: T[]): T[] => {
 };
 
 const clampDifficulty = (difficulty: number) => Math.max(1, Math.min(5, Math.trunc(difficulty)));
+
+export const attachLearningAids = <T extends SessionProblem>(sessionProblem: T): T => {
+  const hint = generateHint(sessionProblem.problem);
+  const problem = {
+    ...sessionProblem.problem,
+    meta: {
+      ...sessionProblem.problem.meta,
+      patternId: hint.patternId || sessionProblem.problem.meta?.patternId
+    }
+  };
+  const explanation = generateExplanation(problem);
+
+  return {
+    ...sessionProblem,
+    problem: {
+      ...problem,
+      hint,
+      explanation
+    }
+  };
+};
 
 export const computeTargetDifficulty = (skillProgress: number) => {
   if (skillProgress < 0.2) return 1;
@@ -204,6 +227,7 @@ const buildCandidates = (
             source
           })
         )
+        .map(attachLearningAids)
     )
   );
 };
@@ -285,7 +309,7 @@ const topUpWithRandomSkillPatterns = (
         difficulty: clampDifficulty(problem.meta?.difficulty ?? studentDifficulty),
         source: "skill"
       })
-    );
+    ).map(attachLearningAids);
 
     const uniqueBatch = generated.filter(
       (candidate) =>

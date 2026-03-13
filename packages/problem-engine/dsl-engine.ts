@@ -28,6 +28,7 @@ export type GeneratedProblem = {
   meta?: {
     source?: string;
     difficulty?: number;
+    patternId?: string;
   };
 };
 

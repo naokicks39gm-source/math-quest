@@ -164,6 +164,34 @@ const loadModules = async () => {
   createNextServerStub(path.join(tempDir, "next-server.mjs"));
   createDbStub(path.join(tempDir, "db.mjs"));
   createProblemFormatStub(path.join(tempDir, "problem-format.mjs"));
+  await transpileTsModule(path.join(root, "packages/problem-hint/hintTypes.ts"), path.join(tempDir, "hintTypes.mjs"));
+  await transpileTsModule(path.join(root, "packages/problem-hint/hintRegistry.ts"), path.join(tempDir, "hintRegistry.mjs"), [
+    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+    ['from "./hintTypes"', 'from "./hintTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, "packages/problem-hint/generateHint.ts"), path.join(tempDir, "generateHint.mjs"), [
+    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+    ['from "./hintRegistry"', 'from "./hintRegistry.mjs"'],
+    ['from "./hintTypes"', 'from "./hintTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, "packages/problem-hint/index.ts"), path.join(tempDir, "problem-hint.mjs"), [
+    ['from "packages/problem-hint/generateHint"', 'from "./generateHint.mjs"'],
+    ['from "packages/problem-hint/hintTypes"', 'from "./hintTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, "packages/problem-explanation/explanationTypes.ts"), path.join(tempDir, "explanationTypes.mjs"));
+  await transpileTsModule(path.join(root, "packages/problem-explanation/explanationRegistry.ts"), path.join(tempDir, "explanationRegistry.mjs"), [
+    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+    ['from "./explanationTypes"', 'from "./explanationTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, "packages/problem-explanation/generateExplanation.ts"), path.join(tempDir, "generateExplanation.mjs"), [
+    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+    ['from "./explanationRegistry"', 'from "./explanationRegistry.mjs"'],
+    ['from "./explanationTypes"', 'from "./explanationTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, "packages/problem-explanation/index.ts"), path.join(tempDir, "problem-explanation.mjs"), [
+    ['from "packages/problem-explanation/generateExplanation"', 'from "./generateExplanation.mjs"'],
+    ['from "packages/problem-explanation/explanationTypes"', 'from "./explanationTypes.mjs"']
+  ]);
 
   const sharedReplacements = [
     ...localModuleReplacements,

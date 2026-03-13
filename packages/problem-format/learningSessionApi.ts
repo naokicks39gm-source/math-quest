@@ -1,3 +1,6 @@
+import type { Explanation } from "packages/problem-explanation";
+import type { Hint } from "packages/problem-hint";
+
 export type LearningStudentState = {
   difficulty: number;
   correctStreak: number;
@@ -33,7 +36,10 @@ export type LearningGeneratedProblem = {
   meta?: {
     source?: string;
     difficulty?: number;
+    patternId?: string;
   };
+  hint?: Hint;
+  explanation?: Explanation;
 };
 
 export type LearningSessionProblem = {
