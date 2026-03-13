@@ -115,6 +115,22 @@ const createProblemEngineStub = (outputPath) => {
   );
 };
 
+const createProblemHintStub = (outputPath) => {
+  fs.writeFileSync(
+    outputPath,
+    'export const DEFAULT_HINT = "もういちど よく みてみよう";\nexport const generateHint = (problem) => `${problem.patternKey ?? "pattern"} hint`;\n',
+    "utf8"
+  );
+};
+
+const createProblemExplanationStub = (outputPath) => {
+  fs.writeFileSync(
+    outputPath,
+    'export const DEFAULT_EXPLANATION = "こたえを たしかめよう";\nexport const generateExplanation = (problem) => `${problem.patternKey ?? "pattern"} explanation`;\n',
+    "utf8"
+  );
+};
+
 const loadModules = async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "e1-problem-distribution-"));
   const learningRoot = path.join(root, "packages/learning-engine");
@@ -133,6 +149,10 @@ const loadModules = async () => {
 
   createSkillSystemStub(path.join(tempDir, "skill-system.mjs"));
   createProblemEngineStub(path.join(tempDir, "problem-engine.mjs"));
+<<<<<<< HEAD
+  createProblemHintStub(path.join(tempDir, "problem-hint.mjs"));
+  createProblemExplanationStub(path.join(tempDir, "problem-explanation.mjs"));
+=======
   await transpileTsModule(path.join(root, "packages/problem-hint/hintTypes.ts"), path.join(tempDir, "hintTypes.mjs"));
   await transpileTsModule(path.join(root, "packages/problem-hint/hintRegistry.ts"), path.join(tempDir, "hintRegistry.mjs"), [
     ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
@@ -161,6 +181,7 @@ const loadModules = async () => {
     ['from "packages/problem-explanation/generateExplanation"', 'from "./generateExplanation.mjs"'],
     ['from "packages/problem-explanation/explanationTypes"', 'from "./explanationTypes.mjs"']
   ]);
+>>>>>>> 1e405390850de8468e2c80306702c166f1aa141e
 
   const sharedReplacements = [
     ...localModuleReplacements,
