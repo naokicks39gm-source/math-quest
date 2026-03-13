@@ -368,8 +368,8 @@ test("number rules validate count/order/compare/compose/decompose/line semantics
     numberRules.validateNumberOrder({
       problem: {
         id: "order-1",
-        question: "8 と 3\n小さい順にならべよう",
-        answer: "[3,8]",
+        question: "8 と 3\nどちらが小さい？",
+        answer: "3",
         patternKey: "E1-NUM-ORDER-01",
         variables: { a: 8, b: 3 },
         meta: { difficulty: 1 }
@@ -461,18 +461,18 @@ test("problem validator applies number skill semantic rules", async () => {
     validator.validateProblem(
       {
         id: "order-invalid",
-        question: "8 と 3\n小さい順にならべよう",
-        answer: "[8,3]",
+        question: "8 と 3\nどちらが小さい？",
+        answer: "8",
         patternKey: "E1-NUM-ORDER-01",
         variables: { a: 8, b: 3 },
         meta: { difficulty: 1 }
       },
       {
         key: "E1-NUM-ORDER-01",
-        template: "{a} と {b}\n小さい順にならべよう",
+        template: "{a} と {b}\nどちらが小さい？",
         variables: { a: [0, 20], b: [0, 20] },
         constraints: ["a != b"],
-        answer: "[min(a,b), max(a,b)]"
+        answer: "min(a, b)"
       },
       orderSkill
     ).error,

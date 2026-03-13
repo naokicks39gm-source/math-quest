@@ -66,10 +66,12 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes("loadStateFromClient()"), true);
   assert.equal(source.includes("LEARNING_STATE_KEY"), true);
   assert.equal(source.includes('const LS_LEARNING_SESSION = "mq:learningSession";'), true);
-  assert.equal(source.includes("const ORDER_LEGACY_PROMPT_RE = /小さいほうから/u;"), true);
+  assert.equal(source.includes("const ORDER_LEGACY_PROMPT_RE = /小さいほうから|小さい順|ならべよう/u;"), true);
+  assert.equal(source.includes("const ORDER_NUMERIC_ANSWER_RE = /^-?\\d+$/u;"), true);
   assert.equal(source.includes("const shouldForceFreshOrderSession = ("), true);
   assert.equal(source.includes('skillId === "E1_NUMBER_ORDER"'), true);
   assert.equal(source.includes("ORDER_LEGACY_PROMPT_RE.test(problem.problem.question)"), true);
+  assert.equal(source.includes("!ORDER_NUMERIC_ANSWER_RE.test(problem.problem.answer)"), true);
   assert.equal(source.includes("if (storedSession.skillId !== skillId) {"), true);
   assert.equal(source.includes("if (shouldForceFreshOrderSession(skillId, storedSession)) {"), true);
   assert.equal(source.includes('console.info("[quest] stale order session detected; starting fresh session"'), true);

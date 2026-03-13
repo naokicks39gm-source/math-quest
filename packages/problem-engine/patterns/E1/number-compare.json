@@ -13,7 +13,7 @@
   },
   {
     "key": "E1-NUM-ORDER-01",
-    "template": "{a} と {b}\n小さい順にならべよう",
+    "template": "{a} と {b}\nどちらが小さい？",
     "variables": {
       "a": [0, 20],
       "b": [0, 20]
@@ -21,7 +21,7 @@
     "constraints": [
       "a != b"
     ],
-    "answer": "[min(a,b), max(a,b)]"
+    "answer": "min(a, b)"
   },
   {
     "key": "E1-NUM-COMPARE-01",
