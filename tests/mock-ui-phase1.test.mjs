@@ -73,7 +73,7 @@ test("skill list and detail pages use skill-system-based catalog", () => {
   assert.equal(detailPageSource.includes('href={`/mock-practice?skillId=${encodeURIComponent(skill.id)}`}'), true);
   assert.equal(progressPageSource.includes('import { loadStateFromClient } from "packages/learning-engine/studentStore";'), true);
   assert.equal(progressPageSource.includes("state.skillProgress[skill.id]"), true);
-  assert.equal(progressPageSource.includes('router.push(`/quest?skillId=${encodeURIComponent(skill.id)}`)'), true);
+  assert.equal(progressPageSource.includes('router.push(`/quest?skillId=${encodeURIComponent(skill.id)}&fresh=1`)'), true);
   assert.equal(progressPageSource.includes("mastery >= 0.8"), true);
   assert.equal(progressPageSource.includes("mastery > 0"), true);
   assert.equal(progressPageSource.includes('return "not_started";'), false);

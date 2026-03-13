@@ -17,6 +17,7 @@ export async function POST(req: Request) {
     const result = startSession(serializeState(body.state), {
       mode: body.mode,
       skillId: typeof body.skillId === "string" ? body.skillId : undefined,
+      fresh: body.fresh === true,
       carryoverHistory: Array.isArray(body.carryoverHistory) ? body.carryoverHistory : undefined,
       recentProblems: Array.isArray(body.recentProblems) ? body.recentProblems : undefined
     });

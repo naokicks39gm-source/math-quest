@@ -389,3 +389,39 @@ export function loadStateFromClient(): LearningState {
     return createInitialState();
   }
 }
+
+export function buildFreshLearningState(skillId?: string): LearningState {
+  const state = loadStateFromClient();
+  if (!state.session) {
+    return state;
+  }
+  if (skillId && state.session.skillId && state.session.skillId !== skillId) {
+    return state;
+  }
+  return {
+    ...state,
+    session: undefined
+  };
+}
+
+export function clearPersistedLearningSession(skillId?: string) {
+  if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
+    return;
+  }
+
+  const state = loadStateFromClient();
+  if (!state.session) {
+    return;
+  }
+  if (skillId && state.session.skillId && state.session.skillId !== skillId) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    LEARNING_STATE_KEY,
+    JSON.stringify({
+      ...state,
+      session: undefined
+    })
+  );
+}

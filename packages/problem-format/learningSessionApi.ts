@@ -127,6 +127,10 @@ export type LearningSessionAnswerResponse = {
   state: LearningState;
   session: LearningSession;
   problem: LearningSessionProblem | null;
+  finished: boolean;
+  correctCount: number;
+  totalCount: number;
+  xpGained: number;
   attemptCount: number;
   hint?: string;
   explanation?: string;
@@ -143,6 +147,7 @@ export type LearningSessionStartRequest = {
   state?: LearningState;
   mode?: "skill" | "adaptive";
   skillId?: string;
+  fresh?: boolean;
   carryoverHistory?: LearningSessionHistoryEntry[];
   recentProblems?: string[];
 };

@@ -94,7 +94,7 @@ export default function SkillsPage() {
     if (skill.status === "LOCKED") {
       return;
     }
-    router.push(`/quest?skillId=${encodeURIComponent(skill.id)}`);
+    router.push(`/quest?skillId=${encodeURIComponent(skill.id)}&fresh=1`);
   };
 
   return (

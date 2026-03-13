@@ -21,18 +21,16 @@ test("quest page exposes fraction TeX helpers for integer and exponent fractions
   assert.match(source, /isAsciiLetter\(prev\) \|\| isAsciiLetter\(next\)/);
 });
 
-test("quest prompt and clear list use shared math rendering path", () => {
+test("quest prompt keeps shared math rendering path and clear view uses SkillClearView", () => {
   const source = read("src/app/quest/page.tsx");
   assert.match(source, /const keepEquals = shouldKeepEqualsForE13Plus\(typeId, typeLabel\);/);
   assert.match(source, /const forceEquals = shouldForceEqualsForElementaryE2Plus\(typeId\);/);
   assert.match(source, /className="mx-\[0\.08em\] inline-flex h-\[0\.98em\] w-\[0\.98em\] items-center justify-center rounded-\[0\.16em\] border-2 border-emerald-100 align-\[-0\.04em\]"/);
   assert.match(source, /const displayTexRaw = shouldKeepPromptEquals \? tex : trimTrailingEquationEquals\(tex\);/);
   assert.match(source, /const displayTex = shouldForcePromptEquals \? ensureTrailingEquationEquals\(displayTexRaw\) : displayTexRaw;/);
-  assert.match(source, /toEquationTex\(trimTrailingEquationEquals\(r\.promptTex\.trim\(\)\)\)/);
   assert.match(source, /return renderMaybeMath\(formattedPrompt\);/);
-  assert.match(source, /renderMaybeMath\(formatPrompt\(r\.prompt\)\)/);
-  assert.match(source, /renderMaybeMath\(r\.correctAnswer\)/);
-  assert.match(source, /renderMaybeMath\(displayedUserAnswer\)/);
+  assert.match(source, /<SkillClearView/);
+  assert.match(source, /history=\{learningResult\.history\}/);
 });
 
 test("quest card uses responsive layout to avoid answer overflow", () => {

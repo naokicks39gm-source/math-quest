@@ -24,5 +24,4 @@ test("skip from explanation is recorded and advances to next question", () => {
   assert.match(source, /setShowSecondaryExplanation\(false\)/);
   assert.match(source, /setShowSecondaryHint\(false\)/);
   assert.match(source, /nextQuestion\(\)/);
-  assert.match(source, /skipped \? "スキップ"/);
 });

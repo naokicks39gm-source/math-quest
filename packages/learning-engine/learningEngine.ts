@@ -16,6 +16,7 @@ import { getWeakPatterns, resolveSkillPatterns, type WeakPattern } from "./weakn
 type StartSessionOptions = {
   mode: "skill" | "adaptive";
   skillId?: string;
+  fresh?: boolean;
   carryoverHistory?: SessionHistoryEntry[];
   recentProblems?: string[];
 };
@@ -23,6 +24,16 @@ type StartSessionOptions = {
 type RecordAnswerInput = {
   correct: boolean;
   userAnswer?: string;
+};
+
+type RecordAnswerResult = {
+  state: LearningState;
+  session: Session;
+  finished: boolean;
+  correctCount: number;
+  totalCount: number;
+  xpGained: number;
+  nextProblem: Session["problems"][number] | null;
 };
 
 export type Recommendation =
@@ -218,6 +229,9 @@ export function getRecommendedSkill(state: LearningState): string | undefined {
 
 export function startSession(state: LearningState, options: StartSessionOptions): { state: LearningState; session: Session } {
   const currentState = serializeState(state);
+  if (options.fresh) {
+    currentState.session = undefined;
+  }
 
   if (options.mode === "skill" && !options.skillId) {
     throw new Error("skillId is required for skill sessions");
@@ -246,7 +260,9 @@ export function startSession(state: LearningState, options: StartSessionOptions)
           correct: 0,
           wrong: 0
         }
-      : currentState.session;
+      : options.fresh
+        ? undefined
+        : currentState.session;
   const session = {
     ...buildSession(
       {
@@ -276,7 +292,7 @@ export function startSession(state: LearningState, options: StartSessionOptions)
   };
 }
 
-export function recordAnswer(state: LearningState, result: RecordAnswerInput): { state: LearningState; session: Session } {
+export function recordAnswer(state: LearningState, result: RecordAnswerInput): RecordAnswerResult {
   const currentState = serializeState(state);
   const session = currentState.session;
   if (!session) {
@@ -390,10 +406,17 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     unlockedSkills: currentState.unlockedSkills,
     session: nextSession
   });
+  const resolvedSession = nextState.session as Session;
+  const finished = result.correct && resolvedSession.index >= resolvedSession.problems.length;
 
   return {
     state: nextState,
-    session: nextState.session as Session
+    session: resolvedSession,
+    finished,
+    correctCount: resolvedSession.correct,
+    totalCount: resolvedSession.problems.length,
+    xpGained: nextState.student.xpSession,
+    nextProblem: finished ? null : (resolvedSession.problems[resolvedSession.index] ?? null)
   };
 }
 

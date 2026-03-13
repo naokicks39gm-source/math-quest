@@ -158,22 +158,6 @@ const createProblemEngineStub = (outputPath) => {
   );
 };
 
-const createProblemHintStub = (outputPath) => {
-  fs.writeFileSync(
-    outputPath,
-    'export const DEFAULT_HINT = "もういちど よく みてみよう";\nexport const generateHint = (problem) => `${problem.patternKey ?? "pattern"} hint`;\n',
-    "utf8"
-  );
-};
-
-const createProblemExplanationStub = (outputPath) => {
-  fs.writeFileSync(
-    outputPath,
-    'export const DEFAULT_EXPLANATION = "こたえを たしかめよう";\nexport const generateExplanation = (problem) => `${problem.patternKey ?? "pattern"} explanation`;\n',
-    "utf8"
-  );
-};
-
 const loadLearningEngineModules = async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "learning-engine-"));
   const learningRoot = path.join(root, "packages/learning-engine");
@@ -191,10 +175,6 @@ const loadLearningEngineModules = async () => {
   writeJsonModule(path.join(root, "packages/skill-system/skills.json"), path.join(tempDir, "skills.mjs"));
   createSkillSystemStub(path.join(tempDir, "skill-system.mjs"));
   createProblemEngineStub(path.join(tempDir, "problem-engine.mjs"));
-<<<<<<< HEAD
-  createProblemHintStub(path.join(tempDir, "problem-hint.mjs"));
-  createProblemExplanationStub(path.join(tempDir, "problem-explanation.mjs"));
-=======
   await transpileTsModule(path.join(root, "packages/problem-hint/hintTypes.ts"), path.join(tempDir, "hintTypes.mjs"));
   await transpileTsModule(path.join(root, "packages/problem-hint/hintRegistry.ts"), path.join(tempDir, "hintRegistry.mjs"), [
     ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
@@ -223,7 +203,6 @@ const loadLearningEngineModules = async () => {
     ['from "packages/problem-explanation/generateExplanation"', 'from "./generateExplanation.mjs"'],
     ['from "packages/problem-explanation/explanationTypes"', 'from "./explanationTypes.mjs"']
   ]);
->>>>>>> 1e405390850de8468e2c80306702c166f1aa141e
 
   const sharedReplacements = [
     ...localModuleReplacements,
@@ -290,6 +269,8 @@ test("studentStore only exposes client load and serialize helpers", async () => 
   assert.equal(typeof studentStore.serializeState, "function");
   assert.equal(typeof studentStore.createLearningState, "function");
   assert.equal(typeof studentStore.updateXP, "function");
+  assert.equal(typeof studentStore.buildFreshLearningState, "function");
+  assert.equal(typeof studentStore.clearPersistedLearningSession, "function");
   assert.equal(typeof studentStore.loadState, "undefined");
   assert.equal(typeof studentStore.saveState, "undefined");
 
@@ -965,6 +946,11 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(answered.session.attemptCount, 0);
   assert.equal(answered.session.combo, 1);
   assert.equal(answered.session.currentDifficulty, 1);
+  assert.equal(answered.finished, false);
+  assert.equal(answered.correctCount, 1);
+  assert.equal(answered.totalCount, 5);
+  assert.equal(answered.xpGained, 35);
+  assert.notEqual(answered.nextProblem, null);
 
   const recommendedSkill = learningEngine.recommendNextAction(answered.state);
   assert.deepEqual(recommendedSkill, {
@@ -1103,6 +1089,47 @@ test("number skill sessions honor runtime difficulty filtering", async () => {
   );
 });
 
+test("studentStore fresh helpers strip only the matching persisted session", async () => {
+  const { studentStore } = await loadLearningEngineModules();
+  const base = studentStore.createLearningState();
+  const withSession = studentStore.serializeState({
+    ...base,
+    session: {
+      mode: "skill",
+      skillId: "E1_ADD_BASIC",
+      startedDifficulty: 1,
+      currentDifficulty: 1,
+      attemptCount: 0,
+      combo: 0,
+      failCount: 0,
+      history: [],
+      recentProblems: [],
+      problems: [],
+      index: 0,
+      correct: 0,
+      wrong: 0
+    }
+  });
+
+  await withMockedWindow(JSON.stringify(withSession), () => {
+    const fresh = studentStore.buildFreshLearningState("E1_ADD_BASIC");
+    assert.equal(fresh.session, undefined);
+
+    studentStore.clearPersistedLearningSession("E1_ADD_BASIC");
+    const cleared = studentStore.loadStateFromClient();
+    assert.equal(cleared.session, undefined);
+  });
+
+  await withMockedWindow(JSON.stringify(withSession), () => {
+    const fresh = studentStore.buildFreshLearningState("E1_NUMBER_COMPARE");
+    assert.equal(fresh.session?.skillId, "E1_ADD_BASIC");
+
+    studentStore.clearPersistedLearningSession("E1_NUMBER_COMPARE");
+    const untouched = studentStore.loadStateFromClient();
+    assert.equal(untouched.session?.skillId, "E1_ADD_BASIC");
+  });
+});
+
 test("progression treats required XP below target as still in progress", async () => {
   const { learningEngine, studentStore } = await loadLearningEngineModules();
   const state = studentStore.serializeState({
@@ -1138,6 +1165,53 @@ test("learningEngine.startSession rebuilds a fresh problem list when prior sessi
     second.session.problems.map((problem) => problem.problem.id),
     first.session.problems.map((problem) => problem.problem.id)
   );
+});
+
+test("learningEngine.startSession ignores persisted session when fresh is true", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  const initial = studentStore.createLearningState();
+  const first = learningEngine.startSession(initial, { mode: "skill", skillId: "E1_ADD_BASIC" });
+  const fresh = learningEngine.startSession(first.state, { mode: "skill", skillId: "E1_ADD_BASIC", fresh: true });
+
+  assert.equal(fresh.session.skillId, "E1_ADD_BASIC");
+  assert.equal(fresh.session.history.length, 0);
+  assert.equal(fresh.session.recentProblems.length, 0);
+  assert.notDeepEqual(
+    fresh.session.problems.map((problem) => problem.problem.id),
+    first.session.problems.map((problem) => problem.problem.id)
+  );
+});
+
+test("learningEngine.startSession clears session history payload when fresh is true", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  const initial = studentStore.createLearningState();
+  const first = learningEngine.startSession(initial, { mode: "skill", skillId: "E1_ADD_BASIC" });
+  const stateWithLegacySession = {
+    ...first.state,
+    session: {
+      ...first.state.session,
+      history: [
+        ...(first.state.session?.history ?? []),
+        {
+          problemId: "legacy-problem",
+          question: "legacy question",
+          userAnswer: "1",
+          correctAnswer: "2",
+          isCorrect: false,
+          attemptCount: 2
+        }
+      ]
+    }
+  };
+
+  const fresh = learningEngine.startSession(stateWithLegacySession, {
+    mode: "skill",
+    skillId: "E1_ADD_BASIC",
+    fresh: true
+  });
+
+  assert.equal(fresh.state.session?.history.some((entry) => entry.problemId === "legacy-problem"), false);
+  assert.equal(fresh.session.history.some((entry) => entry.problemId === "legacy-problem"), false);
 });
 
 test("recordAnswer recomputes only the affected skill", async () => {
@@ -1177,6 +1251,8 @@ test("learning mode incorrect answers keep the current index and swap in a simil
   assert.equal(typeof wrongOnce.session.currentHint, "string");
   assert.equal(wrongOnce.session.currentExplanation, undefined);
   assert.equal(wrongOnce.session.history.at(-1)?.attemptCount, 1);
+  assert.equal(wrongOnce.finished, false);
+  assert.notEqual(wrongOnce.nextProblem, null);
   assert.equal(secondProblem.patternKey, firstProblem.patternKey);
   assert.notEqual(secondProblem.problem.id, firstProblem.problem.id);
 
@@ -1201,6 +1277,22 @@ test("learning mode incorrect answers keep the current index and swap in a simil
   assert.equal(correctAfterRetry.session.currentExplanation, undefined);
   assert.equal(correctAfterRetry.session.combo, 1);
   assert.equal(correctAfterRetry.state.skillXP.E1_ADD_BASIC, 35);
+  assert.equal(correctAfterRetry.finished, false);
+});
+
+test("learningEngine.recordAnswer marks finished on the last correct answer", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  let state = learningEngine.startSession(studentStore.createLearningState(), { mode: "skill", skillId: "E1_ADD_BASIC" }).state;
+
+  for (let index = 0; index < 4; index += 1) {
+    state = learningEngine.recordAnswer(state, { correct: true }).state;
+  }
+
+  const finishedAnswer = learningEngine.recordAnswer(state, { correct: true });
+  assert.equal(finishedAnswer.finished, true);
+  assert.equal(finishedAnswer.correctCount, 5);
+  assert.equal(finishedAnswer.totalCount, 5);
+  assert.equal(finishedAnswer.nextProblem, null);
 });
 
 test("adaptive XP clears a skill within three consecutive correct answers", async () => {
