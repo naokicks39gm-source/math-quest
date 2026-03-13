@@ -191,8 +191,39 @@ const loadLearningEngineModules = async () => {
   writeJsonModule(path.join(root, "packages/skill-system/skills.json"), path.join(tempDir, "skills.mjs"));
   createSkillSystemStub(path.join(tempDir, "skill-system.mjs"));
   createProblemEngineStub(path.join(tempDir, "problem-engine.mjs"));
+<<<<<<< HEAD
   createProblemHintStub(path.join(tempDir, "problem-hint.mjs"));
   createProblemExplanationStub(path.join(tempDir, "problem-explanation.mjs"));
+=======
+  await transpileTsModule(path.join(root, "packages/problem-hint/hintTypes.ts"), path.join(tempDir, "hintTypes.mjs"));
+  await transpileTsModule(path.join(root, "packages/problem-hint/hintRegistry.ts"), path.join(tempDir, "hintRegistry.mjs"), [
+    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+    ['from "./hintTypes"', 'from "./hintTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, "packages/problem-hint/generateHint.ts"), path.join(tempDir, "generateHint.mjs"), [
+    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+    ['from "./hintRegistry"', 'from "./hintRegistry.mjs"'],
+    ['from "./hintTypes"', 'from "./hintTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, "packages/problem-hint/index.ts"), path.join(tempDir, "problem-hint.mjs"), [
+    ['from "packages/problem-hint/generateHint"', 'from "./generateHint.mjs"'],
+    ['from "packages/problem-hint/hintTypes"', 'from "./hintTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, "packages/problem-explanation/explanationTypes.ts"), path.join(tempDir, "explanationTypes.mjs"));
+  await transpileTsModule(path.join(root, "packages/problem-explanation/explanationRegistry.ts"), path.join(tempDir, "explanationRegistry.mjs"), [
+    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+    ['from "./explanationTypes"', 'from "./explanationTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, "packages/problem-explanation/generateExplanation.ts"), path.join(tempDir, "generateExplanation.mjs"), [
+    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+    ['from "./explanationRegistry"', 'from "./explanationRegistry.mjs"'],
+    ['from "./explanationTypes"', 'from "./explanationTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, "packages/problem-explanation/index.ts"), path.join(tempDir, "problem-explanation.mjs"), [
+    ['from "packages/problem-explanation/generateExplanation"', 'from "./generateExplanation.mjs"'],
+    ['from "packages/problem-explanation/explanationTypes"', 'from "./explanationTypes.mjs"']
+  ]);
+>>>>>>> 1e405390850de8468e2c80306702c166f1aa141e
 
   const sharedReplacements = [
     ...localModuleReplacements,
