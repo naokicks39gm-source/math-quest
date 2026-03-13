@@ -38,12 +38,18 @@ export type LearningGeneratedProblem = {
     difficulty?: number;
     patternId?: string;
   };
-  hint?: Hint;
-  explanation?: Explanation;
 };
 
 export type LearningSessionProblem = {
+  problemId: string;
   problem: LearningGeneratedProblem;
+  hint: Hint;
+  explanation: Explanation;
+  attemptCount: number;
+  showHint: boolean;
+  showExplanation: boolean;
+  isFallback: boolean;
+  fallbackCount: number;
   skillId: string;
   patternKey: string;
   difficulty: number;
@@ -65,7 +71,6 @@ export type LearningSession = {
   startedDifficulty: number;
   currentDifficulty: number;
   skillXpBefore?: number;
-  attemptCount: number;
   currentHint?: string;
   currentExplanation?: string;
   combo: number;

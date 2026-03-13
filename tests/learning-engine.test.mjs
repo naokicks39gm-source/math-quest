@@ -139,7 +139,7 @@ const createProblemEngineStub = (outputPath) => {
       '    answer: `${index}`,',
       '    patternKey: pattern.key,',
       '    variables: pattern.key === "E1-NUM-COMPARE-01" ? { a: index % 20, b: (index % 20) + 1 } : pattern.key === "E1-NUM-COMPOSE-01" ? { a: index % 6, b: (index * 2) % (11 - (index % 6)) } : pattern.key === "E1-NUM-DECOMPOSE-01" ? { whole: (index % 10) + 1, known: ((index * 3) % ((index % 10) + 1)) } : undefined,',
-      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2 }",
+      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2, patternId: pattern.key }",
       "  }));",
       "};",
       "export const generateRuntimeProblems = (pattern, count) =>",
@@ -150,7 +150,8 @@ const createProblemEngineStub = (outputPath) => {
       "    meta: {",
       "      ...(problem.meta ?? {}),",
       "      difficulty: pattern.key === \"E1-NUM-COMPARE-01\" ? Math.max((problem.variables.a ?? 0), (problem.variables.b ?? 0)) <= 5 ? 1 : Math.max((problem.variables.a ?? 0), (problem.variables.b ?? 0)) <= 10 ? 2 : 3 : pattern.key === \"E1-NUM-COMPOSE-01\" ? ((problem.variables.a ?? 0) + (problem.variables.b ?? 0) <= 5 ? 1 : 2) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? ((problem.variables.whole ?? 0) <= 5 ? 1 : 2) : (problem.meta?.difficulty ?? 2),",
-      "      source: \"runtime-pattern\"",
+      "      source: \"runtime-pattern\",",
+      "      patternId: problem.meta?.patternId ?? pattern.key",
       "    }",
       "  }));"
     ].join("\n"),
@@ -927,7 +928,7 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(started.state.engineVersion, 1);
   assert.equal(started.session.problems.length, 5);
   assert.equal(started.state.session?.problems.length, 5);
-  assert.equal(started.session.attemptCount, 0);
+  assert.equal(started.session.problems[0]?.attemptCount, 0);
   assert.equal(started.session.combo, 0);
   assert.equal(started.session.failCount, 0);
 
@@ -943,7 +944,7 @@ test("learningEngine start/record/finish/recommend are pure state transformers",
   assert.equal(answered.state.skillProgress.E1_NUMBER_COUNT?.mastery, 0.35);
   assert.equal(answered.state.skillProgress.E1_NUMBER_COUNT?.mastered, false);
   assert.equal(answered.state.skillXP.E1_NUMBER_COUNT, 35);
-  assert.equal(answered.session.attemptCount, 0);
+  assert.equal(answered.session.problems[answered.session.index]?.attemptCount, 0);
   assert.equal(answered.session.combo, 1);
   assert.equal(answered.session.currentDifficulty, 1);
   assert.equal(answered.finished, false);
@@ -1017,7 +1018,6 @@ test("finishSession unlocks the next skill when required XP is reached", async (
       skillId: "E1_ADD_BASIC",
       startedDifficulty: 1,
       currentDifficulty: 1,
-      attemptCount: 0,
       combo: 0,
       failCount: 0,
       problems: [],
@@ -1235,7 +1235,7 @@ test("recordAnswer recomputes only the affected skill", async () => {
   });
 });
 
-test("learning mode incorrect answers keep the current index and swap in a similar problem", async () => {
+test("learning mode incorrect answers progress hint then explanation then same-pattern replacement", async () => {
   const { learningEngine, studentStore } = await loadLearningEngineModules();
   const started = learningEngine.startSession(studentStore.createLearningState(), { mode: "skill", skillId: "E1_ADD_BASIC" });
   const firstProblem = started.session.problems[0];
@@ -1244,7 +1244,7 @@ test("learning mode incorrect answers keep the current index and swap in a simil
   const secondProblem = wrongOnce.session.problems[wrongOnce.session.index];
 
   assert.equal(wrongOnce.session.index, 0);
-  assert.equal(wrongOnce.session.attemptCount, 1);
+  assert.equal(secondProblem.attemptCount, 1);
   assert.equal(wrongOnce.session.combo, 0);
   assert.equal(wrongOnce.session.failCount, 1);
   assert.equal(wrongOnce.state.skillXP.E1_ADD_BASIC ?? 0, 0);
@@ -1254,25 +1254,53 @@ test("learning mode incorrect answers keep the current index and swap in a simil
   assert.equal(wrongOnce.finished, false);
   assert.notEqual(wrongOnce.nextProblem, null);
   assert.equal(secondProblem.patternKey, firstProblem.patternKey);
-  assert.notEqual(secondProblem.problem.id, firstProblem.problem.id);
+  assert.equal(secondProblem.problemId, secondProblem.problem.id);
+  assert.equal(secondProblem.problem.id, firstProblem.problem.id);
+  assert.equal(secondProblem.showHint, true);
+  assert.equal(secondProblem.showExplanation, false);
+  assert.equal(secondProblem.fallbackCount, 0);
 
   const wrongTwice = learningEngine.recordAnswer(wrongOnce.state, { correct: false });
   const thirdProblem = wrongTwice.session.problems[wrongTwice.session.index];
 
   assert.equal(wrongTwice.session.index, 0);
-  assert.equal(wrongTwice.session.attemptCount, 2);
+  assert.equal(thirdProblem.attemptCount, 2);
   assert.equal(wrongTwice.session.currentDifficulty, 1);
   assert.equal(wrongTwice.session.failCount, 0);
-  assert.equal(wrongTwice.session.currentHint, undefined);
+  assert.equal(typeof wrongTwice.session.currentHint, "string");
   assert.equal(typeof wrongTwice.session.currentExplanation, "string");
   assert.equal(wrongTwice.session.history.at(-1)?.attemptCount, 2);
   assert.equal(thirdProblem.patternKey, firstProblem.patternKey);
-  assert.notEqual(thirdProblem.problem.id, secondProblem.problem.id);
+  assert.equal(thirdProblem.problemId, thirdProblem.problem.id);
+  assert.equal(thirdProblem.problem.id, secondProblem.problem.id);
+  assert.equal(thirdProblem.showHint, true);
+  assert.equal(thirdProblem.showExplanation, true);
+  assert.equal(thirdProblem.isFallback, false);
+  assert.equal(thirdProblem.fallbackCount, 0);
 
-  const correctAfterRetry = learningEngine.recordAnswer(wrongTwice.state, { correct: true });
+  const wrongThrice = learningEngine.recordAnswer(wrongTwice.state, { correct: false });
+  const replacementProblem = wrongThrice.session.problems[wrongThrice.session.index];
+
+  assert.equal(wrongThrice.session.index, 0);
+  assert.equal(replacementProblem.attemptCount, 0);
+  assert.equal(replacementProblem.patternKey, firstProblem.patternKey);
+  assert.equal(replacementProblem.problemId, replacementProblem.problem.id);
+  assert.notEqual(replacementProblem.problemId, thirdProblem.problemId);
+  assert.notEqual(replacementProblem.problem.id, thirdProblem.problem.id);
+  assert.equal(wrongThrice.session.currentHint, undefined);
+  assert.equal(wrongThrice.session.currentExplanation, undefined);
+  assert.equal(wrongThrice.session.history.at(-1)?.attemptCount, 3);
+  assert.equal(replacementProblem.showHint, false);
+  assert.equal(replacementProblem.showExplanation, false);
+  assert.equal(replacementProblem.isFallback, false);
+  assert.equal(replacementProblem.fallbackCount, 0);
+  assert.notEqual(replacementProblem.hint.text, "");
+  assert.equal(Array.isArray(replacementProblem.explanation.steps), true);
+
+  const correctAfterRetry = learningEngine.recordAnswer(wrongThrice.state, { correct: true });
 
   assert.equal(correctAfterRetry.session.index, 1);
-  assert.equal(correctAfterRetry.session.attemptCount, 0);
+  assert.equal(correctAfterRetry.session.problems[correctAfterRetry.session.index]?.attemptCount, 0);
   assert.equal(correctAfterRetry.session.currentHint, undefined);
   assert.equal(correctAfterRetry.session.currentExplanation, undefined);
   assert.equal(correctAfterRetry.session.combo, 1);
@@ -1293,6 +1321,68 @@ test("learningEngine.recordAnswer marks finished on the last correct answer", as
   assert.equal(finishedAnswer.correctCount, 5);
   assert.equal(finishedAnswer.totalCount, 5);
   assert.equal(finishedAnswer.nextProblem, null);
+});
+
+test("replacement throws when current problem is missing meta.patternId", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  const started = learningEngine.startSession(studentStore.createLearningState(), { mode: "skill", skillId: "E1_ADD_BASIC" });
+  const state = studentStore.serializeState({
+    ...started.state,
+    session: {
+      ...started.session,
+      problems: started.session.problems.map((problem, index) =>
+        index === 0
+          ? {
+              ...problem,
+              attemptCount: 2,
+              showHint: true,
+              showExplanation: true,
+              problem: {
+                ...problem.problem,
+                meta: {
+                  ...(problem.problem.meta ?? {}),
+                  patternId: undefined
+                }
+              }
+            }
+          : problem
+      )
+    }
+  });
+
+  assert.throws(() => learningEngine.recordAnswer(state, { correct: false }), /replacement patternId missing/);
+});
+
+test("replacement throws on pattern mismatch", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  const started = learningEngine.startSession(studentStore.createLearningState(), { mode: "skill", skillId: "E1_ADD_BASIC" });
+  const mismatchedPatternId =
+    started.session.problems[0].patternKey === "E1-ADD-MAKE10" ? "E1-ADD-BASIC-01" : "E1-ADD-MAKE10";
+  const state = studentStore.serializeState({
+    ...started.state,
+    session: {
+      ...started.session,
+      problems: started.session.problems.map((problem, index) =>
+        index === 0
+          ? {
+              ...problem,
+              attemptCount: 2,
+              showHint: true,
+              showExplanation: true,
+              problem: {
+                ...problem.problem,
+                meta: {
+                  ...(problem.problem.meta ?? {}),
+                  patternId: mismatchedPatternId
+                }
+              }
+            }
+          : problem
+      )
+    }
+  });
+
+  assert.throws(() => learningEngine.recordAnswer(state, { correct: false }), /(pattern mismatch|replacement pattern not found)/);
 });
 
 test("adaptive XP clears a skill within three consecutive correct answers", async () => {

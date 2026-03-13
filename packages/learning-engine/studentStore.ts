@@ -15,11 +15,17 @@ type StoredGeneratedProblem = {
     difficulty?: number;
     patternId?: string;
   };
+};
+
+type StoredHint = {
   hint?: {
     text: string;
     type: "concept" | "strategy" | "step";
     patternId: string;
   };
+};
+
+type StoredExplanation = {
   explanation?: {
     steps: string[];
     summary: string;
@@ -225,31 +231,6 @@ const parseSession = (value: unknown): Session | undefined => {
       return null;
     }
 
-    const hint =
-      isRecord(raw.hint) &&
-      typeof raw.hint.text === "string" &&
-      typeof raw.hint.patternId === "string" &&
-      (raw.hint.type === "concept" || raw.hint.type === "strategy" || raw.hint.type === "step")
-        ? {
-            text: raw.hint.text,
-            type: raw.hint.type as "concept" | "strategy" | "step",
-            patternId: raw.hint.patternId
-          }
-        : undefined;
-
-    const explanation =
-      isRecord(raw.explanation) &&
-      Array.isArray(raw.explanation.steps) &&
-      raw.explanation.steps.every((step) => typeof step === "string") &&
-      typeof raw.explanation.summary === "string" &&
-      typeof raw.explanation.patternId === "string"
-        ? {
-            steps: raw.explanation.steps as string[],
-            summary: raw.explanation.summary,
-            patternId: raw.explanation.patternId
-          }
-        : undefined;
-
     const meta = isRecord(raw.meta)
       ? {
           source: typeof raw.meta.source === "string" ? raw.meta.source : undefined,
@@ -293,9 +274,42 @@ const parseSession = (value: unknown): Session | undefined => {
       patternKey: typeof raw.patternKey === "string" ? raw.patternKey : undefined,
       variables: variables as Record<string, number> | undefined,
       variableRanges: variableRanges as Record<string, [number, number]> | undefined,
-      meta,
-      hint,
-      explanation
+      meta
+    };
+  };
+
+  const parseHint = (raw: unknown): NonNullable<StoredHint["hint"]> | null => {
+    if (
+      !isRecord(raw) ||
+      typeof raw.text !== "string" ||
+      typeof raw.patternId !== "string" ||
+      (raw.type !== "concept" && raw.type !== "strategy" && raw.type !== "step")
+    ) {
+      return null;
+    }
+
+    return {
+      text: raw.text,
+      type: raw.type as "concept" | "strategy" | "step",
+      patternId: raw.patternId
+    };
+  };
+
+  const parseExplanation = (raw: unknown): NonNullable<StoredExplanation["explanation"]> | null => {
+    if (
+      !isRecord(raw) ||
+      !Array.isArray(raw.steps) ||
+      !raw.steps.every((step) => typeof step === "string") ||
+      typeof raw.summary !== "string" ||
+      typeof raw.patternId !== "string"
+    ) {
+      return null;
+    }
+
+    return {
+      steps: raw.steps as string[],
+      summary: raw.summary,
+      patternId: raw.patternId
     };
   };
 
@@ -307,10 +321,23 @@ const parseSession = (value: unknown): Session | undefined => {
         typeof problem.patternKey === "string" &&
         typeof problem.difficulty === "number" &&
         parseGeneratedProblem(problem.problem) !== null &&
+        parseHint(problem.hint) !== null &&
+        parseExplanation(problem.explanation) !== null &&
         (problem.source === "skill" || problem.source === "weakness")
     )
     .map((problem) => ({
+      problemId:
+        typeof problem.problemId === "string" && problem.problemId.length > 0
+          ? problem.problemId
+          : parseGeneratedProblem(problem.problem)!.id,
       problem: parseGeneratedProblem(problem.problem)!,
+      hint: parseHint(problem.hint)!,
+      explanation: parseExplanation(problem.explanation)!,
+      attemptCount: Math.max(0, Math.trunc(parseNumber(problem.attemptCount, 0))),
+      showHint: problem.showHint === true,
+      showExplanation: problem.showExplanation === true,
+      isFallback: problem.isFallback === true,
+      fallbackCount: Math.max(0, Math.trunc(parseNumber(problem.fallbackCount, 0))),
       skillId: problem.skillId as string,
       patternKey: problem.patternKey as string,
       difficulty: Math.max(1, Math.min(5, Math.trunc(problem.difficulty as number))),
@@ -324,7 +351,6 @@ const parseSession = (value: unknown): Session | undefined => {
     currentDifficulty: Math.max(1, Math.min(5, Math.trunc(parseNumber(value.currentDifficulty, parseNumber(value.startedDifficulty, 1))))),
     skillProgressBefore: parseSingleSkillProgress(value.skillProgressBefore),
     skillXpBefore: Math.max(0, Math.trunc(parseNumber(value.skillXpBefore, 0))),
-    attemptCount: Math.max(0, Math.trunc(parseNumber(value.attemptCount, 0))),
     currentHint: typeof value.currentHint === "string" ? value.currentHint : undefined,
     currentExplanation: typeof value.currentExplanation === "string" ? value.currentExplanation : undefined,
     combo: Math.max(0, Math.trunc(parseNumber(value.combo, 0))),

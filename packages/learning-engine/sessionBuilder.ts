@@ -32,24 +32,26 @@ const shuffle = <T>(items: T[]): T[] => {
 
 const clampDifficulty = (difficulty: number) => Math.max(1, Math.min(5, Math.trunc(difficulty)));
 
-export const attachLearningAids = <T extends SessionProblem>(sessionProblem: T): T => {
+type SessionProblemWithoutLearningAids = Omit<
+  SessionProblem,
+  "problemId" | "hint" | "explanation" | "attemptCount" | "showHint" | "showExplanation" | "isFallback" | "fallbackCount"
+>;
+
+export const attachLearningAids = (sessionProblem: SessionProblemWithoutLearningAids): SessionProblem => {
   const hint = generateHint(sessionProblem.problem);
-  const problem = {
-    ...sessionProblem.problem,
-    meta: {
-      ...sessionProblem.problem.meta,
-      patternId: hint.patternId || sessionProblem.problem.meta?.patternId
-    }
-  };
-  const explanation = generateExplanation(problem);
+  const explanation = generateExplanation(sessionProblem.problem);
 
   return {
     ...sessionProblem,
-    problem: {
-      ...problem,
-      hint,
-      explanation
-    }
+    problemId: sessionProblem.problem.id,
+    problem: sessionProblem.problem,
+    hint,
+    explanation,
+    attemptCount: 0,
+    showHint: false,
+    showExplanation: false,
+    isFallback: false,
+    fallbackCount: 0
   };
 };
 
@@ -121,10 +123,10 @@ const partitionPatternKeysByCooldown = (state: LearningState, patternKeys: Set<s
 const uniqueByProblemId = (problems: SessionProblem[]): SessionProblem[] => {
   const used = new Set<string>();
   return problems.filter((problem) => {
-    if (used.has(problem.problem.id)) {
+    if (used.has(problem.problemId)) {
       return false;
     }
-    used.add(problem.problem.id);
+    used.add(problem.problemId);
     return true;
   });
 };
@@ -219,7 +221,7 @@ const buildCandidates = (
           return clampDifficulty(problem.meta.difficulty) <= targetDifficulty;
         })
         .map(
-          (problem): SessionProblem => ({
+          (problem): SessionProblemWithoutLearningAids => ({
             problem,
             skillId,
             patternKey: pattern.key,
@@ -264,7 +266,7 @@ const takeProblems = (
     if (selected.length >= count) {
       break;
     }
-    if (selected.some((entry) => entry.problem.id === problem.problem.id)) {
+    if (selected.some((entry) => entry.problemId === problem.problemId)) {
       continue;
     }
     if (!canSelectPattern(patternCounts, problem.patternKey, maxPatternPerSession)) {
@@ -302,7 +304,7 @@ const topUpWithRandomSkillPatterns = (
       continue;
     }
     const generated = shuffle(generateRuntimeProblems(pattern, PROBLEMS_PER_PATTERN)).map(
-      (problem): SessionProblem => ({
+      (problem): SessionProblemWithoutLearningAids => ({
         problem,
         skillId,
         patternKey: pattern.key,
@@ -313,8 +315,8 @@ const topUpWithRandomSkillPatterns = (
 
     const uniqueBatch = generated.filter(
       (candidate) =>
-        !excludedProblemIds.includes(candidate.problem.id) &&
-        !selected.some((entry) => entry.problem.id === candidate.problem.id)
+        !excludedProblemIds.includes(candidate.problemId) &&
+        !selected.some((entry) => entry.problemId === candidate.problemId)
     );
     const additions = uniqueBatch.length > 0 ? uniqueBatch : generated;
 
@@ -339,8 +341,8 @@ const hasSameProblemSet = (left: SessionProblem[], right: SessionProblem[]) => {
     return false;
   }
 
-  const leftIds = [...left.map((problem) => problem.problem.id)].sort();
-  const rightIds = [...right.map((problem) => problem.problem.id)].sort();
+  const leftIds = [...left.map((problem) => problem.problemId)].sort();
+  const rightIds = [...right.map((problem) => problem.problemId)].sort();
   return leftIds.every((id, index) => id === rightIds[index]);
 };
 
@@ -396,7 +398,7 @@ const buildSessionOnce = (
       if (selected.length >= SESSION_SIZE) {
         break;
       }
-      if (selected.some((entry) => entry.problem.id === problem.problem.id)) {
+      if (selected.some((entry) => entry.problemId === problem.problemId)) {
         continue;
       }
       if (!canSelectPattern(patternCounts, problem.patternKey, maxPatternPerSession)) {
@@ -418,7 +420,7 @@ const buildSessionOnce = (
       if (selected.length >= SESSION_SIZE) {
         break;
       }
-      if (selected.some((entry) => entry.problem.id === problem.problem.id)) {
+      if (selected.some((entry) => entry.problemId === problem.problemId)) {
         continue;
       }
       selected.push(problem);
@@ -437,7 +439,7 @@ const buildSessionOnce = (
       if (selected.length >= SESSION_SIZE) {
         break;
       }
-      if (selected.some((entry) => entry.problem.id === problem.problem.id)) {
+      if (selected.some((entry) => entry.problemId === problem.problemId)) {
         continue;
       }
       if (!canSelectPattern(patternCounts, problem.patternKey, maxPatternPerSession)) {
@@ -459,7 +461,6 @@ const buildSessionOnce = (
     skillId,
     startedDifficulty: targetDifficulty,
     currentDifficulty: targetDifficulty,
-    attemptCount: 0,
     currentHint: undefined,
     currentExplanation: undefined,
     combo: 0,

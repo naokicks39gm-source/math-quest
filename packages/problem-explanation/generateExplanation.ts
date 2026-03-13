@@ -31,11 +31,11 @@ export const DEFAULT_EXPLANATION: Explanation = {
 
 export const resolveExplanationPatternId = (problem: GeneratedProblem): string => {
   const explicitPatternId = problem.meta?.patternId?.trim();
-  if (explicitPatternId) {
+  if (explicitPatternId && explicitPatternId in explanationRegistry) {
     return explicitPatternId;
   }
 
-  const patternKey = problem.patternKey?.trim();
+  const patternKey = problem.patternKey?.trim() || explicitPatternId;
   if (!patternKey) {
     return "";
   }

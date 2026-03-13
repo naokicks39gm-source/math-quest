@@ -20,12 +20,12 @@ export type Pattern = PatternDSL;
 
 export type GeneratedProblem = {
   id: string;
-  question: string;
-  answer: string;
+  readonly question: string;
+  readonly answer: string;
   patternKey?: string;
   variables?: Record<string, number>;
   variableRanges?: Record<string, Range>;
-  meta?: {
+  readonly meta?: {
     source?: string;
     difficulty?: number;
     patternId?: string;
@@ -323,7 +323,8 @@ export const generateProblem = (rawPattern: PatternDSL): GeneratedProblem => {
     variableRanges,
     meta: {
       source: "pattern-dsl",
-      difficulty
+      difficulty,
+      patternId: pattern.key
     }
   };
 };

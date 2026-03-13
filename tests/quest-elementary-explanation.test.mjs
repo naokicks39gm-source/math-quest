@@ -14,7 +14,13 @@ test("quest shows elementary explanation in memo area when elementary answer is 
   assert.match(pageSource, /const \[showElementaryExplanation, setShowElementaryExplanation\] = useState\(false\);/);
   assert.match(pageSource, /const \[showElementaryHint, setShowElementaryHint\] = useState\(false\);/);
   assert.match(pageSource, /const currentLearningAttemptCount = learningAttemptCount;/);
-  assert.match(pageSource, /const showLearningHint = isLearningSessionMode && status === "playing" && practiceResult\?\.ok === false && currentLearningAttemptCount >= 1;/);
+  assert.match(pageSource, /const currentLearningShowHint = learningProblem\?\.showHint \?\? false;/);
+  assert.match(pageSource, /const currentLearningShowExplanation = learningProblem\?\.showExplanation \?\? false;/);
+  assert.match(pageSource, /const currentLearningIsFallback = learningProblem\?\.isFallback \?\? false;/);
+  assert.match(pageSource, /const currentLearningFallbackCount = learningProblem\?\.fallbackCount \?\? 0;/);
+  assert.match(pageSource, /もう一度挑戦しよう/);
+  assert.match(pageSource, /別の問題に挑戦しよう/);
+  assert.match(pageSource, /const showLearningHint =/);
   assert.match(pageSource, /const showLearningExplanation =/);
   assert.match(pageSource, /showElementaryExplanation \|\| shouldShowElementaryExplanation/);
   assert.match(pageSource, /isElementaryQuest && currentElementaryAid/);

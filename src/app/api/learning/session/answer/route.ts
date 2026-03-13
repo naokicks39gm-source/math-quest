@@ -51,12 +51,8 @@ export async function POST(req: Request) {
       expiresAt: stored.expiresAt,
       state: result.state,
       session: result.session,
-      problem: result.finished ? null : result.nextProblem,
-      finished: result.finished,
-      correctCount: result.correctCount,
-      totalCount: result.totalCount,
-      xpGained: result.xpGained,
-      attemptCount: result.session.attemptCount,
+      problem: result.session.problems[result.session.index] ?? null,
+      attemptCount: result.session.problems[result.session.index]?.attemptCount ?? 0,
       hint: result.session.currentHint,
       explanation: result.session.currentExplanation
     };

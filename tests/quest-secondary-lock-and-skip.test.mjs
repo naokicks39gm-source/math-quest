@@ -14,7 +14,7 @@ test("answer operations are locked while secondary explanation is open", () => {
   assert.match(source, /isAnswerLocked=\{isAnswerLockedByExplanation\}/);
   assert.match(source, /canSubmit=\{canSubmitResolved\}/);
   assert.match(hsKeypadSource, /disabled=\{baseDisabled \|\| !canSubmit\}/);
-  assert.match(source, /if \(practiceResult\?\.ok === false && currentLearningAttemptCount >= 2\) \{/);
+  assert.match(source, /if \(practiceResult\?\.ok === false && currentLearningShowExplanation\) \{/);
   assert.match(source, /setShowSecondaryExplanation\(true\)/);
 });
 

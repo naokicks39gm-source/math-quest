@@ -2058,7 +2058,7 @@ function QuestPageInner() {
 
   const syncLearningUiFromSession = useCallback((session: Session | null | undefined, problem?: SessionProblem | null) => {
     setLearningCurrentProblem(problem ?? (session ? session.problems[session.index] ?? null : null));
-    setLearningAttemptCount(session?.attemptCount ?? 0);
+    setLearningAttemptCount(session?.problems[session.index]?.attemptCount ?? 0);
     setLearningHint(session?.currentHint ?? null);
     setLearningExplanation(session?.currentExplanation ?? null);
   }, []);
@@ -3318,6 +3318,10 @@ function QuestPageInner() {
     [currentType?.type_id, currentType?.generation_params?.pattern_id, currentItem?.answer, currentItem?.prompt, currentItem?.prompt_tex]
   );
   const currentLearningAttemptCount = learningAttemptCount;
+  const currentLearningShowHint = learningProblem?.showHint ?? false;
+  const currentLearningShowExplanation = learningProblem?.showExplanation ?? false;
+  const currentLearningIsFallback = learningProblem?.isFallback ?? false;
+  const currentLearningFallbackCount = learningProblem?.fallbackCount ?? 0;
   const currentCountAid = useMemo(
     () => buildCountElementaryAid(currentItem),
     [currentItem]
@@ -3430,7 +3434,7 @@ function QuestPageInner() {
       setShowElementaryExplanation(false);
       return;
     }
-    if (practiceResult?.ok === false && currentLearningAttemptCount >= 2) {
+    if (practiceResult?.ok === false && currentLearningShowExplanation) {
       if (isSecondaryQuest) {
         setShowSecondaryHint(false);
         setShowSecondaryExplanation(true);
@@ -3441,7 +3445,7 @@ function QuestPageInner() {
       }
       return;
     }
-    if (practiceResult?.ok === false && currentLearningAttemptCount >= 1) {
+    if (practiceResult?.ok === false && currentLearningShowHint) {
       if (isSecondaryQuest) {
         setShowSecondaryHint(true);
       }
@@ -3450,8 +3454,9 @@ function QuestPageInner() {
       }
     }
   }, [
-    currentLearningAttemptCount,
     currentGradeId,
+    currentLearningShowExplanation,
+    currentLearningShowHint,
     isLearningSessionMode,
     isSecondaryQuest,
     practiceResult?.ok,
@@ -3482,9 +3487,10 @@ function QuestPageInner() {
   }, [showGradeTypePicker, expandedGradeList, pickerGradeId]);
   const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
   const isElementaryQuest = isElementaryGrade(currentGradeId);
-  const showLearningHint = isLearningSessionMode && status === "playing" && practiceResult?.ok === false && currentLearningAttemptCount >= 1;
+  const showLearningHint =
+    isLearningSessionMode && status === "playing" && practiceResult?.ok === false && currentLearningShowHint;
   const showLearningExplanation =
-    isLearningSessionMode && status === "playing" && practiceResult?.ok === false && currentLearningAttemptCount >= 2;
+    isLearningSessionMode && status === "playing" && practiceResult?.ok === false && currentLearningShowExplanation;
   const shouldShowElementaryExplanation =
     status === "playing" &&
     isElementaryQuest &&
@@ -5257,6 +5263,10 @@ function QuestPageInner() {
 
   const displayedAnswer = inputMode === 'numpad' ? input : (recognizedNumber ?? "");
 
+  if (isLearningSessionMode && !learningProblem) {
+    return null;
+  }
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-between p-4 max-w-md mx-auto border-x border-slate-200 shadow-sm relative">
       
@@ -5775,6 +5785,12 @@ function QuestPageInner() {
                   {(showSecondaryHint || (isLearningSessionMode && showLearningHint && !showLearningExplanation && showSecondaryHint)) && (
                     <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
                       <div className="text-sm font-bold text-amber-700">ヒント</div>
+                      {isLearningSessionMode && currentLearningIsFallback ? (
+                        <div className="mt-1 text-sm font-semibold text-amber-700">もう一度挑戦しよう</div>
+                      ) : null}
+                      {isLearningSessionMode && currentLearningFallbackCount >= 1 ? (
+                        <div className="mt-1 text-sm font-semibold text-amber-700">別の問題に挑戦しよう</div>
+                      ) : null}
                       {isLearningSessionMode && learningHint ? (
                         <div className="whitespace-pre-line text-base font-semibold text-slate-800">{learningHint}</div>
                       ) : currentAid!.hintLines && currentAid!.hintLines.length > 0 ? (
