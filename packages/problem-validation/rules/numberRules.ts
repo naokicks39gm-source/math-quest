@@ -93,14 +93,21 @@ export const validateNumberOrder: Rule = ({ problem }) => {
   }
   const a = typeof problem.variables?.a === "number" ? problem.variables.a : undefined;
   const b = typeof problem.variables?.b === "number" ? problem.variables.b : undefined;
-  const answer = String(problem.answer ?? "").replace(/\s+/gu, "");
+  const question = String(problem.question ?? "");
+  const answer = normalizeAnswer(problem.answer ?? "");
   if (!isFiniteNumber(a) || !isFiniteNumber(b) || !answer) {
     return { valid: false, error: "order operands missing" };
   }
   if (a === b) {
     return { valid: false, error: "equal order unsupported" };
   }
-  const expected = `[${Math.min(a, b)},${Math.max(a, b)}]`;
+  if (!question.includes("どちらが小さい")) {
+    return { valid: false, error: "not order compare prompt" };
+  }
+  if (!/^-?\d+$/u.test(answer)) {
+    return { valid: false, error: "invalid order answer" };
+  }
+  const expected = String(Math.min(a, b));
   return answer === expected ? pass : { valid: false, error: "order answer mismatch" };
 };
 

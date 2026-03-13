@@ -162,7 +162,8 @@ const LS_LEARNING_SESSION = "mq:learningSession";
 const LEARNING_SESSION_TTL_MS = 30 * 60 * 1000;
 const DEFAULT_TOTAL_QUESTIONS = 5;
 const E1_SUMMARY_TYPE_ID = "E1.NA.MIX.MIXED_TO_20";
-const ORDER_LEGACY_PROMPT_RE = /小さいほうから/u;
+const ORDER_LEGACY_PROMPT_RE = /小さいほうから|小さい順|ならべよう/u;
+const ORDER_NUMERIC_ANSWER_RE = /^-?\d+$/u;
 const E2_DAN_MUL_TYPE_RE = /^E2\.NA\.MUL\.MUL_1D_1D_DAN_[1-9]$/;
 const E2_MIX_TEN_TYPE_RE = /^E2\.NA\.MUL\.MUL_1D_1D_MIX_(1_3|4_6|7_9)$/;
 const E2_MIX_99_TEST_TYPE_ID = "E2.NA.MUL.MUL_1D_1D_MIX_1_9";
@@ -206,7 +207,12 @@ const toDiagnosticSeed = (value: string | null) => {
 
 const shouldForceFreshOrderSession = (skillId?: string | null, session?: Session | null) =>
   skillId === "E1_NUMBER_ORDER" &&
-  Boolean(session?.problems.some((problem) => ORDER_LEGACY_PROMPT_RE.test(problem.problem.question)));
+  Boolean(
+    session?.problems.some(
+      (problem) =>
+        ORDER_LEGACY_PROMPT_RE.test(problem.problem.question) || !ORDER_NUMERIC_ANSWER_RE.test(problem.problem.answer)
+    )
+  );
 
 const QUESTION_POOL_SIZE = 50;
 const OUTER_MARGIN = 8;

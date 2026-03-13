@@ -31,7 +31,7 @@ const normalizeNumberCompareAnswer = (problem: GeneratedProblem): GeneratedProbl
   );
 };
 
-const normalizeNumberOrderQuestion = (problem: GeneratedProblem): GeneratedProblem => {
+const normalizeNumberOrderProblem = (problem: GeneratedProblem): GeneratedProblem => {
   const a = problem.variables?.a;
   const b = problem.variables?.b;
   const difficulty = computeNumberDifficulty(problem);
@@ -42,7 +42,8 @@ const normalizeNumberOrderQuestion = (problem: GeneratedProblem): GeneratedProbl
   return withRuntimeMeta(
     {
       ...problem,
-      question: `${a} と ${b}\n小さい順にならべよう`
+      question: `${a} と ${b}\nどちらが小さい？`,
+      answer: String(Math.min(a, b))
     },
     difficulty
   );
@@ -53,7 +54,7 @@ const normalizeGeneratedProblem = (problem: GeneratedProblem): GeneratedProblem 
     return normalizeNumberCompareAnswer(problem);
   }
   if (problem.patternKey && NUMBER_ORDER_PATTERN_KEYS.has(problem.patternKey)) {
-    return normalizeNumberOrderQuestion(problem);
+    return normalizeNumberOrderProblem(problem);
   }
 
   const difficulty = computeNumberDifficulty(problem);
