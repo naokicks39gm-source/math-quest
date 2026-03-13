@@ -13,7 +13,7 @@ test("quest shows elementary explanation in memo area when elementary answer is 
   assert.match(pageSource, /isElementaryGrade\(currentGradeId\)/);
   assert.match(pageSource, /const \[showElementaryExplanation, setShowElementaryExplanation\] = useState\(false\);/);
   assert.match(pageSource, /const \[showElementaryHint, setShowElementaryHint\] = useState\(false\);/);
-  assert.match(pageSource, /const currentLearningAttemptCount = learningSession\?\.attemptCount \?\? 0;/);
+  assert.match(pageSource, /const currentLearningAttemptCount = learningAttemptCount;/);
   assert.match(pageSource, /const showLearningHint = isLearningSessionMode && status === "playing" && practiceResult\?\.ok === false && currentLearningAttemptCount >= 1;/);
   assert.match(pageSource, /const showLearningExplanation =/);
   assert.match(pageSource, /showElementaryExplanation \|\| shouldShowElementaryExplanation/);

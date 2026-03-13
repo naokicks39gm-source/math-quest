@@ -1,5 +1,7 @@
 import skillsData from "packages/skill-system/skills.json";
 import { generateRuntimeProblems } from "packages/problem-engine";
+import { generateExplanation } from "packages/problem-explanation";
+import { generateHint } from "packages/problem-hint";
 
 import { updatePatternProgress as nextPatternProgress } from "./patternProgressTracker";
 import { getNextRecommendedSkillId } from "./progression-engine";
@@ -140,12 +142,16 @@ const buildReplacementProblem = (
   }
 
   const recentProblems = state.session?.recentProblems ?? [];
+  const recentQuestions = (state.session?.history ?? [])
+    .slice(-5)
+    .map((entry) => entry.question);
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const candidates = generateRuntimeProblems(matchedPattern, 12).filter(
       (problem) =>
         problem.id !== currentProblem.problem.id &&
         problem.question !== currentProblem.problem.question &&
         !recentProblems.includes(problem.id) &&
+        !recentQuestions.includes(problem.question) &&
         (typeof problem.meta?.difficulty !== "number" || clampSessionDifficulty(problem.meta.difficulty) <= targetDifficulty)
     );
     const replacement = candidates[attempt] ?? candidates[0];
@@ -219,6 +225,8 @@ export function startSession(state: LearningState, options: StartSessionOptions)
           skillProgressBefore: getSkillProgressSnapshot(currentState, skillId),
           skillXpBefore: currentState.skillXP[skillId] ?? 0,
           attemptCount: 0,
+          currentHint: undefined,
+          currentExplanation: undefined,
           combo: 0,
           failCount: 0,
           history: options.carryoverHistory ?? [],
@@ -242,6 +250,8 @@ export function startSession(state: LearningState, options: StartSessionOptions)
     skillProgressBefore: getSkillProgressSnapshot(currentState, skillId),
     skillXpBefore: currentState.skillXP[skillId] ?? 0,
     attemptCount: 0,
+    currentHint: undefined,
+    currentExplanation: undefined,
     history: options.carryoverHistory ?? carryoverSession?.history ?? [],
     recentProblems: (options.recentProblems ?? carryoverSession?.recentProblems ?? []).slice(-5)
   };
@@ -307,7 +317,8 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     question: currentProblem.problem.question,
     userAnswer: result.userAnswer ?? "",
     correctAnswer: currentProblem.problem.answer,
-    isCorrect: result.correct
+    isCorrect: result.correct,
+    attemptCount: nextAttemptCount
   };
   const nextRecentProblems = [...session.recentProblems.filter((problemId) => problemId !== currentProblem.problem.id), currentProblem.problem.id].slice(-5);
   const skillProgress = setLockedSkills({
@@ -329,21 +340,30 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     combo: nextCombo,
     failCount: nextFailCount,
     attemptCount: nextAttemptCount,
+    currentHint: result.correct ? undefined : session.currentHint,
+    currentExplanation: result.correct ? undefined : session.currentExplanation,
     history: [...session.history, nextHistoryEntry],
     recentProblems: nextRecentProblems,
     index: Math.min(result.correct ? session.index + 1 : session.index, session.problems.length),
     correct: session.correct + (result.correct ? 1 : 0),
     wrong: session.wrong + (result.correct ? 0 : 1)
   };
+  const replacementProblem = result.correct ? null : buildReplacementProblem(currentState, currentProblem, nextDifficulty);
   const nextSession =
-    !result.correct
+    !result.correct && replacementProblem
       ? {
           ...nextSessionBase,
+          currentHint: nextAttemptCount === 1 ? generateHint(replacementProblem.problem) : undefined,
+          currentExplanation: nextAttemptCount >= 2 ? generateExplanation(replacementProblem.problem) : undefined,
           problems: nextSessionBase.problems.map((problem, index) =>
-            index === nextSessionBase.index ? buildReplacementProblem(currentState, currentProblem, nextDifficulty) : problem
+            index === nextSessionBase.index ? replacementProblem : problem
           )
         }
-      : nextSessionBase;
+      : {
+          ...nextSessionBase,
+          currentHint: undefined,
+          currentExplanation: undefined
+        };
   const nextState = serializeState({
     ...currentState,
     student,

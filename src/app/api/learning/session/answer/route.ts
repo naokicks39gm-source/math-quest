@@ -50,7 +50,11 @@ export async function POST(req: Request) {
       sessionId,
       expiresAt: stored.expiresAt,
       state: result.state,
-      session: result.session
+      session: result.session,
+      problem: result.session.problems[result.session.index] ?? null,
+      attemptCount: result.session.attemptCount,
+      hint: result.session.currentHint,
+      explanation: result.session.currentExplanation
     };
 
     return NextResponse.json(response);

@@ -12,10 +12,11 @@ type SkillClearViewProps = {
     userAnswer: string;
     correctAnswer: string;
     isCorrect: boolean;
+    attemptCount?: number;
   }[];
-  onNextSkill?: () => void;
-  onRetry: () => void;
-  onDone: () => void;
+  onNext?: () => void;
+  onRetry?: () => void;
+  onFinish?: () => void;
 };
 
 export default function SkillClearView({
@@ -26,9 +27,9 @@ export default function SkillClearView({
   requiredXP,
   nextSkillTitle,
   history,
-  onNextSkill,
+  onNext,
   onRetry,
-  onDone
+  onFinish
 }: SkillClearViewProps) {
   const nextLabel = gradeLevel === "1" ? "つぎのべんきょう" : "つぎの勉強";
 
@@ -61,22 +62,23 @@ export default function SkillClearView({
         <div className="mt-4 max-h-[32vh] overflow-y-auto text-left">
           {history.map((entry, index) => (
             <div key={`${entry.question}-${index}`} className="mb-2 rounded-xl border border-slate-200 p-3">
-              <div className="whitespace-pre-line text-sm font-bold text-slate-900">{entry.question}</div>
-              <div className="mt-1 text-sm text-slate-700">こたえ：{entry.userAnswer || "なし"}</div>
-              <div className="text-sm text-slate-700">せいかい：{entry.correctAnswer}</div>
-              <div className={`mt-1 text-sm font-bold ${entry.isCorrect ? "text-emerald-600" : "text-rose-600"}`}>
-                {entry.isCorrect ? "〇" : "×"}
-              </div>
+                <div className="whitespace-pre-line text-sm font-bold text-slate-900">{entry.question}</div>
+                <div className="mt-1 text-sm text-slate-700">こたえ：{entry.userAnswer || "なし"}</div>
+                <div className="text-sm text-slate-700">せいかい：{entry.correctAnswer}</div>
+                <div className="text-xs text-slate-500">ミス回数：{entry.attemptCount ?? 0}</div>
+                <div className={`mt-1 text-sm font-bold ${entry.isCorrect ? "text-emerald-600" : "text-rose-600"}`}>
+                  {entry.isCorrect ? "〇" : "×"}
+                </div>
             </div>
           ))}
         </div>
       ) : null}
 
       <div className="mt-6 flex flex-col gap-3">
-        {nextSkillTitle && onNextSkill ? (
+        {nextSkillTitle && onNext ? (
           <button
             type="button"
-            onClick={onNextSkill}
+            onClick={onNext}
             className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
           >
             つぎへ
@@ -91,7 +93,7 @@ export default function SkillClearView({
         </button>
         <button
           type="button"
-          onClick={onDone}
+          onClick={onFinish}
           className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5"
         >
           おわる

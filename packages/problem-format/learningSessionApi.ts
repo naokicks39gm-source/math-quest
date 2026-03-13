@@ -50,6 +50,7 @@ export type LearningSessionHistoryEntry = {
   userAnswer: string;
   correctAnswer: string;
   isCorrect: boolean;
+  attemptCount: number;
 };
 
 export type LearningSession = {
@@ -59,6 +60,8 @@ export type LearningSession = {
   currentDifficulty: number;
   skillXpBefore?: number;
   attemptCount: number;
+  currentHint?: string;
+  currentExplanation?: string;
   combo: number;
   failCount: number;
   history: LearningSessionHistoryEntry[];
@@ -117,6 +120,10 @@ export type LearningSessionAnswerResponse = {
   expiresAt: number;
   state: LearningState;
   session: LearningSession;
+  problem: LearningSessionProblem | null;
+  attemptCount: number;
+  hint?: string;
+  explanation?: string;
 };
 
 export type LearningSessionAnswerRequest = {

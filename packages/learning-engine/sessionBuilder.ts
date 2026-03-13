@@ -436,6 +436,8 @@ const buildSessionOnce = (
     startedDifficulty: targetDifficulty,
     currentDifficulty: targetDifficulty,
     attemptCount: 0,
+    currentHint: undefined,
+    currentExplanation: undefined,
     combo: 0,
     failCount: 0,
     history: state.session?.history ?? [],

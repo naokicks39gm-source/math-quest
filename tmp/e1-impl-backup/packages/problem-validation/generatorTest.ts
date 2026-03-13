@@ -34,7 +34,7 @@ const syntheticNumberPatterns: Record<string, PatternDSL> = {
     key: "NUM_COMPARE_UP_TO_20",
     template: "{a} ? {b}",
     variables: { a: [0, 20], b: [0, 20] },
-    answer: "LESS_OR_GREATER"
+    answer: "SMALLER_NUMBER"
   },
   NUM_COMP_10: {
     key: "NUM_COMP_10",
@@ -66,7 +66,7 @@ const buildSyntheticNumberProblems = (patternId: string, count: number): Generat
       return {
         id: `NUM_COMPARE_UP_TO_20:${index}`,
         question: `${a} ? ${b}`,
-        answer: a < b ? "LESS" : "GREATER",
+        answer: String(Math.min(a, b)),
         patternKey: patternId,
         variables: { a, b },
         meta: { difficulty: 1 }

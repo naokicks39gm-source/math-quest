@@ -195,7 +195,8 @@ const parseSessionHistory = (value: unknown): SessionHistoryEntry[] => {
       question: entry.question as string,
       userAnswer: entry.userAnswer as string,
       correctAnswer: entry.correctAnswer as string,
-      isCorrect: entry.isCorrect === true
+      isCorrect: entry.isCorrect === true,
+      attemptCount: Math.max(0, Math.trunc(parseNumber(entry.attemptCount, 0)))
     }));
 };
 
@@ -285,6 +286,8 @@ const parseSession = (value: unknown): Session | undefined => {
     skillProgressBefore: parseSingleSkillProgress(value.skillProgressBefore),
     skillXpBefore: Math.max(0, Math.trunc(parseNumber(value.skillXpBefore, 0))),
     attemptCount: Math.max(0, Math.trunc(parseNumber(value.attemptCount, 0))),
+    currentHint: typeof value.currentHint === "string" ? value.currentHint : undefined,
+    currentExplanation: typeof value.currentExplanation === "string" ? value.currentExplanation : undefined,
     combo: Math.max(0, Math.trunc(parseNumber(value.combo, 0))),
     failCount: Math.max(0, Math.trunc(parseNumber(value.failCount, 0))),
     history: parseSessionHistory(value.history),

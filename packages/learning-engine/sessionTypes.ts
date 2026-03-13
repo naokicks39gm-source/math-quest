@@ -27,6 +27,7 @@ export type SessionHistoryEntry = {
   userAnswer: string;
   correctAnswer: string;
   isCorrect: boolean;
+  attemptCount: number;
 };
 
 export type Session = {
@@ -37,6 +38,8 @@ export type Session = {
   skillProgressBefore?: SkillProgress;
   skillXpBefore?: number;
   attemptCount: number;
+  currentHint?: string;
+  currentExplanation?: string;
   combo: number;
   failCount: number;
   history: SessionHistoryEntry[];

@@ -102,6 +102,22 @@ const createProblemEngineStub = (outputPath) => {
   );
 };
 
+const createProblemHintStub = (outputPath) => {
+  fs.writeFileSync(
+    outputPath,
+    'export const DEFAULT_HINT = "もういちど よく みてみよう";\nexport const generateHint = (problem) => `${problem.patternKey ?? "pattern"} hint`;\n',
+    "utf8"
+  );
+};
+
+const createProblemExplanationStub = (outputPath) => {
+  fs.writeFileSync(
+    outputPath,
+    'export const DEFAULT_EXPLANATION = "こたえを たしかめよう";\nexport const generateExplanation = (problem) => `${problem.patternKey ?? "pattern"} explanation`;\n',
+    "utf8"
+  );
+};
+
 const loadModules = async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "e1-progression-unlock-"));
   const learningRoot = path.join(root, "packages/learning-engine");
@@ -119,10 +135,14 @@ const loadModules = async () => {
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/sub-2digit.json"), path.join(tempDir, "sub-2digit.mjs"));
   createSkillSystemStub(path.join(tempDir, "skill-system.mjs"));
   createProblemEngineStub(path.join(tempDir, "problem-engine.mjs"));
+  createProblemHintStub(path.join(tempDir, "problem-hint.mjs"));
+  createProblemExplanationStub(path.join(tempDir, "problem-explanation.mjs"));
 
   const sharedReplacements = [
     ...localModuleReplacements,
     ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
+    ['from "packages/problem-hint"', 'from "./problem-hint.mjs"'],
+    ['from "packages/problem-explanation"', 'from "./problem-explanation.mjs"'],
     ['from "packages/skill-system"', 'from "./skill-system.mjs"'],
     ['from "packages/skill-system/skills.json"', 'from "./skills.mjs"'],
     ['from "packages/problem-engine/patterns/E1/add-basic.json"', 'from "./add-basic.mjs"'],

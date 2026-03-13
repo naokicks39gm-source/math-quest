@@ -2,6 +2,7 @@ import { generateProblems, type GeneratedProblem, type PatternDSL } from "./dsl-
 import { computeNumberDifficulty } from "./difficulty/numberDifficulty";
 
 const NUMBER_COMPARE_PATTERN_KEYS = new Set(["E1-NUM-COMPARE-01"]);
+const NUMBER_ORDER_PATTERN_KEYS = new Set(["E1-NUM-ORDER-01"]);
 
 const withRuntimeMeta = (problem: GeneratedProblem, difficulty?: number): GeneratedProblem => ({
   ...problem,
@@ -30,9 +31,29 @@ const normalizeNumberCompareAnswer = (problem: GeneratedProblem): GeneratedProbl
   );
 };
 
+const normalizeNumberOrderQuestion = (problem: GeneratedProblem): GeneratedProblem => {
+  const a = problem.variables?.a;
+  const b = problem.variables?.b;
+  const difficulty = computeNumberDifficulty(problem);
+  if (typeof a !== "number" || typeof b !== "number" || a === b) {
+    return withRuntimeMeta(problem, difficulty);
+  }
+
+  return withRuntimeMeta(
+    {
+      ...problem,
+      question: `${a} と ${b}\n小さい順にならべよう`
+    },
+    difficulty
+  );
+};
+
 const normalizeGeneratedProblem = (problem: GeneratedProblem): GeneratedProblem => {
   if (problem.patternKey && NUMBER_COMPARE_PATTERN_KEYS.has(problem.patternKey)) {
     return normalizeNumberCompareAnswer(problem);
+  }
+  if (problem.patternKey && NUMBER_ORDER_PATTERN_KEYS.has(problem.patternKey)) {
+    return normalizeNumberOrderQuestion(problem);
   }
 
   const difficulty = computeNumberDifficulty(problem);

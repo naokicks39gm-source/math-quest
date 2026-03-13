@@ -56,14 +56,14 @@ export const validateNumberCompare: Rule = ({ problem }) => {
     };
   }
 
-  if (answer !== "LESS" && answer !== "GREATER") {
+  if (!/^-?\d+$/u.test(answer)) {
     return {
       valid: false,
       error: "invalid compare answer"
     };
   }
 
-  const expected = compareLeft < compareRight ? "LESS" : "GREATER";
+  const expected = String(Math.min(compareLeft, compareRight));
   return answer === expected
     ? pass
     : {
