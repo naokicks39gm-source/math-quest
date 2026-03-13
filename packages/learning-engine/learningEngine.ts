@@ -261,6 +261,13 @@ const getSkillProgressSnapshot = (state: LearningState, skillId: string): SkillP
     mastered: false
   };
 
+const toHintText = (problem: SessionProblem) => generateHint(problem.problem).text;
+
+const toExplanationText = (problem: SessionProblem) => {
+  const explanation = generateExplanation(problem.problem);
+  return [...explanation.steps, explanation.summary].filter((line) => line.trim().length > 0).join("\n");
+};
+
 export function getRecommendedSkill(state: LearningState): string | undefined {
   const currentState = serializeState(state);
   const unresolvedSkills = skills.filter((skill) => !isSkillMastered(currentState.skillProgress, skill.id));
@@ -408,6 +415,7 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     correct: session.correct + (result.correct ? 1 : 0),
     wrong: session.wrong + (result.correct ? 0 : 1)
   };
+<<<<<<< HEAD
   const incrementedProblem: SessionProblem = {
     ...currentProblem,
     attemptCount: nextAttemptCount,
@@ -444,6 +452,24 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
       currentExplanation: undefined
     };
   }
+=======
+  const replacementProblem = result.correct ? null : buildReplacementProblem(currentState, currentProblem, nextDifficulty);
+  const nextSession =
+    !result.correct && replacementProblem
+      ? {
+          ...nextSessionBase,
+          currentHint: nextAttemptCount === 1 ? toHintText(replacementProblem) : undefined,
+          currentExplanation: nextAttemptCount >= 2 ? toExplanationText(replacementProblem) : undefined,
+          problems: nextSessionBase.problems.map((problem, index) =>
+            index === nextSessionBase.index ? replacementProblem : problem
+          )
+        }
+      : {
+          ...nextSessionBase,
+          currentHint: undefined,
+          currentExplanation: undefined
+        };
+>>>>>>> 4f791c7a2c3a0173b235056b20a692f2d1525103
   const nextState = serializeState({
     ...currentState,
     student,
