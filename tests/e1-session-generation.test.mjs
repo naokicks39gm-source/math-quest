@@ -124,13 +124,8 @@ const createProblemEngineStub = (outputPath) => {
       "  generateProblems(pattern, count).map((problem) => ({",
       "    ...problem,",
       "    question: pattern.key === \"E1-NUM-COMPARE-01\" ? `${problem.variables.a ?? 0} と ${problem.variables.b ?? 0}\\nどちらが小さい？` : problem.question,",
-<<<<<<< HEAD
       "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? String(Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String(problem.variables.b ?? 0) : pattern.key === \"E1-NUM-COUNT-01\" ? String(problem.variables.n ?? 0) : pattern.key === \"E1-NUM-ORDER-01\" ? `[${Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)},${Math.max(problem.variables.a ?? 0, problem.variables.b ?? 0)}]` : pattern.key === \"E1-NUM-LINE-01\" ? String((problem.variables.start ?? 0) + (problem.variables.move ?? 0)) : problem.answer,",
       "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\", patternId: problem.meta?.patternId ?? pattern.key }",
-=======
-      "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? String(Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String(problem.variables.b ?? 0) : pattern.key === \"E1-NUM-COUNT-01\" ? String(problem.variables.n ?? 0) : pattern.key === \"E1-NUM-ORDER-01\" ? String(Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-LINE-01\" ? String((problem.variables.start ?? 0) + (problem.variables.move ?? 0)) : problem.answer,",
-      "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\" }",
->>>>>>> 4f791c7a2c3a0173b235056b20a692f2d1525103
       "  }));"
     ].join("\n"),
     "utf8"
