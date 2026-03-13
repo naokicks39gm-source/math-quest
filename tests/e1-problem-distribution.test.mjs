@@ -101,32 +101,16 @@ const createProblemEngineStub = (outputPath) => {
       '    question: `${pattern.key} question ${index}`,',
       '    answer: `${index}`,',
       '    variables: pattern.key === "E1-NUM-COMPARE-01" ? { a: index, b: index + 1 } : pattern.key === "E1-NUM-COMPOSE-01" ? { a: index % 5, b: 10 - (index % 5) } : pattern.key === "E1-NUM-DECOMPOSE-01" ? { whole: 10, known: index % 5 } : undefined,',
-      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2 }",
+      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2, patternId: pattern.key }",
       "  }));",
       "export const generateRuntimeProblems = (pattern, count) =>",
       "  generateProblems(pattern, count).map((problem) => ({",
       "    ...problem,",
       "    question: pattern.key === \"E1-NUM-COMPARE-01\" ? `${problem.variables.a ?? 0} と ${problem.variables.b ?? 0}\\nどちらが小さい？` : problem.question,",
       "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? String(Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String((problem.variables.whole ?? 0) - (problem.variables.known ?? 0)) : problem.answer,",
-      "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\" }",
+      "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\", patternId: problem.meta?.patternId ?? pattern.key }",
       "  }));"
     ].join("\n"),
-    "utf8"
-  );
-};
-
-const createProblemHintStub = (outputPath) => {
-  fs.writeFileSync(
-    outputPath,
-    'export const DEFAULT_HINT = "もういちど よく みてみよう";\nexport const generateHint = (problem) => `${problem.patternKey ?? "pattern"} hint`;\n',
-    "utf8"
-  );
-};
-
-const createProblemExplanationStub = (outputPath) => {
-  fs.writeFileSync(
-    outputPath,
-    'export const DEFAULT_EXPLANATION = "こたえを たしかめよう";\nexport const generateExplanation = (problem) => `${problem.patternKey ?? "pattern"} explanation`;\n',
     "utf8"
   );
 };
@@ -149,10 +133,6 @@ const loadModules = async () => {
 
   createSkillSystemStub(path.join(tempDir, "skill-system.mjs"));
   createProblemEngineStub(path.join(tempDir, "problem-engine.mjs"));
-<<<<<<< HEAD
-  createProblemHintStub(path.join(tempDir, "problem-hint.mjs"));
-  createProblemExplanationStub(path.join(tempDir, "problem-explanation.mjs"));
-=======
   await transpileTsModule(path.join(root, "packages/problem-hint/hintTypes.ts"), path.join(tempDir, "hintTypes.mjs"));
   await transpileTsModule(path.join(root, "packages/problem-hint/hintRegistry.ts"), path.join(tempDir, "hintRegistry.mjs"), [
     ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
@@ -181,7 +161,6 @@ const loadModules = async () => {
     ['from "packages/problem-explanation/generateExplanation"', 'from "./generateExplanation.mjs"'],
     ['from "packages/problem-explanation/explanationTypes"', 'from "./explanationTypes.mjs"']
   ]);
->>>>>>> 1e405390850de8468e2c80306702c166f1aa141e
 
   const sharedReplacements = [
     ...localModuleReplacements,
@@ -255,7 +234,7 @@ test("runtime E1 skills keep lightweight session distribution sanity", async () 
       const problems = started.session.problems;
 
       assert.equal(problems.length, 5, `${skillId} session size`);
-      assert.equal(new Set(problems.map((problem) => problem.problem.id)).size, 5, `${skillId} duplicate ids`);
+      assert.equal(new Set(problems.map((problem) => problem.problemId)).size, 5, `${skillId} duplicate ids`);
 
       for (const problem of problems) {
         assert.equal(problem.patternKey.startsWith(prefix), true, `${skillId} -> ${problem.patternKey}`);

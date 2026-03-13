@@ -1,26 +1,19 @@
+import type { GeneratedProblem } from "packages/problem-engine";
 import type { SkillProgress } from "./skillProgressTypes";
 
 import type { Explanation } from "packages/problem-explanation";
 import type { Hint } from "packages/problem-hint";
 
-type SessionGeneratedProblem = {
-  id: string;
-  question: string;
-  answer: string;
-  patternKey?: string;
-  variables?: Record<string, number>;
-  variableRanges?: Record<string, [number, number]>;
-  meta?: {
-    source?: string;
-    difficulty?: number;
-    patternId?: string;
-  };
-  hint?: Hint;
-  explanation?: Explanation;
-};
-
 export type SessionProblem = {
-  problem: SessionGeneratedProblem;
+  problemId: string;
+  readonly problem: GeneratedProblem;
+  readonly hint: Hint;
+  readonly explanation: Explanation;
+  attemptCount: number;
+  showHint: boolean;
+  showExplanation: boolean;
+  isFallback: boolean;
+  fallbackCount: number;
   skillId: string;
   patternKey: string;
   difficulty: number;
@@ -43,7 +36,6 @@ export type Session = {
   currentDifficulty: number;
   skillProgressBefore?: SkillProgress;
   skillXpBefore?: number;
-  attemptCount: number;
   currentHint?: string;
   currentExplanation?: string;
   combo: number;

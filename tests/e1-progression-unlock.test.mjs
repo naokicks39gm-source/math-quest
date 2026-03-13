@@ -94,26 +94,10 @@ const createProblemEngineStub = (outputPath) => {
       '    patternKey: pattern.key,',
       '    question: `${pattern.key} question ${index}`,',
       '    answer: `${index}`,',
-      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 1 }",
+      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 1, patternId: pattern.key }",
       "  }));",
       "export const generateRuntimeProblems = (pattern, count) => generateProblems(pattern, count);"
     ].join("\n"),
-    "utf8"
-  );
-};
-
-const createProblemHintStub = (outputPath) => {
-  fs.writeFileSync(
-    outputPath,
-    'export const DEFAULT_HINT = "もういちど よく みてみよう";\nexport const generateHint = (problem) => `${problem.patternKey ?? "pattern"} hint`;\n',
-    "utf8"
-  );
-};
-
-const createProblemExplanationStub = (outputPath) => {
-  fs.writeFileSync(
-    outputPath,
-    'export const DEFAULT_EXPLANATION = "こたえを たしかめよう";\nexport const generateExplanation = (problem) => `${problem.patternKey ?? "pattern"} explanation`;\n',
     "utf8"
   );
 };
@@ -135,10 +119,6 @@ const loadModules = async () => {
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/sub-2digit.json"), path.join(tempDir, "sub-2digit.mjs"));
   createSkillSystemStub(path.join(tempDir, "skill-system.mjs"));
   createProblemEngineStub(path.join(tempDir, "problem-engine.mjs"));
-<<<<<<< HEAD
-  createProblemHintStub(path.join(tempDir, "problem-hint.mjs"));
-  createProblemExplanationStub(path.join(tempDir, "problem-explanation.mjs"));
-=======
   await transpileTsModule(path.join(root, "packages/problem-hint/hintTypes.ts"), path.join(tempDir, "hintTypes.mjs"));
   await transpileTsModule(path.join(root, "packages/problem-hint/hintRegistry.ts"), path.join(tempDir, "hintRegistry.mjs"), [
     ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
@@ -167,7 +147,6 @@ const loadModules = async () => {
     ['from "packages/problem-explanation/generateExplanation"', 'from "./generateExplanation.mjs"'],
     ['from "packages/problem-explanation/explanationTypes"', 'from "./explanationTypes.mjs"']
   ]);
->>>>>>> 1e405390850de8468e2c80306702c166f1aa141e
 
   const sharedReplacements = [
     ...localModuleReplacements,
@@ -236,7 +215,6 @@ const buildFinishedState = (studentStore, skillId, unlockedSkills = [skillId]) =
       skillId,
       startedDifficulty: 1,
       currentDifficulty: 1,
-      attemptCount: 0,
       combo: 0,
       failCount: 0,
       problems: [],

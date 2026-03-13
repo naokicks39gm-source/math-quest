@@ -18,14 +18,15 @@ export type PatternDSL = {
 
 export type GeneratedProblem = {
   id: string;
-  question: string;
-  answer: string;
+  readonly question: string;
+  readonly answer: string;
   patternKey?: string;
   variables?: Record<string, number>;
   variableRanges?: Record<string, [number, number]>;
-  meta?: {
+  readonly meta?: {
     source?: string;
     difficulty?: number;
+    patternId?: string;
   };
 };
 

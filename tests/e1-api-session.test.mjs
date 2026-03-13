@@ -102,14 +102,14 @@ const createProblemEngineStub = (outputPath) => {
       '    question: `${pattern.key} question ${index}`,',
       '    answer: `${index}`,',
       '    variables: pattern.key === "E1-NUM-COMPARE-01" ? { a: index, b: index + 1 } : pattern.key === "E1-NUM-COMPOSE-01" ? { a: index % 5, b: 10 - (index % 5) } : pattern.key === "E1-NUM-DECOMPOSE-01" ? { whole: 10, known: index % 5 } : undefined,',
-      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2 }",
+      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2, patternId: pattern.key }",
       "  }));",
       "export const generateRuntimeProblems = (pattern, count) =>",
       "  generateProblems(pattern, count).map((problem) => ({",
       "    ...problem,",
       "    question: pattern.key === \"E1-NUM-COMPARE-01\" ? `${problem.variables.a ?? 0} と ${problem.variables.b ?? 0}\\nどちらが小さい？` : problem.question,",
       "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? String(Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String((problem.variables.whole ?? 0) - (problem.variables.known ?? 0)) : problem.answer,",
-      "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\" }",
+      "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\", patternId: problem.meta?.patternId ?? pattern.key }",
       "  }));"
     ].join("\n"),
     "utf8"
@@ -349,6 +349,8 @@ test("learning session start route returns valid E1 skill sessions", async () =>
     assert.equal(body.session.problems.length, 5, skillId);
 
     for (const problem of body.session.problems) {
+      assert.equal(typeof problem.problemId, "string", `${skillId} -> problemId`);
+      assert.equal(problem.problemId, problem.problem.id, `${skillId} -> problemId mirror`);
       assert.equal(typeof problem.problem.id, "string", `${skillId} -> id`);
       assert.equal(problem.problem.id.length > 0, true, `${skillId} -> id`);
       assert.equal(typeof problem.patternKey, "string", `${skillId} -> patternKey`);
@@ -362,11 +364,15 @@ test("learning session start route returns valid E1 skill sessions", async () =>
       assert.equal(problem.difficulty >= 1 && problem.difficulty <= 5, true, `${skillId} -> difficulty`);
       assert.equal(typeof problem.problem.meta?.difficulty, "number", `${skillId} -> meta difficulty`);
       assert.equal(problem.problem.meta.difficulty >= 1 && problem.problem.meta.difficulty <= 5, true, `${skillId} -> meta difficulty`);
-      assert.equal(problem.problem.meta?.patternId, skillId, `${skillId} -> meta patternId`);
-      assert.equal(problem.problem.hint?.patternId, skillId, `${skillId} -> hint patternId`);
-      assert.equal(typeof problem.problem.hint?.text, "string", `${skillId} -> hint text`);
-      assert.equal(Array.isArray(problem.problem.explanation?.steps), true, `${skillId} -> explanation steps`);
-      assert.equal(problem.problem.explanation?.patternId, skillId, `${skillId} -> explanation patternId`);
+      assert.equal(problem.hint?.patternId, skillId, `${skillId} -> hint patternId`);
+      assert.equal(typeof problem.hint?.text, "string", `${skillId} -> hint text`);
+      assert.equal(Array.isArray(problem.explanation?.steps), true, `${skillId} -> explanation steps`);
+      assert.equal(problem.explanation?.patternId, skillId, `${skillId} -> explanation patternId`);
+      assert.equal(problem.attemptCount, 0, `${skillId} -> initial attemptCount`);
+      assert.equal(problem.showHint, false, `${skillId} -> initial showHint`);
+      assert.equal(problem.showExplanation, false, `${skillId} -> initial showExplanation`);
+      assert.equal(problem.isFallback, false, `${skillId} -> initial isFallback`);
+      assert.equal(problem.fallbackCount, 0, `${skillId} -> initial fallbackCount`);
     }
   }
 });
@@ -415,6 +421,12 @@ test("learning session resume route preserves hint and explanation shape", async
   assert.equal(resumeResponse.status, 200);
   assert.equal(resumed.sessionId, started.sessionId);
   assert.equal(resumed.session.problems.length, started.session.problems.length);
-  assert.equal(resumed.session.problems[0].problem.hint?.patternId, "E1_ADD_BASIC");
-  assert.equal(resumed.session.problems[0].problem.explanation?.patternId, "E1_ADD_BASIC");
+  assert.equal(resumed.session.problems[0].problemId, resumed.session.problems[0].problem.id);
+  assert.equal(resumed.session.problems[0].hint?.patternId, "E1_ADD_BASIC");
+  assert.equal(resumed.session.problems[0].explanation?.patternId, "E1_ADD_BASIC");
+  assert.equal(resumed.session.problems[0].attemptCount, 0);
+  assert.equal(resumed.session.problems[0].showHint, false);
+  assert.equal(resumed.session.problems[0].showExplanation, false);
+  assert.equal(resumed.session.problems[0].isFallback, false);
+  assert.equal(resumed.session.problems[0].fallbackCount, 0);
 });

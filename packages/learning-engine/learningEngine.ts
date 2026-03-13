@@ -8,7 +8,7 @@ import { getNextRecommendedSkillId } from "./progression-engine";
 import { updateSkillProgress } from "./skillProgressTracker";
 import type { SkillProgress } from "./skillProgressTypes";
 import type { Session, SessionHistoryEntry, SessionProblem } from "./sessionTypes";
-import { attachLearningAids, buildSession } from "./sessionBuilder";
+import { buildSession } from "./sessionBuilder";
 import { createLearningState, serializeState, updateXP, type LearningState } from "./studentStore";
 import { PROGRESSION_UNLOCK_THRESHOLD, isSkillUnlocked, unlockNextSkills } from "./skill-unlock";
 import { getWeakPatterns, resolveSkillPatterns, type WeakPattern } from "./weaknessAnalyzer";
@@ -70,6 +70,36 @@ const DIFFICULTY_MULTIPLIERS = {
   4: 1.4,
   5: 1.6
 } as const;
+
+const formatExplanationText = (sessionProblem: SessionProblem): string => {
+  const lines = [...sessionProblem.explanation.steps];
+  if (sessionProblem.explanation.summary) {
+    lines.push(sessionProblem.explanation.summary);
+  }
+  return lines.join("\n");
+};
+
+const buildReplacementFallback = (sessionProblem: SessionProblem): SessionProblem => {
+  if (sessionProblem.fallbackCount >= 2) {
+    return {
+      ...sessionProblem,
+      attemptCount: 0,
+      showHint: false,
+      showExplanation: false,
+      isFallback: false,
+      fallbackCount: 0
+    };
+  }
+
+  return {
+    ...sessionProblem,
+    attemptCount: 2,
+    showHint: true,
+    showExplanation: true,
+    isFallback: true,
+    fallbackCount: sessionProblem.fallbackCount + 1
+  };
+};
 
 const getRequiredXP = (skillId: string) => skills.find((skill) => skill.id === skillId)?.requiredXP ?? DEFAULT_REQUIRED_XP;
 const computeXpMastery = (skillId: string, skillXP: number) => Math.max(0, Math.min(skillXP / getRequiredXP(skillId), 1));
@@ -134,40 +164,69 @@ const buildReplacementProblem = (
   currentProblem: SessionProblem,
   targetDifficulty: number
 ): SessionProblem => {
+  const patternId = currentProblem.problem.meta?.patternId?.trim();
+  if (!patternId) {
+    throw new Error("replacement patternId missing");
+  }
   const patterns = resolveSkillPatterns(currentProblem.skillId);
-  const matchedPattern = patterns.find((pattern) => pattern.key === currentProblem.patternKey);
-
+  const matchedPattern = patterns.find((pattern) => pattern.key === patternId);
   if (!matchedPattern) {
-    return currentProblem;
+    throw new Error(`replacement pattern not found: ${patternId}`);
+  }
+  if (matchedPattern.key !== currentProblem.patternKey) {
+    throw new Error("pattern mismatch");
   }
 
-  const recentProblems = state.session?.recentProblems ?? [];
+  const usedProblemIds = state.session?.problems.map((problem) => problem.problemId) ?? [];
   const recentQuestions = (state.session?.history ?? [])
     .slice(-5)
     .map((entry) => entry.question);
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const candidates = generateRuntimeProblems(matchedPattern, 12).filter(
-      (problem) =>
-        problem.id !== currentProblem.problem.id &&
-        problem.question !== currentProblem.problem.question &&
-        !recentProblems.includes(problem.id) &&
-        !recentQuestions.includes(problem.question) &&
-        (typeof problem.meta?.difficulty !== "number" || clampSessionDifficulty(problem.meta.difficulty) <= targetDifficulty)
-    );
-    const replacement = candidates[attempt] ?? candidates[0];
-    if (replacement) {
-      return {
-        ...currentProblem,
-        problem: attachLearningAids({
-          ...currentProblem,
-          problem: replacement
-        }).problem,
-        difficulty: clampSessionDifficulty(replacement.meta?.difficulty ?? targetDifficulty)
-      };
+  let tries = 0;
+  while (tries < 10) {
+    const replacement = generateRuntimeProblems(matchedPattern, 1)[0];
+    if (!replacement) {
+      return buildReplacementFallback(currentProblem);
     }
+    tries += 1;
+    if (replacement.meta?.patternId !== patternId) {
+      throw new Error("pattern mismatch");
+    }
+    if (
+      usedProblemIds.includes(replacement.id) ||
+      replacement.question === currentProblem.problem.question ||
+      recentQuestions.includes(replacement.question) ||
+      (typeof replacement.meta?.difficulty === "number" && clampSessionDifficulty(replacement.meta.difficulty) > targetDifficulty)
+    ) {
+      continue;
+    }
+
+    const {
+      hint: _hint,
+      explanation: _explanation,
+      attemptCount: _attemptCount,
+      showHint: _showHint,
+      showExplanation: _showExplanation,
+      isFallback: _isFallback,
+      ...replacementBase
+    } = currentProblem;
+    const hint = generateHint(replacement);
+    const explanation = generateExplanation(replacement);
+    return {
+      ...replacementBase,
+      problemId: replacement.id,
+      problem: replacement,
+      hint,
+      explanation,
+      attemptCount: 0,
+      showHint: false,
+      showExplanation: false,
+      isFallback: false,
+      fallbackCount: 0,
+      difficulty: clampSessionDifficulty(replacement.meta?.difficulty ?? targetDifficulty)
+    };
   }
 
-  return currentProblem;
+  return buildReplacementFallback(currentProblem);
 };
 
 const dedupeWeakPatterns = (patterns: WeakPattern[]): WeakPattern[] => {
@@ -227,7 +286,6 @@ export function startSession(state: LearningState, options: StartSessionOptions)
           currentDifficulty: clampSessionDifficulty(currentState.student.difficulty),
           skillProgressBefore: getSkillProgressSnapshot(currentState, skillId),
           skillXpBefore: currentState.skillXP[skillId] ?? 0,
-          attemptCount: 0,
           currentHint: undefined,
           currentExplanation: undefined,
           combo: 0,
@@ -252,7 +310,6 @@ export function startSession(state: LearningState, options: StartSessionOptions)
     ),
     skillProgressBefore: getSkillProgressSnapshot(currentState, skillId),
     skillXpBefore: currentState.skillXP[skillId] ?? 0,
-    attemptCount: 0,
     currentHint: undefined,
     currentExplanation: undefined,
     history: options.carryoverHistory ?? carryoverSession?.history ?? [],
@@ -281,7 +338,8 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     throw new Error("session_problem_not_found");
   }
 
-  const nextAttemptCount = result.correct ? 0 : session.attemptCount + 1;
+  const safeAttemptCount = Math.max(0, Math.min(currentProblem.attemptCount, 3));
+  const nextAttemptCount = result.correct ? 0 : Math.min(safeAttemptCount + 1, 3);
   const nextCombo = result.correct ? session.combo + 1 : 0;
   const rawFailCount = result.correct ? 0 : session.failCount + 1;
   const loweredDifficulty = !result.correct && rawFailCount >= 2;
@@ -316,14 +374,14 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
   const nextSkillXPValue = (currentState.skillXP[currentProblem.skillId] ?? 0) + xpGain;
   const nextSkillMasteryValue = computeXpMastery(currentProblem.skillId, nextSkillXPValue);
   const nextHistoryEntry: SessionHistoryEntry = {
-    problemId: currentProblem.problem.id,
+    problemId: currentProblem.problemId,
     question: currentProblem.problem.question,
     userAnswer: result.userAnswer ?? "",
     correctAnswer: currentProblem.problem.answer,
     isCorrect: result.correct,
     attemptCount: nextAttemptCount
   };
-  const nextRecentProblems = [...session.recentProblems.filter((problemId) => problemId !== currentProblem.problem.id), currentProblem.problem.id].slice(-5);
+  const nextRecentProblems = [...session.recentProblems.filter((problemId) => problemId !== currentProblem.problemId), currentProblem.problemId].slice(-5);
   const skillProgress = setLockedSkills({
     ...currentState.skillProgress,
     [currentProblem.skillId]: {
@@ -342,7 +400,6 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     currentDifficulty: nextDifficulty,
     combo: nextCombo,
     failCount: nextFailCount,
-    attemptCount: nextAttemptCount,
     currentHint: result.correct ? undefined : session.currentHint,
     currentExplanation: result.correct ? undefined : session.currentExplanation,
     history: [...session.history, nextHistoryEntry],
@@ -351,22 +408,42 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): {
     correct: session.correct + (result.correct ? 1 : 0),
     wrong: session.wrong + (result.correct ? 0 : 1)
   };
-  const replacementProblem = result.correct ? null : buildReplacementProblem(currentState, currentProblem, nextDifficulty);
-  const nextSession =
-    !result.correct && replacementProblem
-      ? {
-          ...nextSessionBase,
-          currentHint: nextAttemptCount === 1 ? generateHint(replacementProblem.problem) : undefined,
-          currentExplanation: nextAttemptCount >= 2 ? generateExplanation(replacementProblem.problem) : undefined,
-          problems: nextSessionBase.problems.map((problem, index) =>
-            index === nextSessionBase.index ? replacementProblem : problem
-          )
-        }
-      : {
-          ...nextSessionBase,
-          currentHint: undefined,
-          currentExplanation: undefined
-        };
+  const incrementedProblem: SessionProblem = {
+    ...currentProblem,
+    attemptCount: nextAttemptCount,
+    showHint: nextAttemptCount >= 1,
+    showExplanation: nextAttemptCount >= 2,
+    isFallback: false,
+    fallbackCount: currentProblem.fallbackCount
+  };
+
+  let nextSession: Session;
+  if (!result.correct && nextAttemptCount >= 3) {
+    const replacementProblem = buildReplacementProblem(currentState, incrementedProblem, nextDifficulty);
+    nextSession = {
+      ...nextSessionBase,
+      currentHint: undefined,
+      currentExplanation: undefined,
+      problems: nextSessionBase.problems.map((problem, index) =>
+        index === nextSessionBase.index ? replacementProblem : problem
+      )
+    };
+  } else if (!result.correct) {
+    nextSession = {
+      ...nextSessionBase,
+      currentHint: incrementedProblem.showHint ? incrementedProblem.hint.text : undefined,
+      currentExplanation: incrementedProblem.showExplanation ? formatExplanationText(incrementedProblem) : undefined,
+      problems: nextSessionBase.problems.map((problem, index) =>
+        index === nextSessionBase.index ? incrementedProblem : problem
+      )
+    };
+  } else {
+    nextSession = {
+      ...nextSessionBase,
+      currentHint: undefined,
+      currentExplanation: undefined
+    };
+  }
   const nextState = serializeState({
     ...currentState,
     student,

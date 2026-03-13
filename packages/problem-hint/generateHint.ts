@@ -31,11 +31,11 @@ export const DEFAULT_HINT: Hint = {
 
 export const resolveHintPatternId = (problem: GeneratedProblem): string => {
   const explicitPatternId = problem.meta?.patternId?.trim();
-  if (explicitPatternId) {
+  if (explicitPatternId && explicitPatternId in hintRegistry) {
     return explicitPatternId;
   }
 
-  const patternKey = problem.patternKey?.trim();
+  const patternKey = problem.patternKey?.trim() || explicitPatternId;
   if (!patternKey) {
     return "";
   }
