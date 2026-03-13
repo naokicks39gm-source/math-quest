@@ -81,7 +81,7 @@ const createProblemEngineStub = (outputPath) => {
       '    patternKey: pattern.key,',
       '    question: `${pattern.key} question ${generationBatch}-${index}`,',
       '    answer: `${index}`,',
-      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 3 }",
+      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 3, patternId: pattern.key }",
       "  }));",
       "};",
       "export const generateRuntimeProblems = (pattern, count) => generateProblems(pattern, count);"
@@ -261,7 +261,7 @@ test("startSession for the same skill does not return identical problem sets thr
   const initial = studentStore.createLearningState();
 
   const sessions = Array.from({ length: 3 }, () => learningEngine.startSession(initial, { mode: "skill", skillId: "E1_ADD_BASIC" }).session);
-  const signatures = sessions.map((session) => session.problems.map((problem) => problem.problem.id).join("|"));
+  const signatures = sessions.map((session) => session.problems.map((problem) => problem.problemId).join("|"));
 
   assert.equal(new Set(signatures).size > 1, true);
 });

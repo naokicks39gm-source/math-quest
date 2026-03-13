@@ -73,9 +73,9 @@ const createProblemEngineStub = (outputPath) => {
     [
       "let generationBatch = 0;",
       "const difficultyByPattern = {",
-      '  "E1-ADD-BASIC-01": 3,',
-      '  "E1-ADD-MAKE10": 4,',
-      '  "E1-SUB-BASIC-01": 4',
+      '  "E1-ADD-BASIC-01": 1,',
+      '  "E1-ADD-MAKE10": 2,',
+      '  "E1-SUB-BASIC-01": 1',
       "};",
       "export const getPatternMeta = (key) =>",
       "  difficultyByPattern[key] ? { key, difficulty: difficultyByPattern[key] } : undefined;",
@@ -86,7 +86,7 @@ const createProblemEngineStub = (outputPath) => {
       '    patternKey: pattern.key,',
       '    question: `${pattern.key} question ${generationBatch}-${index}`,',
       '    answer: `${index}`,',
-      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 3 }",
+      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 1, patternId: pattern.key }",
       "  }));",
       "};",
       "export const generateRuntimeProblems = (pattern, count) => generateProblems(pattern, count);"
@@ -210,7 +210,6 @@ test("ADD_BASIC completion recommends the single next skill and starts that next
       skillId: "E1_ADD_BASIC",
       startedDifficulty: 3,
       currentDifficulty: 3,
-      attemptCount: 0,
       combo: 0,
       failCount: 0,
       problems: [],
@@ -233,4 +232,48 @@ test("ADD_BASIC completion recommends the single next skill and starts that next
   assert.equal(next.session.skillId, recommendation.skillId);
   assert.notEqual(next.session.skillId, "E1_ADD_BASIC");
   assert.equal(next.state.session?.skillId, recommendation.skillId);
+});
+
+test("incorrect flow follows hint then explanation then replacement", async () => {
+  const { learningEngine, studentStore } = await loadModules();
+  const started = learningEngine.startSession(studentStore.createLearningState(), { mode: "skill", skillId: "E1_ADD_BASIC" });
+  const original = started.session.problems[0];
+
+  const wrongOnce = learningEngine.recordAnswer(started.state, { correct: false });
+  const attemptOneProblem = wrongOnce.session.problems[0];
+  assert.equal(attemptOneProblem.problemId, attemptOneProblem.problem.id);
+  assert.equal(attemptOneProblem.attemptCount, 1);
+  assert.equal(attemptOneProblem.showHint, true);
+  assert.equal(attemptOneProblem.showExplanation, false);
+  assert.equal(attemptOneProblem.isFallback, false);
+  assert.equal(attemptOneProblem.fallbackCount, 0);
+  assert.equal(wrongOnce.session.currentHint, attemptOneProblem.hint.text);
+  assert.equal(wrongOnce.session.currentExplanation, undefined);
+  assert.equal(attemptOneProblem.problem.id, original.problem.id);
+
+  const wrongTwice = learningEngine.recordAnswer(wrongOnce.state, { correct: false });
+  const attemptTwoProblem = wrongTwice.session.problems[0];
+  assert.equal(attemptTwoProblem.problemId, attemptTwoProblem.problem.id);
+  assert.equal(attemptTwoProblem.attemptCount, 2);
+  assert.equal(attemptTwoProblem.showHint, true);
+  assert.equal(attemptTwoProblem.showExplanation, true);
+  assert.equal(attemptTwoProblem.isFallback, false);
+  assert.equal(attemptTwoProblem.fallbackCount, 0);
+  assert.equal(wrongTwice.session.currentHint, attemptTwoProblem.hint.text);
+  assert.equal(typeof wrongTwice.session.currentExplanation, "string");
+  assert.equal(attemptTwoProblem.problem.id, original.problem.id);
+
+  const wrongThrice = learningEngine.recordAnswer(wrongTwice.state, { correct: false });
+  const replacement = wrongThrice.session.problems[0];
+  assert.equal(replacement.problemId, replacement.problem.id);
+  assert.equal(replacement.attemptCount, 0);
+  assert.equal(replacement.showHint, false);
+  assert.equal(replacement.showExplanation, false);
+  assert.equal(replacement.isFallback, false);
+  assert.equal(replacement.fallbackCount, 0);
+  assert.equal(replacement.patternKey, original.patternKey);
+  assert.notEqual(replacement.problemId, original.problemId);
+  assert.notEqual(replacement.problem.id, original.problem.id);
+  assert.equal(wrongThrice.session.currentHint, undefined);
+  assert.equal(wrongThrice.session.currentExplanation, undefined);
 });

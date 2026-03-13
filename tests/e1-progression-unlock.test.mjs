@@ -94,7 +94,7 @@ const createProblemEngineStub = (outputPath) => {
       '    patternKey: pattern.key,',
       '    question: `${pattern.key} question ${index}`,',
       '    answer: `${index}`,',
-      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 1 }",
+      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 1, patternId: pattern.key }",
       "  }));",
       "export const generateRuntimeProblems = (pattern, count) => generateProblems(pattern, count);"
     ].join("\n"),
@@ -215,7 +215,6 @@ const buildFinishedState = (studentStore, skillId, unlockedSkills = [skillId]) =
       skillId,
       startedDifficulty: 1,
       currentDifficulty: 1,
-      attemptCount: 0,
       combo: 0,
       failCount: 0,
       problems: [],

@@ -118,14 +118,14 @@ const createProblemEngineStub = (outputPath) => {
       '    question: `${pattern.key} question ${index}`,',
       '    answer: `${index}`,',
       '    variables: pattern.key === "E1-NUM-COUNT-01" ? { n: index % 21 } : pattern.key === "E1-NUM-ORDER-01" ? { a: index % 21, b: (index % 21) + 1 } : pattern.key === "E1-NUM-COMPARE-01" ? { a: index, b: index + 1 } : pattern.key === "E1-NUM-COMPOSE-01" ? { a: index % 10, b: 10 - (index % 10) } : pattern.key === "E1-NUM-DECOMPOSE-01" ? { whole: 10, a: index % 10, b: 10 - (index % 10) } : pattern.key === "E1-NUM-LINE-01" ? { start: index % 10, move: 1 + (index % 10) } : undefined,',
-      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2 }",
+      "    meta: { difficulty: difficultyByPattern[pattern.key] ?? 2, patternId: pattern.key }",
       "  }));",
       "export const generateRuntimeProblems = (pattern, count) =>",
       "  generateProblems(pattern, count).map((problem) => ({",
       "    ...problem,",
       "    question: pattern.key === \"E1-NUM-COMPARE-01\" ? `${problem.variables.a ?? 0} と ${problem.variables.b ?? 0}\\nどちらが小さい？` : problem.question,",
-      "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? String(Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String(problem.variables.b ?? 0) : pattern.key === \"E1-NUM-COUNT-01\" ? String(problem.variables.n ?? 0) : pattern.key === \"E1-NUM-ORDER-01\" ? String(Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-LINE-01\" ? String((problem.variables.start ?? 0) + (problem.variables.move ?? 0)) : problem.answer,",
-      "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\" }",
+      "    answer: pattern.key === \"E1-NUM-COMPARE-01\" ? String(Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-COMPOSE-01\" ? String((problem.variables.a ?? 0) + (problem.variables.b ?? 0)) : pattern.key === \"E1-NUM-DECOMPOSE-01\" ? String(problem.variables.b ?? 0) : pattern.key === \"E1-NUM-COUNT-01\" ? String(problem.variables.n ?? 0) : pattern.key === \"E1-NUM-ORDER-01\" ? `[${Math.min(problem.variables.a ?? 0, problem.variables.b ?? 0)},${Math.max(problem.variables.a ?? 0, problem.variables.b ?? 0)}]` : pattern.key === \"E1-NUM-LINE-01\" ? String((problem.variables.start ?? 0) + (problem.variables.move ?? 0)) : problem.answer,",
+      "    meta: { ...(problem.meta ?? {}), source: \"runtime-pattern\", patternId: problem.meta?.patternId ?? pattern.key }",
       "  }));"
     ].join("\n"),
     "utf8"
@@ -276,9 +276,10 @@ test("learningEngine.startSession generates valid five-problem sessions for runt
     assert.equal(session.correct, 0, skillId);
     assert.equal(session.wrong, 0, skillId);
     assert.equal(session.problems.length, 5, skillId);
-    assert.equal(new Set(session.problems.map((problem) => problem.problem.id)).size, 5, skillId);
+    assert.equal(new Set(session.problems.map((problem) => problem.problemId)).size, 5, skillId);
 
     for (const problem of session.problems) {
+      assert.equal(problem.problemId, problem.problem.id, `${skillId} -> problemId mirror`);
       assert.equal(problem.patternKey.startsWith(prefix), true, `${skillId} -> ${problem.patternKey}`);
       assert.equal(problem.problem.patternKey, problem.patternKey, `${skillId} -> ${problem.problem.id}`);
       assert.equal(typeof problem.difficulty, "number", `${skillId} -> ${problem.patternKey}`);

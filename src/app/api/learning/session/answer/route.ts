@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       state: result.state,
       session: result.session,
       problem: result.session.problems[result.session.index] ?? null,
-      attemptCount: result.session.attemptCount,
+      attemptCount: result.session.problems[result.session.index]?.attemptCount ?? 0,
       hint: result.session.currentHint,
       explanation: result.session.currentExplanation
     };
