@@ -368,7 +368,7 @@ test("number rules validate count/order/compare/compose/decompose/line semantics
     numberRules.validateNumberOrder({
       problem: {
         id: "order-1",
-        question: "8 と 3 を ちいさい じゅんに ならべると？",
+        question: "8 と 3\n小さい順にならべよう",
         answer: "[3,8]",
         patternKey: "E1-NUM-ORDER-01",
         variables: { a: 8, b: 3 },
@@ -461,7 +461,7 @@ test("problem validator applies number skill semantic rules", async () => {
     validator.validateProblem(
       {
         id: "order-invalid",
-        question: "8 と 3 を ちいさい じゅんに ならべると？",
+        question: "8 と 3\n小さい順にならべよう",
         answer: "[8,3]",
         patternKey: "E1-NUM-ORDER-01",
         variables: { a: 8, b: 3 },
@@ -469,7 +469,7 @@ test("problem validator applies number skill semantic rules", async () => {
       },
       {
         key: "E1-NUM-ORDER-01",
-        template: "{a} と {b} を ちいさい じゅんに ならべると？",
+        template: "{a} と {b}\n小さい順にならべよう",
         variables: { a: [0, 20], b: [0, 20] },
         constraints: ["a != b"],
         answer: "[min(a,b), max(a,b)]"

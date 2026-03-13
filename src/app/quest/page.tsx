@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
+import { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -162,6 +162,7 @@ const LS_LEARNING_SESSION = "mq:learningSession";
 const LEARNING_SESSION_TTL_MS = 30 * 60 * 1000;
 const DEFAULT_TOTAL_QUESTIONS = 5;
 const E1_SUMMARY_TYPE_ID = "E1.NA.MIX.MIXED_TO_20";
+const ORDER_LEGACY_PROMPT_RE = /小さいほうから/u;
 const E2_DAN_MUL_TYPE_RE = /^E2\.NA\.MUL\.MUL_1D_1D_DAN_[1-9]$/;
 const E2_MIX_TEN_TYPE_RE = /^E2\.NA\.MUL\.MUL_1D_1D_MIX_(1_3|4_6|7_9)$/;
 const E2_MIX_99_TEST_TYPE_ID = "E2.NA.MUL.MUL_1D_1D_MIX_1_9";
@@ -202,6 +203,10 @@ const toDiagnosticSeed = (value: string | null) => {
   }
   return String(hash);
 };
+
+const shouldForceFreshOrderSession = (skillId?: string | null, session?: Session | null) =>
+  skillId === "E1_NUMBER_ORDER" &&
+  Boolean(session?.problems.some((problem) => ORDER_LEGACY_PROMPT_RE.test(problem.problem.question)));
 
 const QUESTION_POOL_SIZE = 50;
 const OUTER_MARGIN = 8;
@@ -1772,6 +1777,7 @@ function QuestPageInner() {
   const params = useSearchParams();
   const devMode = params.get("dev") === "1";
   const skillIdFromQuery = (params.get("skillId") ?? "").trim();
+  const retryFromQuery = (params.get("retry") ?? "").trim();
   const patternIdFromQuery = (params.get("patternId") ?? "").trim();
   const typeFromQuery = (params.get("type") ?? "").trim();
   const categoryFromQuery = params.get("category");
@@ -1873,6 +1879,10 @@ function QuestPageInner() {
   const [learningSession, setLearningSession] = useState<Session | null>(null);
   const [learningResult, setLearningResult] = useState<LearningSessionFinishResponse["result"] | null>(null);
   const [learningResultSkillId, setLearningResultSkillId] = useState<string | null>(null);
+  const [learningCurrentProblem, setLearningCurrentProblem] = useState<SessionProblem | null>(null);
+  const [learningAttemptCount, setLearningAttemptCount] = useState(0);
+  const [learningHint, setLearningHint] = useState<string | null>(null);
+  const [learningExplanation, setLearningExplanation] = useState<string | null>(null);
   const [learningLoading, setLearningLoading] = useState(false);
   const [learningError, setLearningError] = useState<string | null>(null);
   const [learningSessionId, setLearningSessionId] = useState<string | null>(null);
@@ -1971,6 +1981,17 @@ function QuestPageInner() {
   }, [skillTree]);
   const showCurrentSkillSummary = currentSkillNode != null && learningSession == null && status !== "playing";
   const useFastLearningLoop = isLearningSessionMode;
+  useEffect(() => {
+    if (!isLearningSessionMode) return;
+    console.info("[quest] search params", { skillId: skillIdFromQuery, retry: retryFromQuery || null });
+  }, [isLearningSessionMode, retryFromQuery, skillIdFromQuery]);
+  useEffect(() => {
+    if (!(status === "cleared" && learningResult)) return;
+    console.info("[quest] clear-view render", {
+      currentSkillId: currentLearningSkillId,
+      historyLength: learningResult.history.length
+    });
+  }, [currentLearningSkillId, learningResult, status]);
   const correctCount = useMemo(
     () => clearResults.filter(([, result]) => result.everWrong !== true).length,
     [clearResults]
@@ -2013,8 +2034,29 @@ function QuestPageInner() {
     setShowHighSchoolHint(false);
     setShowSecondaryHint(false);
     setShowSecondaryExplanation(false);
+    setShowElementaryHint(false);
     setShowElementaryExplanation(false);
   };
+
+  const syncLearningUiFromSession = useCallback((session: Session | null | undefined, problem?: SessionProblem | null) => {
+    setLearningCurrentProblem(problem ?? (session ? session.problems[session.index] ?? null : null));
+    setLearningAttemptCount(session?.attemptCount ?? 0);
+    setLearningHint(session?.currentHint ?? null);
+    setLearningExplanation(session?.currentExplanation ?? null);
+  }, []);
+
+  const syncLearningUiFromAnswer = useCallback((response: LearningSessionAnswerResponse) => {
+    setLearningCurrentProblem(response.problem ?? null);
+    setLearningAttemptCount(response.attemptCount ?? 0);
+    setLearningHint(response.hint ?? null);
+    setLearningExplanation(response.explanation ?? null);
+    console.info("[quest] answer response", {
+      attemptCount: response.attemptCount ?? 0,
+      hint: response.hint ?? null,
+      explanation: response.explanation ?? null,
+      problemQuestion: response.problem?.problem.question ?? null
+    });
+  }, []);
 
   const loadLearningRecovery = (): LearningSessionRecovery | null => {
     if (typeof window === "undefined") return null;
@@ -2095,6 +2137,7 @@ function QuestPageInner() {
       options?.skillId ?? nextState.session?.skillId ?? persistedRecovery?.skillId ?? learningSession?.skillId ?? null;
     setLearningState(nextState);
     setLearningSession(nextState.session ? { ...nextState.session, skillId: nextSkillId ?? nextState.session.skillId } : null);
+    syncLearningUiFromSession(nextState.session, nextState.session?.problems[nextState.session.index] ?? null);
     const nextSessionId = options?.sessionId ?? learningSessionId;
     if (nextSessionId) {
       setLearningSessionId(nextSessionId);
@@ -2129,6 +2172,10 @@ function QuestPageInner() {
     setLearningSession(null);
     setLearningState(null);
     setLearningSessionId(null);
+    setLearningCurrentProblem(null);
+    setLearningAttemptCount(0);
+    setLearningHint(null);
+    setLearningExplanation(null);
     setQuestionResults({});
     setItemIndex(0);
     setCombo(0);
@@ -2160,6 +2207,11 @@ function QuestPageInner() {
         recoveryAnswers: [],
         skillId,
         expiresAt: data.expiresAt
+      });
+      console.info("[quest] start session", {
+        skillId,
+        retry: retryFromQuery || null,
+        problemQuestion: data.session.problems[0]?.problem.question ?? null
       });
       trackAnalyticsEvent("session_start");
       sessionStartTrackedRef.current = true;
@@ -2204,11 +2256,25 @@ function QuestPageInner() {
         setLearningSessionId(null);
         return false;
       }
+      if (shouldForceFreshOrderSession(skillId, storedSession)) {
+        clearLearningRecovery();
+        setLearningSessionId(null);
+        console.info("[quest] stale order session detected; starting fresh session", {
+          skillId,
+          sessionId
+        });
+        return false;
+      }
       persistLearningState(data.state, {
         sessionId: data.sessionId,
         recoveryAnswers: recovery?.answers ?? [],
         skillId,
         expiresAt: data.expiresAt
+      });
+      console.info("[quest] resume session", {
+        skillId,
+        sessionId: data.sessionId,
+        problemQuestion: storedSession.problems[storedSession.index]?.problem.question ?? null
       });
       setQuizBuildError(null);
       return true;
@@ -2242,6 +2308,7 @@ function QuestPageInner() {
     if (!("session" in data)) {
       throw new Error("learning_session_answer_failed");
     }
+    syncLearningUiFromAnswer(data);
     const existingAnswers = loadLearningRecovery()?.answers ?? [];
     persistLearningState(data.state, {
       sessionId: data.sessionId,
@@ -2388,34 +2455,47 @@ function QuestPageInner() {
       setLearningError(null);
       setLearningLoading(false);
       setLearningResult(null);
+      syncLearningUiFromSession(null, null);
       clearLearningRecovery();
+      return;
+    }
+    if (retryFromQuery) {
+      console.info("[quest] retry requested", { skillId: skillIdFromQuery, retry: retryFromQuery });
+      clearLearningRecovery();
+      void startLearningSession(skillIdFromQuery);
       return;
     }
     const recovery = loadLearningRecovery();
     if (recovery?.sessionId) {
+      if (skillIdFromQuery === "E1_NUMBER_ORDER") {
+        console.info("[quest] order skill forces fresh session", { skillId: skillIdFromQuery });
+        clearLearningRecovery();
+        void startLearningSession(skillIdFromQuery);
+        return;
+      }
       if (Date.now() > recovery.expiresAt) {
         clearLearningRecovery();
-        console.log("START SESSION", skillIdFromQuery);
+        console.info("[quest] recovery expired; starting new session", { skillId: skillIdFromQuery });
         void startLearningSession(skillIdFromQuery);
         return;
       }
       if (recovery.skillId !== skillIdFromQuery) {
         clearLearningRecovery();
-        console.log("START SESSION", skillIdFromQuery);
+        console.info("[quest] recovery skill mismatch; starting new session", { skillId: skillIdFromQuery });
         void startLearningSession(skillIdFromQuery);
         return;
       }
       void resumeLearningSession(recovery.sessionId, skillIdFromQuery).then((resumed) => {
         if (!resumed) {
-          console.log("START SESSION", skillIdFromQuery);
+          console.info("[quest] resume failed; starting new session", { skillId: skillIdFromQuery });
           void startLearningSession(skillIdFromQuery);
         }
       });
       return;
     }
-    console.log("START SESSION", skillIdFromQuery);
+    console.info("[quest] no recovery; starting session", { skillId: skillIdFromQuery });
     void startLearningSession(skillIdFromQuery);
-  }, [isLearningSessionMode, skillIdFromQuery]);
+  }, [isLearningSessionMode, retryFromQuery, skillIdFromQuery, syncLearningUiFromSession]);
 
   useEffect(() => {
     if (isLearningSessionMode) {
@@ -2530,7 +2610,7 @@ function QuestPageInner() {
   const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
   const currentLearningIndex = normalizedLearningSession?.index ?? 0;
   const learningProblem = isLearningSessionMode
-    ? normalizedLearningSession?.session.problems[currentLearningIndex] ?? null
+    ? learningCurrentProblem ?? normalizedLearningSession?.session.problems[currentLearningIndex] ?? null
     : null;
   const shouldAutoFinishLearningSession =
     isLearningSessionMode &&
@@ -3121,19 +3201,27 @@ function QuestPageInner() {
       }),
     [currentType?.type_id, currentType?.generation_params?.pattern_id, currentItem?.answer, currentItem?.prompt, currentItem?.prompt_tex]
   );
-  const currentLearningAttemptCount = learningSession?.attemptCount ?? 0;
+  const currentLearningAttemptCount = learningAttemptCount;
   const currentCountAid = useMemo(
     () => buildCountElementaryAid(currentItem),
     [currentItem]
   );
   const currentElementaryHintText = useMemo(() => {
+    if (isLearningSessionMode && learningHint) {
+      return learningHint;
+    }
     if (currentCountAid) {
       return "5とあといくつ？";
     }
     return "もういちど よく みてみよう";
-  }, [currentCountAid]);
+  }, [currentCountAid, isLearningSessionMode, learningHint]);
+  const learningExplanationAid = useMemo(
+    () => (isLearningSessionMode && learningExplanation ? buildMemoExplanationAid(learningExplanation) : null),
+    [isLearningSessionMode, learningExplanation]
+  );
   const currentElementaryAid = useMemo(
     () =>
+      learningExplanationAid ??
       currentCountAid ??
       buildMemoExplanationAid(currentItem?.memo_explanation) ??
       getElementaryLearningAid({
@@ -3145,6 +3233,7 @@ function QuestPageInner() {
         bDigits: currentType?.generation_params?.b_digits
       }),
     [
+      learningExplanationAid,
       currentCountAid,
       currentItem?.memo_explanation,
       currentType?.type_id,
@@ -3408,10 +3497,33 @@ function QuestPageInner() {
       `/quest?type=${encodeURIComponent(next.typeId)}&category=${encodeURIComponent(next.categoryId)}`
     );
   };
+  const handleRetry = useCallback(() => {
+    if (!currentLearningSkillId) return;
+    console.info("[quest] retry click", { currentSkillId: currentLearningSkillId });
+    finishGuardRef.current = false;
+    clearLearningRecovery();
+    setLearningResult(null);
+    setLearningResultSkillId(null);
+    setLearningSession(null);
+    setLearningState(null);
+    setLearningSessionId(null);
+    setLearningCurrentProblem(null);
+    setLearningAttemptCount(0);
+    setLearningHint(null);
+    setLearningExplanation(null);
+    setQuestionResults({});
+    setItemIndex(0);
+    setCombo(0);
+    setStatus("playing");
+    setMessage("Battle Start!");
+    resetQuestionUi();
+    const nextUrl = `/quest?skillId=${encodeURIComponent(currentLearningSkillId)}&retry=${Date.now()}`;
+    console.info("[quest] router.push retry", { nextUrl });
+    router.push(nextUrl);
+  }, [currentLearningSkillId, router]);
   const restartSameLevel = () => {
     if (isLearningSessionMode && skillIdFromQuery) {
-      finishGuardRef.current = false;
-      void startLearningSession(skillIdFromQuery);
+      handleRetry();
       return;
     }
     sessionStartTrackedRef.current = false;
@@ -5423,13 +5535,9 @@ function QuestPageInner() {
                 requiredXP={learningResult.requiredXP}
                 nextSkillTitle={recommendedSkillNode?.title ?? null}
                 history={learningResult.history}
-                onNextSkill={recommendedLearningSkillId ? () => router.push(`/quest?skillId=${encodeURIComponent(recommendedLearningSkillId)}`) : undefined}
-                onRetry={() => {
-                  if (!currentLearningSkillId) return;
-                  router.push(`/quest?skillId=${encodeURIComponent(currentLearningSkillId)}`);
-                  void startLearningSession(currentLearningSkillId);
-                }}
-                onDone={() => router.push("/skills")}
+                onNext={recommendedLearningSkillId ? () => router.push(`/quest?skillId=${encodeURIComponent(recommendedLearningSkillId)}`) : undefined}
+                onRetry={handleRetry}
+                onFinish={() => router.push("/skills")}
               />
             </div>
           ) : (
@@ -5653,7 +5761,9 @@ function QuestPageInner() {
                   {(showSecondaryHint || (isLearningSessionMode && showLearningHint && !showLearningExplanation && showSecondaryHint)) && (
                     <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
                       <div className="text-sm font-bold text-amber-700">ヒント</div>
-                      {currentAid!.hintLines && currentAid!.hintLines.length > 0 ? (
+                      {isLearningSessionMode && learningHint ? (
+                        <div className="whitespace-pre-line text-base font-semibold text-slate-800">{learningHint}</div>
+                      ) : currentAid!.hintLines && currentAid!.hintLines.length > 0 ? (
                         <ul className="mt-0.5 list-none space-y-1 pl-0 text-base font-semibold text-slate-800">
                           {currentAid!.hintLines.map((line, idx) => (
                             <li key={`hint-line-${idx}`} className="leading-7">
@@ -5668,12 +5778,27 @@ function QuestPageInner() {
                   )}
                   {showSecondaryExplanation && (
                     <div className="mt-2">
-                      <SecondaryExplanationPanel
-                        aid={currentAid!}
-                        onNext={skipFromExplanation}
-                        nextLabel={uiText.nextQuestion}
-                        showNextButton
-                      />
+                      {isLearningSessionMode && learningExplanation ? (
+                        <section className="w-full rounded-xl border border-amber-200 bg-amber-50 p-4 text-base text-slate-800">
+                          <div className="rounded-lg border border-slate-200 bg-white p-4">
+                            <div className="whitespace-pre-line text-base leading-7">{learningExplanation}</div>
+                            <button
+                              type="button"
+                              onClick={skipFromExplanation}
+                              className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
+                            >
+                              {uiText.nextQuestion}
+                            </button>
+                          </div>
+                        </section>
+                      ) : (
+                        <SecondaryExplanationPanel
+                          aid={currentAid!}
+                          onNext={skipFromExplanation}
+                          nextLabel={uiText.nextQuestion}
+                          showNextButton
+                        />
+                      )}
                     </div>
                   )}
                 </section>

@@ -90,6 +90,22 @@ const createProblemEngineStub = (outputPath) => {
   );
 };
 
+const createProblemHintStub = (outputPath) => {
+  fs.writeFileSync(
+    outputPath,
+    'export const DEFAULT_HINT = "もういちど よく みてみよう";\nexport const generateHint = (problem) => `${problem.patternKey ?? "pattern"} hint`;\n',
+    "utf8"
+  );
+};
+
+const createProblemExplanationStub = (outputPath) => {
+  fs.writeFileSync(
+    outputPath,
+    'export const DEFAULT_EXPLANATION = "こたえを たしかめよう";\nexport const generateExplanation = (problem) => `${problem.patternKey ?? "pattern"} explanation`;\n',
+    "utf8"
+  );
+};
+
 const createNextServerStub = (outputPath) => {
   fs.writeFileSync(
     outputPath,
@@ -143,6 +159,8 @@ const loadModules = async () => {
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/sub-2digit.json"), path.join(tempDir, "sub-2digit.mjs"));
   createSkillSystemStub(path.join(tempDir, "skill-system.mjs"));
   createProblemEngineStub(path.join(tempDir, "problem-engine.mjs"));
+  createProblemHintStub(path.join(tempDir, "problem-hint.mjs"));
+  createProblemExplanationStub(path.join(tempDir, "problem-explanation.mjs"));
   createNextServerStub(path.join(tempDir, "next-server.mjs"));
   createDbStub(path.join(tempDir, "db.mjs"));
   createProblemFormatStub(path.join(tempDir, "problem-format.mjs"));

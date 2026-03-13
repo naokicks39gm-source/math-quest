@@ -112,7 +112,7 @@ const loadSkillSystemModules = async () => {
       '};',
       'export const generateRuntimeProblems = (...args) => generateProblems(...args).map((item) => ({',
       '  ...item,',
-      '  answer: item.patternKey === "E1-NUM-COMPARE-01" ? ((item.variables?.a ?? 0) < (item.variables?.b ?? 0) ? "LESS" : "GREATER") : item.answer,',
+      '  answer: item.patternKey === "E1-NUM-COMPARE-01" ? String(Math.min(item.variables?.a ?? 0, item.variables?.b ?? 0)) : item.answer,',
       '  meta: { ...(item.meta ?? {}), source: "runtime-pattern" }',
       '}));'
     ].join("\n"),
@@ -291,5 +291,5 @@ test("generateSkillQuiz uses runtime compare answer format for E1_NUMBER_COMPARE
 
   assert.equal(generated.length, 5);
   assert.equal(generated.every((item) => item.patternKey === "E1-NUM-COMPARE-01"), true);
-  assert.equal(generated.every((item) => item.answer === "LESS" || item.answer === "GREATER"), true);
+  assert.equal(generated.every((item) => /^\\d+$/.test(item.answer)), true);
 });

@@ -158,6 +158,22 @@ const createProblemEngineStub = (outputPath) => {
   );
 };
 
+const createProblemHintStub = (outputPath) => {
+  fs.writeFileSync(
+    outputPath,
+    'export const DEFAULT_HINT = "もういちど よく みてみよう";\nexport const generateHint = (problem) => `${problem.patternKey ?? "pattern"} hint`;\n',
+    "utf8"
+  );
+};
+
+const createProblemExplanationStub = (outputPath) => {
+  fs.writeFileSync(
+    outputPath,
+    'export const DEFAULT_EXPLANATION = "こたえを たしかめよう";\nexport const generateExplanation = (problem) => `${problem.patternKey ?? "pattern"} explanation`;\n',
+    "utf8"
+  );
+};
+
 const loadLearningEngineModules = async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "learning-engine-"));
   const learningRoot = path.join(root, "packages/learning-engine");
@@ -175,34 +191,8 @@ const loadLearningEngineModules = async () => {
   writeJsonModule(path.join(root, "packages/skill-system/skills.json"), path.join(tempDir, "skills.mjs"));
   createSkillSystemStub(path.join(tempDir, "skill-system.mjs"));
   createProblemEngineStub(path.join(tempDir, "problem-engine.mjs"));
-  await transpileTsModule(path.join(root, "packages/problem-hint/hintTypes.ts"), path.join(tempDir, "hintTypes.mjs"));
-  await transpileTsModule(path.join(root, "packages/problem-hint/hintRegistry.ts"), path.join(tempDir, "hintRegistry.mjs"), [
-    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
-    ['from "./hintTypes"', 'from "./hintTypes.mjs"']
-  ]);
-  await transpileTsModule(path.join(root, "packages/problem-hint/generateHint.ts"), path.join(tempDir, "generateHint.mjs"), [
-    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
-    ['from "./hintRegistry"', 'from "./hintRegistry.mjs"'],
-    ['from "./hintTypes"', 'from "./hintTypes.mjs"']
-  ]);
-  await transpileTsModule(path.join(root, "packages/problem-hint/index.ts"), path.join(tempDir, "problem-hint.mjs"), [
-    ['from "packages/problem-hint/generateHint"', 'from "./generateHint.mjs"'],
-    ['from "packages/problem-hint/hintTypes"', 'from "./hintTypes.mjs"']
-  ]);
-  await transpileTsModule(path.join(root, "packages/problem-explanation/explanationTypes.ts"), path.join(tempDir, "explanationTypes.mjs"));
-  await transpileTsModule(path.join(root, "packages/problem-explanation/explanationRegistry.ts"), path.join(tempDir, "explanationRegistry.mjs"), [
-    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
-    ['from "./explanationTypes"', 'from "./explanationTypes.mjs"']
-  ]);
-  await transpileTsModule(path.join(root, "packages/problem-explanation/generateExplanation.ts"), path.join(tempDir, "generateExplanation.mjs"), [
-    ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
-    ['from "./explanationRegistry"', 'from "./explanationRegistry.mjs"'],
-    ['from "./explanationTypes"', 'from "./explanationTypes.mjs"']
-  ]);
-  await transpileTsModule(path.join(root, "packages/problem-explanation/index.ts"), path.join(tempDir, "problem-explanation.mjs"), [
-    ['from "packages/problem-explanation/generateExplanation"', 'from "./generateExplanation.mjs"'],
-    ['from "packages/problem-explanation/explanationTypes"', 'from "./explanationTypes.mjs"']
-  ]);
+  createProblemHintStub(path.join(tempDir, "problem-hint.mjs"));
+  createProblemExplanationStub(path.join(tempDir, "problem-explanation.mjs"));
 
   const sharedReplacements = [
     ...localModuleReplacements,
@@ -1153,6 +1143,9 @@ test("learning mode incorrect answers keep the current index and swap in a simil
   assert.equal(wrongOnce.session.combo, 0);
   assert.equal(wrongOnce.session.failCount, 1);
   assert.equal(wrongOnce.state.skillXP.E1_ADD_BASIC ?? 0, 0);
+  assert.equal(typeof wrongOnce.session.currentHint, "string");
+  assert.equal(wrongOnce.session.currentExplanation, undefined);
+  assert.equal(wrongOnce.session.history.at(-1)?.attemptCount, 1);
   assert.equal(secondProblem.patternKey, firstProblem.patternKey);
   assert.notEqual(secondProblem.problem.id, firstProblem.problem.id);
 
@@ -1163,6 +1156,9 @@ test("learning mode incorrect answers keep the current index and swap in a simil
   assert.equal(wrongTwice.session.attemptCount, 2);
   assert.equal(wrongTwice.session.currentDifficulty, 1);
   assert.equal(wrongTwice.session.failCount, 0);
+  assert.equal(wrongTwice.session.currentHint, undefined);
+  assert.equal(typeof wrongTwice.session.currentExplanation, "string");
+  assert.equal(wrongTwice.session.history.at(-1)?.attemptCount, 2);
   assert.equal(thirdProblem.patternKey, firstProblem.patternKey);
   assert.notEqual(thirdProblem.problem.id, secondProblem.problem.id);
 
@@ -1170,6 +1166,8 @@ test("learning mode incorrect answers keep the current index and swap in a simil
 
   assert.equal(correctAfterRetry.session.index, 1);
   assert.equal(correctAfterRetry.session.attemptCount, 0);
+  assert.equal(correctAfterRetry.session.currentHint, undefined);
+  assert.equal(correctAfterRetry.session.currentExplanation, undefined);
   assert.equal(correctAfterRetry.session.combo, 1);
   assert.equal(correctAfterRetry.state.skillXP.E1_ADD_BASIC, 35);
 });

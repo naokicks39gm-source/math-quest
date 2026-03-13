@@ -8,6 +8,7 @@ const source = fs.readFileSync(questPath, "utf8");
 
 test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes('const skillIdFromQuery = (params.get("skillId") ?? "").trim();'), true);
+  assert.equal(source.includes('const retryFromQuery = (params.get("retry") ?? "").trim();'), true);
   assert.equal(source.includes('const isLearningSessionMode = Boolean(skillIdFromQuery);'), true);
   assert.equal(source.includes('fetch("/api/learning/session/start"'), true);
   assert.equal(source.includes('fetch(`/api/learning/session/${encodeURIComponent(sessionId)}`'), true);
@@ -22,6 +23,15 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes("if (normalizedLearningSession.index !== learningSession.index) {"), true);
   assert.equal(source.includes("setLearningSession({"), true);
   assert.equal(source.includes("const currentLearningIndex = normalizedLearningSession?.index ?? 0;"), true);
+  assert.equal(source.includes("const [learningCurrentProblem, setLearningCurrentProblem] = useState<SessionProblem | null>(null);"), true);
+  assert.equal(source.includes("const [learningAttemptCount, setLearningAttemptCount] = useState(0);"), true);
+  assert.equal(source.includes("const [learningHint, setLearningHint] = useState<string | null>(null);"), true);
+  assert.equal(source.includes("const [learningExplanation, setLearningExplanation] = useState<string | null>(null);"), true);
+  assert.equal(source.includes("const syncLearningUiFromAnswer = useCallback((response: LearningSessionAnswerResponse) => {"), true);
+  assert.equal(source.includes("setLearningCurrentProblem(response.problem ?? null);"), true);
+  assert.equal(source.includes("setLearningAttemptCount(response.attemptCount ?? 0);"), true);
+  assert.equal(source.includes("setLearningHint(response.hint ?? null);"), true);
+  assert.equal(source.includes("setLearningExplanation(response.explanation ?? null);"), true);
   assert.equal(source.includes("currentLearningIndex >= (normalizedLearningSession?.session.problems.length ?? 0)"), true);
   assert.equal(source.includes("currentSkillXP >= currentSkillRequiredXP"), true);
   assert.equal(source.includes("await finishQuestLearningSession();"), true);
@@ -49,10 +59,21 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes("answer: answerText"), true);
   assert.equal(source.includes("carryoverHistory: options?.carryoverHistory"), true);
   assert.equal(source.includes("recentProblems: options?.recentProblems"), true);
+  assert.equal(source.includes("if (retryFromQuery) {"), true);
+  assert.equal(source.includes('console.info("[quest] retry requested"'), true);
+  assert.equal(source.includes("const handleRetry = useCallback(() => {"), true);
+  assert.equal(source.includes('const nextUrl = `/quest?skillId=${encodeURIComponent(currentLearningSkillId)}&retry=${Date.now()}`;'), true);
   assert.equal(source.includes("loadStateFromClient()"), true);
   assert.equal(source.includes("LEARNING_STATE_KEY"), true);
   assert.equal(source.includes('const LS_LEARNING_SESSION = "mq:learningSession";'), true);
+  assert.equal(source.includes("const ORDER_LEGACY_PROMPT_RE = /小さいほうから/u;"), true);
+  assert.equal(source.includes("const shouldForceFreshOrderSession = ("), true);
+  assert.equal(source.includes('skillId === "E1_NUMBER_ORDER"'), true);
+  assert.equal(source.includes("ORDER_LEGACY_PROMPT_RE.test(problem.problem.question)"), true);
   assert.equal(source.includes("if (storedSession.skillId !== skillId) {"), true);
+  assert.equal(source.includes("if (shouldForceFreshOrderSession(skillId, storedSession)) {"), true);
+  assert.equal(source.includes('console.info("[quest] stale order session detected; starting fresh session"'), true);
+  assert.equal(source.includes('console.info("[quest] order skill forces fresh session"'), true);
   assert.equal(source.includes("clearLearningRecovery();"), true);
   assert.equal(source.includes('trackAnalyticsEvent("session_start");'), true);
   assert.equal(source.includes('trackAnalyticsEvent("session_finish");'), true);
@@ -61,5 +82,6 @@ test("quest skill mode uses learning session lifecycle", () => {
   assert.equal(source.includes('return postJson("/api/session/answer", {'), true);
   assert.equal(source.includes("<SkillClearView"), true);
   assert.equal(source.includes("history={learningResult.history}"), true);
+  assert.equal(source.includes("onRetry={handleRetry}"), true);
   assert.equal(source.includes('!isLearningSessionMode && selectedPath && ('), true);
 });
