@@ -1,5 +1,8 @@
 import type { SkillProgress } from "./skillProgressTypes";
 
+import type { Explanation } from "packages/problem-explanation";
+import type { Hint } from "packages/problem-hint";
+
 type SessionGeneratedProblem = {
   id: string;
   question: string;
@@ -10,7 +13,10 @@ type SessionGeneratedProblem = {
   meta?: {
     source?: string;
     difficulty?: number;
+    patternId?: string;
   };
+  hint?: Hint;
+  explanation?: Explanation;
 };
 
 export type SessionProblem = {

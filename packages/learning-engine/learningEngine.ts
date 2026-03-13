@@ -6,7 +6,7 @@ import { getNextRecommendedSkillId } from "./progression-engine";
 import { updateSkillProgress } from "./skillProgressTracker";
 import type { SkillProgress } from "./skillProgressTypes";
 import type { Session, SessionHistoryEntry, SessionProblem } from "./sessionTypes";
-import { buildSession } from "./sessionBuilder";
+import { attachLearningAids, buildSession } from "./sessionBuilder";
 import { createLearningState, serializeState, updateXP, type LearningState } from "./studentStore";
 import { PROGRESSION_UNLOCK_THRESHOLD, isSkillUnlocked, unlockNextSkills } from "./skill-unlock";
 import { getWeakPatterns, resolveSkillPatterns, type WeakPattern } from "./weaknessAnalyzer";
@@ -152,7 +152,10 @@ const buildReplacementProblem = (
     if (replacement) {
       return {
         ...currentProblem,
-        problem: replacement,
+        problem: attachLearningAids({
+          ...currentProblem,
+          problem: replacement
+        }).problem,
         difficulty: clampSessionDifficulty(replacement.meta?.difficulty ?? targetDifficulty)
       };
     }

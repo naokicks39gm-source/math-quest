@@ -227,6 +227,9 @@ test("learning api routes delegate to learning engine with state in/out and old 
   assert.equal(apiTypesSource.includes("export type LearningSessionAnswerRequest = {"), true);
   assert.equal(apiTypesSource.includes("index: number;"), true);
   assert.equal(apiTypesSource.includes("answer: string;"), true);
+  assert.equal(apiTypesSource.includes("hint?: Hint;"), true);
+  assert.equal(apiTypesSource.includes("explanation?: Explanation;"), true);
+  assert.equal(apiTypesSource.includes("patternId?: string;"), true);
   assert.equal(apiTypesSource.includes("export type LearningSessionFinishResponse = {"), true);
   assert.equal(apiTypesSource.includes("skillProgressBefore: LearningSkillProgress | null;"), true);
   assert.equal(apiTypesSource.includes("skillProgressAfter: LearningSkillProgress | null;"), true);

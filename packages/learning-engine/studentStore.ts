@@ -13,6 +13,17 @@ type StoredGeneratedProblem = {
   meta?: {
     source?: string;
     difficulty?: number;
+    patternId?: string;
+  };
+  hint?: {
+    text: string;
+    type: "concept" | "strategy" | "step";
+    patternId: string;
+  };
+  explanation?: {
+    steps: string[];
+    summary: string;
+    patternId: string;
   };
 };
 
@@ -213,13 +224,39 @@ const parseSession = (value: unknown): Session | undefined => {
       return null;
     }
 
+    const hint =
+      isRecord(raw.hint) &&
+      typeof raw.hint.text === "string" &&
+      typeof raw.hint.patternId === "string" &&
+      (raw.hint.type === "concept" || raw.hint.type === "strategy" || raw.hint.type === "step")
+        ? {
+            text: raw.hint.text,
+            type: raw.hint.type as "concept" | "strategy" | "step",
+            patternId: raw.hint.patternId
+          }
+        : undefined;
+
+    const explanation =
+      isRecord(raw.explanation) &&
+      Array.isArray(raw.explanation.steps) &&
+      raw.explanation.steps.every((step) => typeof step === "string") &&
+      typeof raw.explanation.summary === "string" &&
+      typeof raw.explanation.patternId === "string"
+        ? {
+            steps: raw.explanation.steps as string[],
+            summary: raw.explanation.summary,
+            patternId: raw.explanation.patternId
+          }
+        : undefined;
+
     const meta = isRecord(raw.meta)
       ? {
           source: typeof raw.meta.source === "string" ? raw.meta.source : undefined,
           difficulty:
             typeof raw.meta.difficulty === "number" && Number.isFinite(raw.meta.difficulty)
               ? raw.meta.difficulty
-              : undefined
+              : undefined,
+          patternId: typeof raw.meta.patternId === "string" ? raw.meta.patternId : undefined
         }
       : undefined;
 
@@ -255,7 +292,9 @@ const parseSession = (value: unknown): Session | undefined => {
       patternKey: typeof raw.patternKey === "string" ? raw.patternKey : undefined,
       variables: variables as Record<string, number> | undefined,
       variableRanges: variableRanges as Record<string, [number, number]> | undefined,
-      meta
+      meta,
+      hint,
+      explanation
     };
   };
 

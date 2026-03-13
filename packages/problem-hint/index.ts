@@ -1,1 +1,2 @@
-export { DEFAULT_HINT, generateHint } from "packages/problem-hint/hint-generator";
+export { DEFAULT_HINT, generateHint, resolveHintPatternId } from "packages/problem-hint/generateHint";
+export type { Hint } from "packages/problem-hint/hintTypes";

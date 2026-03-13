@@ -26,82 +26,70 @@ const loadHintModule = async () => {
   const os = await import("node:os");
   const { pathToFileURL } = await import("node:url");
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "problem-hint-"));
-  const hintTemplatesSource = path.join(root, "packages/problem-hint/hint-templates.ts");
-  const hintGeneratorSource = path.join(root, "packages/problem-hint/hint-generator.ts");
-  const hintTemplatesOutput = path.join(tempDir, "hint-templates.mjs");
-  const hintGeneratorOutput = path.join(tempDir, "hint-generator.mjs");
-  const problemEngineStubOutput = path.join(tempDir, "problem-engine-stub.mjs");
+  const files = [
+    "packages/problem-hint/hintTypes.ts",
+    "packages/problem-hint/hintRegistry.ts",
+    "packages/problem-hint/generateHint.ts"
+  ];
 
-  fs.writeFileSync(problemEngineStubOutput, "export {};\n", "utf8");
+  fs.writeFileSync(path.join(tempDir, "problem-engine-stub.mjs"), "export {};\n", "utf8");
 
-  await transpileTsModule(hintTemplatesSource, hintTemplatesOutput);
-  await transpileTsModule(hintGeneratorSource, hintGeneratorOutput, [
+  await transpileTsModule(path.join(root, files[0]), path.join(tempDir, "hintTypes.mjs"));
+  await transpileTsModule(path.join(root, files[1]), path.join(tempDir, "hintRegistry.mjs"), [
     ['from "packages/problem-engine"', 'from "./problem-engine-stub.mjs"'],
-    ['from "packages/problem-hint/hint-templates"', 'from "./hint-templates.mjs"']
+    ['from "./hintTypes"', 'from "./hintTypes.mjs"']
+  ]);
+  await transpileTsModule(path.join(root, files[2]), path.join(tempDir, "generateHint.mjs"), [
+    ['from "packages/problem-engine"', 'from "./problem-engine-stub.mjs"'],
+    ['from "./hintRegistry"', 'from "./hintRegistry.mjs"'],
+    ['from "./hintTypes"', 'from "./hintTypes.mjs"']
   ]);
 
-  return import(`${pathToFileURL(hintGeneratorOutput).href}?t=${Date.now()}`);
+  return import(`${pathToFileURL(path.join(tempDir, "generateHint.mjs")).href}?t=${Date.now()}`);
 };
 
-test("generateHint resolves known pattern key by prefix", async () => {
+test("generateHint returns E1 hint object from explicit meta patternId", async () => {
   const hintModule = await loadHintModule();
   const hint = hintModule.generateHint({
-    id: "J1-LIN-BASIC-01:test:1",
-    question: "3x + 2 = 11",
+    id: "count:test:1",
+    question: "●●● はいくつ？",
     answer: "3",
-    patternKey: "J1-LIN-BASIC-01",
-    variables: { a: 3, b: 2, c: 11, x: 3 }
+    meta: { patternId: "E1_NUMBER_COUNT" }
   });
 
-  assert.equal(hint, "x を求めるために移項しましょう");
+  assert.deepEqual(hint, {
+    text: "いくつある？",
+    type: "concept",
+    patternId: "E1_NUMBER_COUNT"
+  });
 });
 
-test("generateHint builds multiline make10 hint when variables are present", async () => {
+test("generateHint resolves E1 patternId from patternKey fallback", async () => {
   const hintModule = await loadHintModule();
   const hint = hintModule.generateHint({
-    id: "E1-ADD-MAKE10:test:10",
-    question: "8 + 7",
-    answer: "10",
-    patternKey: "E1-ADD-MAKE10",
-    variables: { a: 8, b: 2 }
+    id: "compare:test:1",
+    question: "3 と 5",
+    answer: "5",
+    patternKey: "E1-NUM-COMPARE-01"
   });
 
-  assert.equal(hint.includes("まず10を作ります"), true);
-  assert.equal(hint.includes("8 + 2"), true);
-  assert.equal(hint.includes("8 + 2 + 0"), true);
+  assert.equal(hint.patternId, "E1_NUMBER_COMPARE");
+  assert.equal(hint.text, "どちらがおおきい？");
+  assert.equal(hint.type, "concept");
 });
 
-test("generateHint falls back to default hint for unknown pattern keys", async () => {
+test("generateHint falls back for unknown patterns", async () => {
   const hintModule = await loadHintModule();
   const hint = hintModule.generateHint({
-    id: "UNKNOWN:test:0",
+    id: "unknown:test:1",
     question: "1 + 1",
     answer: "2",
     patternKey: "UNKNOWN-PATTERN-01"
   });
 
-  assert.equal(hint, hintModule.DEFAULT_HINT);
-});
-
-test("generateHint falls back to default hint when pattern key is missing", async () => {
-  const hintModule = await loadHintModule();
-  const hint = hintModule.generateHint({
-    id: "missing:test:0",
-    question: "1 + 1",
-    answer: "2"
+  assert.deepEqual(hint, {
+    text: "よくかんがえてみよう",
+    type: "concept",
+    patternId: ""
   });
-
-  assert.equal(hint, hintModule.DEFAULT_HINT);
-});
-
-test("generateHint falls back to default hint when template variables are missing", async () => {
-  const hintModule = await loadHintModule();
-  const hint = hintModule.generateHint({
-    id: "E1-ADD-MAKE10:test:10",
-    question: "8 + 7",
-    answer: "10",
-    patternKey: "E1-ADD-MAKE10"
-  });
-
-  assert.equal(hint, hintModule.DEFAULT_HINT);
 });

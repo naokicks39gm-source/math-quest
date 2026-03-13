@@ -1,1 +1,6 @@
-export { DEFAULT_EXPLANATION, generateExplanation } from "packages/problem-explanation/explanation-generator";
+export {
+  DEFAULT_EXPLANATION,
+  generateExplanation,
+  resolveExplanationPatternId
+} from "packages/problem-explanation/generateExplanation";
+export type { Explanation } from "packages/problem-explanation/explanationTypes";
