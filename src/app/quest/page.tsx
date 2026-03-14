@@ -61,6 +61,7 @@ import {
   isModelLoaded,
   is2DigitModelLoaded
 } from '@/utils/mnistModel'; // Import MNIST model utilities
+import { div } from 'framer-motion/m';
 
 type CharacterType = 'warrior' | 'mage';
 
@@ -2127,7 +2128,12 @@ function QuestPageInner() {
 
   const resetLearningSessionUi = useCallback(() => {
     finishGuardRef.current = false;
-    setLearningResult(null);
+  
+  if(status !== "cleared"){
+ 
+}
+  
+ 
     setLearningResultSkillId(null);
     setLearningSession(null);
     setLearningSessionId(null);
@@ -2138,7 +2144,6 @@ function QuestPageInner() {
     setQuestionResults({});
     setItemIndex(0);
     setCombo(0);
-    setStatus("playing");
     setMessage("Battle Start!");
     resetQuestionUi();
   }, []);
@@ -2156,6 +2161,7 @@ function QuestPageInner() {
     resetProgress();
     setLearningState(null);
     setLearningSession(null);
+    console.log("LEARNING RESULT CLEARED")
     setLearningResult(null);
     setLearningSessionId(null);
     setLearningError(null);
@@ -2249,7 +2255,7 @@ function QuestPageInner() {
       });
       trackAnalyticsEvent("session_start");
       sessionStartTrackedRef.current = true;
-      setStatus("playing");
+      console.log("STATUS CHANGE →", "playing");setStatus("playing");
       setQuizBuildError(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "learning_session_start_failed";
@@ -2265,9 +2271,11 @@ function QuestPageInner() {
     finishGuardRef.current = false;
     setLearningLoading(true);
     setLearningError(null);
+    console.log("LEARNING RESULT CLEARED")
     setLearningResult(null);
     setLearningResultSkillId(null);
     setQuestionResults({});
+    console.log("STATUS CHANGE →", "playing");
     setStatus("playing");
     resetQuestionUi();
 
@@ -2411,8 +2419,10 @@ function QuestPageInner() {
     updateDailyStreak();
     trackAnalyticsEvent("session_finish");
     setLearningResultSkillId(completedSkillId ?? skillIdFromQuery);
+   console.log("LEARNING RESULT SET")
     setLearningResult(data.result);
     console.log("LEARNING RESULT SET");
+    console.log("STATUS CHANGE →", "cleared");
     setStatus("cleared");
     setMessage("できた！");
     return data.result;
@@ -2531,6 +2541,7 @@ function QuestPageInner() {
 
   useEffect(() => {
     if (!skillIdFromQuery) return;
+    console.log("LEARNING RESULT CLEARED")
     setLearningResult(null);
     setLearningResultSkillId(null);
     setLearningCurrentProblem(null);
@@ -2550,44 +2561,56 @@ function QuestPageInner() {
     if (!isLearningSessionMode || !skillIdFromQuery) {
       setLearningError(null);
       setLearningLoading(false);
+      console.log("LEARNING RESULT CLEARED")
       setLearningResult(null);
       syncLearningUiFromSession(null, null);
       clearLearningRecoveryStorage();
       return;
     }
     const recovery = loadLearningRecovery();
-    const forceFreshStart = Boolean(freshFromQuery || retryFromQuery);
-    const persistedSession = loadStateFromClient().session;
+   const forceFreshStart =
+ 　Boolean((freshFromQuery || retryFromQuery) && !learningResult);
+  const persistedSession = loadStateFromClient().session;
     const hasRecovery = forceFreshStart ? false : Boolean(recovery?.sessionId || persistedSession);
     console.log("QUEST START");
     console.log("fresh:", forceFreshStart);
     console.log("hasRecovery:", hasRecovery);
     console.log("learningResult:", learningResult);
-    console.log("session:", forceFreshStart ? null : (persistedSession ?? null));
-    if (forceFreshStart) {
-      purgeFreshLearningRecovery();
-      clearLearningRecoveryStorage();
+ console.log("session:", forceFreshStart ? null : (persistedSession ?? null));
+
+if (learningResult) {
+ console.log("BLOCK SESSION START (CLEAR STATE)");
+ return;
+} 
+ if (forceFreshStart && status !== "cleared" && !learningResult) {purgeFreshLearningRecovery();
+ clearLearningRecoveryStorage();
       clearPersistedLearningSession(skillIdFromQuery);
-      resetLearningSessionUi();
-      void startLearningSession(skillIdFromQuery, { fresh: true });
-      return;
-    }
-    if (recovery?.sessionId) {
-      if (skillIdFromQuery === "E1_NUMBER_ORDER") {
+ resetLearningSessionUi();
+ if (!learningResult) {
+ void startLearningSession(skillIdFromQuery, { fresh: true });
+}
+return;
+}
+if (recovery?.sessionId && !learningResult) {
+        if (skillIdFromQuery === "E1_NUMBER_ORDER") {
         console.info("[quest] order skill forces fresh session", { skillId: skillIdFromQuery });
         purgeFreshLearningRecovery();
         clearLearningRecoveryStorage();
         clearPersistedLearningSession(skillIdFromQuery);
-        void startLearningSession(skillIdFromQuery, { fresh: true });
-        return;
+       if (!learningResult) {
+ void startLearningSession(skillIdFromQuery, { fresh: true });
+}
+ return;
       }
       if (Date.now() > recovery.expiresAt) {
         purgeFreshLearningRecovery();
         clearLearningRecoveryStorage();
         clearPersistedLearningSession(skillIdFromQuery);
         console.info("[quest] recovery expired; starting new session", { skillId: skillIdFromQuery });
-        void startLearningSession(skillIdFromQuery, { fresh: true });
-        return;
+       if (!learningResult) {
+ void startLearningSession(skillIdFromQuery, { fresh: true });
+}
+ return;
       }
       if (recovery.skillId !== skillIdFromQuery) {
         purgeFreshLearningRecovery();
@@ -3160,6 +3183,7 @@ function QuestPageInner() {
       setQuizItems(generated);
       setItemIndex(0);
       setQuestionResults({});
+      console.log("STATUS CHANGE →", "playing");
       setStatus("playing");
       setQuizBuildError(null);
       setMessage("Battle Start!");
@@ -3187,6 +3211,7 @@ function QuestPageInner() {
       setQuizItems(generated);
       setItemIndex(0);
       setQuestionResults({});
+      console.log("STATUS CHANGE →", "playing");
       setStatus("playing");
       setQuizBuildError(null);
       setMessage("Battle Start!");
@@ -3214,7 +3239,7 @@ function QuestPageInner() {
       setQuizItems(generated);
       setItemIndex(0);
       setQuestionResults({});
-      setStatus("playing");
+      console.log("STATUS CHANGE →", "playing");setStatus("playing");
       setQuizBuildError(null);
       setMessage("Battle Start!");
       setPracticeResult(null);
@@ -3287,7 +3312,7 @@ function QuestPageInner() {
     setQuizItems(nextSet);
     setItemIndex(0);
     setQuestionResults({});
-    setStatus("playing");
+    console.log("STATUS CHANGE →", "playing");setStatus("playing");
     setQuizBuildError(null);
     setMessage("Battle Start!");
     setPracticeResult(null);
@@ -3588,6 +3613,7 @@ function QuestPageInner() {
     }
     setItemIndex((v) => {
       if (v + 1 >= totalQuizQuestions) {
+        console.log("STATUS CHANGE →", "cleared")
         setStatus('cleared');
         setMessage("クリアー！");
         return v;
@@ -3622,6 +3648,7 @@ function QuestPageInner() {
   const handleRetry = useCallback(() => {
     if (!currentLearningSkillId || learningLoading) return;
     console.log("RETRY CLICKED");
+   console.log("LEARNING RESULT CLEARED")
     setLearningResult(null);
     resetLearningSessionUi();
     purgeFreshLearningRecovery();
@@ -3650,6 +3677,7 @@ function QuestPageInner() {
     setQuadraticActiveIndex(0);
     setPreviewImages([]);
     setCombo(0);
+    console.log("STATUS CHANGE →", "playing")
     setStatus("playing");
     setMessage("Battle Start!");
     canvasRef.current?.clear();
@@ -3722,6 +3750,7 @@ function QuestPageInner() {
       { id: Date.now() + Math.random(), text, userAnswer, correct }
     ]);
     if (questionIndex >= totalQuizQuestions) {
+     console.log("STATUS CHANGE →", "cleared")
       setStatus('cleared');
       setMessage("クリアー！");
       return;
@@ -5263,9 +5292,32 @@ function QuestPageInner() {
 
   const displayedAnswer = inputMode === 'numpad' ? input : (recognizedNumber ?? "");
 
-  if (isLearningSessionMode && !learningProblem) {
-    return null;
-  }
+console.log("learningResult =", learningResult)
+console.log("status =", status)
+
+
+  if (status === "cleared" && learningResult) {
+
+ console.log("CLEAR RENDER")
+
+ return (
+  <div className="w-full max-w-3xl mx-auto">
+   <SkillClearView
+    skillTitle={currentLearningSkillTitle}
+    gradeLevel={currentSkillNode?.gradeLevel}
+    earnedXp={learningResult.earnedXp}
+    skillXp={learningResult.skillXpAfter}
+    requiredXp={learningResult.requiredXP}
+    nextSkillTitle={recommendedSkillNode?.title ?? null}
+    history={learningResult.history}
+    onNext={recommendedLearningSkillId ? () => router.push(`/quest?skillId=${recommendedLearningSkillId}`) : undefined}
+    onRetry={handleRetry}
+    onFinish={() => router.push("/skills")}
+   />
+  </div>
+ )
+
+}
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-between p-4 max-w-md mx-auto border-x border-slate-200 shadow-sm relative">
@@ -5638,21 +5690,6 @@ function QuestPageInner() {
             <div className="text-base font-black text-sky-700">れんしゅうを じゅんびちゅうです</div>
             <div className="mt-2 text-sm text-sky-700">れんしゅうを じゅんびしています...</div>
           </div>
-        ) : learningResult ? (
-            <div className="w-full max-w-3xl">
-              <SkillClearView
-                skillTitle={currentLearningSkillTitle}
-                gradeLevel={currentSkillNode?.gradeLevel ?? getPracticeSkill(currentLearningSkillId ?? "")?.gradeLevel ?? "1"}
-                earnedXp={learningResult.earnedXp}
-                skillXp={learningResult.skillXpAfter}
-                requiredXP={learningResult.requiredXP}
-                nextSkillTitle={recommendedSkillNode?.title ?? null}
-                history={learningResult.history}
-                onNext={recommendedLearningSkillId ? () => router.push(`/quest?skillId=${encodeURIComponent(recommendedLearningSkillId)}&fresh=1`) : undefined}
-                onRetry={handleRetry}
-                onFinish={() => router.push("/skills")}
-              />
-            </div>
         ) : status === 'blocked' ? (
           <div className="w-full text-center rounded-2xl border border-red-200 bg-red-50 px-4 py-6 shadow-sm">
             <div className="text-base font-black text-red-700">出題を準備できませんでした</div>
