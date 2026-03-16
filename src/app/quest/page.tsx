@@ -3,7 +3,11 @@
 
 import { useLearningSessionController }
 from "./hooks/useLearningSessionController"
+import {useLearningRecovery}
+from "./hooks/useLearningRecovery"
 import { useQuestSession } from "../../../packages/ui/hooks/useQuestSession";
+import {useLearningRouting}
+from "./hooks/useLearningRouting"
 import { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from "react-dom";
@@ -1789,8 +1793,6 @@ const predictDigitEnsemble = (tensor: tf.Tensor2D) => {
 function QuestPageInner() {
   const quest = useQuestSession();
   const learningActions = useLearningActions(quest);
- 
-
   const router = useRouter();
   const params = useSearchParams();
   const devMode = params.get("dev") === "1";
@@ -1885,6 +1887,9 @@ function QuestPageInner() {
   const [selectedType, setSelectedType] = useState<TypeDef | null>(defaultType);
   const lastSelectionSyncKeyRef = useRef<string | null>(null);
   const [itemIndex, setItemIndex] = useState(0);
+  const [learningAttemptCount,
+setLearningAttemptCount] =
+useState(0)
   const [practiceResult, setPracticeResult] = useState<{ ok: boolean; correctAnswer: string } | null>(null);
   const [lastAutoDrawExpected, setLastAutoDrawExpected] = useState("");
   const [autoDrawBatchSummary, setAutoDrawBatchSummary] = useState<string | null>(null);
@@ -1899,6 +1904,37 @@ function QuestPageInner() {
   
   const [learningError, setLearningError] = useState<string | null>(null);
   const [learningSessionId, setLearningSessionId] = useState<string | null>(null);
+  
+  const learningRecovery = useLearningRecovery({
+
+quest,
+
+setLearningSessionId,
+setLearningResultSkillId,
+
+setItemIndex,
+setCombo,
+
+setLearningAttemptCount,
+
+setQuestionResults
+
+})
+  const learningRouting =
+useLearningRouting({
+
+skillIdFromQuery,
+
+learningSessionId,
+
+setLearningSessionId,
+
+clearLearningRecoveryStorage:
+learningRecovery.clearLearningRecoveryStorage,
+
+clearPersistedLearningSession
+
+})
   const [quizBuildError, setQuizBuildError] = useState<string | null>(null);
   const finishGuardRef = useRef(false);
   const advanceGuardRef = useRef(false);
@@ -2185,39 +2221,7 @@ const resetLearningSessionUi = useCallback(() => {
     window.localStorage.setItem(LS_LEARNING_SESSION, JSON.stringify(recovery));
   };
 
-  const persistLearningState = (
-    nextState: LearningState,
-    options?: {
-      sessionId?: string | null;
-      recoveryAnswers?: LearningSessionRecoveryAnswer[];
-      skillId?: string;
-      expiresAt?: number;
-    }
-  ) => {
-    const persistedRecovery = typeof window !== "undefined" ? loadLearningRecovery() : null;
-    const nextSkillId =
-      options?.skillId ?? nextState.session?.skillId ?? persistedRecovery?.skillId ?? quest.session?.skillId ?? null;
-    setLearningState(nextState);
-    quest.setSession(nextState.session ? { ...nextState.session, skillId: nextSkillId ?? nextState.session.skillId } : null);
-    syncLearningUiFromSession(nextState.session, nextState.session?.problems[nextState.session.index] ?? null);
-    const nextSessionId = options?.sessionId ?? learningSessionId;
-    if (nextSessionId) {
-      setLearningSessionId(nextSessionId);
-    }
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(LEARNING_STATE_KEY, JSON.stringify(nextState));
-      if (nextSessionId && nextState.session) {
-        saveLearningRecovery({
-          sessionId: nextSessionId,
-          skillId: nextSkillId ?? skillIdFromQuery,
-          currentIndex: nextState.session.index,
-          answers: options?.recoveryAnswers ?? persistedRecovery?.answers ?? [],
-          expiresAt: options?.expiresAt ?? persistedRecovery?.expiresAt ?? Date.now() + LEARNING_SESSION_TTL_MS
-        });
-      }
-    }
-  };
-
+ 
   const startLearningSession = async (
     skillId: string,
     options?: {
@@ -2251,7 +2255,7 @@ const resetLearningSessionUi = useCallback(() => {
       if (!("session" in data) || !data.session?.problems?.length) {
         throw new Error("learning_session_problem_unavailable");
       }
-      persistLearningState(data.state, {
+      learningRecovery.persistLearningState(data.state, {
         sessionId: data.sessionId,
         recoveryAnswers: [],
         skillId,
@@ -2301,16 +2305,16 @@ const resetLearningSessionUi = useCallback(() => {
       if (!("session" in data) || !data.session?.problems?.length) {
         throw new Error("learning_session_problem_unavailable");
       }
-      const recovery = loadLearningRecovery();
+      const recovery = learningRecovery.loadLearningRecovery();
       const storedSession = data.session;
       if (storedSession.skillId !== skillId) {
-        clearLearningRecoveryStorage();
+        learningRecovery.clearLearningRecoveryStorage();
         clearPersistedLearningSession(skillId);
         setLearningSessionId(null);
         return false;
       }
       if (shouldForceFreshOrderSession(skillId, storedSession)) {
-        clearLearningRecoveryStorage();
+        learningRecovery.clearLearningRecoveryStorage();
         clearPersistedLearningSession(skillId);
         setLearningSessionId(null);
         console.info("[quest] stale order session detected; starting fresh session", {
@@ -2319,7 +2323,7 @@ const resetLearningSessionUi = useCallback(() => {
         });
         return false;
       }
-      persistLearningState(data.state, {
+      learningRecovery.persistLearningState(data.state, {
         sessionId: data.sessionId,
         recoveryAnswers: recovery?.answers ?? [],
         skillId,
@@ -2333,7 +2337,7 @@ const resetLearningSessionUi = useCallback(() => {
       setQuizBuildError(null);
       return true;
     } catch (error) {
-      clearLearningRecoveryStorage();
+      learningRecovery.clearLearningRecoveryStorage();
       clearPersistedLearningSession(skillId);
       const message = error instanceof Error ? error.message : "learning_session_resume_failed";
       setLearningError(message);
@@ -2649,8 +2653,8 @@ finishGuardRef,
 advanceGuardRef,
 autoNextTimerRef,
 wrongMarkTimerRef,
-persistLearningState,
-clearLearningRecovery,
+persistLearningState: learningRecovery.persistFullLearningState,
+clearLearningRecoveryStorage: learningRecovery.clearLearningRecoveryStorage,
 setLearningSessionId,
 updateDailyStreak,
 trackAnalyticsEvent,
@@ -3493,7 +3497,7 @@ setResultMark
     setLearningResult(null);
     resetLearningSessionUi();
     purgeFreshLearningRecovery();
-    clearLearningRecoveryStorage();
+    learningRecovery.clearLearningRecoveryStorage();
     clearPersistedLearningSession(currentLearningSkillId);
     const nextUrl = `/quest?skillId=${encodeURIComponent(currentLearningSkillId)}&fresh=1`;
     console.info("[quest] router.replace retry", { nextUrl });
