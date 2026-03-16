@@ -483,18 +483,18 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): R
   const finished = result.correct && resolvedSession.index >= resolvedSession.problems.length;
 
   return {
-    state: nextState,
-    session: resolvedSession,
-    finished,
-    correctCount: resolvedSession.correct,
-    totalCount: resolvedSession.problems.length,
-    xpGained: nextState.student.xpSession,
-    nextProblem: finished ? null : (resolvedSession.problems[resolvedSession.index] ?? null)
-  
+  state: nextState,
+  session: resolvedSession,
+  finished: finished,
+  correctCount: resolvedSession.correct,
+  totalCount: resolvedSession.problems.length,
+  xpGained: nextState.student.xpSession,
+  nextProblem: finished ? null : (resolvedSession.problems[resolvedSession.index] ?? null),
   attemptCount: nextAttemptCount,
-hint: !result.correct && nextAttemptCount >= 1 ? "hint" : null,
-explanation: !result.correct && nextAttemptCount >= 2 ? "explanation" : null
-  };
+  hint: !result.correct && nextAttemptCount >= 1 ? currentProblem.hint.text : null,
+  explanation: !result.correct && nextAttemptCount >= 2 ? formatExplanationText(currentProblem) : null
+};
+
 }
 
 export function finishSession(state: LearningState): { state: LearningState; result: SessionResult } {
