@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useQuestSession } from "../../../packages/ui/hooks/useQuestSession";
 import { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from "react-dom";
@@ -158,6 +159,7 @@ type LearningSessionRecovery = {
   answers: LearningSessionRecoveryAnswer[];
   expiresAt: number;
 };
+
 
 const LS_ACTIVE_SESSION_ID = "mq:activeSessionId";
 const LS_STUDENT_ID = "mq:studentId";
@@ -1782,6 +1784,7 @@ const predictDigitEnsemble = (tensor: tf.Tensor2D) => {
 };
 
 function QuestPageInner() {
+  const quest = useQuestSession();
   const router = useRouter();
   const params = useSearchParams();
   const devMode = params.get("dev") === "1";
@@ -1806,7 +1809,6 @@ function QuestPageInner() {
   const [fractionInput, setFractionInput] = useState<FractionEditorState>(EMPTY_FRACTION_EDITOR);
   const [message, setMessage] = useState('Battle Start!');
   const [character, setCharacter] = useState<CharacterType>('warrior');
-  const [status, setStatus] = useState<'playing' | 'cleared' | 'blocked'>('playing');
   const [inputMode] = useState<'numpad' | 'handwriting'>('numpad');
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
@@ -1886,8 +1888,7 @@ function QuestPageInner() {
   const [sessionActionLoading, setSessionActionLoading] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [learningState, setLearningState] = useState<LearningState | null>(null);
-  const [learningSession, setLearningSession] = useState<Session | null>(null);
-  const [learningResult, setLearningResult] = useState<LearningSessionFinishResponse["result"] | null>(null);
+  
   const [learningResultSkillId, setLearningResultSkillId] = useState<string | null>(null);
   const [learningCurrentProblem, setLearningCurrentProblem] = useState<SessionProblem | null>(null);
   const [learningAttemptCount, setLearningAttemptCount] = useState(0);
@@ -1947,7 +1948,7 @@ function QuestPageInner() {
     [questionResults]
   );
   const isLearningSessionMode = Boolean(skillIdFromQuery);
-  const currentLearningSkillId = learningSession?.skillId ?? learningResultSkillId ?? null;
+  const currentLearningSkillId = quest.session?.skillId ?? learningResultSkillId ?? null;
   const currentSkillProgress = currentLearningSkillId
     ? (learningState?.skillProgress[currentLearningSkillId] ?? null)
     : null;
@@ -1958,12 +1959,12 @@ function QuestPageInner() {
     : [];
   const currentSessionSeed = toDiagnosticSeed(learningSessionId);
   const recommendedLearningSkillId = useMemo(() => {
-    if (!learningResult || !learningState) {
+    if (!quest.learningResult || !learningState) {
       return null;
     }
 
-    if (learningResult.recommendation.type === "skill") {
-      return learningResult.recommendation.skillId;
+    if (quest.learningResult.recommendation.type === "skill") {
+      return quest.learningResult.recommendation.skillId;
     }
 
     return (
@@ -1972,7 +1973,8 @@ function QuestPageInner() {
           learningState.unlockedSkills.includes(skill.id) && (learningState.skillProgress[skill.id]?.mastery ?? 0) < 0.8
       )?.id ?? null
     );
-  }, [learningResult, learningState]);
+  }, [quest.learningResult, learningState]);
+
   const skillTree = useMemo(() => {
     if (!learningState) return [];
     return getSkillTree(learningState);
@@ -1989,7 +1991,7 @@ function QuestPageInner() {
     const unlockedCandidates = unresolvedSkills.filter((skill) => skill.unlocked);
     return unlockedCandidates[0] ?? unresolvedSkills[0] ?? null;
   }, [skillTree]);
-  const showCurrentSkillSummary = !isLearningSessionMode && currentSkillNode != null && learningSession == null && status !== "playing";
+  const showCurrentSkillSummary = !isLearningSessionMode && currentSkillNode != null && quest.session== null && quest.status !== "playing";
   const useFastLearningLoop = isLearningSessionMode;
   useEffect(() => {
     if (!isLearningSessionMode) return;
@@ -2000,17 +2002,17 @@ function QuestPageInner() {
     });
   }, [freshFromQuery, isLearningSessionMode, retryFromQuery, skillIdFromQuery]);
   useEffect(() => {
-    if (!(status === "cleared" && learningResult)) return;
+    if (!(quest.status === "cleared" && quest.learningResult)) return;
     console.info("[quest] clear-view render", {
       currentSkillId: currentLearningSkillId,
-      historyLength: learningResult.history.length
+      historyLength: quest.learningResult.history.length
     });
-  }, [currentLearningSkillId, learningResult, status]);
+  }, [currentLearningSkillId, quest.learningResult ,quest.status]);
   useEffect(() => {
-    if (!learningResult) return;
-    console.log("learningResult state:", learningResult);
+    if (! quest.learningResult) return;
+    console.log(" quest.learningResult state:", quest.learningResult);
     console.log("RENDER CLEAR");
-  }, [learningResult]);
+  }, [quest.learningResult]);
   const correctCount = useMemo(
     () => clearResults.filter(([, result]) => result.everWrong !== true).length,
     [clearResults]
@@ -2129,13 +2131,13 @@ function QuestPageInner() {
   const resetLearningSessionUi = useCallback(() => {
     finishGuardRef.current = false;
   
-  if(status !== "cleared"){
+  if(quest.status !== "cleared"){
  
 }
   
  
     setLearningResultSkillId(null);
-    setLearningSession(null);
+    quest.setSession(null);
     setLearningSessionId(null);
     setLearningCurrentProblem(null);
     setLearningAttemptCount(0);
@@ -2160,7 +2162,7 @@ function QuestPageInner() {
 
     resetProgress();
     setLearningState(null);
-    setLearningSession(null);
+    quest.setSession(null);
     console.log("LEARNING RESULT CLEARED")
     setLearningResult(null);
     setLearningSessionId(null);
@@ -2186,9 +2188,9 @@ function QuestPageInner() {
   ) => {
     const persistedRecovery = typeof window !== "undefined" ? loadLearningRecovery() : null;
     const nextSkillId =
-      options?.skillId ?? nextState.session?.skillId ?? persistedRecovery?.skillId ?? learningSession?.skillId ?? null;
+      options?.skillId ?? nextState.session?.skillId ?? persistedRecovery?.skillId ?? quest.session?.skillId ?? null;
     setLearningState(nextState);
-    setLearningSession(nextState.session ? { ...nextState.session, skillId: nextSkillId ?? nextState.session.skillId } : null);
+    quest.setSession(nextState.session ? { ...nextState.session, skillId: nextSkillId ?? nextState.session.skillId } : null);
     syncLearningUiFromSession(nextState.session, nextState.session?.problems[nextState.session.index] ?? null);
     const nextSessionId = options?.sessionId ?? learningSessionId;
     if (nextSessionId) {
@@ -2255,12 +2257,12 @@ function QuestPageInner() {
       });
       trackAnalyticsEvent("session_start");
       sessionStartTrackedRef.current = true;
-      console.log("STATUS CHANGE →", "playing");setStatus("playing");
+      console.log("STATUS CHANGE →", "playing");quest.setStatus("playing");
       setQuizBuildError(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "learning_session_start_failed";
       setLearningError(message);
-      setStatus("blocked");
+      quest.setStatus("blocked");
       setQuizBuildError(`れんしゅうを はじめられませんでした: ${message}`);
     } finally {
       setLearningLoading(false);
@@ -2272,11 +2274,11 @@ function QuestPageInner() {
     setLearningLoading(true);
     setLearningError(null);
     console.log("LEARNING RESULT CLEARED")
-    setLearningResult(null);
+    quest.setLearningResult(null);
     setLearningResultSkillId(null);
     setQuestionResults({});
     console.log("STATUS CHANGE →", "playing");
-    setStatus("playing");
+    quest.setStatus("playing");
     resetQuestionUi();
 
     try {
@@ -2334,8 +2336,8 @@ function QuestPageInner() {
   };
 
   const submitLearningAnswer = async (correct: boolean, answerText: string) => {
-    if (!learningState || !learningSessionId || !learningSession) return null;
-    const answerIndex = learningSession.index;
+    if (!learningState || !learningSessionId || !quest.session) return null;
+    const answerIndex = quest.session.index;
     const response = await fetch("/api/learning/session/answer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2355,7 +2357,7 @@ function QuestPageInner() {
     }
     syncLearningUiFromAnswer(data);
     console.log("finished:", data.finished);
-    const answeredSkillId = data.session.skillId ?? learningSession.skillId ?? skillIdFromQuery;
+    const answeredSkillId = data.session.skillId ?? quest.session.skillId ?? skillIdFromQuery;
     const requiredXpForAnsweredSkill = getPracticeSkill(answeredSkillId ?? "")?.requiredXP ?? currentSkillRequiredXP;
     const answeredSkillXp = answeredSkillId ? data.state.skillXP[answeredSkillId] ?? 0 : 0;
     const reachedSkillXpTarget = Boolean(answeredSkillId) && answeredSkillXp >= requiredXpForAnsweredSkill;
@@ -2365,12 +2367,12 @@ function QuestPageInner() {
       recoveryAnswers: [
         ...existingAnswers,
         {
-          index: learningSession.index,
+          index: quest.session.index,
           answer: answerText,
           correct
         }
       ],
-      skillId: learningSession.skillId ?? skillIdFromQuery,
+      skillId: quest.session.skillId ?? skillIdFromQuery,
       expiresAt: data.expiresAt
     });
     if (data.finished || reachedSkillXpTarget) {
@@ -2385,7 +2387,7 @@ function QuestPageInner() {
 
   const finishQuestLearningSession = async (): Promise<LearningSessionFinishResponse["result"] | null> => {
     if (!learningState || !learningSessionId) return null;
-    const completedSkillId = learningSession?.skillId ?? learningResultSkillId ?? null;
+    const completedSkillId = quest.session?.skillId ??  quest.learningResultSkillId ?? null;
     const response = await fetch("/api/learning/session/finish", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2423,7 +2425,7 @@ function QuestPageInner() {
     setLearningResult(data.result);
     console.log("LEARNING RESULT SET");
     console.log("STATUS CHANGE →", "cleared");
-    setStatus("cleared");
+    quest.setStatus("cleared");
     setMessage("できた！");
     return data.result;
   };
@@ -2542,7 +2544,7 @@ function QuestPageInner() {
   useEffect(() => {
     if (!skillIdFromQuery) return;
     console.log("LEARNING RESULT CLEARED")
-    setLearningResult(null);
+    quest.setLearningResult(null);
     setLearningResultSkillId(null);
     setLearningCurrentProblem(null);
     setLearningAttemptCount(0);
@@ -2569,35 +2571,35 @@ function QuestPageInner() {
     }
     const recovery = loadLearningRecovery();
    const forceFreshStart =
- 　Boolean((freshFromQuery || retryFromQuery) && !learningResult);
+ 　Boolean((freshFromQuery || retryFromQuery) && ! quest.learningResult);
   const persistedSession = loadStateFromClient().session;
     const hasRecovery = forceFreshStart ? false : Boolean(recovery?.sessionId || persistedSession);
     console.log("QUEST START");
     console.log("fresh:", forceFreshStart);
     console.log("hasRecovery:", hasRecovery);
-    console.log("learningResult:", learningResult);
+    console.log(" quest.learningResult:",  quest.learningResult);
  console.log("session:", forceFreshStart ? null : (persistedSession ?? null));
 
-if (learningResult) {
+if ( quest.learningResult) {
  console.log("BLOCK SESSION START (CLEAR STATE)");
  return;
 } 
- if (forceFreshStart && status !== "cleared" && !learningResult) {purgeFreshLearningRecovery();
+ if (forceFreshStart && quest.status !== "cleared" && !quest.learningResult) {purgeFreshLearningRecovery();
  clearLearningRecoveryStorage();
       clearPersistedLearningSession(skillIdFromQuery);
  resetLearningSessionUi();
- if (!learningResult) {
+ if (!quest.learningResult) {
  void startLearningSession(skillIdFromQuery, { fresh: true });
 }
 return;
 }
-if (recovery?.sessionId && !learningResult) {
+if (recovery?.sessionId && !quest.learningResult) {
         if (skillIdFromQuery === "E1_NUMBER_ORDER") {
         console.info("[quest] order skill forces fresh session", { skillId: skillIdFromQuery });
         purgeFreshLearningRecovery();
         clearLearningRecoveryStorage();
         clearPersistedLearningSession(skillIdFromQuery);
-       if (!learningResult) {
+       if (!quest.learningResult) {
  void startLearningSession(skillIdFromQuery, { fresh: true });
 }
  return;
@@ -2607,7 +2609,7 @@ if (recovery?.sessionId && !learningResult) {
         clearLearningRecoveryStorage();
         clearPersistedLearningSession(skillIdFromQuery);
         console.info("[quest] recovery expired; starting new session", { skillId: skillIdFromQuery });
-       if (!learningResult) {
+       if (!quest. learningResult) {
  void startLearningSession(skillIdFromQuery, { fresh: true });
 }
  return;
@@ -2637,7 +2639,7 @@ if (recovery?.sessionId && !learningResult) {
   }, [
     freshFromQuery,
     isLearningSessionMode,
-    learningResult,
+    quest.learningResult,
     purgeFreshLearningRecovery,
     resetLearningSessionUi,
     retryFromQuery,
@@ -2649,12 +2651,12 @@ if (recovery?.sessionId && !learningResult) {
     if (isLearningSessionMode) {
       return;
     }
-    if (!hasStarted || status !== "playing" || sessionStartTrackedRef.current) {
+    if (!hasStarted || quest.status !== "playing" || sessionStartTrackedRef.current) {
       return;
     }
     trackAnalyticsEvent("session_start");
     sessionStartTrackedRef.current = true;
-  }, [hasStarted, isLearningSessionMode, status]);
+  }, [hasStarted, isLearningSessionMode, quest.status]);
 
   useEffect(() => {
     return () => {
@@ -2732,28 +2734,28 @@ if (recovery?.sessionId && !learningResult) {
     const observer = new ResizeObserver(() => updateSize());
     observer.observe(el);
     return () => observer.disconnect();
-  }, [status]);
+  }, [quest.status]);
 
   const normalizedLearningSession = useMemo(() => {
-    if (!learningSession) return null;
-    const normalizedIndex = Math.min(learningSession.index, learningSession.problems.length);
+    if (!quest.session) return null;
+    const normalizedIndex = Math.min(quest.session.index, quest.session.problems.length);
     return {
-      session: learningSession,
+      session: quest.session,
       index: normalizedIndex
     };
-  }, [learningSession]);
+  }, [quest.session]);
 
   useEffect(() => {
-    if (!learningSession || !normalizedLearningSession) {
+    if (!quest.session || !normalizedLearningSession) {
       return;
     }
-    if (normalizedLearningSession.index !== learningSession.index) {
-      setLearningSession({
-        ...learningSession,
+    if (normalizedLearningSession.index !== quest.session.index) {
+      quest.setSession({
+        ...quest.session,
         index: normalizedLearningSession.index
       });
     }
-  }, [learningSession, normalizedLearningSession]);
+  }, [quest.session, normalizedLearningSession]);
 
   const safeIndex = quizItems.length > 0 ? itemIndex % quizItems.length : 0;
   const currentLearningIndex = normalizedLearningSession?.index ?? 0;
@@ -2762,7 +2764,7 @@ if (recovery?.sessionId && !learningResult) {
     : null;
   const shouldAutoFinishLearningSession =
     isLearningSessionMode &&
-    status === "playing" &&
+    quest.status === "playing" &&
     Boolean(normalizedLearningSession) &&
     currentLearningIndex >= (normalizedLearningSession?.session.problems.length ?? 0);
   const currentEntry = learningProblem
@@ -2790,7 +2792,7 @@ if (recovery?.sessionId && !learningResult) {
 
   useEffect(() => {
     scheduleMemoRedraw();
-  }, [memoCanvasSize.width, memoCanvasSize.height, memoStrokes, calcZoom, calcPan, status]);
+  }, [memoCanvasSize.width, memoCanvasSize.height, memoStrokes, calcZoom, calcPan, quest.status]);
 
   useEffect(() => {
     return () => {
@@ -2823,7 +2825,7 @@ if (recovery?.sessionId && !learningResult) {
         console.error("finish failed", error);
         const message = error instanceof Error ? error.message : "learning_session_finish_failed";
         setLearningError(message);
-        setStatus("blocked");
+        quest.setStatus("blocked");
         setQuizBuildError(`れんしゅうを おえられませんでした: ${message}`);
       }
     })();
@@ -2837,7 +2839,7 @@ if (recovery?.sessionId && !learningResult) {
     idleCheckTimerRef.current = window.setInterval(() => {
       if (!autoJudgeEnabled) return;
       if (isStarting) return;
-      if (status !== 'playing') return;
+      if (quest.status !== 'playing') return;
       if (isDrawingRef.current) return;
       if (Date.now() < cooldownUntilRef.current) return;
       if (isRecognizing || inFlightRef.current) return;
@@ -2852,7 +2854,7 @@ if (recovery?.sessionId && !learningResult) {
         window.clearInterval(idleCheckTimerRef.current);
       }
     };
-  }, [inkFirstMode, autoJudgeEnabled, isStarting, status, isRecognizing, itemIndex]);
+  }, [inkFirstMode, autoJudgeEnabled, isStarting, quest.status, isRecognizing, itemIndex]);
 
 
   useEffect(() => {
@@ -3148,7 +3150,7 @@ if (recovery?.sessionId && !learningResult) {
         setQuizItems([]);
         setItemIndex(0);
         setQuestionResults({});
-        setStatus("blocked");
+        quest.setStatus("blocked");
         setQuizBuildError("この復習パターンは現在利用できません。");
         return;
       }
@@ -3175,7 +3177,7 @@ if (recovery?.sessionId && !learningResult) {
         setQuizItems([]);
         setItemIndex(0);
         setQuestionResults({});
-        setStatus("blocked");
+        quest.setStatus("blocked");
         setQuizBuildError("この復習パターンは一時的に出題候補不足です。");
         return;
       }
@@ -3184,7 +3186,7 @@ if (recovery?.sessionId && !learningResult) {
       setItemIndex(0);
       setQuestionResults({});
       console.log("STATUS CHANGE →", "playing");
-      setStatus("playing");
+      quest.setStatus("playing");
       setQuizBuildError(null);
       setMessage("Battle Start!");
       setPracticeResult(null);
@@ -3231,7 +3233,7 @@ if (recovery?.sessionId && !learningResult) {
         setQuizItems([]);
         setItemIndex(0);
         setQuestionResults({});
-        setStatus("blocked");
+        quest.setStatus("blocked");
         setQuizBuildError("このレベルは一時的に出題候補不足です。別レベルを選ぶか、時間をおいて再試行してください。");
         return;
       }
@@ -3239,7 +3241,8 @@ if (recovery?.sessionId && !learningResult) {
       setQuizItems(generated);
       setItemIndex(0);
       setQuestionResults({});
-      console.log("STATUS CHANGE →", "playing");setStatus("playing");
+      console.log("STATUS CHANGE →", "playing");
+      quest.setStatus("playing");
       setQuizBuildError(null);
       setMessage("Battle Start!");
       setPracticeResult(null);
@@ -3256,7 +3259,7 @@ if (recovery?.sessionId && !learningResult) {
       setQuizItems([]);
       setItemIndex(0);
       setQuestionResults({});
-      setStatus("blocked");
+      quest.setStatus("blocked");
       setQuizBuildError("出題ストックを準備中です。少しお待ちください。");
       return;
     }
@@ -3312,7 +3315,7 @@ if (recovery?.sessionId && !learningResult) {
     setQuizItems(nextSet);
     setItemIndex(0);
     setQuestionResults({});
-    console.log("STATUS CHANGE →", "playing");setStatus("playing");
+    console.log("STATUS CHANGE →", "playing");quest.setStatus("playing");
     setQuizBuildError(null);
     setMessage("Battle Start!");
     setPracticeResult(null);
@@ -3439,8 +3442,8 @@ if (recovery?.sessionId && !learningResult) {
     if (!isLearningSessionMode) {
       return;
     }
-    setCombo(learningSession?.combo ?? 0);
-  }, [isLearningSessionMode, learningSession?.combo]);
+    setCombo(quest.session?.combo ?? 0);
+  }, [isLearningSessionMode, quest.session?.combo]);
 
   useEffect(() => {
     setShowSecondaryHint(false);
@@ -3449,7 +3452,7 @@ if (recovery?.sessionId && !learningResult) {
     setShowElementaryExplanation(false);
   }, [currentType?.type_id, itemIndex]);
   useEffect(() => {
-    if (!isLearningSessionMode || status !== "playing") {
+    if (!isLearningSessionMode || quest.status !== "playing") {
       return;
     }
     if (practiceResult?.ok === true) {
@@ -3485,11 +3488,11 @@ if (recovery?.sessionId && !learningResult) {
     isLearningSessionMode,
     isSecondaryQuest,
     practiceResult?.ok,
-    status
+    quest.status
   ]);
   useEffect(() => {
     setShowGradeTypePicker(false);
-  }, [currentType?.type_id, status]);
+  }, [currentType?.type_id, quest.status]);
   useEffect(() => {
     if (!showGradeTypePicker || !expandedProblemPicker) return;
     const raf = window.requestAnimationFrame(() => {
@@ -3513,21 +3516,21 @@ if (recovery?.sessionId && !learningResult) {
   const isEarlyElementary = currentGradeId === "E1" || currentGradeId === "E2";
   const isElementaryQuest = isElementaryGrade(currentGradeId);
   const showLearningHint =
-    isLearningSessionMode && status === "playing" && practiceResult?.ok === false && currentLearningShowHint;
+    isLearningSessionMode && quest.status === "playing" && practiceResult?.ok === false && currentLearningShowHint;
   const showLearningExplanation =
-    isLearningSessionMode && status === "playing" && practiceResult?.ok === false && currentLearningShowExplanation;
+    isLearningSessionMode && quest.status === "playing" && practiceResult?.ok === false && currentLearningShowExplanation;
   const shouldShowElementaryExplanation =
-    status === "playing" &&
+    quest.status === "playing" &&
     isElementaryQuest &&
     (showLearningExplanation || (!useFastLearningLoop && practiceResult?.ok === false)) &&
     Boolean(currentElementaryAid);
   const shouldRenderElementaryExplanationPanel =
-    status === "playing" &&
+    quest.status === "playing" &&
     isElementaryQuest &&
     Boolean(currentElementaryAid) &&
     (showElementaryExplanation || shouldShowElementaryExplanation);
   const totalQuizQuestions = isLearningSessionMode
-    ? Math.max(1, learningSession?.problems.length ?? DEFAULT_TOTAL_QUESTIONS)
+    ? Math.max(1, quest.session?.problems.length ?? DEFAULT_TOTAL_QUESTIONS)
     : Math.max(1, Math.min(targetQuestionCount, quizItems.length || targetQuestionCount));
   const uiText = isEarlyElementary
     ? {
@@ -3596,14 +3599,14 @@ if (recovery?.sessionId && !learningResult) {
     }, AUTO_ADVANCE_MS);
   };
   const nextQuestion = () => {
-    if (status !== "playing") return;
+    if (quest.status !== "playing") return;
     if (isLearningSessionMode) {
-      if (!learningSession) return;
-      if (currentSkillXP >= currentSkillRequiredXP || learningSession.index >= learningSession.problems.length) {
+      if (!quest.session) return;
+      if (currentSkillXP >= currentSkillRequiredXP || quest.session.index >= quest.session.problems.length) {
         void runFinishLearningSession().catch((error: unknown) => {
           const message = error instanceof Error ? error.message : "learning_session_finish_failed";
           setLearningError(message);
-          setStatus("blocked");
+          quest.setStatus("blocked");
           setQuizBuildError(`れんしゅうを おえられませんでした: ${message}`);
         });
         return;
@@ -3614,7 +3617,7 @@ if (recovery?.sessionId && !learningResult) {
     setItemIndex((v) => {
       if (v + 1 >= totalQuizQuestions) {
         console.log("STATUS CHANGE →", "cleared")
-        setStatus('cleared');
+        quest.setStatus('cleared');
         setMessage("クリアー！");
         return v;
       }
@@ -3678,7 +3681,7 @@ if (recovery?.sessionId && !learningResult) {
     setPreviewImages([]);
     setCombo(0);
     console.log("STATUS CHANGE →", "playing")
-    setStatus("playing");
+    quest.setStatus("playing");
     setMessage("Battle Start!");
     canvasRef.current?.clear();
     setRetryNonce((prev) => prev + 1);
@@ -3686,18 +3689,18 @@ if (recovery?.sessionId && !learningResult) {
 
   useEffect(() => {
     resetQuestionUi();
-  }, [itemIndex, learningSession?.index]);
+  }, [itemIndex, quest.session?.index]);
 
   useEffect(() => {
     setShowHighSchoolHint(false);
   }, [currentType?.type_id]);
 
   useEffect(() => {
-    if (status === "playing") return;
+    if (quest.status === "playing") return;
     if (currentCardRef.current) {
       currentCardRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-  }, [itemIndex, selectedType, status]);
+  }, [itemIndex, selectedType, quest.status]);
 
   function createQuestion(): Question {
     // Generate simple addition/subtraction
@@ -3751,7 +3754,7 @@ if (recovery?.sessionId && !learningResult) {
     ]);
     if (questionIndex >= totalQuizQuestions) {
      console.log("STATUS CHANGE →", "cleared")
-      setStatus('cleared');
+      quest.setStatus('cleared');
       setMessage("クリアー！");
       return;
     }
@@ -3810,7 +3813,7 @@ if (recovery?.sessionId && !learningResult) {
   };
 
   const handleInput = (num: string) => {
-    if (status !== 'playing' || isStarting || isAnswerLockedByExplanation) return;
+    if (quest.status !== 'playing' || isStarting || isAnswerLockedByExplanation) return;
     const currentText = isQuadraticRootsQuestion ? quadraticAnswers[quadraticActiveIndex] : input;
     const normalizedToken = (() => {
       if (num === "frac") return "/";
@@ -3980,7 +3983,7 @@ if (recovery?.sessionId && !learningResult) {
   };
 
   const handleDelete = () => {
-    if (status !== 'playing' || isStarting || isAnswerLockedByExplanation) return;
+    if (quest.status !== 'playing' || isStarting || isAnswerLockedByExplanation) return;
     if (isQuadraticRootsQuestion && quadraticFractionInputs[quadraticActiveIndex].enabled) {
       clearQuadraticFractionAutoMoveTimer(quadraticActiveIndex);
       setQuadraticFractionInputs((prev) => {
@@ -4034,7 +4037,7 @@ if (recovery?.sessionId && !learningResult) {
   };
 
   const handleAttack = () => {
-    if (status !== 'playing' || isStarting || isAnswerLockedByExplanation || !currentItem || !currentType) return;
+    if (quest.status !== 'playing' || isStarting || isAnswerLockedByExplanation || !currentItem || !currentType) return;
     if (isH1ReferenceOnlyQuestion) return;
     const answerText = isQuadraticRootsQuestion
       ? `${quadraticFractionInputs[0].enabled ? fractionEditorToAnswerText(quadraticFractionInputs[0]) : quadraticAnswers[0]},${quadraticFractionInputs[1].enabled ? fractionEditorToAnswerText(quadraticFractionInputs[1]) : quadraticAnswers[1]}`
@@ -4085,7 +4088,7 @@ if (recovery?.sessionId && !learningResult) {
         .catch((error: unknown) => {
           const message = error instanceof Error ? error.message : "learning_session_answer_failed";
           setLearningError(message);
-          setStatus("blocked");
+          quest.setStatus("blocked");
           setQuizBuildError(`こたえの とうろくに しっぱいしました: ${message}`);
         });
     }
@@ -4194,7 +4197,7 @@ if (recovery?.sessionId && !learningResult) {
     );
   const canSubmitResolved = isH1ReferenceOnlyQuestion ? false : canSubmitCurrentAnswer;
   const skipFromExplanation = () => {
-    if (status !== "playing" || !currentItem) return;
+    if (quest.status !== "playing" || !currentItem) return;
     setQuestionResults((prev) => ({
       ...prev,
       [currentQuestionIndex]: {
@@ -4351,7 +4354,7 @@ if (recovery?.sessionId && !learningResult) {
     window.addEventListener("touchcancel", cancel);
   };
   const handlePlusMinusFlickStart = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (status !== "playing" || isStarting) return;
+    if (quest.status !== "playing" || isStarting) return;
     e.preventDefault();
     resetPlusMinusInputState();
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -4379,7 +4382,7 @@ if (recovery?.sessionId && !learningResult) {
     plusMinusPressRef.current = state;
   };
   const handlePlusMinusTouchStart = (e: React.TouchEvent<HTMLButtonElement>) => {
-    if (status !== "playing" || isStarting) return;
+    if (quest.status !== "playing" || isStarting) return;
     const touch = e.changedTouches[0];
     if (!touch) return;
     e.preventDefault();
@@ -4408,7 +4411,7 @@ if (recovery?.sessionId && !learningResult) {
     plusMinusPressRef.current = state;
   };
   const handlePlusMinusFlickEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (status !== "playing" || isStarting) return;
+    if (quest.status !== "playing" || isStarting) return;
     finalizePlusMinusPress({ pointerId: e.pointerId, clientY: e.clientY }, false);
   };
   const handlePlusMinusFlickCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -4417,7 +4420,7 @@ if (recovery?.sessionId && !learningResult) {
   useEffect(() => {
     resetPlusMinusInputState();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemIndex, currentType?.type_id, status]);
+  }, [itemIndex, currentType?.type_id, quest.status]);
   useEffect(
     () => () => {
       resetPlusMinusInputState();
@@ -4655,7 +4658,7 @@ if (recovery?.sessionId && !learningResult) {
         } catch (error) {
           const message = error instanceof Error ? error.message : "learning_session_answer_failed";
           setLearningError(message);
-          setStatus("blocked");
+          quest.setStatus("blocked");
           setQuizBuildError(`こたえの とうろくに しっぱいしました: ${message}`);
         }
       }
@@ -4731,7 +4734,7 @@ if (recovery?.sessionId && !learningResult) {
 
   const runInference = async (): Promise<string> => {
     if (inputMode !== 'handwriting') return "";
-    if (status !== 'playing') return "";
+    if (quest.status !== 'playing') return "";
     if (isDrawingRef.current) return "";
     if (!isModelReady) return "";
     if (Date.now() < cooldownUntilRef.current) return "";
@@ -5292,11 +5295,11 @@ if (recovery?.sessionId && !learningResult) {
 
   const displayedAnswer = inputMode === 'numpad' ? input : (recognizedNumber ?? "");
 
-console.log("learningResult =", learningResult)
-console.log("status =", status)
+console.log(" quest.learningResult =", quest.learningResult)
+console.log("quest.status =", quest.status)
 
 
-  if (status === "cleared" && learningResult) {
+  if (quest.status === "cleared" && quest.learningResult) {
 
  console.log("CLEAR RENDER")
 
@@ -5305,11 +5308,11 @@ console.log("status =", status)
    <SkillClearView
     skillTitle={currentLearningSkillTitle}
     gradeLevel={currentSkillNode?.gradeLevel}
-    earnedXp={learningResult.earnedXp}
-    skillXp={learningResult.skillXpAfter}
-    requiredXp={learningResult.requiredXP}
+    earnedXp={quest.learningResult.earnedXp}
+    skillXp={quest.learningResult.skillXpAfter}
+    requiredXp={quest.learningResult.requiredXP}
     nextSkillTitle={recommendedSkillNode?.title ?? null}
-    history={learningResult.history}
+    history={quest.learningResult.history}
     onNext={recommendedLearningSkillId ? () => router.push(`/quest?skillId=${recommendedLearningSkillId}`) : undefined}
     onRetry={handleRetry}
     onFinish={() => router.push("/skills")}
@@ -5324,7 +5327,7 @@ console.log("status =", status)
       
       {/* Input Mode Toggle removed */}
 
-      {status === "playing" && (
+      {quest.status === "playing" && (
         <div className="fixed left-1/2 top-2 z-40 w-full max-w-md -translate-x-1/2 px-4">
           {!isLearningSessionMode && selectedPath && (
             <div className="w-full relative">
@@ -5453,7 +5456,7 @@ console.log("status =", status)
           )}
           {currentItem && currentType && (
             <div className="bg-slate-50/95 backdrop-blur-sm py-1">
-            {learningSession && learningProblem ? (
+            {quest.session && learningProblem ? (
               <div className="mb-2 flex items-start justify-between gap-3">
                 <QuestHeader
                   skillTitle={getPracticeSkill(currentLearningSkillId ?? "")?.title ?? currentLearningSkillId ?? "-"}
@@ -5555,7 +5558,7 @@ console.log("status =", status)
                 <button
                   type="button"
                   onClick={nextQuestion}
-                  disabled={status !== "playing" || isStarting}
+                  disabled={quest.status !== "playing" || isStarting}
                   className="absolute bottom-3 right-3 z-20 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs sm:text-sm font-bold text-emerald-900 shadow-[0_2px_0_rgba(0,0,0,0.25)] active:translate-y-[1px] disabled:bg-slate-300 disabled:text-slate-500"
                 >
                   {uiText.nextQuestion}
@@ -5680,7 +5683,7 @@ console.log("status =", status)
           )}
         </div>
       )}
-      {status === "playing" && (
+      {quest.status === "playing" && (
         <div aria-hidden="true" className="h-[292px] sm:h-[276px]" />
       )}
       {/* Center: Character & Message */} 
@@ -5690,7 +5693,7 @@ console.log("status =", status)
             <div className="text-base font-black text-sky-700">れんしゅうを じゅんびちゅうです</div>
             <div className="mt-2 text-sm text-sky-700">れんしゅうを じゅんびしています...</div>
           </div>
-        ) : status === 'blocked' ? (
+        ) : quest.status === 'blocked' ? (
           <div className="w-full text-center rounded-2xl border border-red-200 bg-red-50 px-4 py-6 shadow-sm">
             <div className="text-base font-black text-red-700">出題を準備できませんでした</div>
             <div className="mt-2 text-sm text-red-700">
@@ -5751,12 +5754,12 @@ console.log("status =", status)
                   <>
                     <div className="text-xs font-bold text-sky-800">DEV診断: Learning Engine</div>
                     <div className="mt-1 space-y-0.5 text-[11px] text-sky-900">
-                      <div>skillId: {learningSession?.skillId ?? "-"}</div>
+                      <div>skillId: {quest.session?.skillId ?? "-"}</div>
                       <div>skillProgress: {currentSkillProgress ? JSON.stringify(currentSkillProgress) : "-"}</div>
                       <div>studentXP: {learningState?.student.xpTotal ?? 0}</div>
                       <div>sessionXP: {learningState?.student.xpSession ?? 0}</div>
                       <div>studentLevel: {learningState?.student.level ?? 1}</div>
-                      <div>targetDifficulty: {learningSession?.startedDifficulty ?? "-"}</div>
+                      <div>targetDifficulty: {quest.session?.startedDifficulty ?? "-"}</div>
                       <div>patternPool:</div>
                       {currentPatternPool.length > 0 ? (
                         <div className="whitespace-pre-wrap pl-3">
@@ -5768,8 +5771,8 @@ console.log("status =", status)
                       <div>selectedPattern: {learningProblem?.patternKey ?? learningProblem?.problem.meta?.source ?? "-"}</div>
                       <div>sessionSeed: {currentSessionSeed}</div>
                       <div className="pt-1">session</div>
-                      <div className="pl-3">size: {learningSession?.problems.length ?? 0}</div>
-                      <div className="pl-3">index: {currentLearningIndex + 1} / {learningSession?.problems.length ?? 0}</div>
+                      <div className="pl-3">size: {quest.session?.problems.length ?? 0}</div>
+                      <div className="pl-3">index: {currentLearningIndex + 1} / {quest.session?.problems.length ?? 0}</div>
                     </div>
                   </>
                 ) : (
@@ -5945,7 +5948,7 @@ console.log("status =", status)
                   aid={currentElementaryAid}
                   onNext={nextQuestion}
                   nextLabel={uiText.nextQuestion}
-                  disabled={status !== "playing" || isStarting}
+                  disabled={quest.status !== "playing" || isStarting}
                 />
               )}
               <div ref={memoCanvasHostRef} className="relative h-[40vh] min-h-[260px] w-full">
@@ -5982,7 +5985,7 @@ console.log("status =", status)
       </div>
 
       {/* Bottom: Input + Calc Memo */}
-      {status === 'playing' && (
+      {quest.status === 'playing' && (
         <div className="w-full pt-2 pb-3 sticky bottom-0 bg-slate-50/95 backdrop-blur-sm z-20 space-y-2">
           <div className="flex justify-end">
             <button
@@ -5995,7 +5998,7 @@ console.log("status =", status)
           </div>
           {isHighSchoolQuest ? (
             <HighSchoolKeypad
-              isPlaying={status === "playing"}
+              isPlaying={quest.status === "playing"}
               isStarting={isStarting}
               isAnswerLocked={isAnswerLockedByExplanation}
               canSubmit={canSubmitResolved}
@@ -6010,7 +6013,7 @@ console.log("status =", status)
             />
           ) : isJuniorQuest ? (
             <JuniorKeypad
-              isPlaying={status === "playing"}
+              isPlaying={quest.status === "playing"}
               isStarting={isStarting}
               isAnswerLocked={isAnswerLockedByExplanation}
               canSubmit={canSubmitResolved}
@@ -6025,7 +6028,7 @@ console.log("status =", status)
             />
           ) : (
             <ElementaryKeypad
-              isPlaying={status === "playing"}
+              isPlaying={quest.status === "playing"}
               isStarting={isStarting}
               isAnswerLocked={isAnswerLockedByExplanation}
               canSubmit={canSubmitResolved}
@@ -6042,7 +6045,7 @@ console.log("status =", status)
         </div>
       )}
 
-      {status === 'playing' && (
+      {quest.status === 'playing' && (
         <section className="w-full pb-1 space-y-1">
           {!studentId && (
             <div className="text-[10px] text-right text-slate-600 bg-white/90 border border-slate-200 rounded px-2 py-1">
