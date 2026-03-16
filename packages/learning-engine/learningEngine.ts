@@ -27,13 +27,16 @@ type RecordAnswerInput = {
 };
 
 type RecordAnswerResult = {
-  state: LearningState;
-  session: Session;
-  finished: boolean;
-  correctCount: number;
-  totalCount: number;
-  xpGained: number;
-  nextProblem: Session["problems"][number] | null;
+ state: LearningState;
+ session: Session;
+ finished: boolean;
+ correctCount: number;
+ totalCount: number;
+ xpGained: number;
+ nextProblem: Session["problems"][number] | null;
+ attemptCount: number;
+ hint: string | null;
+ explanation: string | null;
 };
 
 export type Recommendation =
@@ -487,6 +490,10 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): R
     totalCount: resolvedSession.problems.length,
     xpGained: nextState.student.xpSession,
     nextProblem: finished ? null : (resolvedSession.problems[resolvedSession.index] ?? null)
+  
+  attemptCount: nextAttemptCount,
+hint: !result.correct && nextAttemptCount >= 1 ? "hint" : null,
+explanation: !result.correct && nextAttemptCount >= 2 ? "explanation" : null
   };
 }
 
