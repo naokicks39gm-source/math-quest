@@ -1,6 +1,8 @@
 
 'use client';
 
+import {useLearningOrchestrator}
+from "./hooks/useLearningOrchestrator"
 import { useLearningSessionController }
 from "./hooks/useLearningSessionController"
 import {useLearningRecovery}
@@ -1808,16 +1810,10 @@ function QuestPageInner() {
   const levelGradeId = levelInfo?.gradeId ?? "";
   const levelFromQuery: QuestLevelId | "" = levelInfo?.levelId ?? "";
   const [combo, setCombo] = useState(0);
-  const [question, setQuestion] = useState<Question | null>(null);
-  const [history, setHistory] = useState<Array<{ id: number; text: string }>>([]);
-  const [questionIndex, setQuestionIndex] = useState(1);
-  const [results, setResults] = useState<Array<{ id: number; text: string; userAnswer: string; correct: boolean }>>([]);
-  const [questionResults, setQuestionResults] = useState<Record<number, QuestionResultEntry>>({});
-  const [input, setInput] = useState('');
+  const [questionResults,setQuestionResults]=useState<any>({})
   const [fractionInput, setFractionInput] = useState<FractionEditorState>(EMPTY_FRACTION_EDITOR);
   const [message, setMessage] = useState('Battle Start!');
   const [character, setCharacter] = useState<CharacterType>('warrior');
-  const [inputMode] = useState<'numpad' | 'handwriting'>('numpad');
   const [isRecognizing, setIsRecognizing] = useState(false); // New state for OCR loading
   const [recognizedNumber, setRecognizedNumber] = useState<string | null>(null); // To display recognized number
   const [quadraticAnswers, setQuadraticAnswers] = useState<[string, string]>(["", ""]);
@@ -1826,7 +1822,6 @@ function QuestPageInner() {
     { ...EMPTY_FRACTION_EDITOR }
   ]);
   const [quadraticActiveIndex, setQuadraticActiveIndex] = useState<0 | 1>(0);
-  const [resultMark, setResultMark] = useState<'correct' | 'wrong' | null>(null);
   const canvasRef = useRef<any>(null); // Ref for legacy handwriting canvas adapter
   const memoCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawAreaRef = useRef<HTMLDivElement | null>(null);
@@ -1917,11 +1912,8 @@ setCombo,
 
 setLearningAttemptCount,
 
-setQuestionResults
-
 })
-  const learningRouting =
-useLearningRouting({
+  const learningRouting =useLearningRouting({
 
 skillIdFromQuery,
 
@@ -1935,7 +1927,48 @@ learningRecovery.clearLearningRecoveryStorage,
 clearPersistedLearningSession
 
 })
-  const [quizBuildError, setQuizBuildError] = useState<string | null>(null);
+const learningOrchestrator =useLearningOrchestrator({
+
+quest,
+
+setLearningSessionId,
+
+setItemIndex,
+
+setCombo,
+
+setLearningAttemptCount,
+
+})
+const skillId =
+learningRouting.resolveSkillId()
+  const {
+
+history,
+results,
+questionIndex,
+
+correctCount,
+
+
+setHistory,
+setResults,
+setQuestionIndex
+
+}=learningOrchestrator
+
+const{
+
+question,
+input,
+resultMark,
+
+setQuestion,
+setInput,
+setResultMark
+
+}=learningOrchestrator
+const [quizBuildError, setQuizBuildError] = useState<string | null>(null);
   const finishGuardRef = useRef(false);
   const advanceGuardRef = useRef(false);
   const [typeStocks, setTypeStocks] = useState<Map<string, TypeStockResult>>(new Map());
@@ -2052,10 +2085,7 @@ clearPersistedLearningSession
     console.log(" quest.learningResult state:", quest.learningResult);
     console.log("RENDER CLEAR");
   }, [quest.learningResult]);
-  const correctCount = useMemo(
-    () => clearResults.filter(([, result]) => result.everWrong !== true).length,
-    [clearResults]
-  );
+  
 
   const postJson = async (url: string, payload: unknown) => {
     const res = await fetch(url, {
@@ -2097,13 +2127,6 @@ clearPersistedLearningSession
     setShowElementaryHint(false);
     setShowElementaryExplanation(false);
   };
-
-  const syncLearningUiFromSession = useCallback((session: Session | null | undefined, problem?: SessionProblem | null) => {
-    quest.setCurrentProblem(problem ?? (session ? session.problems[session.index] ?? null : null));
-    quest.setLearningAttemptCount(session?.problems[session.index]?.attemptCount ?? 0);
-    quest.setLearningHint(session?.currentHint ?? null);
-    quest.setLearningExplanation(session?.currentExplanation ?? null);
-  }, []);
 
   const syncLearningUiFromAnswer = useCallback((response: LearningSessionAnswerResponse) => {
     quest.setCurrentProblem(response.problem ?? null);
@@ -2182,18 +2205,6 @@ const resetBattleUiState = useCallback(() => {
   resetQuestionUi();
 }, [resetQuestionUi]);
 
-const resetLearningSessionUi = useCallback(() => {
-  learningActions.resetLearningSessionCore();
-  resetLearningLocalState();
-  resetBattleUiState();
-}, [
-  learningActions,
-  resetLearningLocalState,
-  resetBattleUiState,
-]);
-
-  
-
   const handleResetProgress = () => {
     if (typeof window === "undefined") {
       return;
@@ -2233,7 +2244,7 @@ const resetLearningSessionUi = useCallback(() => {
     sessionStartTrackedRef.current = false;
     quest.setLearningLoading(true);
     setLearningError(null);
-    resetLearningSessionUi();
+    learningOrchestrator.resetLearningSessionUi();
 
     try {
       const response = await fetch("/api/learning/session/start", {
@@ -2354,14 +2365,16 @@ skillIdFromQuery,
 quest,
 setLearningError: quest.setLearningError,
 setLearningResult: quest.setLearningResult,
-syncLearningUiFromSession,
+syncLearningUiFromSession:
+learningOrchestrator.syncLearningUiFromSession,
 clearLearningRecoveryStorage,
 loadLearningRecovery,
 freshFromQuery,
 retryFromQuery,
 purgeFreshLearningRecovery,
 clearPersistedLearningSession,
-resetLearningSessionUi,
+resetLearningSessionUi:
+learningOrchestrator.resetLearningSessionUi,
 resumeLearningSession,
 learningActions,
 loadStateFromClient
@@ -2451,7 +2464,10 @@ loadStateFromClient
   };
 
   useEffect(() => {
-    if (!skillIdFromQuery) return;
+    const skillId =
+learningRouting.resolveSkillId()
+
+if(skillId)return;
     console.log("LEARNING RESULT CLEARED")
     quest.setLearningResult(null);
     setLearningResultSkillId(null);
@@ -3490,45 +3506,7 @@ setResultMark
       `/quest?type=${encodeURIComponent(next.typeId)}&category=${encodeURIComponent(next.categoryId)}`
     );
   };
-  const handleRetry = useCallback(() => {
-    if (!currentLearningSkillId || quest.learningLoading) return;
-    console.log("RETRY CLICKED");
-   console.log("LEARNING RESULT CLEARED")
-    setLearningResult(null);
-    resetLearningSessionUi();
-    purgeFreshLearningRecovery();
-    learningRecovery.clearLearningRecoveryStorage();
-    clearPersistedLearningSession(currentLearningSkillId);
-    const nextUrl = `/quest?skillId=${encodeURIComponent(currentLearningSkillId)}&fresh=1`;
-    console.info("[quest] router.replace retry", { nextUrl });
-    router.replace(nextUrl);
-  }, [currentLearningSkillId, quest.learningLoading, purgeFreshLearningRecovery, resetLearningSessionUi, router]);
-  const restartSameLevel = () => {
-    if (isLearningSessionMode && skillIdFromQuery) {
-      handleRetry();
-      return;
-    }
-    sessionStartTrackedRef.current = false;
-    clearAllFractionAutoMoveTimers();
-    setItemIndex(0);
-    setQuestionResults({});
-    setPracticeResult(null);
-    setResultMark(null);
-    setRecognizedNumber(null);
-    setInput("");
-    setFractionInput({ ...EMPTY_FRACTION_EDITOR });
-    setQuadraticAnswers(["", ""]);
-    setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
-    setQuadraticActiveIndex(0);
-    setPreviewImages([]);
-    setCombo(0);
-    console.log("STATUS CHANGE →", "playing")
-    quest.setStatus("playing");
-    setMessage("Battle Start!");
-    canvasRef.current?.clear();
-    setRetryNonce((prev) => prev + 1);
-  };
-
+  
   useEffect(() => {
     resetQuestionUi();
   }, [itemIndex, quest.session?.index]);
@@ -3566,43 +3544,6 @@ setResultMark
       answer: ans
     };
   }
-
-  const advanceQuestion = () => {
-    if (question) {
-      const text = `${question.val1} ${question.operator} ${question.val2} = ${question.answer}`;
-      setHistory((prev) => [...prev, { id: Date.now() + Math.random(), text }].slice(-5));
-    }
-    const current = createQuestion();
-    setQuestion(current);
-    setInput('');
-    setResultMark(null);
-  };
-
-  const advanceQuestionWithDelay = (ms: number) => {
-    if (resultAdvanceTimerRef.current) {
-      window.clearTimeout(resultAdvanceTimerRef.current);
-    }
-    resultAdvanceTimerRef.current = window.setTimeout(() => {
-      advanceQuestion();
-    }, ms);
-  };
-
-  const recordResult = (userAnswer: string, correct: boolean) => {
-    if (!question) return;
-    const text = `${question.val1} ${question.operator} ${question.val2} = ${question.answer}`;
-    setResults((prev) => [
-      ...prev,
-      { id: Date.now() + Math.random(), text, userAnswer, correct }
-    ]);
-    if (questionIndex >= totalQuizQuestions) {
-     console.log("STATUS CHANGE →", "cleared")
-      quest.setStatus('cleared');
-      setMessage("クリアー！");
-      return;
-    }
-    setQuestionIndex((prev) => prev + 1);
-    advanceQuestionWithDelay(800);
-  };
 
   const clearFractionAutoMoveTimer = () => {
     if (fractionAutoMoveTimerRef.current) {
@@ -5161,8 +5102,17 @@ console.log("quest.status =", quest.status)
     requiredXp={quest.learningResult.requiredXP}
     nextSkillTitle={recommendedSkillNode?.title ?? null}
     history={quest.learningResult.history}
-    onNext={recommendedLearningSkillId ? () => router.push(`/quest?skillId=${recommendedLearningSkillId}`) : undefined}
-    onRetry={handleRetry}
+   onNext={
+recommendedLearningSkillId
+? ()=>learningRouting.handleFreshStart(
+recommendedLearningSkillId
+)
+: undefined
+}
+    onRetry={()=>
+learningRouting.handleRetry(
+currentLearningSkillId
+)}
     onFinish={() => router.push("/skills")}
    />
   </div>
