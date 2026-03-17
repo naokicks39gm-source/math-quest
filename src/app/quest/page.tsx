@@ -7,6 +7,10 @@ import { useLearningSessionController }
 from "./hooks/useLearningSessionController"
 import {useLearningRecovery}
 from "./hooks/useLearningRecovery"
+import {
+  isFractionEditorReady,
+  FractionEditorState} from "../../utils/answerValidation";
+
 import { useCanSubmitAnswer } from "./hooks/useCanSubmitAnswer";
 import { useSkipFromExplanation } from "./hooks/useSkipFromExplanation";
 import { useQuestSession } from "../../../packages/ui/hooks/useQuestSession";
@@ -147,13 +151,6 @@ type QuestionResultEntry = {
   skipped?: boolean;
 };
 
-type FractionEditorPart = "num" | "den";
-type FractionEditorState = {
-  enabled: boolean;
-  num: string;
-  den: string;
-  part: FractionEditorPart;
-};
 
 type LearningSessionErrorResponse = {
   error?: string;
@@ -3600,10 +3597,7 @@ const { skipFromExplanation } = useSkipFromExplanation({
     return false;
   };
 
-  const isFractionPartReady = (value: string) => /^-?\d+$/.test(value);
-  const isFractionEditorReady = (editor: FractionEditorState) =>
-    editor.enabled && isFractionPartReady(editor.num) && isFractionPartReady(editor.den);
-  const fractionEditorToAnswerText = (editor: FractionEditorState) => `${editor.num}/${editor.den}`;
+    const fractionEditorToAnswerText = (editor: FractionEditorState) => `${editor.num}/${editor.den}`;
 
   const renderFractionEditorValue = (editor: FractionEditorState) => {
     const renderPart = (text: string, active: boolean) => (

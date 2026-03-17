@@ -21,4 +21,12 @@ export function isValidAnswerText(
 
   return true;
 
-}
+}export const isFractionPartReady = (value: string) =>
+  /^-?\d+$/.test(value);
+
+export const isFractionEditorReady = (
+  editor: FractionEditorState
+) =>
+  editor.enabled &&
+  isFractionPartReady(editor.num) &&
+  isFractionPartReady(editor.den);
