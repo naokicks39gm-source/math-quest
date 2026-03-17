@@ -10,6 +10,7 @@ from "./hooks/useLearningRecovery"
 import { useQuestSession } from "../../../packages/ui/hooks/useQuestSession";
 import {useLearningRouting}
 from "./hooks/useLearningRouting"
+import { useQuestionReset } from "./hooks/useQuestionReset";
 import { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from "react-dom";
@@ -2098,33 +2099,43 @@ const [quizBuildError, setQuizBuildError] = useState<string | null>(null);
     return json;
   };
 
-  const resetQuestionUi = () => {
-    advanceGuardRef.current = false;
-    if (autoNextTimerRef.current) {
-      window.clearTimeout(autoNextTimerRef.current);
-      autoNextTimerRef.current = null;
-    }
-    if (wrongMarkTimerRef.current) {
-      window.clearTimeout(wrongMarkTimerRef.current);
-      wrongMarkTimerRef.current = null;
-    }
-    clearAllFractionAutoMoveTimers();
-    setPracticeResult(null);
-    setResultMark(null);
-    setRecognizedNumber(null);
-    setInput("");
-    setFractionInput({ ...EMPTY_FRACTION_EDITOR });
-    setQuadraticAnswers(["", ""]);
-    setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
-    setQuadraticActiveIndex(0);
-    setPreviewImages([]);
-    canvasRef.current?.clear();
-    setShowHighSchoolHint(false);
-    setShowSecondaryHint(false);
-    setShowSecondaryExplanation(false);
-    setShowElementaryHint(false);
-    setShowElementaryExplanation(false);
+const clearAllFractionAutoMoveTimers = () => {
+    clearFractionAutoMoveTimer();
+    clearQuadraticFractionAutoMoveTimer(0);
+    clearQuadraticFractionAutoMoveTimer(1);
   };
+
+  const { resetQuestionUi } = useQuestionReset({
+ advanceGuardRef,
+ autoNextTimerRef,
+ wrongMarkTimerRef,
+
+ clearAllFractionAutoMoveTimers,
+
+ setPracticeResult,
+ setResultMark,
+ setRecognizedNumber,
+ setInput,
+
+ setFractionInput,
+
+ setQuadraticAnswers,
+ setQuadraticFractionInputs,
+ setQuadraticActiveIndex,
+
+ setPreviewImages,
+
+ canvasRef,
+
+ setShowHighSchoolHint,
+ setShowSecondaryHint,
+ setShowSecondaryExplanation,
+ setShowElementaryHint,
+ setShowElementaryExplanation,
+
+ EMPTY_FRACTION_EDITOR
+
+});
 
   const syncLearningUiFromAnswer = useCallback((response: LearningSessionAnswerResponse) => {
     quest.setCurrentProblem(response.problem ?? null);
@@ -3557,13 +3568,6 @@ setResultMark
       quadraticFractionAutoMoveTimerRefs.current[index] = null;
     }
   };
-
-  const clearAllFractionAutoMoveTimers = () => {
-    clearFractionAutoMoveTimer();
-    clearQuadraticFractionAutoMoveTimer(0);
-    clearQuadraticFractionAutoMoveTimer(1);
-  };
-
   const isFractionPartTokenValid = (current: string, token: string) => {
     if (/^\d$/.test(token)) return true;
     if (token === "-") return current.length === 0;
