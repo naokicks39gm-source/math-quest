@@ -7,7 +7,10 @@ import { useLearningSessionController }
 from "./hooks/useLearningSessionController"
 import {useLearningRecovery}
 from "./hooks/useLearningRecovery"
+import { useCanSubmitAnswer } from "./hooks/useCanSubmitAnswer";
+import { useSkipFromExplanation } from "./hooks/useSkipFromExplanation";
 import { useQuestSession } from "../../../packages/ui/hooks/useQuestSession";
+import { isValidAnswerText } from "../../utils/answerValidation";
 import {useLearningRouting}
 from "./hooks/useLearningRouting"
 import { useQuestionReset } from "./hooks/useQuestionReset";
@@ -2638,6 +2641,7 @@ if(skillId)return;
   const qaPromptFontPx = isE2EqualShareType ? 20 : isSecondaryQuest ? QA_PROMPT_FONT_STEPS[0] : QA_PROMPT_FONT_STEPS[2];
   const qaAnswerFontPx = isSecondaryQuest ? QA_ANSWER_FONT_STEPS[0] : QA_ANSWER_FONT_STEPS[2];
 
+
   useEffect(() => {
     scheduleMemoRedraw();
   }, [memoCanvasSize.width, memoCanvasSize.height, memoStrokes, calcZoom, calcPan, quest.status]);
@@ -3516,6 +3520,28 @@ setResultMark
     );
   };
   
+const { skipFromExplanation } = useSkipFromExplanation({
+
+ quest,
+ currentItem,
+ currentQuestionIndex,
+
+ setQuestionResults,
+ setPracticeResult,
+
+ setShowSecondaryExplanation,
+ setShowSecondaryHint,
+ setShowElementaryHint,
+ setShowElementaryExplanation,
+
+ isLearningSessionMode,
+
+ resetQuestionUi,
+ nextQuestion
+
+});
+
+
   useEffect(() => {
     resetQuestionUi();
   }, [itemIndex, quest.session?.index]);
@@ -3791,53 +3817,29 @@ setResultMark
     }
     return token;
   };
-  const isValidAnswerText = (text: string | undefined, kind: AnswerFormat["kind"]) => {
-    const t = (text ?? "").trim();
-    if (!t) return false;
-    if (kind === "int" || kind === "pair") return /^-?\d+$/.test(t);
-    if (kind === "dec") return /^-?\d+(\.\d+)?$/.test(t);
-    if (kind === "frac") return /^-?\d+\/-?\d+$/.test(t);
-    return true;
-  };
+  
   const answerText = input ?? "";
 
-const canSubmitCurrentAnswer = isQuadraticRootsQuestion
-    ? (
-      ((quadraticFractionInputs[0].enabled ? isFractionEditorReady(quadraticFractionInputs[0]) : isValidAnswerText(quadraticAnswers[0], "pair")) &&
-        (quadraticFractionInputs[1].enabled ? isFractionEditorReady(quadraticFractionInputs[1]) : isValidAnswerText(quadraticAnswers[1], "pair"))) ||
-      (quadraticAnswers[0].trim().length > 0 && quadraticAnswers[1].trim().length > 0 &&
-        (quadraticAnswers[0].includes("/") || quadraticAnswers[1].includes("/")))
-    )
-    : (
-      (fractionInput.enabled ? isFractionEditorReady(fractionInput) : isValidAnswerText(input, keypadAnswerKind)) ||
-   
-(keypadAnswerKind !== "frac" && answerText.trim().length > 0 && answerText.includes("/"))    );
-  const canSubmitResolved = isH1ReferenceOnlyQuestion ? false : canSubmitCurrentAnswer;
-  const skipFromExplanation = () => {
-    if (quest.status !== "playing" || !currentItem) return;
-    setQuestionResults((prev) => ({
-      ...prev,
-      [currentQuestionIndex]: {
-        prompt: currentItem.prompt,
-        promptTex: currentItem.prompt_tex,
-        userAnswer: "",
-        correct: false,
-        correctAnswer: currentItem.answer,
-        everWrong: false,
-        skipped: true
-      }
-    }));
-    setPracticeResult(null);
-    setShowSecondaryExplanation(false);
-    setShowSecondaryHint(false);
-    setShowElementaryHint(false);
-    setShowElementaryExplanation(false);
-    if (isLearningSessionMode) {
-      resetQuestionUi();
-      return;
-    }
-    nextQuestion();
-  };
+const { canSubmitCurrentAnswer } = useCanSubmitAnswer({
+
+ isQuadraticRootsQuestion,
+
+ quadraticFractionInputs,
+ quadraticAnswers,
+
+ fractionInput,
+
+ input,
+ keypadAnswerKind,
+
+ answerText,
+
+ isFractionEditorReady,
+ isValidAnswerText
+
+});
+   const canSubmitResolved = isH1ReferenceOnlyQuestion ? false : canSubmitCurrentAnswer;
+  
   const renderAnswerWithSuperscript = (text: string) => {
     if (!text) return "\u2007";
     if (!isHighSchoolQuest) return text;
