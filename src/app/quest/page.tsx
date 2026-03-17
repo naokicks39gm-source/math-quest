@@ -1810,7 +1810,7 @@ function QuestPageInner() {
   const levelGradeId = levelInfo?.gradeId ?? "";
   const levelFromQuery: QuestLevelId | "" = levelInfo?.levelId ?? "";
   const [combo, setCombo] = useState(0);
-  const [questionResults,setQuestionResults]=useState<any>({})
+  const [inputMode,setInputMode]=useState("numpad");
   const [fractionInput, setFractionInput] = useState<FractionEditorState>(EMPTY_FRACTION_EDITOR);
   const [message, setMessage] = useState('Battle Start!');
   const [character, setCharacter] = useState<CharacterType>('warrior');
@@ -1886,6 +1886,8 @@ function QuestPageInner() {
 setLearningAttemptCount] =
 useState(0)
   const [practiceResult, setPracticeResult] = useState<{ ok: boolean; correctAnswer: string } | null>(null);
+  const [resultMark, setResultMark] = useState<string | null>(null);
+  const [input, setInput] = useState("");
   const [lastAutoDrawExpected, setLastAutoDrawExpected] = useState("");
   const [autoDrawBatchSummary, setAutoDrawBatchSummary] = useState<string | null>(null);
   const [studentId, setStudentId] = useState<string | null>(null);
@@ -1942,32 +1944,28 @@ setLearningAttemptCount,
 })
 const skillId =
 learningRouting.resolveSkillId()
-  const {
+const {
 
 history,
 results,
 questionIndex,
-
 correctCount,
 
+question,
+
+
+questionResults,
 
 setHistory,
 setResults,
-setQuestionIndex
-
-}=learningOrchestrator
-
-const{
-
-question,
-input,
-resultMark,
+setQuestionIndex,
 
 setQuestion,
-setInput,
-setResultMark
+
+setQuestionResults
 
 }=learningOrchestrator
+
 const [quizBuildError, setQuizBuildError] = useState<string | null>(null);
   const finishGuardRef = useRef(false);
   const advanceGuardRef = useRef(false);
@@ -3595,176 +3593,6 @@ setResultMark
     );
   };
 
-  const handleInput = (num: string) => {
-    if (quest.status !== 'playing' || isStarting || isAnswerLockedByExplanation) return;
-    const currentText = isQuadraticRootsQuestion ? quadraticAnswers[quadraticActiveIndex] : input;
-    const normalizedToken = (() => {
-      if (num === "frac") return "/";
-      if (num === "pow") return "^";
-      if (num === "var") return "x";
-      if (num === "abs") return "|x|";
-      if (num === "sqrt") return "sqrt(";
-      if (num === "log") return "log(";
-      if (num === "pi") return "π";
-      return num;
-    })();
-    const isDigit = /^\d$/.test(normalizedToken);
-    const maxInputLength = isHighSchoolQuest ? 24 : 12;
-
-    if (normalizedToken === "/") {
-      if (isQuadraticRootsQuestion) {
-        clearQuadraticFractionAutoMoveTimer(quadraticActiveIndex);
-        setQuadraticFractionInputs((prev) => {
-          if (prev[quadraticActiveIndex].enabled) return prev;
-          const next: [FractionEditorState, FractionEditorState] = [prev[0], prev[1]];
-          next[quadraticActiveIndex] = { enabled: true, num: "", den: "", part: "num" };
-          return next;
-        });
-        setQuadraticAnswers((prev) => {
-          const next: [string, string] = [...prev] as [string, string];
-          next[quadraticActiveIndex] = "";
-          return next;
-        });
-      } else {
-        clearFractionAutoMoveTimer();
-        setFractionInput((prev) => (prev.enabled ? prev : { enabled: true, num: "", den: "", part: "num" }));
-        setInput("");
-      }
-      setResultMark(null);
-      return;
-    }
-
-    if (isQuadraticRootsQuestion && quadraticFractionInputs[quadraticActiveIndex].enabled) {
-      const currentEditor = quadraticFractionInputs[quadraticActiveIndex];
-      const currentPartValue = currentEditor.part === "num" ? currentEditor.num : currentEditor.den;
-      if (!isFractionPartTokenValid(currentPartValue, normalizedToken)) return;
-      setQuadraticFractionInputs((prev) => {
-        const target = prev[quadraticActiveIndex];
-        const next: [FractionEditorState, FractionEditorState] = [prev[0], prev[1]];
-        const part = target.part;
-        const maxLen = isDigit ? 6 : 7;
-        const nextPartValue = `${part === "num" ? target.num : target.den}${normalizedToken}`;
-        if (nextPartValue.length > maxLen) return prev;
-        next[quadraticActiveIndex] = {
-          ...target,
-          num: part === "num" ? nextPartValue : target.num,
-          den: part === "den" ? nextPartValue : target.den
-        };
-        return next;
-      });
-      if (currentEditor.part === "num") {
-        clearQuadraticFractionAutoMoveTimer(quadraticActiveIndex);
-        quadraticFractionAutoMoveTimerRefs.current[quadraticActiveIndex] = window.setTimeout(() => {
-          setQuadraticFractionInputs((prev) => {
-            const target = prev[quadraticActiveIndex];
-            if (!target.enabled || target.part !== "num" || target.num.length === 0 || target.den.length > 0) return prev;
-            const next: [FractionEditorState, FractionEditorState] = [prev[0], prev[1]];
-            next[quadraticActiveIndex] = { ...target, part: "den" };
-            return next;
-          });
-          quadraticFractionAutoMoveTimerRefs.current[quadraticActiveIndex] = null;
-        }, FRACTION_AUTO_MOVE_DELAY_MS);
-      }
-      setResultMark(null);
-      return;
-    }
-
-    if (!isQuadraticRootsQuestion && fractionInput.enabled) {
-      const currentPartValue = fractionInput.part === "num" ? fractionInput.num : fractionInput.den;
-      if (!isFractionPartTokenValid(currentPartValue, normalizedToken)) return;
-      setFractionInput((prev) => {
-        const part = prev.part;
-        const maxLen = isDigit ? 12 : 13;
-        const nextPartValue = `${part === "num" ? prev.num : prev.den}${normalizedToken}`;
-        if (nextPartValue.length > maxLen) return prev;
-        return {
-          ...prev,
-          num: part === "num" ? nextPartValue : prev.num,
-          den: part === "den" ? nextPartValue : prev.den
-        };
-      });
-      if (fractionInput.part === "num") {
-        clearFractionAutoMoveTimer();
-        fractionAutoMoveTimerRef.current = window.setTimeout(() => {
-          setFractionInput((prev) => {
-            if (!prev.enabled || prev.part !== "num" || prev.num.length === 0 || prev.den.length > 0) return prev;
-            return { ...prev, part: "den" };
-          });
-          fractionAutoMoveTimerRef.current = null;
-        }, FRACTION_AUTO_MOVE_DELAY_MS);
-      }
-      setResultMark(null);
-      return;
-    }
-
-    const canAppendToken = (text: string, token: string) => {
-      if (/^\d$/.test(token)) return true;
-      if (token === "-") {
-        if (!isSecondaryQuest) return text.length === 0;
-        if (text.length === 0) return true;
-        return /[\dxyabmnpiπ)]$/.test(text);
-      }
-      if (token === ".") {
-        if (text.includes(".")) return false;
-        if (text === "" || text === "-") return false;
-        return true;
-      }
-      if (token === "×") {
-        if (text.length === 0) return false;
-        return /[\dxyabmnpiπ)]$/.test(text);
-      }
-      if (token === "+") {
-        if (!isSecondaryQuest) return false;
-        if (text.length === 0) return false;
-        return /[\dxyabmnpiπ)]$/.test(text);
-      }
-      if ((VARIABLE_SYMBOLS as readonly string[]).includes(token)) {
-        if (!isSecondaryQuest) return false;
-        if (text.length === 0) return true;
-        if (/[\^(/]$/.test(text)) return false;
-        return true;
-      }
-      if (token === "^") {
-        if (!isSecondaryQuest) return false;
-        if (text.length === 0) return false;
-        return /[\dxyabmnpiπ)]$/.test(text);
-      }
-      if (token === "()") {
-        if (!isSecondaryQuest) return false;
-        if (text.endsWith("^")) return false;
-        return true;
-      }
-      if (token === "|x|") return isHighSchoolQuest;
-      if (token === "sqrt(" || token === "log(") return isHighSchoolQuest;
-      if (token === "π") return isHighSchoolQuest;
-      if (token === "+/-") return false;
-      return false;
-    };
-    if (!canAppendToken(currentText, normalizedToken)) return;
-
-    if (isQuadraticRootsQuestion) {
-      setQuadraticAnswers((prev) => {
-        const next: [string, string] = [...prev] as [string, string];
-        const maxLen = isDigit ? 6 : (isHighSchoolQuest ? 24 : 7);
-        if (next[quadraticActiveIndex].length >= maxLen) return prev;
-        next[quadraticActiveIndex] = normalizedToken === "()" ? `${next[quadraticActiveIndex]}()` : `${next[quadraticActiveIndex]}${normalizedToken}`;
-        return next;
-      });
-      setResultMark(null);
-      return;
-    }
-    const appendInput = (symbol: string) => {
-      setInput((prev) => prev + symbol);
-    };
-    if (input.length >= maxInputLength) return;
-    if ((VARIABLE_SYMBOLS as readonly string[]).includes(normalizedToken)) {
-      appendInput(normalizedToken);
-    } else {
-      appendInput(normalizedToken === "()" ? "()" : normalizedToken);
-    }
-    setResultMark(null);
-  };
-
   const handleDelete = () => {
     if (quest.status !== 'playing' || isStarting || isAnswerLockedByExplanation) return;
     if (isQuadraticRootsQuestion && quadraticFractionInputs[quadraticActiveIndex].enabled) {
@@ -3959,15 +3787,17 @@ setResultMark
     }
     return token;
   };
-  const isValidAnswerText = (text: string, kind: AnswerFormat["kind"]) => {
-    const t = text.trim();
+  const isValidAnswerText = (text: string | undefined, kind: AnswerFormat["kind"]) => {
+    const t = (text ?? "").trim();
     if (!t) return false;
     if (kind === "int" || kind === "pair") return /^-?\d+$/.test(t);
     if (kind === "dec") return /^-?\d+(\.\d+)?$/.test(t);
     if (kind === "frac") return /^-?\d+\/-?\d+$/.test(t);
     return true;
   };
-  const canSubmitCurrentAnswer = isQuadraticRootsQuestion
+  const answerText = input ?? "";
+
+const canSubmitCurrentAnswer = isQuadraticRootsQuestion
     ? (
       ((quadraticFractionInputs[0].enabled ? isFractionEditorReady(quadraticFractionInputs[0]) : isValidAnswerText(quadraticAnswers[0], "pair")) &&
         (quadraticFractionInputs[1].enabled ? isFractionEditorReady(quadraticFractionInputs[1]) : isValidAnswerText(quadraticAnswers[1], "pair"))) ||
@@ -3976,8 +3806,8 @@ setResultMark
     )
     : (
       (fractionInput.enabled ? isFractionEditorReady(fractionInput) : isValidAnswerText(input, keypadAnswerKind)) ||
-      (keypadAnswerKind !== "frac" && input.trim().length > 0 && input.includes("/"))
-    );
+   
+(keypadAnswerKind !== "frac" && answerText.trim().length > 0 && answerText.includes("/"))    );
   const canSubmitResolved = isH1ReferenceOnlyQuestion ? false : canSubmitCurrentAnswer;
   const skipFromExplanation = () => {
     if (quest.status !== "playing" || !currentItem) return;
@@ -3994,7 +3824,6 @@ setResultMark
       }
     }));
     setPracticeResult(null);
-    setResultMark(null);
     setShowSecondaryExplanation(false);
     setShowSecondaryHint(false);
     setShowElementaryHint(false);
@@ -4075,7 +3904,49 @@ setResultMark
       ? null
       : (movedBeyondTap ? resolvePlusMinusTokenFromDelta(deltaY) : "+" as const);
     resetPlusMinusInputState();
-    if (token) handleInput(token);
+    if (token) 
+      learningOrchestrator.handleInput(
+
+token,
+
+quest,
+isStarting,
+isAnswerLockedByExplanation,
+
+input,
+setInput,
+setResultMark,
+
+isQuadraticRootsQuestion,
+quadraticAnswers,
+quadraticActiveIndex,
+
+isHighSchoolQuest,
+
+clearQuadraticFractionAutoMoveTimer,
+setQuadraticFractionInputs,
+
+setQuadraticAnswers,
+
+clearFractionAutoMoveTimer,
+setFractionInput,
+fractionInput,
+
+quadraticFractionInputs,
+
+isFractionPartTokenValid,
+
+quadraticFractionAutoMoveTimerRefs,
+
+FRACTION_AUTO_MOVE_DELAY_MS,
+
+fractionAutoMoveTimerRef,
+
+isSecondaryQuest,
+
+VARIABLE_SYMBOLS
+
+);
   };
   const attachPlusMinusWindowTracking = () => {
     detachPlusMinusWindowTracking();
@@ -5801,7 +5672,50 @@ currentLearningSkillId
               isAnswerLocked={isAnswerLockedByExplanation}
               canSubmit={canSubmitResolved}
               canUseKeyToken={canUseKeyToken}
-              onInput={handleInput}
+              onInput={(token)=>
+learningOrchestrator.handleInput(
+
+token,
+
+quest,
+isStarting,
+isAnswerLockedByExplanation,
+
+input,
+setInput,
+setResultMark,
+
+isQuadraticRootsQuestion,
+quadraticAnswers,
+quadraticActiveIndex,
+
+isHighSchoolQuest,
+
+clearQuadraticFractionAutoMoveTimer,
+setQuadraticFractionInputs,
+
+setQuadraticAnswers,
+
+clearFractionAutoMoveTimer,
+setFractionInput,
+fractionInput,
+
+quadraticFractionInputs,
+
+isFractionPartTokenValid,
+
+quadraticFractionAutoMoveTimerRefs,
+
+FRACTION_AUTO_MOVE_DELAY_MS,
+
+fractionAutoMoveTimerRef,
+
+isSecondaryQuest,
+
+VARIABLE_SYMBOLS
+
+)
+}
               onDelete={handleDelete}
               onJudge={handleAttack}
               onEnd={endLearningSession}
@@ -5816,7 +5730,50 @@ currentLearningSkillId
               isAnswerLocked={isAnswerLockedByExplanation}
               canSubmit={canSubmitResolved}
               canUseKeyToken={canUseKeyToken}
-              onInput={handleInput}
+             onInput={(token)=>
+learningOrchestrator.handleInput(
+
+token,
+
+quest,
+isStarting,
+isAnswerLockedByExplanation,
+
+input,
+setInput,
+setResultMark,
+
+isQuadraticRootsQuestion,
+quadraticAnswers,
+quadraticActiveIndex,
+
+isHighSchoolQuest,
+
+clearQuadraticFractionAutoMoveTimer,
+setQuadraticFractionInputs,
+
+setQuadraticAnswers,
+
+clearFractionAutoMoveTimer,
+setFractionInput,
+fractionInput,
+
+quadraticFractionInputs,
+
+isFractionPartTokenValid,
+
+quadraticFractionAutoMoveTimerRefs,
+
+FRACTION_AUTO_MOVE_DELAY_MS,
+
+fractionAutoMoveTimerRef,
+
+isSecondaryQuest,
+
+VARIABLE_SYMBOLS
+
+)
+}
               onDelete={handleDelete}
               onJudge={handleAttack}
               onEnd={endLearningSession}
@@ -5831,7 +5788,50 @@ currentLearningSkillId
               isAnswerLocked={isAnswerLockedByExplanation}
               canSubmit={canSubmitResolved}
               canUseKeyToken={canUseKeyToken}
-              onInput={handleInput}
+              onInput={(token)=>
+learningOrchestrator.handleInput(
+
+token,
+
+quest,
+isStarting,
+isAnswerLockedByExplanation,
+
+input,
+setInput,
+setResultMark,
+
+isQuadraticRootsQuestion,
+quadraticAnswers,
+quadraticActiveIndex,
+
+isHighSchoolQuest,
+
+clearQuadraticFractionAutoMoveTimer,
+setQuadraticFractionInputs,
+
+setQuadraticAnswers,
+
+clearFractionAutoMoveTimer,
+setFractionInput,
+fractionInput,
+
+quadraticFractionInputs,
+
+isFractionPartTokenValid,
+
+quadraticFractionAutoMoveTimerRefs,
+
+FRACTION_AUTO_MOVE_DELAY_MS,
+
+fractionAutoMoveTimerRef,
+
+isSecondaryQuest,
+
+VARIABLE_SYMBOLS
+
+)
+}
               onDelete={handleDelete}
               onJudge={handleAttack}
               onEnd={endLearningSession}
