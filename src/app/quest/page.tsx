@@ -7,14 +7,17 @@ import { useLearningSessionController }
 from "./hooks/useLearningSessionController"
 import {useLearningRecovery}
 from "./hooks/useLearningRecovery"
-import {
-  isFractionEditorReady,
-  FractionEditorState} from "../../utils/answerValidation";
-
 import { useCanSubmitAnswer } from "./hooks/useCanSubmitAnswer";
 import { useSkipFromExplanation } from "./hooks/useSkipFromExplanation";
 import { useQuestSession } from "../../../packages/ui/hooks/useQuestSession";
-import { isValidAnswerText } from "../../utils/answerValidation";
+import { QuestLayout } from "./components/QuestLayout";
+import { QuestKeypadPanel } from "./components/QuestKeypadPanel";import {
+  canUseKeyToken,
+  isFractionEditorReady,
+  FractionEditorState,
+  fractionEditorToAnswerText,
+  isValidAnswerText
+} from "../../utils/answerValidation";
 import {useLearningRouting}
 from "./hooks/useLearningRouting"
 import { useQuestionReset } from "./hooks/useQuestionReset";
@@ -3597,9 +3600,7 @@ const { skipFromExplanation } = useSkipFromExplanation({
     return false;
   };
 
-    const fractionEditorToAnswerText = (editor: FractionEditorState) => `${editor.num}/${editor.den}`;
-
-  const renderFractionEditorValue = (editor: FractionEditorState) => {
+    const renderFractionEditorValue = (editor: FractionEditorState) => {
     const renderPart = (text: string, active: boolean) => (
       <span className="inline-flex items-center justify-center min-h-[1.1em] min-w-[1.2em]">
         <span>{text || "\u2007"}</span>
@@ -3671,18 +3672,186 @@ const { skipFromExplanation } = useSkipFromExplanation({
     setResultMark(null);
   };
 
-  const handleAttack = () => {
-    if (quest.status !== 'playing' || isStarting || isAnswerLockedByExplanation || !currentItem || !currentType) return;
-    if (isH1ReferenceOnlyQuestion) return;
-    const answerText = isQuadraticRootsQuestion
-      ? `${quadraticFractionInputs[0].enabled ? fractionEditorToAnswerText(quadraticFractionInputs[0]) : quadraticAnswers[0]},${quadraticFractionInputs[1].enabled ? fractionEditorToAnswerText(quadraticFractionInputs[1]) : quadraticAnswers[1]}`
-      : (fractionInput.enabled ? fractionEditorToAnswerText(fractionInput) : input);
-    if (!answerText.trim()) return;
+const buildAnswerText = () => {
+  return isQuadraticRootsQuestion
+    ? `${quadraticFractionInputs[0].enabled
+        ? fractionEditorToAnswerText(quadraticFractionInputs[0])
+        : quadraticAnswers[0]
+      },${
+        quadraticFractionInputs[1].enabled
+        ? fractionEditorToAnswerText(quadraticFractionInputs[1])
+        : quadraticAnswers[1]
+      }`
+    : (
+        fractionInput.enabled
+          ? fractionEditorToAnswerText(fractionInput)
+          : input
+      );
+};
 
-    const verdict = gradeAnswer(answerText, currentItem.answer, currentType.answer_format, {
+const canExecuteAttack = () => {
+  if (
+    quest.status !== 'playing' ||
+    isStarting ||
+    isAnswerLockedByExplanation ||
+    !currentItem ||
+    !currentType
+  ) return false;
+
+  if (isH1ReferenceOnlyQuestion) return false;
+
+  return true;
+};
+
+const judgeCurrentAnswer = (answerText: string) => {
+
+  const expectedForm =
+    resolveExpectedFormFromPrompt(
+      `${currentItem.prompt} ${currentItem.prompt_tex ?? ""}`
+    );
+
+  const verdict = gradeAnswer(
+    answerText,
+    currentItem.answer,
+    currentType.answer_format,
+    {
       typeId: currentType.type_id,
-      expectedForm: resolveExpectedFormFromPrompt(`${currentItem.prompt} ${currentItem.prompt_tex ?? ""}`)
-    });
+      expectedForm
+    }
+  );
+
+  return verdict;
+
+};
+const sendSessionAnswer = async (
+  answerText: string,
+  verdict: { ok: boolean }
+) => {
+
+  const resolvedSessionId =
+    await ensureActiveSession();
+
+  if (!resolvedSessionId) return;
+
+  void postJson("/api/session/answer", {
+
+    sessionId: resolvedSessionId,
+
+    typeId: currentType.type_id,
+
+    prompt: currentItem.prompt,
+
+    predicted: answerText,
+
+    correctAnswer: currentItem.answer,
+
+    isCorrect: verdict.ok
+
+  }).catch((error: unknown) => {
+
+    const message =
+      error instanceof Error
+      ? error.message
+      : "answer_log_failed";
+
+    setSessionError(message);
+
+  });
+
+};
+const sendLearningAnswer = async (
+  answerText: string,
+  verdict: { ok: boolean }
+) => {
+
+  if (!isLearningSessionMode) return;
+
+  try {
+
+    await learningActions.submitLearningAnswer(
+      learningState,
+      learningSessionId,
+      quest,
+      answerText,
+      verdict.ok
+    );
+
+  } catch (error) {
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "learning_session_answer_failed";
+
+    setLearningError(message);
+
+    quest.setStatus("blocked");
+
+    setQuizBuildError(
+      `こたえの とうろくに しっぱいしました: ${message}`
+    );
+
+  }
+
+};
+const updateQuestionResult = (
+  answerText: string,
+  verdict: { ok: boolean }
+) => {
+
+  setQuestionResults((prev) => ({
+
+    ...prev,
+
+    [currentQuestionIndex]: (() => {
+
+      const prevEntry =
+        prev[currentQuestionIndex];
+
+      const everWrong =
+        (prevEntry?.everWrong ?? false)
+        || !verdict.ok;
+
+      const firstWrongAnswer =
+        prevEntry?.firstWrongAnswer ??
+        (!verdict.ok
+          ? answerText
+          : undefined);
+
+      return {
+
+        prompt:
+          currentItem.prompt,
+
+        promptTex:
+          currentItem.prompt_tex,
+
+        userAnswer:
+          answerText,
+
+        correct:
+          !everWrong,
+
+        correctAnswer:
+          currentItem.answer,
+
+        everWrong,
+
+        firstWrongAnswer
+
+      };
+
+    })()
+
+  }));
+
+};
+  const handleAttack = () => {
+    if (!canExecuteAttack()) return;
+  const answerText = buildAnswerText();
+        if (!answerText.trim()) return;
+
+   const verdict = judgeCurrentAnswer(answerText);
     setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
     setQuestionResults((prev) => ({
       ...prev,
@@ -3779,20 +3948,7 @@ const { skipFromExplanation } = useSkipFromExplanation({
   const keypadAnswerKind: AnswerFormat["kind"] = isQuadraticRootsQuestion
     ? "pair"
     : (currentType?.answer_format.kind ?? "int");
-  const canUseKeyToken = (token: string) => {
-    if (/^\d$/.test(token)) return true;
-    if (token === "-") return true;
-    if (token === ".") return true;
-    if (token === "/") return true;
-    if (token === "×") return true;
-    if (token === "+") return isSecondaryQuest;
-    if (token === "^") return isSecondaryQuest;
-    if (token === "()") return isSecondaryQuest;
-    if ((VARIABLE_SYMBOLS as readonly string[]).includes(token)) return isSecondaryQuest;
-    if (token === "|x|" || token === "sqrt(" || token === "log(" || token === "π") return isHighSchoolQuest;
-    if (isSecondaryQuest && (HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS as readonly string[]).includes(token)) return true;
-    return false;
-  };
+ 
   const renderKeyLabel = (token: string): ReactNode => {
     if (token === "/") return "分数";
     if (token === ".") return "小数点";
@@ -4292,55 +4448,17 @@ VARIABLE_SYMBOLS
         expectedForm
       });
       setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
-      const resolvedSessionId = await ensureActiveSession();
-      if (resolvedSessionId) {
-        void postJson("/api/session/answer", {
-          sessionId: resolvedSessionId,
-          typeId: currentType.type_id,
-          prompt: currentItem.prompt,
-          predicted: userInputForJudge,
-          correctAnswer: currentItem.answer,
-          isCorrect: verdict.ok
-        }).catch((error: unknown) => {
-          const message = error instanceof Error ? error.message : "answer_log_failed";
-          setSessionError(message);
-        });
-      }
-      if (isLearningSessionMode) {
-        try {
-          await learningActions.submitLearningAnswer(
-learningState,
-learningSessionId,
-quest,
-answerText,
-correct
-)
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "learning_session_answer_failed";
-          setLearningError(message);
-          quest.setStatus("blocked");
-          setQuizBuildError(`こたえの とうろくに しっぱいしました: ${message}`);
-        }
-      }
-      setQuestionResults((prev) => ({
-        ...prev,
-        [currentQuestionIndex]: (() => {
-          const prevEntry = prev[currentQuestionIndex];
-          const everWrong = (prevEntry?.everWrong ?? false) || !verdict.ok;
-          const firstWrongAnswer =
-            prevEntry?.firstWrongAnswer ??
-            (!verdict.ok ? userInputForJudge : undefined);
-          return {
-            prompt: currentItem.prompt,
-            promptTex: currentItem.prompt_tex,
-            userAnswer: userInputForJudge,
-            correct: !everWrong,
-            correctAnswer: currentItem.answer,
-            everWrong,
-            firstWrongAnswer
-          };
-        })()
-      }));
+await sendSessionAnswer(
+  answerText,
+  verdict
+);
+ await sendLearningAnswer(
+  answerText,
+  verdict
+);updateQuestionResult(
+  answerText,
+  verdict
+);
 
       if (verdict.ok) {
         const newCombo = combo + 1;
@@ -4992,8 +5110,7 @@ currentLearningSkillId
 }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-between p-4 max-w-md mx-auto border-x border-slate-200 shadow-sm relative">
-      
+      <QuestLayout>
       {/* Input Mode Toggle removed */}
 
       {quest.status === "playing" && (
@@ -5654,6 +5771,73 @@ currentLearningSkillId
       </div>
 
       {/* Bottom: Input + Calc Memo */}
+      <QuestKeypadPanel
+
+quest={quest}
+
+isStarting={isStarting}
+
+isAnswerLockedByExplanation={isAnswerLockedByExplanation}
+
+canSubmitResolved={canSubmitResolved}
+
+canUseKeyToken={canUseKeyToken}
+
+handleDelete={handleDelete}
+
+handleAttack={handleAttack}
+
+endLearningSession={endLearningSession}
+
+uiText={uiText}
+
+sessionActionLoading={sessionActionLoading}
+
+isHighSchoolQuest={isHighSchoolQuest}
+
+isJuniorQuest={isJuniorQuest}
+
+learningOrchestrator={learningOrchestrator}
+
+input={input}
+
+setInput={setInput}
+
+setResultMark={setResultMark}
+
+isQuadraticRootsQuestion={isQuadraticRootsQuestion}
+
+quadraticAnswers={quadraticAnswers}
+
+quadraticActiveIndex={quadraticActiveIndex}
+
+clearQuadraticFractionAutoMoveTimer={clearQuadraticFractionAutoMoveTimer}
+
+setQuadraticFractionInputs={setQuadraticFractionInputs}
+
+setQuadraticAnswers={setQuadraticAnswers}
+
+clearFractionAutoMoveTimer={clearFractionAutoMoveTimer}
+
+setFractionInput={setFractionInput}
+
+fractionInput={fractionInput}
+
+quadraticFractionInputs={quadraticFractionInputs}
+
+isFractionPartTokenValid={isFractionPartTokenValid}
+
+quadraticFractionAutoMoveTimerRefs={quadraticFractionAutoMoveTimerRefs}
+
+FRACTION_AUTO_MOVE_DELAY_MS={FRACTION_AUTO_MOVE_DELAY_MS}
+
+fractionAutoMoveTimerRef={fractionAutoMoveTimerRef}
+
+isSecondaryQuest={isSecondaryQuest}
+
+VARIABLE_SYMBOLS={VARIABLE_SYMBOLS}
+
+/>
       {quest.status === 'playing' && (
         <div className="w-full pt-2 pb-3 sticky bottom-0 bg-slate-50/95 backdrop-blur-sm z-20 space-y-2">
           <div className="flex justify-end">
@@ -5877,7 +6061,7 @@ VARIABLE_SYMBOLS
         onResetProgress={handleResetProgress}
       />
 
-    </main>
+    </QuestLayout>
   );
 }
 

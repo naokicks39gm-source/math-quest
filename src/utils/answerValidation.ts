@@ -30,3 +30,63 @@ export const isFractionEditorReady = (
   editor.enabled &&
   isFractionPartReady(editor.num) &&
   isFractionPartReady(editor.den);
+
+  export const fractionEditorToAnswerText = (
+  editor: FractionEditorState
+) =>
+  `${editor.num}/${editor.den}`;
+
+  export const canUseKeyToken = (
+  token: string,
+  isSecondaryQuest: boolean,
+  isHighSchoolQuest: boolean
+) => {
+
+  if (/^\d$/.test(token))
+    return true;
+
+  if (token === "-")
+    return true;
+
+  if (token === ".")
+    return true;
+
+  if (token === "/")
+    return true;
+
+  if (token === "×")
+    return true;
+
+  if (token === "+")
+    return isSecondaryQuest;
+
+  if (token === "^")
+    return isSecondaryQuest;
+
+  if (token === "()")
+    return isSecondaryQuest;
+
+  if (
+    (VARIABLE_SYMBOLS as readonly string[])
+    .includes(token)
+  )
+    return isSecondaryQuest;
+
+  if (
+    token === "|x|" ||
+    token === "sqrt(" ||
+    token === "log(" ||
+    token === "π"
+  )
+    return isHighSchoolQuest;
+
+  if (
+    isSecondaryQuest &&
+    (HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS as readonly string[])
+    .includes(token)
+  )
+    return true;
+
+  return false;
+
+};
