@@ -4,24 +4,7 @@ export function useQuestCallbacks(args: any) {
     isLearningSessionMode,
     currentSkillXP,
     currentSkillRequiredXP,
-    learningActions,
-    learningState,
-    learningSessionId,
-    skillIdFromQuery,
-    finishGuardRef,
-    advanceGuardRef,
-    autoNextTimerRef,
-    wrongMarkTimerRef,
-    learningRecovery,
-    setLearningSessionId,
-    updateDailyStreak,
-    trackAnalyticsEvent,
-    setLearningResultSkillId,
-    setLearningResult,
     setMessage,
-    setResultMark,
-    setLearningError,
-    setQuizBuildError,
     resetQuestionUi,
     setItemIndex,
     totalQuizQuestions,
@@ -35,7 +18,8 @@ export function useQuestCallbacks(args: any) {
     learningRouting,
     recommendedLearningSkillId,
     currentLearningSkillId,
-    skipFromExplanation
+    skipFromExplanation,
+    finishSession
   } = args;
 
   const onNextQuestion = () => {
@@ -43,29 +27,7 @@ export function useQuestCallbacks(args: any) {
     if (isLearningSessionMode) {
       if (!quest.session) return;
       if (currentSkillXP >= currentSkillRequiredXP || quest.session.index >= quest.session.problems.length) {
-        void learningActions
-          .runFinishLearningSession(learningState, learningSessionId, skillIdFromQuery || null, {
-            quest,
-            finishGuardRef,
-            advanceGuardRef,
-            autoNextTimerRef,
-            wrongMarkTimerRef,
-            persistLearningState: learningRecovery.persistFullLearningState,
-            clearLearningRecovery: learningRecovery.clearLearningRecoveryStorage,
-            setLearningSessionId,
-            updateDailyStreak,
-            trackAnalyticsEvent,
-            setLearningResultSkillId,
-            setLearningResult,
-            setMessage,
-            setResultMark
-          })
-          .catch((error: unknown) => {
-            const message = error instanceof Error ? error.message : "learning_session_finish_failed";
-            setLearningError(message);
-            quest.setStatus("blocked");
-            setQuizBuildError(`れんしゅうを おえられませんでした: ${message}`);
-          });
+        void finishSession();
         return;
       }
       resetQuestionUi();

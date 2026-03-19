@@ -15,27 +15,14 @@ export function useQuestEffects(args: any) {
     purgeFreshLearningRecovery,
     hasStarted,
     sessionStartTrackedRef,
+    trackAnalyticsEvent,
     normalizedLearningSession,
     memoStrokesRef,
     memoStrokes,
     inkFirstMode,
     setAutoJudgeEnabled,
     shouldAutoFinishLearningSession,
-    learningActions,
-    learningState,
-    learningSessionId,
-    finishGuardRef,
-    advanceGuardRef,
-    autoNextTimerRef,
-    wrongMarkTimerRef,
-    learningRecovery,
-    setLearningSessionId,
-    updateDailyStreak,
-    trackAnalyticsEvent,
-    setLearningResultSkillIdRef,
-    setLearningResult,
-    setMessage,
-    setResultMark,
+    finishSession,
     setLearningError,
     setQuizBuildError,
     currentGradeId,
@@ -136,22 +123,7 @@ export function useQuestEffects(args: any) {
 
     void (async () => {
       try {
-        await learningActions.runFinishLearningSession(learningState, learningSessionId, skillIdFromQuery, {
-          quest,
-          finishGuardRef,
-          advanceGuardRef,
-          autoNextTimerRef,
-          wrongMarkTimerRef,
-          persistLearningState: learningRecovery.persistFullLearningState,
-          clearLearningRecoveryStorage: learningRecovery.clearLearningRecoveryStorage,
-          setLearningSessionId,
-          updateDailyStreak,
-          trackAnalyticsEvent,
-          setLearningResultSkillId: setLearningResultSkillIdRef,
-          setLearningResult,
-          setMessage,
-          setResultMark
-        });
+        await finishSession(skillIdFromQuery);
       } catch (error: unknown) {
         console.error("finish failed", error);
         const message = error instanceof Error ? error.message : "learning_session_finish_failed";
@@ -160,7 +132,7 @@ export function useQuestEffects(args: any) {
         setQuizBuildError(`れんしゅうを おえられませんでした: ${message}`);
       }
     })();
-  }, [learningActions, shouldAutoFinishLearningSession, learningState, learningSessionId, skillIdFromQuery]);
+  }, [shouldAutoFinishLearningSession, skillIdFromQuery, finishSession]);
 
   useEffect(() => {
     if (!currentGradeId) return;

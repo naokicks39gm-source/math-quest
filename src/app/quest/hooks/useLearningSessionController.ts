@@ -18,7 +18,8 @@ clearPersistedLearningSession,
 resetLearningSessionUi,
 resumeLearningSession,
 learningActions,
-loadStateFromClient
+loadStateFromClient,
+startLearningSession
 } = deps
 
 useEffect(()=>{
@@ -65,7 +66,7 @@ clearPersistedLearningSession(skillIdFromQuery)
 
 resetLearningSessionUi()
 
-void quest.startLearningSession(
+void (startLearningSession ?? quest.startLearningSession)(
 skillIdFromQuery,
 { fresh:true }
 )
@@ -85,7 +86,7 @@ return
 
 }
 
-void quest.startLearningSession(skillIdFromQuery)
+void (startLearningSession ?? quest.startLearningSession)(skillIdFromQuery)
 
 },[
 isLearningSessionMode,

@@ -7,36 +7,37 @@ import { useLearningSessionController }
 from "./hooks/useLearningSessionController"
 import {useLearningRecovery}
 from "./hooks/useLearningRecovery"
-import { useCanSubmitAnswer } from "./hooks/useCanSubmitAnswer";
 import { useSkipFromExplanation } from "./hooks/useSkipFromExplanation";
-import { useQuestAnswerFlow } from "./hooks/useQuestAnswerFlow";
 import { useMemoCanvas } from "./hooks/useMemoCanvas";
 import { useQuestLearningFlow } from "./hooks/useQuestLearningFlow";
 import { useQuestStock, describeStockReason } from "./hooks/useQuestStock";
-import { useQuestRecognition } from "./hooks/useQuestRecognition";
 import { useQuestUiWiring } from "./hooks/useQuestUiWiring";
 import { useQuestHeaderProps } from "./hooks/useQuestHeaderProps";
 import { useQuestState } from "./hooks/useQuestState";
 import { useQuestEffects } from "./hooks/useQuestEffects";
 import { useQuestCallbacks } from "./hooks/useQuestCallbacks";
+import { useQuestSessionFlow } from "./hooks/useQuestSessionFlow";
+import { useQuestRecognitionFlow } from "./hooks/useQuestRecognitionFlow";
+import { useQuestStockEffects } from "./hooks/useQuestStockEffects";
+import { useQuestGestures } from "./hooks/useQuestGestures";
+import { useQuestResultLogic } from "./hooks/useQuestResultLogic";
+import { useQuestKeypad } from "./hooks/useQuestKeypad";
+import { useQuestSessionGlue } from "./hooks/useQuestSessionGlue";
 import { useQuestSession } from "../../../packages/ui/hooks/useQuestSession";
 import { QuestHeaderPanel } from "./components/QuestHeaderPanel";
 import { QuestionCardPanel } from "./components/QuestionCardPanel";
 import { QuestLayout } from "./components/QuestLayout";
 import { QuestResultPanel } from "./components/QuestResultPanel";
+import { QuestPopupShell } from "./components/QuestPopupShell";
 import { QuestKeypadPanel } from "./components/QuestKeypadPanel";import {
   canUseKeyToken,
-  isFractionEditorReady,
   FractionEditorState,
-  fractionEditorToAnswerText,
-  isValidAnswerText
 } from "../../utils/answerValidation";
 import {useLearningRouting}
 from "./hooks/useLearningRouting"
 import { useQuestionReset } from "./hooks/useQuestionReset";
 import { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as tf from '@tensorflow/tfjs'; // Import TensorFlow.js
 import { InlineMath } from "react-katex";
@@ -45,7 +46,6 @@ import { gradeAnswer, AnswerFormat } from '@/lib/grader';
 import { getPracticeSkill, practiceSkills } from "@/lib/learningSkillCatalog";
 import { getLearningPattern, learningPatternCatalog } from "@/lib/learningPatternCatalog";
 import { trackAnalyticsEvent } from "@/lib/analytics";
-import { resetProgress } from "@/lib/resetProgress";
 import { updateDailyStreak } from "@/lib/streak";
 import { getCatalogGrades } from '@/lib/gradeCatalog';
 import { useLearningActions } from "./hooks/useLearningActions";
@@ -60,7 +60,6 @@ import {
   type J1LevelId
 } from "@/lib/problem";
 import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
-import QuestSettingsPanel from "@/components/QuestSettingsPanel";
 import ElementaryExplanationPanel from "@/components/ElementaryExplanationPanel";
 import { isElementaryGrade, type ElementaryLearningAid } from "@/lib/elementaryExplanations";
 import ElementaryKeypad from "@/components/keypad/ElementaryKeypad";
@@ -87,12 +86,8 @@ import {
 import { getSkillTree } from "packages/skill-system/skillTree";
 import type { Session, SessionProblem } from "packages/learning-engine/sessionTypes";
 import {
-  loadMnistModel,
-  loadMnist2DigitModel,
   predictMnistDigitWithProbs,
-  predictMnist2DigitWithProbs,
-  isModelLoaded,
-  is2DigitModelLoaded
+  predictMnist2DigitWithProbs
 } from '@/utils/mnistModel'; // Import MNIST model utilities
 import { div } from 'framer-motion/m';
 
@@ -627,6 +622,7 @@ setQuestionResults
   } | null>(null);
   const memoCanvas = useMemoCanvas({
     memoCanvasRef,
+    memoCanvasHostRef,
     drawAreaRef,
     memoStrokesRef,
     memoActiveStrokeRef,
@@ -635,9 +631,13 @@ setQuestionResults
     memoPointersRef,
     memoPinchStartRef,
     memoCanvasSize,
+    memoStrokes,
+    questStatus: quest.status,
     calcZoom,
     calcPan,
     isPinchingMemo,
+    setMemoCanvasSize,
+    setVisibleCanvasSize,
     setCalcZoom,
     setCalcPan,
     setMemoRedoStack,
@@ -666,40 +666,28 @@ setQuestionResults
         .map((entry) => entry.patternId)
     : [];
   const currentSessionSeed = toDiagnosticSeed(learningSessionId);
-  const resolvedLearningResult: any = quest.learningResult;
-  const recommendedLearningSkillId = useMemo(() => {
-    if (!resolvedLearningResult || !learningState) {
-      return null;
-    }
-
-    if (resolvedLearningResult.recommendation?.type === "skill") {
-      return resolvedLearningResult.recommendation.skillId;
-    }
-
-    return (
-      practiceSkills.find(
-        (skill) =>
-          learningState.unlockedSkills.includes(skill.id) && (learningState.skillProgress[skill.id]?.mastery ?? 0) < 0.8
-      )?.id ?? null
-    );
-  }, [resolvedLearningResult, learningState]);
 
   const skillTree = useMemo(() => {
     if (!learningState) return [];
     return getSkillTree(learningState);
   }, [learningState]);
-  const currentLearningSkillTitle = getPracticeSkill(currentLearningSkillId ?? "")?.title ?? currentLearningSkillId ?? "";
-  const currentSkillNode = useMemo(() => {
-    if (!currentLearningSkillId) return null;
-    return skillTree.find((skill) => skill.id === currentLearningSkillId) ?? null;
-  }, [currentLearningSkillId, skillTree]);
-  const currentSkillRequiredXP = currentSkillNode?.requiredXP ?? getPracticeSkill(currentLearningSkillId ?? "")?.requiredXP ?? 100;
-  const currentSkillXP = currentSkillNode?.xp ?? (currentLearningSkillId ? learningState?.skillXP[currentLearningSkillId] ?? 0 : 0);
-  const recommendedSkillNode = useMemo(() => {
-    const unresolvedSkills = skillTree.filter((skill) => !skill.mastered);
-    const unlockedCandidates = unresolvedSkills.filter((skill) => skill.unlocked);
-    return unlockedCandidates[0] ?? unresolvedSkills[0] ?? null;
-  }, [skillTree]);
+  const resultLogic = useQuestResultLogic({
+    quest,
+    learningState,
+    currentLearningSkillId,
+    getPracticeSkill,
+    practiceSkills,
+    skillTree
+  });
+  const {
+    resolvedLearningResult,
+    recommendedLearningSkillId,
+    currentLearningSkillTitle,
+    currentSkillNode,
+    currentSkillRequiredXP,
+    currentSkillXP,
+    recommendedSkillNode
+  } = resultLogic;
   const useFastLearningLoop = isLearningSessionMode;
   const nextQuestionRef = useRef<() => void>(() => {});
 
@@ -716,11 +704,7 @@ setQuestionResults
     return json;
   };
 
-const clearAllFractionAutoMoveTimers = () => {
-    clearFractionAutoMoveTimer();
-    clearQuadraticFractionAutoMoveTimer(0);
-    clearQuadraticFractionAutoMoveTimer(1);
-  };
+  const clearAllFractionAutoMoveTimers = () => keypad.clearAllFractionAutoMoveTimers();
 
   const { resetQuestionUi } = useQuestionReset({
  advanceGuardRef,
@@ -754,340 +738,94 @@ const clearAllFractionAutoMoveTimers = () => {
 
 });
 
-  const syncLearningUiFromAnswer = useCallback((response: LearningSessionAnswerResponse) => {
-    quest.setCurrentProblem(response.problem ?? null);
-    quest.setLearningAttemptCount(response.attemptCount ?? 0);
-    quest.setLearningHint(response.hint ?? null);
-    quest.setLearningExplanation(response.explanation ?? null);
-    console.info("[quest] answer response", {
-      attemptCount: response.attemptCount ?? 0,
-      hint: response.hint ?? null,
-      explanation: response.explanation ?? null,
-      problemQuestion: response.problem?.problem.question ?? null
-    });
-  }, []);
-
-  const loadLearningRecovery = (): LearningSessionRecovery | null => {
-    if (typeof window === "undefined") return null;
-    try {
-      const raw = window.localStorage.getItem(LS_LEARNING_SESSION);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw) as Partial<LearningSessionRecovery>;
-      if (
-        typeof parsed.sessionId !== "string" ||
-        typeof parsed.skillId !== "string" ||
-        typeof parsed.currentIndex !== "number" ||
-        !Array.isArray(parsed.answers) ||
-        typeof parsed.expiresAt !== "number"
-      ) {
-        return null;
-      }
-      return {
-        sessionId: parsed.sessionId,
-        skillId: parsed.skillId,
-        currentIndex: parsed.currentIndex,
-        answers: parsed.answers
-          .filter(
-            (entry): entry is LearningSessionRecoveryAnswer =>
-              Boolean(entry) &&
-              typeof entry.index === "number" &&
-              typeof entry.answer === "string" &&
-              typeof entry.correct === "boolean"
-          ),
-        expiresAt: parsed.expiresAt
-      };
-    } catch {
-      return null;
-    }
-  };
-
-  const clearLearningRecoveryStorage = () => {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(LS_LEARNING_SESSION);
-  };
-
-  const clearLearningRecovery = clearLearningRecoveryStorage;
-
-  const purgeFreshLearningRecovery = useCallback(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(LS_LEARNING_SESSION);
-    window.localStorage.removeItem("learningState");
-    window.localStorage.removeItem("studentStore");
-    console.log("preserve learning progress key:", LEARNING_STATE_KEY);
-  }, []);
-
-
-const resetLearningLocalState = useCallback(() => {
-  finishGuardRef.current = false;
-  setLearningResultSkillId(null);
-  setLearningSessionId(null);
-}, []);
-
-const resetBattleUiState = useCallback(() => {
-  setQuestionResults({});
-  setItemIndex(0);
-  setCombo(0);
-  setMessage("Battle Start!");
-  resetQuestionUi();
-}, [resetQuestionUi]);
-
-  const handleResetProgress = () => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const confirmed = window.confirm("Reset progress? XP, streak, session, and learning state will be cleared.");
-    if (!confirmed) {
-      return;
-    }
-
-    resetProgress();
-    setLearningState(null);
-    quest.setSession(null);
-    console.log("LEARNING RESULT CLEARED")
-    setLearningResult(null);
-    setLearningSessionId(null);
-    setLearningError(null);
-    setQuestionResults({});
-    setSettingsOpen(false);
-    router.push("/skills");
-  };
-
-  const saveLearningRecovery = (recovery: LearningSessionRecovery) => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(LS_LEARNING_SESSION, JSON.stringify(recovery));
-  };
-
- 
-  const startLearningSession = async (
-    skillId: string,
-    options?: {
-      fresh?: boolean;
-      carryoverHistory?: LearningSessionFinishResponse["result"]["history"];
-      recentProblems?: LearningSessionFinishResponse["result"]["recentProblems"];
-    }
-  ) => {
-    sessionStartTrackedRef.current = false;
-    quest.setLearningLoading(true);
-    setLearningError(null);
-    learningOrchestrator.resetLearningSessionUi();
-
-    try {
-      const response = await fetch("/api/learning/session/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          state: options?.fresh ? buildFreshLearningState(skillId) : loadStateFromClient(),
-          mode: "skill",
-          skillId,
-          fresh: options?.fresh === true,
-          carryoverHistory: options?.carryoverHistory,
-          recentProblems: options?.recentProblems
-        })
-      });
-      const data = (await response.json()) as LearningSessionStartResponse | LearningSessionErrorResponse;
-      if (!response.ok) {
-        throw new Error("error" in data && data.error ? data.error : "learning_session_start_failed");
-      }
-      if (!("session" in data) || !data.session?.problems?.length) {
-        throw new Error("learning_session_problem_unavailable");
-      }
-      learningRecovery.persistLearningState(data.state, {
-        sessionId: data.sessionId,
-        recoveryAnswers: [],
-        skillId,
-        expiresAt: data.expiresAt
-      });
-      console.info("[quest] start session", {
-        skillId,
-        retry: retryFromQuery || null,
-        fresh: options?.fresh === true,
-        problemQuestion: data.session.problems[0]?.problem.question ?? null
-      });
-      trackAnalyticsEvent("session_start");
-      sessionStartTrackedRef.current = true;
-      console.log("STATUS CHANGE →", "playing");quest.setStatus("playing");
-      setQuizBuildError(null);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "learning_session_start_failed";
-      setLearningError(message);
-      quest.setStatus("blocked");
-      setQuizBuildError(`れんしゅうを はじめられませんでした: ${message}`);
-    } finally {
-      quest.setLearningLoading(false);
-    }
-  };
-
-  const resumeLearningSession = async (sessionId: string, skillId: string) => {
-    finishGuardRef.current = false;
-    quest.setLearningLoading(true);
-    setLearningError(null);
-    console.log("LEARNING RESULT CLEARED")
-    quest.setLearningResult(null);
-    setLearningResultSkillId(null);
-    setQuestionResults({});
-    console.log("STATUS CHANGE →", "playing");
-    quest.setStatus("playing");
-    resetQuestionUi();
-
-    try {
-      const response = await fetch(`/api/learning/session/${encodeURIComponent(sessionId)}`, {
-        method: "GET",
-        cache: "no-store"
-      });
-      const data = (await response.json()) as LearningSessionResumeResponse | LearningSessionErrorResponse;
-      if (!response.ok) {
-        throw new Error("error" in data && data.error ? data.error : "learning_session_resume_failed");
-      }
-      if (!("session" in data) || !data.session?.problems?.length) {
-        throw new Error("learning_session_problem_unavailable");
-      }
-      const recovery = learningRecovery.loadLearningRecovery();
-      const storedSession = data.session;
-      if (storedSession.skillId !== skillId) {
-        learningRecovery.clearLearningRecoveryStorage();
-        clearPersistedLearningSession(skillId);
-        setLearningSessionId(null);
-        return false;
-      }
-      if (shouldForceFreshOrderSession(skillId, storedSession)) {
-        learningRecovery.clearLearningRecoveryStorage();
-        clearPersistedLearningSession(skillId);
-        setLearningSessionId(null);
-        console.info("[quest] stale order session detected; starting fresh session", {
-          skillId,
-          sessionId
-        });
-        return false;
-      }
-      learningRecovery.persistLearningState(data.state, {
-        sessionId: data.sessionId,
-        recoveryAnswers: recovery?.answers ?? [],
-        skillId,
-        expiresAt: data.expiresAt
-      });
-      console.info("[quest] resume session", {
-        skillId,
-        sessionId: data.sessionId,
-        problemQuestion: storedSession.problems[storedSession.index]?.problem.question ?? null
-      });
-      setQuizBuildError(null);
-      return true;
-    } catch (error) {
-      learningRecovery.clearLearningRecoveryStorage();
-      clearPersistedLearningSession(skillId);
-      const message = error instanceof Error ? error.message : "learning_session_resume_failed";
-      setLearningError(message);
-      return false;
-    } finally {
-      quest.setLearningLoading(false);
-    }
-  };
-
-useLearningSessionController({
-
-isLearningSessionMode,
-skillIdFromQuery,
-quest,
-setLearningError: quest.setLearningError,
-setLearningResult: quest.setLearningResult,
-syncLearningUiFromSession:
-learningOrchestrator.syncLearningUiFromSession,
-clearLearningRecoveryStorage,
-loadLearningRecovery,
-freshFromQuery,
-retryFromQuery,
-purgeFreshLearningRecovery,
-clearPersistedLearningSession,
-resetLearningSessionUi:
-learningOrchestrator.resetLearningSessionUi,
-resumeLearningSession,
-learningActions,
-loadStateFromClient
-
-});
-
-  // Load MNIST model on component mount
-  useEffect(() => {
-    const loadModel = async () => {
-      await loadMnistModel();
-      await loadMnist2DigitModel();
-      if (isModelLoaded) {
-        setIsModelReady(true);
-      }
-      if (is2DigitModelLoaded) {
-        setIs2DigitModelReady(true);
-      }
-    };
-    loadModel();
-  }, [isModelLoaded]);
-
   // Initialize first question (legacy)
   useEffect(() => {
     const first = createQuestion();
     setQuestion(first);
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const sid = localStorage.getItem(LS_STUDENT_ID);
-    const sessionId = localStorage.getItem(LS_ACTIVE_SESSION_ID);
-    setStudentId(sid);
-    setActiveSessionId(sessionId);
-  }, []);
+  const sessionGlue = useQuestSessionGlue({
+    quest,
+    router,
+    postJson,
+    studentId,
+    setStudentId,
+    activeSessionId,
+    setActiveSessionId,
+    setSessionError,
+    setSessionActionLoading,
+    setSessionMailStatus,
+    sessionStartInFlightRef,
+    finishGuardRef,
+    setLearningResultSkillId,
+    setLearningSessionId,
+    setQuestionResults,
+    setItemIndex,
+    setCombo,
+    setMessage,
+    resetQuestionUi,
+    setLearningState,
+    setLearningResult,
+    setLearningError,
+    setSettingsOpen,
+    trackAnalyticsEvent,
+    LEARNING_STATE_KEY
+  });
 
-  const ensureActiveSession = async (): Promise<string | null> => {
-    if (activeSessionId) return activeSessionId;
-    if (!studentId) return null;
-    if (sessionStartInFlightRef.current) {
-      return sessionStartInFlightRef.current;
-    }
-    const promise = (async () => {
-      try {
-        const json = await postJson("/api/session/start", { studentId });
-        const id = String(json.sessionId);
-        setActiveSessionId(id);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(LS_ACTIVE_SESSION_ID, id);
-        }
-        return id;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "session_start_failed";
-        setSessionError(message);
-        return null;
-      } finally {
-        sessionStartInFlightRef.current = null;
-      }
-    })();
-    sessionStartInFlightRef.current = promise;
-    return promise;
-  };
+  const session = useQuestSessionFlow({
+    quest,
+    retryFromQuery,
+    learningRecovery,
+    setLearningError,
+    setLearningResultSkillId,
+    setQuizBuildError,
+    setQuestionResults,
+    resetQuestionUi,
+    clearPersistedLearningSession,
+    loadStateFromClient,
+    buildFreshLearningState,
+    trackAnalyticsEvent,
+    skillIdFromQuery,
+    setLearningSessionId,
+    updateDailyStreak,
+    setLearningResult,
+    setMessage,
+    setResultMark,
+    finishGuardRef,
+    advanceGuardRef,
+    autoNextTimerRef,
+    wrongMarkTimerRef,
+    learningState,
+    learningSessionId,
+    sessionStartTrackedRef,
+    shouldForceFreshOrderSession,
+    ensureActiveSession: sessionGlue.ensureActiveSession,
+    postJson,
+    setSessionError,
+    isLearningSessionMode,
+    learningActions,
+    resetLearningSessionUi: learningOrchestrator.resetLearningSessionUi
+  });
 
-  const endLearningSession = async () => {
-    if (!activeSessionId) {
-      setSessionError(null);
-      router.push("/");
-      return;
-    }
-    try {
-      setSessionActionLoading(true);
-      setSessionError(null);
-      const json = await postJson("/api/session/end", { sessionId: activeSessionId });
-      setSessionMailStatus(`メール: ${json.mail.status} (${json.mail.toMasked})`);
-      trackAnalyticsEvent("session_finish");
-      setActiveSessionId(null);
-      if (typeof window !== "undefined") {
-        localStorage.removeItem(LS_ACTIVE_SESSION_ID);
-      }
-      router.push("/");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "session_end_failed";
-      setSessionError(message);
-      router.push("/");
-    } finally {
-      setSessionActionLoading(false);
-    }
-  };
+  useLearningSessionController({
+    isLearningSessionMode,
+    skillIdFromQuery,
+    quest,
+    setLearningError: quest.setLearningError,
+    setLearningResult: quest.setLearningResult,
+    syncLearningUiFromSession: learningOrchestrator.syncLearningUiFromSession,
+    clearLearningRecoveryStorage: sessionGlue.clearLearningRecoveryStorage,
+    loadLearningRecovery: sessionGlue.loadLearningRecovery,
+    freshFromQuery,
+    retryFromQuery,
+    purgeFreshLearningRecovery: sessionGlue.purgeFreshLearningRecovery,
+    clearPersistedLearningSession,
+    resetLearningSessionUi: learningOrchestrator.resetLearningSessionUi,
+    resumeLearningSession: session.resumeSession,
+    learningActions,
+    loadStateFromClient,
+    startLearningSession: session.startSession
+  });
 
   useEffect(() => {
     return () => {
@@ -1110,62 +848,6 @@ loadStateFromClient
       clearAllFractionAutoMoveTimers();
     };
   }, []);
-
-  const startReadyGo = () => {
-    if (isStarting) return;
-    setHasStarted(true);
-    setIsStarting(true);
-    setStartPopup('ready');
-    setMessage("Ready...");
-    const speak = (text: string) => {
-      if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = 'en-US';
-      utter.rate = 0.9;
-      utter.pitch = 1.0;
-      utter.volume = 1.0;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utter);
-    };
-    speak('Ready');
-    startTimersRef.current.forEach((t) => window.clearTimeout(t));
-    const t1 = window.setTimeout(() => {
-      setStartPopup('go');
-      setMessage("Go!");
-      speak('Go');
-    }, 700);
-    const t2 = window.setTimeout(() => {
-      setStartPopup(null);
-      setIsStarting(false);
-      setMessage("Battle Start!");
-      if (autoJudgeEnabled && pendingRecognizeRef.current) {
-        pendingRecognizeRef.current = false;
-        if (autoRecognizeTimerRef.current) {
-          window.clearTimeout(autoRecognizeTimerRef.current);
-        }
-        const nextDelay = getAutoJudgeDelayMs(getAnswerDigits());
-        autoRecognizeTimerRef.current = window.setTimeout(() => {
-          runInference();
-        }, nextDelay);
-      }
-    }, 2000);
-    startTimersRef.current = [t1, t2];
-  };
-
-  useEffect(() => {
-    const el = memoCanvasHostRef.current;
-    if (!el || status !== "playing") return;
-    const updateSize = () => {
-      const width = Math.max(180, Math.floor(el.clientWidth));
-      const height = Math.max(180, Math.floor(el.clientHeight));
-      setMemoCanvasSize({ width, height });
-      setVisibleCanvasSize(Math.max(180, Math.min(width, height)));
-    };
-    updateSize();
-    const observer = new ResizeObserver(() => updateSize());
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [quest.status]);
 
   const learning = useQuestLearningFlow({
     quest,
@@ -1241,45 +923,6 @@ loadStateFromClient
     shouldRenderElementaryExplanationPanel,
     isAnswerLockedByExplanation
   } = learning.learningView;
-
-  useEffect(() => {
-    memoCanvas.scheduleMemoRedraw();
-  }, [memoCanvasSize.width, memoCanvasSize.height, memoStrokes, calcZoom, calcPan, quest.status]);
-
-  useEffect(() => {
-    return () => {
-      if (memoDrawRafRef.current) {
-        window.cancelAnimationFrame(memoDrawRafRef.current);
-        memoDrawRafRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (idleCheckTimerRef.current) {
-      window.clearInterval(idleCheckTimerRef.current);
-    }
-    if (inkFirstMode) return;
-    idleCheckTimerRef.current = window.setInterval(() => {
-      if (!autoJudgeEnabled) return;
-      if (isStarting) return;
-      if (quest.status !== 'playing') return;
-      if (isDrawingRef.current) return;
-      if (Date.now() < cooldownUntilRef.current) return;
-      if (isRecognizing || inFlightRef.current) return;
-      const idleFor = Date.now() - lastDrawAtRef.current;
-      const nextDelay = getAutoJudgeDelayMs(getAnswerDigits());
-      if (idleFor >= nextDelay && lastDrawAtRef.current > 0) {
-        runInference();
-      }
-    }, 200);
-    return () => {
-      if (idleCheckTimerRef.current) {
-        window.clearInterval(idleCheckTimerRef.current);
-      }
-    };
-  }, [inkFirstMode, autoJudgeEnabled, isStarting, quest.status, isRecognizing, itemIndex]);
-
 
   useEffect(() => {
     if (isLearningSessionMode) {
@@ -1371,72 +1014,43 @@ loadStateFromClient
     hasLevelQuery,
     hasPatternQuery
   } = stock.stockView;
-
-  useEffect(() => {
-    if (isLearningSessionMode) {
-      setTypeStocks(new Map());
-      setStockShortages([]);
-      setStockReady(true);
-      return;
-    }
-    setStockReady(false);
-    if (hasLevelQuery) {
-      setTypeStocks(new Map());
-      setStockShortages([]);
-      setStockReady(true);
-      return;
-    }
-    const stockState = stock.buildStockState();
-    setTypeStocks(stockState.stocks);
-    setStockShortages(stockState.shortages);
-    setStockReady(true);
-  }, [isLearningSessionMode, hasLevelQuery, targetStockTypes, retryNonce, stock]);
-  useEffect(() => {
-    if (isLearningSessionMode) {
-      return;
-    }
-    clearAllFractionAutoMoveTimers();
-    if (!stockReady) {
-      setQuizItems([]);
-      setItemIndex(0);
-      setQuestionResults({});
-      quest.setStatus("blocked");
-      setQuizBuildError("出題ストックを準備中です。少しお待ちください。");
-      return;
-    }
-    const picked = stock.pickQuestSet();
-    setActivePickMeta(picked.pickMeta ?? null);
-    if (picked.kind === "blocked") {
-      setQuizItems([]);
-      setItemIndex(0);
-      setQuestionResults({});
-      setStatus("blocked");
-      setQuizBuildError(picked.message ?? null);
-      setPracticeResult(null);
-      setResultMark(null);
-      setRecognizedNumber(null);
-      setInput("");
-      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
-      setQuadraticAnswers(["", ""]);
-      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
-      setQuadraticActiveIndex(0);
-      return;
-    }
-    setQuizItems(picked.entries ?? []);
-    setItemIndex(0);
-    setQuestionResults({});
-    console.log("STATUS CHANGE →", "playing");quest.setStatus("playing");
-    setMessage("Battle Start!");
-    setPracticeResult(null);
-    setResultMark(null);
-    setRecognizedNumber(null);
-    setQuizBuildError(picked.shortageMessage ?? null);
-    setInput("");
-    setFractionInput({ ...EMPTY_FRACTION_EDITOR });
-    setQuadraticAnswers(["", ""]);
-    setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
-    setQuadraticActiveIndex(0);
-  }, [isLearningSessionMode, hasPatternQuery, patternIdFromQuery, levelGradeId, levelFromQuery, stockReady, typeStocks, activeTypeId, quizSize, retryNonce, difficultyFromQuery, stock]);
+  useQuestStockEffects({
+    isLearningSessionMode,
+    hasLevelQuery,
+    targetStockTypes,
+    retryNonce,
+    stock,
+    setTypeStocks,
+    setStockShortages,
+    setStockReady,
+    clearAllFractionAutoMoveTimers,
+    stockReady,
+    setQuizItems,
+    setItemIndex,
+    setQuestionResults,
+    quest,
+    setQuizBuildError,
+    setActivePickMeta,
+    setStatus,
+    setPracticeResult,
+    setResultMark,
+    setRecognizedNumber,
+    setInput,
+    setFractionInput,
+    EMPTY_FRACTION_EDITOR,
+    setQuadraticAnswers,
+    setQuadraticFractionInputs,
+    setQuadraticActiveIndex,
+    setMessage,
+    hasPatternQuery,
+    patternIdFromQuery,
+    levelGradeId,
+    levelFromQuery,
+    typeStocks,
+    activeTypeId,
+    quizSize,
+    difficultyFromQuery
+  });
 
   const { queueAdvanceAfterFeedback } = learning;
   const learningResultUi = learning.handleLearningResult({
@@ -1454,7 +1068,7 @@ loadStateFromClient
     skillId,
     setLearningResultSkillId,
     setQuestionResults,
-    purgeFreshLearningRecovery,
+    purgeFreshLearningRecovery: sessionGlue.purgeFreshLearningRecovery,
     hasStarted,
     sessionStartTrackedRef,
     normalizedLearningSession,
@@ -1463,6 +1077,7 @@ loadStateFromClient
     inkFirstMode,
     setAutoJudgeEnabled,
     shouldAutoFinishLearningSession,
+    finishSession: session.finishSession,
     learningActions,
     learningState,
     learningSessionId,
@@ -1589,6 +1204,7 @@ loadStateFromClient
     learningRouting,
     recommendedLearningSkillId,
     currentLearningSkillId,
+    finishSession: session.finishSession,
     skipFromExplanation: undefined
   });
   nextQuestionRef.current = callbacks.onNextQuestion;
@@ -1637,52 +1253,7 @@ const { skipFromExplanation } = useSkipFromExplanation({
     };
   }
 
-  const clearFractionAutoMoveTimer = () => {
-    if (fractionAutoMoveTimerRef.current) {
-      window.clearTimeout(fractionAutoMoveTimerRef.current);
-      fractionAutoMoveTimerRef.current = null;
-    }
-  };
-
-  const clearQuadraticFractionAutoMoveTimer = (index: 0 | 1) => {
-    const timer = quadraticFractionAutoMoveTimerRefs.current[index];
-    if (timer) {
-      window.clearTimeout(timer);
-      quadraticFractionAutoMoveTimerRefs.current[index] = null;
-    }
-  };
-  const isFractionPartTokenValid = (current: string, token: string) => {
-    if (/^\d$/.test(token)) return true;
-    if (token === "-") return current.length === 0;
-    return false;
-  };
-
-  const keypadAnswerKind: AnswerFormat["kind"] = isQuadraticRootsQuestion
-    ? "pair"
-    : (currentType?.answer_format.kind ?? "int");
-  
-  const answerText = input ?? "";
-
-const { canSubmitCurrentAnswer } = useCanSubmitAnswer({
-
- isQuadraticRootsQuestion,
-
- quadraticFractionInputs,
- quadraticAnswers,
-
- fractionInput,
-
- input,
- keypadAnswerKind,
-
- answerText,
-
- isFractionEditorReady,
- isValidAnswerText
-
-});
-   const canSubmitResolved = isH1ReferenceOnlyQuestion ? false : canSubmitCurrentAnswer;
-  const { handleAttack, handleDelete, sendSessionAnswer, sendLearningAnswer } = useQuestAnswerFlow({
+  const keypad = useQuestKeypad({
     quest,
     isStarting,
     isAnswerLockedByExplanation,
@@ -1690,10 +1261,10 @@ const { canSubmitCurrentAnswer } = useCanSubmitAnswer({
     quadraticFractionInputs,
     quadraticAnswers,
     quadraticActiveIndex,
-    clearQuadraticFractionAutoMoveTimer,
+    quadraticFractionAutoMoveTimerRefs,
     setQuadraticFractionInputs,
     setQuadraticAnswers,
-    clearFractionAutoMoveTimer,
+    fractionAutoMoveTimerRef,
     setFractionInput,
     fractionInput,
     setInput,
@@ -1703,15 +1274,8 @@ const { canSubmitCurrentAnswer } = useCanSubmitAnswer({
     currentType,
     isH1ReferenceOnlyQuestion,
     resolveExpectedFormFromPrompt,
-    ensureActiveSession,
-    postJson,
-    setSessionError,
-    isLearningSessionMode,
-    learningActions,
-    learningState,
-    learningSessionId,
-    setLearningError,
-    setQuizBuildError,
+    processAnswer: (answerText: string, verdict: { ok: boolean }) =>
+      session.processAnswer(answerText, verdict, { currentItem, currentType }),
     setQuestionResults,
     currentQuestionIndex,
     setPracticeResult,
@@ -1732,207 +1296,36 @@ const { canSubmitCurrentAnswer } = useCanSubmitAnswer({
     setQuadraticActiveIndex,
     setMessage
   });
+  const {
+    handleAttack,
+    handleDelete,
+    canSubmitResolved,
+    clearFractionAutoMoveTimer,
+    clearQuadraticFractionAutoMoveTimer,
+    isFractionPartTokenValid
+  } = keypad;
   
-  const clearPlusMinusPressTimer = (state: PlusMinusPressState | null) => {
-    if (!state || state.longPressTimer === null) return;
-    window.clearTimeout(state.longPressTimer);
-    state.longPressTimer = null;
-  };
-  const detachPlusMinusWindowTracking = () => {
-    const handlers = plusMinusWindowHandlersRef.current;
-    if (!handlers) return;
-    window.removeEventListener("pointermove", handlers.move);
-    window.removeEventListener("pointerup", handlers.up);
-    window.removeEventListener("pointercancel", handlers.cancel);
-    plusMinusWindowHandlersRef.current = null;
-  };
-  const detachPlusMinusTouchTracking = () => {
-    const handlers = plusMinusTouchHandlersRef.current;
-    if (!handlers) return;
-    window.removeEventListener("touchmove", handlers.move);
-    window.removeEventListener("touchend", handlers.end);
-    window.removeEventListener("touchcancel", handlers.cancel);
-    plusMinusTouchHandlersRef.current = null;
-  };
-  const resolvePlusMinusTokenFromDelta = (deltaY: number) =>
-    deltaY < PLUS_MINUS_POPUP_SWITCH_PX ? "+" as const : "-" as const;
-  const resetPlusMinusInputState = (skipDetach = false) => {
-    clearPlusMinusPressTimer(plusMinusPressRef.current);
-    const active = plusMinusPressRef.current;
-    if (active?.triggerButton && active.triggerButton.hasPointerCapture(active.pointerId)) {
-      active.triggerButton.releasePointerCapture(active.pointerId);
-    }
-    plusMinusPressRef.current = null;
-    if (!skipDetach) detachPlusMinusWindowTracking();
-    if (!skipDetach) detachPlusMinusTouchTracking();
-    setPlusMinusPopupOpen(false);
-    setPlusMinusCandidate(null);
-    setPlusMinusPopupAnchor(null);
-  };
-  const finalizePlusMinusPress = (
-    event: Pick<PointerEvent, "pointerId" | "clientY"> | null,
-    cancelled: boolean
-  ) => {
-    const active = plusMinusPressRef.current;
-    if (!active) {
-      resetPlusMinusInputState();
-      return;
-    }
-    if (active.settled) {
-      resetPlusMinusInputState();
-      return;
-    }
-    if (event && event.pointerId !== active.pointerId) return;
-    active.settled = true;
-    if (event) {
-      active.currentY = event.clientY;
-    }
-    const deltaY = active.currentY - active.startY;
-    const movedBeyondTap = Math.abs(deltaY) > PLUS_MINUS_TAP_DEADZONE_PX;
-    const token = cancelled
-      ? null
-      : (movedBeyondTap ? resolvePlusMinusTokenFromDelta(deltaY) : "+" as const);
-    resetPlusMinusInputState();
-    if (token) learningOrchestrator.handleInput(token);
-  };
-  const attachPlusMinusWindowTracking = () => {
-    detachPlusMinusWindowTracking();
-    const move = (event: PointerEvent) => {
-      const active = plusMinusPressRef.current;
-      if (!active || active.pointerId !== event.pointerId || active.settled) return;
-      active.currentY = event.clientY;
-      if (!active.longPressed) return;
-      setPlusMinusCandidate(resolvePlusMinusTokenFromDelta(active.currentY - active.startY));
-      event.preventDefault();
-    };
-    const up = (event: PointerEvent) => {
-      finalizePlusMinusPress(event, false);
-    };
-    const cancel = (event: PointerEvent) => {
-      finalizePlusMinusPress(event, true);
-    };
-    plusMinusWindowHandlersRef.current = { move, up, cancel };
-    window.addEventListener("pointermove", move, { passive: false });
-    window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", cancel);
-  };
-  const findTouchById = (touches: TouchList, id: number) => {
-    for (let i = 0; i < touches.length; i += 1) {
-      if (touches[i].identifier === id) return touches[i];
-    }
-    return null;
-  };
-  const attachPlusMinusTouchTracking = () => {
-    detachPlusMinusTouchTracking();
-    const move = (event: TouchEvent) => {
-      const active = plusMinusPressRef.current;
-      if (!active || active.settled) return;
-      const touch = findTouchById(event.touches, active.pointerId) ?? findTouchById(event.changedTouches, active.pointerId);
-      if (!touch) return;
-      active.currentY = touch.clientY;
-      if (active.longPressed) {
-        setPlusMinusCandidate(resolvePlusMinusTokenFromDelta(active.currentY - active.startY));
-      }
-      event.preventDefault();
-    };
-    const end = (event: TouchEvent) => {
-      const active = plusMinusPressRef.current;
-      if (!active || active.settled) return;
-      const touch = findTouchById(event.changedTouches, active.pointerId);
-      if (!touch) return;
-      finalizePlusMinusPress({ pointerId: active.pointerId, clientY: touch.clientY }, false);
-    };
-    const cancel = (event: TouchEvent) => {
-      const active = plusMinusPressRef.current;
-      if (!active || active.settled) return;
-      const touch = findTouchById(event.changedTouches, active.pointerId);
-      if (!touch) return;
-      finalizePlusMinusPress({ pointerId: active.pointerId, clientY: touch.clientY }, true);
-    };
-    plusMinusTouchHandlersRef.current = { move, end, cancel };
-    window.addEventListener("touchmove", move, { passive: false });
-    window.addEventListener("touchend", end);
-    window.addEventListener("touchcancel", cancel);
-  };
-  const handlePlusMinusFlickStart = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (quest.status !== "playing" || isStarting) return;
-    e.preventDefault();
-    resetPlusMinusInputState();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const rect = e.currentTarget.getBoundingClientRect();
-    const state: PlusMinusPressState = {
-      pointerId: e.pointerId,
-      startY: e.clientY,
-      currentY: e.clientY,
-      longPressed: false,
-      settled: false,
-      longPressTimer: null,
-      triggerButton: e.currentTarget
-    };
-    attachPlusMinusWindowTracking();
-    state.longPressTimer = window.setTimeout(() => {
-      const active = plusMinusPressRef.current;
-      if (!active || active.pointerId !== e.pointerId) return;
-      active.longPressed = true;
-      active.longPressTimer = null;
-      const candidate = resolvePlusMinusTokenFromDelta(active.currentY - active.startY);
-      setPlusMinusPopupAnchor({ left: rect.left + rect.width / 2, top: rect.top - 72 });
-      setPlusMinusPopupOpen(true);
-      setPlusMinusCandidate(candidate);
-    }, PLUS_MINUS_LONG_PRESS_MS);
-    plusMinusPressRef.current = state;
-  };
-  const handlePlusMinusTouchStart = (e: React.TouchEvent<HTMLButtonElement>) => {
-    if (quest.status !== "playing" || isStarting) return;
-    const touch = e.changedTouches[0];
-    if (!touch) return;
-    e.preventDefault();
-    resetPlusMinusInputState();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const state: PlusMinusPressState = {
-      pointerId: touch.identifier,
-      startY: touch.clientY,
-      currentY: touch.clientY,
-      longPressed: false,
-      settled: false,
-      longPressTimer: null,
-      triggerButton: e.currentTarget
-    };
-    attachPlusMinusTouchTracking();
-    state.longPressTimer = window.setTimeout(() => {
-      const active = plusMinusPressRef.current;
-      if (!active || active.pointerId !== touch.identifier) return;
-      active.longPressed = true;
-      active.longPressTimer = null;
-      const candidate = resolvePlusMinusTokenFromDelta(active.currentY - active.startY);
-      setPlusMinusPopupAnchor({ left: rect.left + rect.width / 2, top: rect.top - 72 });
-      setPlusMinusPopupOpen(true);
-      setPlusMinusCandidate(candidate);
-    }, PLUS_MINUS_LONG_PRESS_MS);
-    plusMinusPressRef.current = state;
-  };
-  const handlePlusMinusFlickEnd = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (quest.status !== "playing" || isStarting) return;
-    finalizePlusMinusPress({ pointerId: e.pointerId, clientY: e.clientY }, false);
-  };
-  const handlePlusMinusFlickCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
-    finalizePlusMinusPress({ pointerId: e.pointerId, clientY: e.clientY }, true);
-  };
-  useEffect(() => {
-    resetPlusMinusInputState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemIndex, currentType?.type_id, quest.status]);
-  useEffect(
-    () => () => {
-      resetPlusMinusInputState();
-    },
-    []
-  );
+  useQuestGestures({
+    quest,
+    isStarting,
+    itemIndex,
+    currentType,
+    plusMinusPressRef,
+    plusMinusWindowHandlersRef,
+    plusMinusTouchHandlersRef,
+    setPlusMinusPopupOpen,
+    setPlusMinusCandidate,
+    setPlusMinusPopupAnchor,
+    PLUS_MINUS_POPUP_SWITCH_PX,
+    PLUS_MINUS_TAP_DEADZONE_PX,
+    PLUS_MINUS_LONG_PRESS_MS,
+    onInput: learningOrchestrator.handleInput
+  });
 
   const toggleCharacter = () => {
     setCharacter(prev => prev === 'warrior' ? 'mage' : 'warrior');
   };
-  const recognition = useQuestRecognition({
+  const recognitionFlow = useQuestRecognitionFlow({
     inputMode,
     quest,
     isDrawingRef,
@@ -1957,8 +1350,9 @@ const { canSubmitCurrentAnswer } = useCanSubmitAnswer({
     setQuadraticActiveIndex,
     setRecognizedNumber,
     setPracticeResult,
-    sendSessionAnswer,
-    sendLearningAnswer,
+    sendSessionAnswer: (answerText: string, verdict: { ok: boolean }) =>
+      session.sendSessionAnswer(answerText, verdict, { currentItem, currentType }),
+    sendLearningAnswer: session.sendLearningAnswer,
     setQuestionResults,
     itemIndex,
     combo,
@@ -1987,7 +1381,15 @@ const { canSubmitCurrentAnswer } = useCanSubmitAnswer({
     gradeAnswer,
     is2DigitModelReady,
     isQuadraticRootsQuestion,
-    inkFirstMode
+    inkFirstMode,
+    setIsModelReady,
+    setIs2DigitModelReady,
+    idleCheckTimerRef,
+    startTimersRef,
+    setHasStarted,
+    setStartPopup,
+    setIsStarting,
+    setMessage
   });
   const {
     getAnswerDigits,
@@ -2003,8 +1405,9 @@ const { canSubmitCurrentAnswer } = useCanSubmitAnswer({
     runAutoDrawFractionTest,
     runAutoDrawFractionBatchTest,
     runAutoDrawMixedTest,
-    runAutoDrawMixedBatchTest
-  } = recognition;
+    runAutoDrawMixedBatchTest,
+    startReadyGo
+  } = recognitionFlow;
 
   const header = useQuestHeaderProps({
     quest,
@@ -2135,7 +1538,7 @@ const { canSubmitCurrentAnswer } = useCanSubmitAnswer({
     setSettingsOpen,
     handleDelete,
     handleAttack,
-    endLearningSession,
+    endLearningSession: sessionGlue.endLearningSession,
     sessionActionLoading,
     learningOrchestrator,
     setInput,
@@ -2152,28 +1555,16 @@ const { canSubmitCurrentAnswer } = useCanSubmitAnswer({
     VARIABLE_SYMBOLS
   });
 
-console.log(" quest.learningResult =", quest.learningResult)
-console.log("quest.status =", quest.status)
-
-
- if (quest.status === "cleared" && quest.learningResult) {
-
- console.log("CLEAR RENDER")
-
- return (
-  <QuestResultPanel
-   currentLearningSkillTitle={currentLearningSkillTitle}
-   currentSkillNode={currentSkillNode}
-   resolvedLearningResult={resolvedLearningResult}
-   recommendedSkillNode={recommendedSkillNode}
-   recommendedLearningSkillId={recommendedLearningSkillId}
-   onNext={callbacks.resultCallbacks.onContinue}
-   onRetry={callbacks.resultCallbacks.onRetry}
-   onFinish={callbacks.resultCallbacks.onFinish}
-  />
- )
-
-}
+  if (resultLogic.shouldRenderLearningResult) {
+    return (
+      <QuestResultPanel
+        {...resultLogic.resultProps}
+        onNext={callbacks.resultCallbacks.onContinue}
+        onRetry={callbacks.resultCallbacks.onRetry}
+        onFinish={callbacks.resultCallbacks.onFinish}
+      />
+    );
+  }
 
   return (
       <QuestLayout>
@@ -2188,39 +1579,17 @@ console.log("quest.status =", quest.status)
        {quest.status === 'playing' && (
      <QuestKeypadPanel {...ui.keypadProps} />
        )}
-
-      {quest.status === 'playing' && (
-        <section className="w-full pb-1 space-y-1">
-          {!studentId && (
-            <div className="text-[10px] text-right text-slate-600 bg-white/90 border border-slate-200 rounded px-2 py-1">
-              保護者設定が未保存のためレポート配信はできません。
-            </div>
-          )}
-          {sessionMailStatus && (
-            <div className="text-[10px] text-right text-emerald-700 font-semibold bg-emerald-50/95 border border-emerald-200 rounded px-2 py-1">{sessionMailStatus}</div>
-          )}
-          {sessionError && (
-            <div className="text-[10px] text-right text-red-700 bg-red-50/95 border border-red-200 rounded px-2 py-1">{sessionError}</div>
-          )}
-        </section>
-      )}
-      {plusMinusPopupOpen && plusMinusPopupAnchor && typeof document !== "undefined"
-        ? createPortal(
-          <div
-            className="pointer-events-none fixed z-[120] inline-flex w-[52px] -translate-x-1/2 flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-xl"
-            style={{ left: plusMinusPopupAnchor.left, top: plusMinusPopupAnchor.top }}
-            aria-hidden="true"
-          >
-            <div className={`flex h-8 items-center justify-center text-sm font-bold ${plusMinusCandidate === "+" ? "bg-emerald-100 text-emerald-800" : "bg-white text-slate-700"}`}>+</div>
-            <div className={`flex h-8 items-center justify-center text-sm font-bold border-t border-slate-200 ${plusMinusCandidate === "-" ? "bg-rose-100 text-rose-700" : "bg-white text-slate-700"}`}>-</div>
-          </div>,
-          document.body
-        )
-        : null}
-      <QuestSettingsPanel
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onResetProgress={handleResetProgress}
+      <QuestPopupShell
+        questStatus={quest.status}
+        studentId={studentId}
+        sessionMailStatus={sessionMailStatus}
+        sessionError={sessionError}
+        plusMinusPopupOpen={plusMinusPopupOpen}
+        plusMinusPopupAnchor={plusMinusPopupAnchor}
+        plusMinusCandidate={plusMinusCandidate}
+        settingsOpen={settingsOpen}
+        onCloseSettings={() => setSettingsOpen(false)}
+        onResetProgress={sessionGlue.handleResetProgress}
       />
 
     </QuestLayout>

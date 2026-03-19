@@ -1,6 +1,9 @@
+import { useEffect } from "react";
+
 export function useMemoCanvas(args: any) {
   const {
     memoCanvasRef,
+    memoCanvasHostRef,
     drawAreaRef,
     memoStrokesRef,
     memoActiveStrokeRef,
@@ -9,9 +12,13 @@ export function useMemoCanvas(args: any) {
     memoPointersRef,
     memoPinchStartRef,
     memoCanvasSize,
+    memoStrokes,
+    questStatus,
     calcZoom,
     calcPan,
     isPinchingMemo,
+    setMemoCanvasSize,
+    setVisibleCanvasSize,
     setCalcZoom,
     setCalcPan,
     setMemoRedoStack,
@@ -45,6 +52,15 @@ export function useMemoCanvas(args: any) {
       x: clamp(x, 0, memoLogicalWidth),
       y: clamp(y, 0, memoLogicalHeight)
     };
+  };
+
+  const updateMemoCanvasSize = () => {
+    const el = memoCanvasHostRef.current;
+    if (!el) return;
+    const width = Math.max(180, Math.floor(el.clientWidth));
+    const height = Math.max(180, Math.floor(el.clientHeight));
+    setMemoCanvasSize({ width, height });
+    setVisibleCanvasSize(Math.max(180, Math.min(width, height)));
   };
 
   const drawMemoCanvas = () => {
@@ -207,6 +223,28 @@ export function useMemoCanvas(args: any) {
       setIsPinchingMemo(false);
     }
   };
+
+  useEffect(() => {
+    const el = memoCanvasHostRef.current;
+    if (!el || questStatus !== "playing") return;
+    updateMemoCanvasSize();
+    const observer = new ResizeObserver(() => updateMemoCanvasSize());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [memoCanvasHostRef, questStatus]);
+
+  useEffect(() => {
+    scheduleMemoRedraw();
+  }, [memoCanvasSize.width, memoCanvasSize.height, memoStrokes, calcZoom, calcPan, questStatus]);
+
+  useEffect(() => {
+    return () => {
+      if (memoDrawRafRef.current) {
+        window.cancelAnimationFrame(memoDrawRafRef.current);
+        memoDrawRafRef.current = null;
+      }
+    };
+  }, []);
 
   return {
     drawMemoCanvas,

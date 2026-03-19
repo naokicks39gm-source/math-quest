@@ -22,16 +22,9 @@ export function useQuestAnswerFlow(args: any) {
     currentItem,
     currentType,
     isH1ReferenceOnlyQuestion,
-    resolveExpectedFormFromPrompt,
-    ensureActiveSession,
-    postJson,
-    setSessionError,
     isLearningSessionMode,
-    learningActions,
-    learningState,
-    learningSessionId,
-    setLearningError,
-    setQuizBuildError,
+    resolveExpectedFormFromPrompt,
+    processAnswer,
     setQuestionResults,
     currentQuestionIndex,
     setPracticeResult,
@@ -99,60 +92,6 @@ export function useQuestAnswerFlow(args: any) {
         expectedForm
       }
     );
-  };
-
-  const sendSessionAnswer = async (
-    answerText: string,
-    verdict: { ok: boolean }
-  ) => {
-    const resolvedSessionId =
-      await ensureActiveSession();
-
-    if (!resolvedSessionId) return;
-
-    void postJson("/api/session/answer", {
-      sessionId: resolvedSessionId,
-      typeId: currentType.type_id,
-      prompt: currentItem.prompt,
-      predicted: answerText,
-      correctAnswer: currentItem.answer,
-      isCorrect: verdict.ok
-    }).catch((error: unknown) => {
-      const message =
-        error instanceof Error
-        ? error.message
-        : "answer_log_failed";
-
-      setSessionError(message);
-    });
-  };
-
-  const sendLearningAnswer = async (
-    answerText: string,
-    verdict: { ok: boolean }
-  ) => {
-    if (!isLearningSessionMode) return;
-
-    try {
-      await learningActions.submitLearningAnswer(
-        learningState,
-        learningSessionId,
-        quest,
-        answerText,
-        verdict.ok
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "learning_session_answer_failed";
-
-      setLearningError(message);
-      quest.setStatus("blocked");
-      setQuizBuildError(
-        `こたえの とうろくに しっぱいしました: ${message}`
-      );
-    }
   };
 
   const handleDelete = () => {
@@ -233,8 +172,7 @@ export function useQuestAnswerFlow(args: any) {
       })()
     }));
 
-    void sendSessionAnswer(answerText, verdict);
-    void sendLearningAnswer(answerText, verdict);
+    void processAnswer(answerText, verdict);
 
     if (verdict.ok) {
       const newCombo = combo + 1;
@@ -287,8 +225,6 @@ export function useQuestAnswerFlow(args: any) {
   return {
     buildAnswerText,
     judgeCurrentAnswer,
-    sendSessionAnswer,
-    sendLearningAnswer,
     handleAttack,
     handleDelete
   };
