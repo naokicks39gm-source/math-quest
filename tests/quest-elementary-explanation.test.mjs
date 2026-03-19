@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
-const pageSource = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
+const pageSource = readQuestSource();
 const libSource = fs.readFileSync(path.join(process.cwd(), "src/lib/elementaryExplanations.ts"), "utf8");
 const panelSource = fs.readFileSync(path.join(process.cwd(), "src/components/ElementaryExplanationPanel.tsx"), "utf8");
 
@@ -13,7 +14,7 @@ test("quest shows elementary explanation in memo area when elementary answer is 
   assert.match(pageSource, /isElementaryGrade\(currentGradeId\)/);
   assert.match(pageSource, /const \[showElementaryExplanation, setShowElementaryExplanation\] = useState\(false\);/);
   assert.match(pageSource, /const \[showElementaryHint, setShowElementaryHint\] = useState\(false\);/);
-  assert.match(pageSource, /const currentLearningAttemptCount = learningAttemptCount;/);
+  assert.match(pageSource, /const currentLearningAttemptCount = quest\.learningAttemptCount;/);
   assert.match(pageSource, /const currentLearningShowHint = learningProblem\?\.showHint \?\? false;/);
   assert.match(pageSource, /const currentLearningShowExplanation = learningProblem\?\.showExplanation \?\? false;/);
   assert.match(pageSource, /const currentLearningIsFallback = learningProblem\?\.isFallback \?\? false;/);
@@ -33,14 +34,14 @@ test("quest shows elementary explanation in memo area when elementary answer is 
 });
 
 test("count prompt uses five-dot grouping and dedicated hint aid", () => {
-  assert.match(pageSource, /const parseCountValue = \(item\?: ExampleItem\) =>/);
+  assert.match(pageSource, /const parseCountValue = \(item\?: .*?\) =>/);
   assert.match(pageSource, /const renderCountDotGroups = \(count: number\) =>/);
   assert.match(pageSource, /const groups = Math\.floor\(count \/ 5\);/);
   assert.match(pageSource, /const rest = count % 5;/);
   assert.match(pageSource, /className="flex flex-col gap-3"/);
   assert.match(pageSource, /className="flex gap-2"/);
   assert.match(pageSource, /className="h-4 w-4 rounded-full bg-white"/);
-  assert.match(pageSource, /const buildCountElementaryAid = \(item\?: ExampleItem\): ElementaryLearningAid \| null =>/);
+  assert.match(pageSource, /const buildCountElementaryAid = \(item\?: .*?\): ElementaryLearningAid \| null =>/);
   assert.match(pageSource, /return "5とあといくつ？";/);
 });
 

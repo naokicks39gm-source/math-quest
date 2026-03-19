@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const stockSource = fs.readFileSync(
   path.join(process.cwd(), "src/lib/questStockFactory.ts"),
@@ -11,10 +12,7 @@ const factorySource = fs.readFileSync(
   path.join(process.cwd(), "src/lib/questItemFactory.ts"),
   "utf8"
 );
-const questSource = fs.readFileSync(
-  path.join(process.cwd(), "src/app/quest/page.tsx"),
-  "utf8"
-);
+const questSource = readQuestSource();
 
 test("H1 stock path uses example_items only", () => {
   assert.equal(stockSource.includes('const isH1Grade = (gradeId: string) => gradeId === "H1";'), true);

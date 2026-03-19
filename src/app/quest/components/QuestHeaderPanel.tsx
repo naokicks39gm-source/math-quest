@@ -33,6 +33,11 @@ pickerGradeId:any
 setPendingGradeId:any
 
 router:any
+levelFromQuery:any
+currentGradeOptionRef:any
+currentProblemOptionRef:any
+problemOptionsScrollRef:any
+pickerGradeTypes:any
 
 currentItem:any
 
@@ -101,6 +106,11 @@ pickerGradeId,
 setPendingGradeId,
 
 router,
+levelFromQuery,
+currentGradeOptionRef,
+currentProblemOptionRef,
+problemOptionsScrollRef,
+pickerGradeTypes,
 
 currentItem,
 currentType,
@@ -148,7 +158,7 @@ return(
               <button
                 type="button"
                 onClick={() => {
-                  setShowGradeTypePicker((prev) => !prev);
+                  setShowGradeTypePicker((prev: boolean) => !prev);
                   if (!showGradeTypePicker) {
                     setExpandedGradePicker(true);
                     setExpandedGradeList(false);
@@ -171,7 +181,7 @@ return(
                 <div className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg p-1">
                   <button
                     type="button"
-                    onClick={() => setExpandedGradePicker((prev) => !prev)}
+                    onClick={() => setExpandedGradePicker((prev: boolean) => !prev)}
                     className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
                   >
                     <span>学年</span>
@@ -183,7 +193,7 @@ return(
                     <div className="mt-1 px-1">
                       <button
                         type="button"
-                        onClick={() => setExpandedGradeList((prev) => !prev)}
+                        onClick={() => setExpandedGradeList((prev: boolean) => !prev)}
                         className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                       >
                         <span className="truncate">{pendingGradeName}</span>
@@ -193,7 +203,7 @@ return(
                       </button>
                       {expandedGradeList && (
                         <div className="mt-1 space-y-1">
-                          {gradeOptions.map((grade) => {
+                          {gradeOptions.map((grade: any) => {
                             const isPickedGrade = grade.gradeId === pickerGradeId;
                             return (
                               <button
@@ -221,7 +231,7 @@ return(
                   <div className="mt-2 border-t border-slate-200 pt-2">
                     <button
                       type="button"
-                      onClick={() => setExpandedProblemPicker((prev) => !prev)}
+                      onClick={() => setExpandedProblemPicker((prev: boolean) => !prev)}
                       className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold text-slate-700 bg-slate-50 hover:bg-slate-100"
                     >
                       <span>問題</span>
@@ -231,7 +241,7 @@ return(
                     </button>
                     {expandedProblemPicker && (
                       <div ref={problemOptionsScrollRef} className="mt-1 space-y-1 px-1">
-                        {pickerGradeTypes.map((option) => {
+                        {pickerGradeTypes.map((option: any) => {
                           const optionKey = option.kind === "level" ? option.levelId : option.typeId;
                           const isCurrent =
                             option.kind === "level"
@@ -281,7 +291,7 @@ return(
                 {skillTree.length > 0 ? (
                   <button
                     type="button"
-                    onClick={() => setShowSkillTree((prev) => !prev)}
+                    onClick={() => setShowSkillTree((prev: boolean) => !prev)}
                     className="shrink-0 rounded-xl border border-sky-200 bg-white px-3 py-2 text-xs font-bold text-sky-700 shadow-sm transition hover:bg-sky-50"
                   >
                     {showSkillTree ? "とじる" : "すすみかた"}
@@ -344,7 +354,7 @@ return(
                       skills={skillTree}
                       currentSkillId={currentLearningSkillId ?? undefined}
                       focusSkillId={currentLearningSkillId ?? undefined}
-                      onSkillClick={(skillId) => router.push(`/quest?skillId=${encodeURIComponent(skillId)}&fresh=1`)}
+                      onSkillClick={(skillId: string) => router.push(`/quest?skillId=${encodeURIComponent(skillId)}&fresh=1`)}
                     />
                   </div>
                 ) : null}

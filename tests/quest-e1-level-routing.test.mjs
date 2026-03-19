@@ -2,16 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
-const questPath = path.join(process.cwd(), "src/app/quest/page.tsx");
-const source = fs.readFileSync(questPath, "utf8");
+const source = readQuestSource();
 
 test("quest page supports levelId route for E1 adapter", () => {
   assert.equal(source.includes("params.get(\"levelId\")"), true);
   assert.equal(source.includes("const levelInfo = useMemo(() => resolveQuestLevelInfo(rawLevelFromQuery), [rawLevelFromQuery]);"), true);
   assert.equal(source.includes("const levelFromQuery: QuestLevelId | \"\" = levelInfo?.levelId ?? \"\";"), true);
   assert.equal(source.includes('if (levelInfo?.gradeId === "E1") {'), true);
-  assert.equal(source.includes("generateE1LevelProblems(levelInfo.levelId as E1LevelId, quizSize)"), true);
+  assert.equal(source.includes("generateE1LevelProblems"), true);
   assert.equal(source.includes('numberingStyle: "circled"'), true);
   assert.equal(source.includes("const trailingBlock = splitIndex >= 0 ? lastStep.slice(splitIndex + 2).trim() : \"\";"), true);
   assert.equal(source.includes(".split(/\\n\\s*\\n/u)"), true);

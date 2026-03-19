@@ -11,11 +11,11 @@ clearLearningRecoveryStorage:()=>void
 
 clearPersistedLearningSession:(skillId:string)=>void
 
-setLearningResult:(v:any)=>void
+setLearningResult?:(v:any)=>void
 
-resetLearningSessionUi:()=>void
+resetLearningSessionUi?:()=>void
 
-purgeFreshLearningRecovery:()=>void
+purgeFreshLearningRecovery?:()=>void
 
 }
 
@@ -75,11 +75,11 @@ skillIdFromQuery
 
 const handleRetry = useCallback((skillId:string)=>{
 
-setLearningResult(null)
+setLearningResult?.(null)
 
-resetLearningSessionUi()
+resetLearningSessionUi?.()
 
-purgeFreshLearningRecovery()
+purgeFreshLearningRecovery?.()
 
 clearLearningRecoveryStorage()
 
@@ -93,7 +93,10 @@ router.replace(
 router,
 clearLearningRecoveryStorage,
 clearPersistedLearningSession,
-setLearningSessionId
+setLearningSessionId,
+setLearningResult,
+resetLearningSessionUi,
+purgeFreshLearningRecovery
 ])
 
 return{

@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
-const source = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
+const source = readQuestSource();
 
 test("quest defines fraction editor state and auto move delay", () => {
   assert.match(source, /type FractionEditorState = \{/);

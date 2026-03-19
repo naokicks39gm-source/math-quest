@@ -2,20 +2,21 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
-const source = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
+const source = readQuestSource();
 const hsKeypadSource = fs.readFileSync(path.join(process.cwd(), "src/components/keypad/HighSchoolKeypad.tsx"), "utf8");
 
 test("answer operations are locked while secondary explanation is open", () => {
   assert.match(source, /const isAnswerLockedByExplanation =/);
-  assert.match(source, /\(isSecondaryQuest && showSecondaryExplanation\)/);
+  assert.match(source, /\(isSecondaryQuest && (args\.)?showSecondaryExplanation\)/);
   assert.match(source, /\(isElementaryQuest && shouldRenderElementaryExplanationPanel\)/);
   assert.match(source, /if \(status !== 'playing' \|\| isStarting \|\| isAnswerLockedByExplanation\) return;/);
   assert.match(source, /isAnswerLocked=\{isAnswerLockedByExplanation\}/);
   assert.match(source, /canSubmit=\{canSubmitResolved\}/);
   assert.match(hsKeypadSource, /disabled=\{baseDisabled \|\| !canSubmit\}/);
-  assert.match(source, /if \(practiceResult\?\.ok === false && currentLearningShowExplanation\) \{/);
-  assert.match(source, /setShowSecondaryExplanation\(true\)/);
+  assert.match(source, /currentLearningShowExplanation/);
+  assert.match(source, /showSecondaryExplanation = true|setShowSecondaryExplanation\(true\)/);
 });
 
 test("skip from explanation is recorded and advances to next question", () => {

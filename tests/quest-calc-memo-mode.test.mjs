@@ -2,11 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 test("quest is keypad-only and memo canvas does not trigger handwriting judge", () => {
-  const source = read("src/app/quest/page.tsx");
+  const source = readQuestSource();
   const hsKeypad = read("src/components/keypad/HighSchoolKeypad.tsx");
   assert.equal(source.includes("numpad"), true);
   assert.match(source, /計算メモ/);

@@ -1,3 +1,5 @@
+import ElementaryExplanationPanel from "@/components/ElementaryExplanationPanel";
+
 type Props = {
 
 undoMemo:any

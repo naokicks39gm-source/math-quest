@@ -2,15 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const gradeCatalogSource = fs.readFileSync(
   path.join(process.cwd(), "src/lib/gradeCatalog.ts"),
   "utf8"
 );
-const questSource = fs.readFileSync(
-  path.join(process.cwd(), "src/app/quest/page.tsx"),
-  "utf8"
-);
+const questSource = readQuestSource();
 
 test("grade catalog exposes Lv label resolver helpers", () => {
   assert.equal(gradeCatalogSource.includes("export const findTypeByLevelLabel"), true);

@@ -2,15 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const factorySource = fs.readFileSync(
   path.join(process.cwd(), "src/lib/questItemFactory.ts"),
   "utf8"
 );
-const questSource = fs.readFileSync(
-  path.join(process.cwd(), "src/app/quest/page.tsx"),
-  "utf8"
-);
+const questSource = readQuestSource();
 
 test("factory enforces no-repeat policy for prompt/equivalent keys", () => {
   assert.equal(factorySource.includes("if (promptKeys.has(promptKey)) continue;"), true);

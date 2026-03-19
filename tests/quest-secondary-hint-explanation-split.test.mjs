@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
-const pageSource = fs.readFileSync(path.join(process.cwd(), "src/app/quest/page.tsx"), "utf8");
+const pageSource = readQuestSource();
 const panelSource = fs.readFileSync(path.join(process.cwd(), "src/components/SecondaryExplanationPanel.tsx"), "utf8");
 
 test("secondary quest uses separate hint and explanation toggles", () => {

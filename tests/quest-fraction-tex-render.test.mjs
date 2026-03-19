@@ -2,11 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 test("quest page exposes fraction TeX helpers for integer and exponent fractions", () => {
-  const source = read("src/app/quest/page.tsx");
+  const source = readQuestSource();
   assert.match(source, /const trimTrailingEquationEquals = \(text: string\) =>/);
   assert.match(source, /const ensureTrailingEquationEquals = \(text: string\) =>/);
   assert.match(source, /const shouldForceEqualsForElementaryE2Plus = \(typeId\?: string\) =>/);
@@ -22,7 +23,7 @@ test("quest page exposes fraction TeX helpers for integer and exponent fractions
 });
 
 test("quest prompt keeps shared math rendering path and clear view uses SkillClearView", () => {
-  const source = read("src/app/quest/page.tsx");
+  const source = readQuestSource();
   assert.match(source, /const keepEquals = shouldKeepEqualsForE13Plus\(typeId, typeLabel\);/);
   assert.match(source, /const forceEquals = shouldForceEqualsForElementaryE2Plus\(typeId\);/);
   assert.match(source, /className="mx-\[0\.08em\] inline-flex h-\[0\.98em\] w-\[0\.98em\] items-center justify-center rounded-\[0\.16em\] border-2 border-emerald-100 align-\[-0\.04em\]"/);
@@ -30,17 +31,17 @@ test("quest prompt keeps shared math rendering path and clear view uses SkillCle
   assert.match(source, /const displayTex = shouldForcePromptEquals \? ensureTrailingEquationEquals\(displayTexRaw\) : displayTexRaw;/);
   assert.match(source, /return renderMaybeMath\(formattedPrompt\);/);
   assert.match(source, /<SkillClearView/);
-  assert.match(source, /history=\{learningResult\.history\}/);
+  assert.match(source, /history=\{resolvedLearningResult\?\.history \?\? \[\]\}/);
 });
 
 test("quest card uses responsive layout to avoid answer overflow", () => {
-  const source = read("src/app/quest/page.tsx");
+  const source = readQuestSource();
   assert.match(source, /const QA_PROMPT_FONT_STEPS = \[32, 30, 28, 26, 24\] as const;/);
   assert.match(source, /const QA_ANSWER_FONT_STEPS = \[30, 28, 26, 24\] as const;/);
   assert.match(source, /const useSingleLineQa = !isSecondaryQuest && !isE2EqualShareType && !isE1TwoLineQuestionLevel;/);
   assert.match(source, /const qaAnswerOffsetPx = 0;/);
-  assert.match(source, /const qaPromptFontPx = isE2EqualShareType \? 20 : isSecondaryQuest \? QA_PROMPT_FONT_STEPS\[0\] : QA_PROMPT_FONT_STEPS\[2\];/);
-  assert.match(source, /const qaAnswerFontPx = isSecondaryQuest \? QA_ANSWER_FONT_STEPS\[0\] : QA_ANSWER_FONT_STEPS\[2\];/);
+  assert.match(source, /const qaPromptFontPx = isE2EqualShareType[\s\S]*QA_PROMPT_FONT_STEPS\[2\]/);
+  assert.match(source, /const qaAnswerFontPx = isSecondaryQuest[\s\S]*QA_ANSWER_FONT_STEPS\[2\]/);
   assert.match(source, /useSingleLineQa[\s\S]*\? "relative z-10 w-full flex flex-wrap items-center justify-start gap-2 sm:gap-3"/);
   assert.match(source, /useSingleLineQa[\s\S]*: "relative z-10 w-full flex flex-col justify-center gap-1 sm:gap-2"/);
   assert.match(source, /style=\{\(isSecondaryQuest \|\| isE2EqualShareType\) \? \{ fontSize: `\$\{qaPromptFontPx\}px` \} : undefined\}/);

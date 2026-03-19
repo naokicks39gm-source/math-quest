@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
@@ -28,7 +29,7 @@ test("guardian page is settings-only", () => {
 });
 
 test("quest page reads localStorage keys and auto-session logic", () => {
-  const source = read("src/app/quest/page.tsx");
+  const source = readQuestSource();
   assert.match(source, /mq:activeSessionId/);
   assert.match(source, /mq:studentId/);
   assert.match(source, /const ensureActiveSession/);

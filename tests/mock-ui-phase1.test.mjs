@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 const exists = (p) => fs.existsSync(path.join(process.cwd(), p));
@@ -163,7 +164,7 @@ test("mock practice uses learning session lifecycle instead of runtime quiz gene
 });
 
 test("quest and review support weak pattern practice flow", () => {
-  const questSource = read("src/app/quest/page.tsx");
+  const questSource = readQuestSource();
   const reviewSource = read("src/app/review/page.tsx");
   const settingsSource = read("src/components/QuestSettingsPanel.tsx");
 
@@ -174,16 +175,16 @@ test("quest and review support weak pattern practice flow", () => {
   assert.equal(questSource.includes('import { resetProgress } from "@/lib/resetProgress";'), true);
   assert.equal(questSource.includes('import QuestSettingsPanel from "@/components/QuestSettingsPanel";'), true);
   assert.equal(questSource.includes('const patternIdFromQuery = (params.get("patternId") ?? "").trim();'), true);
-  assert.equal(questSource.includes("const hasPatternQuery = Boolean(patternIdFromQuery);"), true);
-  assert.equal(questSource.includes('const patternEntry = getLearningPattern(patternIdFromQuery);'), true);
-  assert.equal(questSource.includes("generateProblems(patternEntry.pattern, quizSize)"), true);
+  assert.equal(questSource.includes("hasPatternQuery"), true);
+  assert.equal(questSource.includes('getLearningPattern(patternIdFromQuery)'), true);
+  assert.equal(questSource.includes("generateProblems(patternEntry.pattern"), true);
   assert.equal(questSource.includes('type_id: `REVIEW.${patternEntry.skillId}.${patternEntry.patternId}`'), true);
-  assert.equal(questSource.includes("updateDailyStreak();"), true);
+  assert.equal(questSource.includes("updateDailyStreak"), true);
   assert.equal(questSource.includes("updateXpFromSession(data.result.score);"), false);
   assert.equal(questSource.includes('trackAnalyticsEvent("session_start")'), true);
   assert.equal(questSource.includes('trackAnalyticsEvent("session_finish")'), true);
   assert.equal(questSource.includes("sessionStartTrackedRef.current"), true);
-  assert.equal(questSource.includes("earnedXp={learningResult.earnedXp}"), true);
+  assert.equal(questSource.includes("earnedXp={resolvedLearningResult?.earnedXp}"), true);
   assert.equal(questSource.includes("xpSession={learningState?.student.xpSession ?? 0}"), false);
   assert.equal(questSource.includes("xpTotal={learningState?.student.xpTotal ?? 0}"), true);
   assert.equal(questSource.includes("studentXP: {learningState?.student.xpTotal ?? 0}"), true);

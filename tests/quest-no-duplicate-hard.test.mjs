@@ -2,15 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const factorySource = fs.readFileSync(
   path.join(process.cwd(), "src/lib/questItemFactory.ts"),
   "utf8"
 );
-const questSource = fs.readFileSync(
-  path.join(process.cwd(), "src/app/quest/page.tsx"),
-  "utf8"
-);
+const questSource = readQuestSource();
 
 test("factory keeps strict mode only (no duplicate fallback)", () => {
   assert.equal(factorySource.includes("const strictAttempts = 1200"), false);
@@ -21,11 +19,11 @@ test("factory keeps strict mode only (no duplicate fallback)", () => {
 
 test("quest page uses stock-based selection and blocks when stock is empty", () => {
   assert.equal(questSource.includes("const stocks = buildStocksForTypes("), true);
-  assert.equal(questSource.includes("pickUniqueQuizFromStock(activeStock.entries, quizSize, difficultyFromQuery)"), true);
+  assert.equal(/pickUniqueQuizFromStock\(activeStock\.entries, (stockView\.)?quizSize, difficultyFromQuery\)/.test(questSource), true);
   assert.equal(questSource.includes("if (hasDuplicateInSet(nextSet) && activeStock)"), true);
   assert.equal(questSource.includes("const sameGradeFallback = buildUniqueSetFromEntries(sameGradePool, quizSize);"), false);
   assert.equal(questSource.includes("const globalFallback = buildUniqueSetFromEntries(allCategoryItems, quizSize);"), false);
-  assert.equal(questSource.includes("if (pickMeta.availableAfterDedupe < 1 || pickMeta.reason === \"DUP_GUARD_FAILED\") {"), true);
+  assert.equal(/pickMeta\.availableAfterDedupe < 1 \|\| pickMeta\.reason === "DUP_GUARD_FAILED"/.test(questSource), true);
   assert.equal(questSource.includes("setStatus(\"blocked\");"), true);
   assert.equal(questSource.includes("このタイプは一時的に出題候補不足です。"), true);
 });

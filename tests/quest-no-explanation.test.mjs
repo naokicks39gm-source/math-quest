@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
-const questPath = path.join(process.cwd(), "src/app/quest/page.tsx");
-const source = fs.readFileSync(questPath, "utf8");
+const source = readQuestSource();
 
 test("quest page does not import explanation modal", () => {
   assert.equal(source.includes("ExplanationModal"), false);

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
@@ -46,7 +47,7 @@ test("grader supports pair answers with unordered quadratic root matching", () =
 });
 
 test("quest page has dual answer slots for quadratic roots", () => {
-  const source = read("src/app/quest/page.tsx");
+  const source = readQuestSource();
   assert.match(source, /const isQuadraticRootsType = \(typeId\?: string\) =>/);
   assert.match(source, /QUAD_ROOTS\(\?:_\|\$\)/);
   assert.match(source, /const isH1ReferenceOnlyType =/);

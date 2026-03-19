@@ -2,10 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
-const pageSource = read("src/app/quest/page.tsx");
+const pageSource = readQuestSource();
 const layoutSource = read("src/app/layout.tsx");
 const baseSource = read("src/components/keypad/BaseMathKeypad.ts");
 const elemSource = read("src/components/keypad/ElementaryKeypad.tsx");
@@ -103,7 +104,7 @@ test("quest page switches keypad by grade", () => {
 test("quest page allows chained variable symbols and delete helper", () => {
   assert.equal(pageSource.includes('import { VARIABLE_SYMBOLS } from "packages/keypad";'), true);
   assert.equal(pageSource.includes("const appendInput = (symbol: string) => {"), true);
-  assert.equal(pageSource.includes("const deleteInput = () => {"), true);
+  assert.equal(pageSource.includes("const handleDelete = () => {"), true);
   assert.equal(pageSource.includes("if ((VARIABLE_SYMBOLS as readonly string[]).includes(normalizedToken))"), true);
-  assert.equal(pageSource.includes("if ((VARIABLE_SYMBOLS as readonly string[]).includes(token)) return isSecondaryQuest;"), true);
+  assert.equal(pageSource.includes("if ((VARIABLE_SYMBOLS as readonly string[]).includes(token)) {"), true);
 });

@@ -1,3 +1,14 @@
+import { VARIABLE_SYMBOLS } from "packages/keypad";
+
+export type FractionEditorState = {
+  enabled: boolean;
+  num: string;
+  den: string;
+  part: "num" | "den";
+};
+
+const HIGH_SCHOOL_EXTRA_KEYPAD_TOKENS = ["()", "x", "^", "+/-"] as const;
+
 export function isValidAnswerText(
   text: string | undefined,
   kind: any
@@ -21,7 +32,9 @@ export function isValidAnswerText(
 
   return true;
 
-}export const isFractionPartReady = (value: string) =>
+}
+
+export const isFractionPartReady = (value: string) =>
   /^-?\d+$/.test(value);
 
 export const isFractionEditorReady = (

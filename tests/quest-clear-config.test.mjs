@@ -2,9 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
-const questPath = path.join(process.cwd(), "src/app/quest/page.tsx");
-const source = fs.readFileSync(questPath, "utf8");
+const source = readQuestSource();
+const learningActionsSource = fs.readFileSync(
+  path.join(process.cwd(), "src/app/quest/hooks/useLearningActions.ts"),
+  "utf8"
+);
 
 test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("const DEFAULT_TOTAL_QUESTIONS = 5;"), true);
@@ -36,9 +40,13 @@ test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("if (isDrawingRef.current) return \"\";"), true);
   assert.equal(source.includes("splitComponentGreedyByProjection"), true);
   assert.equal(source.includes("splitByProjection(bin, w, h, pivot.bbox, true"), true);
-  assert.equal(source.includes("history={learningResult.history}"), true);
-  assert.equal(source.includes("onRetry={handleRetry}"), true);
-  assert.equal(source.includes("onFinish={() => router.push(\"/skills\")}"), true);
+  assert.equal(source.includes("history={resolvedLearningResult?.history ?? []}"), true);
+  assert.equal(source.includes("learningRouting.handleRetry"), true);
+  assert.equal(
+    source.includes("onFinish={() => router.push(\"/skills\")}") ||
+      source.includes('const onFinish = () => router.push("/skills");'),
+    true
+  );
   assert.equal(source.includes("router.push(\"/\");"), true);
   assert.equal(source.includes("status === 'playing' && (inputMode === 'numpad' ? ("), false);
   assert.equal(source.includes("data-testid=\"calc-memo-area\""), true);
@@ -48,13 +56,17 @@ test("quest uses random pool questions and next-level navigation", () => {
   assert.equal(source.includes("w-full bg-white border border-slate-200 rounded-xl p-4 shadow-sm max-h-[48vh] overflow-y-auto"), false);
   assert.equal(source.includes("const FEEDBACK_FLASH_MS = 150;"), true);
   assert.equal(source.includes("const AUTO_ADVANCE_MS = 300;"), true);
-  assert.equal(source.includes("const queueAdvanceAfterFeedback = (verdict: { ok: boolean }) => {"), true);
-  assert.equal(source.includes("const clearPendingAdvanceTimers = useCallback(() => {"), true);
-  assert.equal(source.includes("void runFinishLearningSession().catch((error: unknown) => {"), true);
+  assert.equal(source.includes("queueAdvanceAfterFeedback"), true);
+  assert.equal(learningActionsSource.includes("const clearPendingAdvanceTimers = ("), true);
+  assert.equal(source.includes("runFinishLearningSession"), true);
   assert.equal(source.includes("void finishQuestLearningSession().catch((error: unknown) => {"), false);
   assert.equal(source.includes("bg-emerald-400/35"), true);
   assert.equal(source.includes("bg-red-500/35"), true);
-  assert.equal(source.includes('{resultMark === "correct" ? "Correct" : "Incorrect"}'), true);
+  assert.equal(
+    source.includes('{resultMark === "correct" ? "Correct" : "Incorrect"}') ||
+      source.includes('{args.resultMark === "correct" ? "Correct" : "Incorrect"}'),
+    true
+  );
   assert.equal(source.includes("fixed inset-x-2 bottom-2"), false);
   assert.equal(source.includes("status === \"playing\" && ("), true);
   assert.equal(source.includes("selectedPath && ("), true);

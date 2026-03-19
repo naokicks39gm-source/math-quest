@@ -2,16 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const root = process.cwd();
 const adapterSource = fs.readFileSync(
   path.join(root, "src/lib/problem/j1LevelAdapter.ts"),
   "utf8"
 );
-const questPageSource = fs.readFileSync(
-  path.join(root, "src/app/quest/page.tsx"),
-  "utf8"
-);
+const questPageSource = readQuestSource();
 
 const levelEntries = Array.from(
   adapterSource.matchAll(/levelId: "(J1-\d+)", title: "([^"]+)"/g),
@@ -40,8 +38,8 @@ test("J1 level adapter preserves the new curriculum order", () => {
 
 test("quest picker uses J1 level options instead of the legacy J1 catalog list", () => {
   assert.equal(questPageSource.includes('if (pickerGrade?.grade_id === "J1") {'), true);
-  assert.equal(questPageSource.includes("return J1_LEVEL_OPTIONS.map((entry) => ({"), true);
+  assert.equal(/J1_LEVEL_OPTIONS\.map\(\(entry/.test(questPageSource), true);
   assert.equal(questPageSource.includes('if (levelInfo?.gradeId === "J1") {'), true);
   assert.equal(questPageSource.includes("generateJ1LevelProblems"), true);
-  assert.equal(questPageSource.includes('categoryName: option?.categoryName ?? "中1カリキュラム"'), true);
+  assert.equal(/categoryName: option\?\.categoryName \?\? "中1カリキュラム"/.test(questPageSource), true);
 });

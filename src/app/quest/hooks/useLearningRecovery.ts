@@ -12,7 +12,7 @@ setCombo:(v:number)=>void
 
 setLearningAttemptCount:(v:number)=>void
 
-setQuestionResults:(v:any)=>void
+setQuestionResults?:(v:any)=>void
 
 }
 
@@ -125,11 +125,22 @@ return null
 
 
 
-const persistLearningState = useCallback((state:any)=>{
+const persistLearningState = useCallback((state:any, meta?:any)=>{
+
+if(meta){
+persistFullLearningState({
+nextState: state,
+sessionId: meta.sessionId,
+skillId: meta.skillId,
+answers: meta.recoveryAnswers,
+expiresAt: meta.expiresAt
+})
+return
+}
 
 saveLearningRecovery(state)
 
-},[saveLearningRecovery])
+},[persistFullLearningState, saveLearningRecovery])
 
 
 
@@ -155,7 +166,7 @@ setCombo(data.combo ?? 0)
 
 setLearningAttemptCount(data.attemptCount ?? 0)
 
-setQuestionResults(data.answers ?? {})
+setQuestionResults?.(data.answers ?? {})
 
 },[
 quest,

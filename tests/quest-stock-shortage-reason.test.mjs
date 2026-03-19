@@ -2,10 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const root = process.cwd();
 const stockSource = fs.readFileSync(path.join(root, "src/lib/questStockFactory.ts"), "utf8");
-const questSource = fs.readFileSync(path.join(root, "src/app/quest/page.tsx"), "utf8");
+const questSource = readQuestSource();
 const secondaryExprSource = fs.readFileSync(path.join(root, "src/lib/questGenerators/secondaryExpr.ts"), "utf8");
 
 test("stock result exposes reason_detail and canonical stock key path", () => {

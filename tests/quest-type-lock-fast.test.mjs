@@ -2,20 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const factorySource = fs.readFileSync(
   path.join(process.cwd(), "src/lib/questItemFactory.ts"),
   "utf8"
 );
-const questSource = fs.readFileSync(
-  path.join(process.cwd(), "src/app/quest/page.tsx"),
-  "utf8"
-);
+const questSource = readQuestSource();
 
 test("quest page is type-locked and has no grade/global fallback", () => {
   assert.equal(questSource.includes("const byQuery = typeCatalog.find((entry) => entry.typeId === typeFromQuery);"), true);
-  assert.equal(questSource.includes("const activeStock = activeTypeId ? typeStocks.get(activeTypeId) : undefined;"), true);
-  assert.equal(questSource.includes("pickUniqueQuizFromStock(activeStock.entries, quizSize, difficultyFromQuery)"), true);
+  assert.equal(/const activeStock = (stockView\.)?activeTypeId \? typeStocks\.get\((stockView\.)?activeTypeId\) : undefined;/.test(questSource), true);
+  assert.equal(/pickUniqueQuizFromStock\(activeStock\.entries, (stockView\.)?quizSize, difficultyFromQuery\)/.test(questSource), true);
   assert.equal(questSource.includes("const sameGradePool = allCategoryItems.filter((entry) =>"), false);
   assert.equal(questSource.includes("const globalFallback = buildUniqueSetFromEntries(allCategoryItems, quizSize);"), false);
 });
