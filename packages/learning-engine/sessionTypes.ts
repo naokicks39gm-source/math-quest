@@ -31,6 +31,8 @@ export type SessionHistoryEntry = {
 
 export type Session = {
   mode: "skill" | "adaptive";
+  isFallbackSession: boolean;
+  sessionType: "normal" | "fallback";
   skillId?: string;
   startedDifficulty: number;
   currentDifficulty: number;

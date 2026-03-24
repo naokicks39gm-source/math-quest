@@ -34,6 +34,12 @@ export function useQuestSessionFlow(args: any) {
   } = args;
 
   const syncLearningUiFromAnswer = (response: any) => {
+    if (response?.hint) {
+      console.log("HINT TRIGGER", response.attemptCount ?? 0);
+    }
+    if (response?.explanation) {
+      console.log("EXPLANATION TRIGGER", response.attemptCount ?? 0);
+    }
     quest.setCurrentProblem(response.problem ?? null);
     quest.setLearningAttemptCount(response.attemptCount ?? 0);
     quest.setLearningHint(response.hint ?? null);
@@ -99,6 +105,7 @@ export function useQuestSessionFlow(args: any) {
       if (!data?.session?.problems?.length) {
         throw new Error("learning_session_problem_unavailable");
       }
+      console.log("DEBUG session response", response);
       learningRecovery.persistLearningState(data.state, {
         sessionId: data.sessionId,
         recoveryAnswers: [],

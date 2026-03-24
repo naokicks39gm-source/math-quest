@@ -63,7 +63,7 @@ export function useQuestStock(args: any) {
     difficultyFromQuery
   } = args;
 
-  const stockView = useMemo(() => {
+  const stockViewBase = useMemo(() => {
     const categoryContext = (() => {
       if (!categoryFromQuery) return null;
       for (const g of grades) {
@@ -177,7 +177,6 @@ export function useQuestStock(args: any) {
       }
       return targetStockTypes[0]?.typeId ?? "";
     })();
-    const activeStockInfo = activeTypeId ? typeStocks.get(activeTypeId) ?? null : null;
     const targetQuestionCount = getTargetQuestionCount(activeTypeId, levelFromQuery || undefined);
     const quizSize = Math.min(targetQuestionCount, QUESTION_POOL_SIZE);
     return {
@@ -191,7 +190,6 @@ export function useQuestStock(args: any) {
       typeCatalog,
       targetStockTypes,
       activeTypeId,
-      activeStockInfo,
       targetQuestionCount,
       quizSize
     };
@@ -201,7 +199,6 @@ export function useQuestStock(args: any) {
     levelFromQuery,
     typeFromQuery,
     selectedType,
-    typeStocks,
     getTargetQuestionCount,
     levelInfo,
     patternIdFromQuery,
@@ -209,16 +206,29 @@ export function useQuestStock(args: any) {
     args.J1_LEVEL_OPTIONS
   ]);
 
+  const activeStockInfo = useMemo(
+    () => (stockViewBase.activeTypeId ? typeStocks.get(stockViewBase.activeTypeId) ?? null : null),
+    [stockViewBase.activeTypeId, typeStocks]
+  );
+
+  const stockView = useMemo(
+    () => ({
+      ...stockViewBase,
+      activeStockInfo
+    }),
+    [activeStockInfo, stockViewBase]
+  );
+
   const buildStockState = useCallback(() => {
-    if (stockView.hasLevelQuery) {
+    if (stockViewBase.hasLevelQuery) {
       return { stocks: new Map(), shortages: [], ready: true };
     }
     const stocks = buildStocksForTypes(
-      stockView.targetStockTypes.map((entry: any) => entry.type),
+      stockViewBase.targetStockTypes.map((entry: any) => entry.type),
       QUESTION_POOL_SIZE
     );
     const shortages: any[] = [];
-    for (const entry of stockView.targetStockTypes) {
+    for (const entry of stockViewBase.targetStockTypes) {
       const stock = stocks.get(entry.typeId);
       if (!stock) continue;
       if (stock.count < getTargetQuestionCount(entry.typeId)) {
@@ -232,7 +242,7 @@ export function useQuestStock(args: any) {
       }
     }
     return { stocks, shortages, ready: true };
-  }, [stockView, getTargetQuestionCount]);
+  }, [stockViewBase, getTargetQuestionCount]);
 
   const buildShortages = useCallback(() => buildStockState().shortages, [buildStockState]);
 
@@ -329,10 +339,15 @@ export function useQuestStock(args: any) {
     };
   }, [stockView, patternIdFromQuery, levelInfo, typeStocks, difficultyFromQuery]);
 
-  return {
-    stockView,
-    buildStockState,
-    buildShortages,
-    pickQuestSet
-  };
+  console.log("DEBUG stock size", typeStocks?.size);
+
+  return useMemo(
+    () => ({
+      stockView,
+      buildStockState,
+      buildShortages,
+      pickQuestSet
+    }),
+    [stockView, buildStockState, buildShortages, pickQuestSet]
+  );
 }

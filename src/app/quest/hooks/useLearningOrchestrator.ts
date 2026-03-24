@@ -36,6 +36,21 @@ export function useLearningOrchestrator(args: any) {
     VARIABLE_SYMBOLS = []
   } = args;
 
+  const {
+    status: questStatus,
+    currentProblem: questCurrentProblem,
+    learningAttemptCount: questLearningAttemptCount,
+    learningHint: questLearningHint,
+    learningExplanation: questLearningExplanation,
+    setStatus,
+    setSession,
+    setCurrentProblem,
+    setLearningResult,
+    setLearningHint,
+    setLearningExplanation,
+    setLearningAttemptCount: setQuestLearningAttemptCount
+  } = quest;
+
   const [history, setHistory] = useState<any[]>([]);
   const [results, setResults] = useState<any[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -45,52 +60,70 @@ export function useLearningOrchestrator(args: any) {
   const syncLearningUiFromSession = useCallback(
     (session: any, problem: any) => {
       if (!session) {
-        quest.setCurrentProblem(null);
-        quest.setLearningAttemptCount(0);
-        quest.setLearningHint(null);
-        quest.setLearningExplanation(null);
+        if (questCurrentProblem !== null) setCurrentProblem(null);
+        if (questLearningAttemptCount !== 0) setQuestLearningAttemptCount(0);
+        if (questLearningHint !== null) setLearningHint(null);
+        if (questLearningExplanation !== null) setLearningExplanation(null);
         return;
       }
 
       const currentProblem = problem ?? session.problems?.[session.index] ?? null;
-      quest.setCurrentProblem(currentProblem);
-      quest.setLearningAttemptCount(currentProblem?.attemptCount ?? 0);
-      quest.setLearningHint(session?.currentHint ?? null);
-      quest.setLearningExplanation(session?.currentExplanation ?? null);
+      setCurrentProblem(currentProblem);
+      setQuestLearningAttemptCount(currentProblem?.attemptCount ?? 0);
+      setLearningHint(session?.currentHint ?? null);
+      setLearningExplanation(session?.currentExplanation ?? null);
     },
-    [quest]
+    [
+      questCurrentProblem,
+      questLearningAttemptCount,
+      questLearningExplanation,
+      questLearningHint,
+      setCurrentProblem,
+      setLearningExplanation,
+      setLearningHint,
+      setQuestLearningAttemptCount
+    ]
   );
 
   const resetLearningSessionUi = useCallback(() => {
     setLearningSessionId(null);
-    quest.setSession(null);
+    setSession(null);
     setItemIndex(0);
     setCombo(0);
     setLearningAttemptCount(0);
     setQuestionResults({});
-    quest.setCurrentProblem(null);
-    quest.setLearningHint(null);
-    quest.setLearningExplanation(null);
-  }, [quest, setCombo, setItemIndex, setLearningAttemptCount, setLearningSessionId]);
+    setCurrentProblem(null);
+    setLearningHint(null);
+    setLearningExplanation(null);
+  }, [
+    setCombo,
+    setCurrentProblem,
+    setItemIndex,
+    setLearningAttemptCount,
+    setLearningExplanation,
+    setLearningHint,
+    setLearningSessionId,
+    setSession
+  ]);
 
   const finishLearningSession = useCallback(
     (session: any) => {
       if (!session) return;
-      quest.setStatus("cleared");
-      quest.setSession(session);
-      quest.setCurrentProblem(null);
-      quest.setLearningHint(null);
-      quest.setLearningExplanation(null);
+      setStatus("cleared");
+      setSession(session);
+      setCurrentProblem(null);
+      setLearningHint(null);
+      setLearningExplanation(null);
     },
-    [quest]
+    [setCurrentProblem, setLearningExplanation, setLearningHint, setSession, setStatus]
   );
 
   const applyFinishLearningSessionState = useCallback(
     (result: any) => {
       if (!result) return;
-      quest.setLearningResult(result);
+      setLearningResult(result);
     },
-    [quest]
+    [setLearningResult]
   );
 
   const restartSameLevel = useCallback(() => {}, []);
@@ -100,7 +133,7 @@ export function useLearningOrchestrator(args: any) {
 
   const handleInput = useCallback(
     (num: string) => {
-      if (quest.status !== "playing" || isStarting || isAnswerLockedByExplanation) return;
+      if (questStatus !== "playing" || isStarting || isAnswerLockedByExplanation) return;
 
       const currentText = isQuadraticRootsQuestion ? quadraticAnswers[quadraticActiveIndex] : input;
       const normalizedToken = (() => {
@@ -293,7 +326,7 @@ export function useLearningOrchestrator(args: any) {
       quadraticAnswers,
       quadraticFractionAutoMoveTimerRefs,
       quadraticFractionInputs,
-      quest,
+      questStatus,
       setFractionInput,
       setInput,
       setQuadraticAnswers,

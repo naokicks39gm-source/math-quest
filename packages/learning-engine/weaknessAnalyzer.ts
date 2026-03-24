@@ -54,7 +54,11 @@ export function resolvePatternBundles(patternBundleIds: string[]): PatternDSL[] 
 }
 
 export function resolveSkillPatterns(skillId: string): PatternDSL[] {
-  return resolvePatternBundles(getSkillPatternBundles(skillId));
+  const bundles = getSkillPatternBundles(skillId);
+  console.log("SKILL PATTERN BUNDLES", bundles?.length);
+  const patterns = resolvePatternBundles(bundles);
+  console.log("RESOLVED SKILL PATTERNS", patterns?.length);
+  return patterns;
 }
 
 export function getWeakPatterns(state: LearningState, skillId: string): WeakPattern[] {

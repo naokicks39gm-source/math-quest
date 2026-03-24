@@ -1,12 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export function useLearningSessionController(deps:any){
 
 const {
 isLearningSessionMode,
 skillIdFromQuery,
-quest,
+questSession,
+questStatus,
+questLearningResult,
+questLearningLoading,
 setLearningError,
+setLearningLoading,
 setLearningResult,
 syncLearningUiFromSession,
 clearLearningRecoveryStorage,
@@ -17,59 +21,117 @@ purgeFreshLearningRecovery,
 clearPersistedLearningSession,
 resetLearningSessionUi,
 resumeLearningSession,
-learningActions,
-loadStateFromClient,
 startLearningSession
 } = deps
 
+const startedRequestKeyRef = useRef<string | null>(null)
+const questSessionRef = useRef(questSession)
+const questStatusRef = useRef(questStatus)
+const questLearningResultRef = useRef(questLearningResult)
+const questLearningLoadingRef = useRef(questLearningLoading)
+const freshFromQueryRef = useRef(freshFromQuery)
+const retryFromQueryRef = useRef(retryFromQuery)
+const setLearningErrorRef = useRef(setLearningError)
+const setLearningLoadingRef = useRef(setLearningLoading)
+const setLearningResultRef = useRef(setLearningResult)
+const syncLearningUiFromSessionRef = useRef(syncLearningUiFromSession)
+const clearLearningRecoveryStorageRef = useRef(clearLearningRecoveryStorage)
+const loadLearningRecoveryRef = useRef(loadLearningRecovery)
+const purgeFreshLearningRecoveryRef = useRef(purgeFreshLearningRecovery)
+const clearPersistedLearningSessionRef = useRef(clearPersistedLearningSession)
+const resetLearningSessionUiRef = useRef(resetLearningSessionUi)
+const resumeLearningSessionRef = useRef(resumeLearningSession)
+const startLearningSessionRef = useRef(startLearningSession)
+
+useEffect(() => {
+questSessionRef.current = questSession
+questStatusRef.current = questStatus
+questLearningResultRef.current = questLearningResult
+questLearningLoadingRef.current = questLearningLoading
+freshFromQueryRef.current = freshFromQuery
+retryFromQueryRef.current = retryFromQuery
+setLearningErrorRef.current = setLearningError
+setLearningLoadingRef.current = setLearningLoading
+setLearningResultRef.current = setLearningResult
+syncLearningUiFromSessionRef.current = syncLearningUiFromSession
+clearLearningRecoveryStorageRef.current = clearLearningRecoveryStorage
+loadLearningRecoveryRef.current = loadLearningRecovery
+purgeFreshLearningRecoveryRef.current = purgeFreshLearningRecovery
+clearPersistedLearningSessionRef.current = clearPersistedLearningSession
+resetLearningSessionUiRef.current = resetLearningSessionUi
+resumeLearningSessionRef.current = resumeLearningSession
+startLearningSessionRef.current = startLearningSession
+})
+
+useEffect(() => {
+startedRequestKeyRef.current = null
+}, [skillIdFromQuery])
+
 useEffect(()=>{
 
-if(quest.session) return
+console.log("DEBUG controller effect fired")
 
 if(!isLearningSessionMode || !skillIdFromQuery){
 
-setLearningError(null)
+startedRequestKeyRef.current = null
 
-quest.setLearningLoading(false)
+setLearningErrorRef.current(null)
 
-setLearningResult(null)
+setLearningLoadingRef.current(false)
 
-syncLearningUiFromSession(null,null)
+setLearningResultRef.current(null)
 
-clearLearningRecoveryStorage()
+syncLearningUiFromSessionRef.current(null,null)
+
+clearLearningRecoveryStorageRef.current()
 
 return
 
 }
 
-const recovery = loadLearningRecovery()
+if(questSessionRef.current) return
+
+if(questLearningLoadingRef.current) return
+
+if(questLearningResultRef.current){
+
+startedRequestKeyRef.current = null
+return
+
+}
+
+const recovery = loadLearningRecoveryRef.current()
 
 const forceFreshStart =
-Boolean((freshFromQuery || retryFromQuery) && !quest.learningResult)
+Boolean((freshFromQueryRef.current || retryFromQueryRef.current) && !questLearningResultRef.current)
 
-const persistedSession =
-loadStateFromClient().session
+if(forceFreshStart && questStatusRef.current !== "cleared"){
 
-if(quest.learningResult){
+const requestKey = `fresh:${skillIdFromQuery}:${freshFromQueryRef.current ? "1" : "0"}:${retryFromQueryRef.current ? "1" : "0"}`
 
-return
+console.log("DEBUG start condition", {
+ learningLoading: questLearningLoadingRef.current,
+ key: requestKey,
+ started: startedRequestKeyRef.current
+})
 
-}
+if(startedRequestKeyRef.current === requestKey) return
 
-if(forceFreshStart && quest.status !== "cleared"){
+purgeFreshLearningRecoveryRef.current()
 
-purgeFreshLearningRecovery()
+clearLearningRecoveryStorageRef.current()
 
-clearLearningRecoveryStorage()
+clearPersistedLearningSessionRef.current(skillIdFromQuery)
 
-clearPersistedLearningSession(skillIdFromQuery)
+resetLearningSessionUiRef.current()
 
-resetLearningSessionUi()
-
-void (startLearningSession ?? quest.startLearningSession)(
+console.log("DEBUG startLearningSession")
+void startLearningSessionRef.current(
 skillIdFromQuery,
 { fresh:true }
 )
+
+startedRequestKeyRef.current = requestKey
 
 return
 
@@ -77,23 +139,45 @@ return
 
 if(recovery?.sessionId){
 
-void resumeLearningSession(
+const requestKey = `resume:${skillIdFromQuery}:${recovery.sessionId}`
+
+console.log("DEBUG start condition", {
+ learningLoading: questLearningLoadingRef.current,
+ key: requestKey,
+ started: startedRequestKeyRef.current
+})
+
+if(startedRequestKeyRef.current === requestKey) return
+
+void resumeLearningSessionRef.current(
 recovery.sessionId,
 skillIdFromQuery
 )
+
+startedRequestKeyRef.current = requestKey
 
 return
 
 }
 
-void (startLearningSession ?? quest.startLearningSession)(skillIdFromQuery)
+const requestKey = `start:${skillIdFromQuery}`
+
+console.log("DEBUG start condition", {
+ learningLoading: questLearningLoadingRef.current,
+ key: requestKey,
+ started: startedRequestKeyRef.current
+})
+
+if(startedRequestKeyRef.current === requestKey) return
+
+console.log("DEBUG startLearningSession")
+void startLearningSessionRef.current(skillIdFromQuery)
+
+startedRequestKeyRef.current = requestKey
 
 },[
 isLearningSessionMode,
-skillIdFromQuery,
-quest,
-freshFromQuery,
-retryFromQuery
+skillIdFromQuery
 ])
 
 }

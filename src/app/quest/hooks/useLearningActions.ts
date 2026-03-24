@@ -1,6 +1,13 @@
 import { useCallback } from "react";
 
 export function useLearningActions(quest:any){
+const {
+setSession,
+setCurrentProblem,
+setLearningAttemptCount,
+setLearningHint,
+setLearningExplanation
+} = quest
 
 const finishLearningSessionCore = async(sessionId:string)=>{
 
@@ -232,13 +239,19 @@ deps.setResultMark(null)
 }
 const resetLearningSessionCore = useCallback(() => {
 
-quest.setSession(null);
-quest.setCurrentProblem(null);
-quest.setLearningAttemptCount(0);
-quest.setLearningHint(null);
-quest.setLearningExplanation(null);
+setSession(null);
+setCurrentProblem(null);
+setLearningAttemptCount(0);
+setLearningHint(null);
+setLearningExplanation(null);
 
-},[quest]);
+},[
+setCurrentProblem,
+setLearningAttemptCount,
+setLearningExplanation,
+setLearningHint,
+setSession
+]);
 
 return{
 

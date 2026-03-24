@@ -1401,6 +1401,70 @@ test("adaptive XP clears a skill within three consecutive correct answers", asyn
   assert.equal(finished.result.skillXpAfter >= finished.result.requiredXP, true);
 });
 
+test("fallback session answers keep hint flow but do not change progression", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  const started = learningEngine.startSession(studentStore.createLearningState(), { mode: "skill", skillId: "E1_ADD_BASIC" });
+  const fallbackState = studentStore.serializeState({
+    ...started.state,
+    session: {
+      ...started.session,
+      isFallbackSession: true,
+      sessionType: "fallback"
+    }
+  });
+
+  const answered = learningEngine.recordAnswer(fallbackState, { correct: false, userAnswer: "x" });
+
+  assert.equal(answered.session.isFallbackSession, true);
+  assert.equal(answered.session.sessionType, "fallback");
+  assert.equal(answered.session.index, 0);
+  assert.equal(answered.session.correct, 0);
+  assert.equal(answered.session.wrong, 1);
+  assert.equal(answered.session.currentDifficulty, started.session.currentDifficulty);
+  assert.equal(answered.state.student.difficulty, fallbackState.student.difficulty);
+  assert.equal(answered.state.student.xpSession, fallbackState.student.xpSession);
+  assert.deepEqual(answered.state.skillXP, fallbackState.skillXP);
+  assert.deepEqual(answered.state.skillMastery, fallbackState.skillMastery);
+  assert.equal(answered.xpGained, 0);
+  assert.equal(answered.attemptCount, 1);
+  assert.equal(typeof answered.hint, "string");
+  assert.equal(answered.explanation, null);
+  assert.equal(answered.session.history.at(-1)?.userAnswer, "x");
+});
+
+test("fallback finishSession clears session without progression updates", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules();
+  const started = learningEngine.startSession(studentStore.createLearningState(), { mode: "skill", skillId: "E1_ADD_BASIC" });
+  const fallbackState = studentStore.serializeState({
+    ...started.state,
+    student: {
+      ...started.state.student,
+      difficulty: 4,
+      xpSession: 80
+    },
+    session: {
+      ...started.session,
+      isFallbackSession: true,
+      sessionType: "fallback",
+      startedDifficulty: 2,
+      currentDifficulty: 4
+    }
+  });
+
+  const finished = learningEngine.finishSession(fallbackState);
+
+  assert.equal(finished.result.cleared, false);
+  assert.equal(finished.result.earnedXp, 0);
+  assert.equal(finished.result.progressionChanged, false);
+  assert.equal(finished.result.difficultyBefore, 2);
+  assert.equal(finished.result.difficultyAfter, 2);
+  assert.equal(finished.result.skillXpAfter, finished.result.skillXpBefore);
+  assert.deepEqual(finished.result.newlyUnlockedSkillIds, []);
+  assert.equal(finished.state.student.difficulty, 4);
+  assert.equal(finished.state.student.xpSession, 80);
+  assert.equal(finished.state.session, undefined);
+});
+
 test("session difficulty rises after three correct answers and falls after two misses", async () => {
   const { learningEngine, studentStore } = await loadLearningEngineModules();
   let state = learningEngine.startSession(studentStore.createLearningState(), { mode: "skill", skillId: "E1_ADD_BASIC" }).state;

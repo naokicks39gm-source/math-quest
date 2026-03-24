@@ -348,6 +348,9 @@ function QuestPageInner() {
     EMPTY_FRACTION_EDITOR
   });
 
+  const skillId = selection.skillIdFromQuery;
+  console.log("DEBUG skillId", skillId);
+
   const orchestration = useQuestOrchestration({
     quest,
     selection,
@@ -551,6 +554,11 @@ function QuestPageInner() {
       />
     );
   }
+
+  const question = orchestration.learningOrchestrator.question;
+  console.log("DEBUG question", question);
+  console.log("DEBUG session", quest.session);
+  console.log("DEBUG currentProblem", quest.currentProblem);
 
   return (
       <QuestLayout>

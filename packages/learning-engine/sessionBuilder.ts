@@ -1,6 +1,7 @@
 import { generateRuntimeProblems, getPatternMeta } from "packages/problem-engine";
 import { generateExplanation } from "packages/problem-explanation";
 import { generateHint } from "packages/problem-hint";
+import skillsData from "packages/skill-system/skills.json";
 
 import type { Session, SessionProblem } from "./sessionTypes";
 import type { LearningState } from "./studentStore";
@@ -18,6 +19,7 @@ export const PRIORITY_WEIGHTS = {
   difficulty: 0.2
 } as const;
 const RECENCY_WINDOW_MS = 60 * 60 * 1000;
+const skills = skillsData as Array<{ id: string; patterns?: string[] }>;
 
 const shuffle = <T>(items: T[]): T[] => {
   const copied = [...items];
@@ -204,34 +206,46 @@ const buildCandidates = (
   }
 ) => {
   const patterns = sortPatternsByPriority(skillId, patternKeys, state, nowMs, targetDifficulty);
+  console.log("FILTER PATTERN INPUT", patterns.length);
 
-  return uniqueByProblemId(
-    patterns.flatMap((pattern) =>
-      shuffle(generateRuntimeProblems(pattern, PROBLEMS_PER_PATTERN))
-        .filter((problem) => {
-          if (options?.excludedProblemIds?.includes(problem.id)) {
-            return false;
-          }
-          if (options?.ignoreDifficulty) {
-            return true;
-          }
-          if (typeof problem.meta?.difficulty !== "number") {
-            return true;
-          }
-          return clampDifficulty(problem.meta.difficulty) <= targetDifficulty;
+  const generatedProblems = patterns.flatMap((pattern) => {
+    const problems = shuffle(generateRuntimeProblems(pattern, PROBLEMS_PER_PATTERN));
+    if (!problems || problems.length === 0) {
+      console.log("GENERATOR FAILED", pattern.key);
+    }
+    return problems.map((problem) => ({ pattern, problem }));
+  });
+  console.log("FILTER PROBLEM INPUT", generatedProblems.length);
+
+  const difficultyFiltered = generatedProblems.filter(({ problem }) => {
+    if (options?.excludedProblemIds?.includes(problem.id)) {
+      return false;
+    }
+    if (options?.ignoreDifficulty) {
+      return true;
+    }
+    if (typeof problem.meta?.difficulty !== "number") {
+      return true;
+    }
+    return clampDifficulty(problem.meta.difficulty) <= targetDifficulty;
+  });
+  console.log("FILTER AFTER DIFFICULTY", difficultyFiltered.length);
+
+  const candidates = uniqueByProblemId(
+    difficultyFiltered
+      .map(
+        ({ pattern, problem }): SessionProblemWithoutLearningAids => ({
+          problem,
+          skillId,
+          patternKey: pattern.key,
+          difficulty: clampDifficulty(problem.meta?.difficulty ?? targetDifficulty),
+          source
         })
-        .map(
-          (problem): SessionProblemWithoutLearningAids => ({
-            problem,
-            skillId,
-            patternKey: pattern.key,
-            difficulty: clampDifficulty(problem.meta?.difficulty ?? targetDifficulty),
-            source
-          })
-        )
-        .map(attachLearningAids)
-    )
+      )
+      .map(attachLearningAids)
   );
+  console.log("FILTER FINAL", candidates.length);
+  return candidates;
 };
 
 const takeProblems = (
@@ -346,6 +360,27 @@ const hasSameProblemSet = (left: SessionProblem[], right: SessionProblem[]) => {
   return leftIds.every((id, index) => id === rightIds[index]);
 };
 
+const generateFallbackProblem = (skillId: string, targetDifficulty: number): SessionProblem[] => {
+  const patterns = resolveSkillPatterns(skillId);
+  for (const pattern of patterns) {
+    const generated = generateRuntimeProblems(pattern, 1);
+    const problem = generated[0];
+    if (!problem) {
+      continue;
+    }
+    return [
+      attachLearningAids({
+        problem,
+        skillId,
+        patternKey: pattern.key,
+        difficulty: clampDifficulty(problem.meta?.difficulty ?? targetDifficulty),
+        source: "skill"
+      })
+    ];
+  }
+  return [];
+};
+
 const buildSessionOnce = (
   state: LearningState,
   skillId: string,
@@ -353,9 +388,14 @@ const buildSessionOnce = (
   mode: "skill" | "adaptive" = "skill",
   now: () => number = Date.now
 ): Session => {
+  const rawSkill = skills.find((entry) => entry.id === skillId);
+  console.log("RAW SKILL", skillId);
+  console.log("RAW SKILL PATTERNS", rawSkill?.patterns?.length ?? 0);
+  console.log("PATTERN IDS", rawSkill?.patterns ?? []);
   const skillProgress = state.skillProgress[skillId]?.mastery ?? 0;
   const targetDifficulty = clampDifficulty(studentDifficulty > 0 ? studentDifficulty : computeTargetDifficulty(skillProgress));
   const skillPatterns = resolveSkillPatterns(skillId);
+  console.log("PATTERNS", skillPatterns?.length);
   const maxPatternPerSession = computeMaxPatternPerSession(skillPatterns.length);
   const weakPatterns = getWeakPatterns(state, skillId);
   const skillPatternKeys = new Set(skillPatterns.map((pattern) => pattern.key));
@@ -367,20 +407,23 @@ const buildSessionOnce = (
 
   const weakPatternBuckets = partitionPatternKeysByCooldown(state, weakPatternKeys, nowMs);
   const skillPatternBuckets = partitionPatternKeysByCooldown(state, skillPatternKeys, nowMs);
+  console.log("FILTER AFTER COOLDOWN", skillPatternBuckets.available.size);
 
   const weaknessCandidates = buildCandidates(state, skillId, weakPatternBuckets.available, "weakness", targetDifficulty, nowMs, { excludedProblemIds });
   const skillCandidates = buildCandidates(state, skillId, skillPatternBuckets.available, "skill", targetDifficulty, nowMs, { excludedProblemIds });
+  console.log("WEAK CANDIDATES", weaknessCandidates.length);
+  console.log("SKILL CANDIDATES", skillCandidates.length);
 
   const selectedWeak = takeProblems(weaknessCandidates, WEAK_TARGET, usedPatternKeys, patternCounts, maxPatternPerSession);
   const selectedSkill = takeProblems(skillCandidates, SKILL_TARGET, usedPatternKeys, patternCounts, maxPatternPerSession);
-  const selected = [...selectedSkill, ...selectedWeak];
+  const selectedProblems = [...selectedSkill, ...selectedWeak];
 
-  if (selected.length < SESSION_SIZE) {
-    const fallback = takeProblems(skillCandidates, SESSION_SIZE - selected.length, usedPatternKeys, patternCounts, maxPatternPerSession);
-    selected.push(...fallback);
+  if (selectedProblems.length < SESSION_SIZE) {
+    const fallback = takeProblems(skillCandidates, SESSION_SIZE - selectedProblems.length, usedPatternKeys, patternCounts, maxPatternPerSession);
+    selectedProblems.push(...fallback);
   }
 
-  if (selected.length < SESSION_SIZE) {
+  if (selectedProblems.length < SESSION_SIZE) {
     const cooldownWeaknessCandidates = buildCandidates(
       state,
       skillId,
@@ -395,21 +438,21 @@ const buildSessionOnce = (
     });
     const cooldownCombined = uniqueByProblemId([...cooldownSkillCandidates, ...cooldownWeaknessCandidates]);
     for (const problem of cooldownCombined) {
-      if (selected.length >= SESSION_SIZE) {
+      if (selectedProblems.length >= SESSION_SIZE) {
         break;
       }
-      if (selected.some((entry) => entry.problemId === problem.problemId)) {
+      if (selectedProblems.some((entry) => entry.problemId === problem.problemId)) {
         continue;
       }
       if (!canSelectPattern(patternCounts, problem.patternKey, maxPatternPerSession)) {
         continue;
       }
       recordSelectedProblem(patternCounts, problem);
-      selected.push(problem);
+      selectedProblems.push(problem);
     }
   }
 
-  if (selected.length < SESSION_SIZE) {
+  if (selectedProblems.length < SESSION_SIZE) {
     const combined = uniqueByProblemId([
       ...skillCandidates,
       ...weaknessCandidates,
@@ -417,17 +460,17 @@ const buildSessionOnce = (
       ...buildCandidates(state, skillId, weakPatternBuckets.cooldown, "weakness", targetDifficulty, nowMs, { excludedProblemIds })
     ]);
     for (const problem of combined) {
-      if (selected.length >= SESSION_SIZE) {
+      if (selectedProblems.length >= SESSION_SIZE) {
         break;
       }
-      if (selected.some((entry) => entry.problemId === problem.problemId)) {
+      if (selectedProblems.some((entry) => entry.problemId === problem.problemId)) {
         continue;
       }
-      selected.push(problem);
+      selectedProblems.push(problem);
     }
   }
 
-  if (selected.length < SESSION_SIZE) {
+  if (selectedProblems.length < SESSION_SIZE) {
     const relaxedCombined = uniqueByProblemId([
       ...buildCandidates(state, skillId, skillPatternKeys, "skill", targetDifficulty, nowMs, { ignoreDifficulty: true }),
       ...buildCandidates(state, skillId, weakPatternKeys, "weakness", targetDifficulty, nowMs, {
@@ -436,28 +479,41 @@ const buildSessionOnce = (
       })
     ]);
     for (const problem of relaxedCombined) {
-      if (selected.length >= SESSION_SIZE) {
+      if (selectedProblems.length >= SESSION_SIZE) {
         break;
       }
-      if (selected.some((entry) => entry.problemId === problem.problemId)) {
+      if (selectedProblems.some((entry) => entry.problemId === problem.problemId)) {
         continue;
       }
       if (!canSelectPattern(patternCounts, problem.patternKey, maxPatternPerSession)) {
         continue;
       }
       recordSelectedProblem(patternCounts, problem);
-      selected.push(problem);
+      selectedProblems.push(problem);
     }
   }
 
-  if (selected.length < SESSION_SIZE) {
-    topUpWithRandomSkillPatterns(selected, skillId, targetDifficulty, patternCounts, maxPatternPerSession, excludedProblemIds);
+  if (selectedProblems.length < SESSION_SIZE) {
+    topUpWithRandomSkillPatterns(selectedProblems, skillId, targetDifficulty, patternCounts, maxPatternPerSession, excludedProblemIds);
   }
 
-  const orderedProblems = reorderProblemsWithPatternDiversity(shuffle(selected)).slice(0, SESSION_SIZE);
+  console.log("FINAL CANDIDATES", selectedProblems.length);
+  console.log("FILTER AFTER DIVERSITY", selectedProblems.length);
+  let isFallbackSession = false;
+  let sessionType: "normal" | "fallback" = "normal";
+  let orderedProblems = reorderProblemsWithPatternDiversity(shuffle(selectedProblems)).slice(0, SESSION_SIZE);
+  if (selectedProblems.length === 0) {
+    console.warn("SELECTION EMPTY FALLBACK");
+    orderedProblems = generateFallbackProblem(skillId, targetDifficulty);
+    isFallbackSession = orderedProblems.length > 0;
+    sessionType = isFallbackSession ? "fallback" : "normal";
+  }
+  console.log("SELECTED PROBLEMS", orderedProblems.length);
 
   return {
     mode,
+    isFallbackSession,
+    sessionType,
     skillId,
     startedDifficulty: targetDifficulty,
     currentDifficulty: targetDifficulty,

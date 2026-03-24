@@ -4,9 +4,9 @@ export function useQuestStockEffects(args: any) {
   const {
     isLearningSessionMode,
     hasLevelQuery,
-    targetStockTypes,
     retryNonce,
-    stock,
+    buildStockState,
+    pickQuestSet,
     setTypeStocks,
     setStockShortages,
     setStockReady,
@@ -15,7 +15,7 @@ export function useQuestStockEffects(args: any) {
     setQuizItems,
     setItemIndex,
     setQuestionResults,
-    quest,
+    questSetStatus,
     setQuizBuildError,
     setActivePickMeta,
     setStatus,
@@ -41,23 +41,23 @@ export function useQuestStockEffects(args: any) {
 
   useEffect(() => {
     if (isLearningSessionMode) {
-      setTypeStocks(new Map());
-      setStockShortages([]);
-      setStockReady(true);
+      setTypeStocks((prev: Map<string, any>) => (prev.size === 0 ? prev : new Map()));
+      setStockShortages((prev: any[]) => (prev.length === 0 ? prev : []));
+      setStockReady((prev: boolean) => (prev ? prev : true));
       return;
     }
-    setStockReady(false);
+    setStockReady((prev: boolean) => (prev ? false : prev));
     if (hasLevelQuery) {
-      setTypeStocks(new Map());
-      setStockShortages([]);
-      setStockReady(true);
+      setTypeStocks((prev: Map<string, any>) => (prev.size === 0 ? prev : new Map()));
+      setStockShortages((prev: any[]) => (prev.length === 0 ? prev : []));
+      setStockReady((prev: boolean) => (prev ? prev : true));
       return;
     }
-    const stockState = stock.buildStockState();
+    const stockState = buildStockState();
     setTypeStocks(stockState.stocks);
     setStockShortages(stockState.shortages);
-    setStockReady(true);
-  }, [isLearningSessionMode, hasLevelQuery, targetStockTypes, retryNonce, stock]);
+    setStockReady((prev: boolean) => (prev ? prev : true));
+  }, [isLearningSessionMode, hasLevelQuery, retryNonce, buildStockState, setStockReady, setStockShortages, setTypeStocks]);
 
   useEffect(() => {
     if (isLearningSessionMode) {
@@ -68,11 +68,11 @@ export function useQuestStockEffects(args: any) {
       setQuizItems([]);
       setItemIndex(0);
       setQuestionResults({});
-      quest.setStatus("blocked");
+      questSetStatus("blocked");
       setQuizBuildError("出題ストックを準備中です。少しお待ちください。");
       return;
     }
-    const picked = stock.pickQuestSet();
+    const picked = pickQuestSet();
     setActivePickMeta(picked.pickMeta ?? null);
     if (picked.kind === "blocked") {
       setQuizItems([]);
@@ -94,7 +94,7 @@ export function useQuestStockEffects(args: any) {
     setItemIndex(0);
     setQuestionResults({});
     console.log("STATUS CHANGE →", "playing");
-    quest.setStatus("playing");
+    questSetStatus("playing");
     setMessage("Battle Start!");
     setPracticeResult(null);
     setResultMark(null);
@@ -105,5 +105,35 @@ export function useQuestStockEffects(args: any) {
     setQuadraticAnswers(["", ""]);
     setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
     setQuadraticActiveIndex(0);
-  }, [isLearningSessionMode, hasPatternQuery, patternIdFromQuery, levelGradeId, levelFromQuery, stockReady, typeStocks, activeTypeId, quizSize, retryNonce, difficultyFromQuery, stock]);
+  }, [
+    isLearningSessionMode,
+    hasPatternQuery,
+    patternIdFromQuery,
+    levelGradeId,
+    levelFromQuery,
+    stockReady,
+    typeStocks,
+    activeTypeId,
+    quizSize,
+    retryNonce,
+    difficultyFromQuery,
+    clearAllFractionAutoMoveTimers,
+    pickQuestSet,
+    setActivePickMeta,
+    setFractionInput,
+    setInput,
+    setItemIndex,
+    setMessage,
+    setPracticeResult,
+    setQuadraticActiveIndex,
+    setQuadraticAnswers,
+    setQuadraticFractionInputs,
+    setQuestionResults,
+    setQuizBuildError,
+    setQuizItems,
+    setRecognizedNumber,
+    setResultMark,
+    setStatus,
+    questSetStatus
+  ]);
 }

@@ -67,6 +67,8 @@ export type LearningSessionHistoryEntry = {
 
 export type LearningSession = {
   mode: "skill" | "adaptive";
+  isFallbackSession: boolean;
+  sessionType: "normal" | "fallback";
   skillId?: string;
   startedDifficulty: number;
   currentDifficulty: number;
@@ -114,6 +116,7 @@ export type SessionResult = {
   cleared: boolean;
   newlyUnlockedSkillIds: string[];
   earnedXp: number;
+  progressionChanged: boolean;
   history: LearningSessionHistoryEntry[];
   recentProblems: string[];
   recommendation: Recommendation;

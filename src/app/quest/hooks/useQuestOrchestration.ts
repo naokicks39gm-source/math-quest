@@ -431,11 +431,16 @@ export function useQuestOrchestration(args: any) {
     resetLearningSessionUi: learningOrchestrator.resetLearningSessionUi
   });
 
+  console.log("DEBUG orchestration calling controller");
   useLearningSessionController({
     isLearningSessionMode: Boolean(selection.skillIdFromQuery),
     skillIdFromQuery: selection.skillIdFromQuery,
-    quest,
+    questSession: quest.session,
+    questStatus: quest.status,
+    questLearningResult: quest.learningResult,
+    questLearningLoading: quest.learningLoading,
     setLearningError: quest.setLearningError,
+    setLearningLoading: quest.setLearningLoading,
     setLearningResult: quest.setLearningResult,
     syncLearningUiFromSession: learningOrchestrator.syncLearningUiFromSession,
     clearLearningRecoveryStorage: sessionGlue.clearLearningRecoveryStorage,
@@ -446,15 +451,15 @@ export function useQuestOrchestration(args: any) {
     clearPersistedLearningSession,
     resetLearningSessionUi: learningOrchestrator.resetLearningSessionUi,
     resumeLearningSession: session.resumeSession,
-    learningActions,
-    loadStateFromClient,
     startLearningSession: session.startSession
   });
 
   useEffect(() => {
+    console.log("DEBUG initial problem effect fired");
     const first = createQuestion();
+    console.log("DEBUG setQuestion called", first?.id);
     learningOrchestrator.setQuestion(first);
-  }, [createQuestion, learningOrchestrator]);
+  }, [learningOrchestrator.setQuestion]);
 
   useEffect(() => {
     return () => {
@@ -487,9 +492,9 @@ export function useQuestOrchestration(args: any) {
   useQuestStockEffects({
     isLearningSessionMode: Boolean(selection.skillIdFromQuery),
     hasLevelQuery: stockView.hasLevelQuery,
-    targetStockTypes: stockView.targetStockTypes,
     retryNonce,
-    stock,
+    buildStockState: stock.buildStockState,
+    pickQuestSet: stock.pickQuestSet,
     setTypeStocks,
     setStockShortages,
     setStockReady,
@@ -498,7 +503,7 @@ export function useQuestOrchestration(args: any) {
     setQuizItems,
     setItemIndex,
     setQuestionResults: learningOrchestrator.setQuestionResults,
-    quest,
+    questSetStatus: quest.setStatus,
     setQuizBuildError,
     setActivePickMeta,
     setStatus: quest.setStatus,

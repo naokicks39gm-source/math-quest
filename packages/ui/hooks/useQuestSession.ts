@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import type { Session } from "../../../packages/learning-engine/sessionTypes"
 import type { SessionProblem } from "../../../packages/learning-engine/sessionTypes"
 
@@ -21,7 +21,7 @@ const [learningExplanation,setLearningExplanation]=useState<string|null>(null)
 const [learningAttemptCount,setLearningAttemptCount]=useState(0)
 
 
-async function startLearningSession(skillId:string){
+const startLearningSession = useCallback(async(skillId:string)=>{
 console.log("START SESSION skillId:",skillId)
 setStatus("playing")
 
@@ -70,11 +70,10 @@ setLearningError("session start failed")
 setLearningLoading(false)
 
 }
+},[])
 
-}
 
-
-return {
+return useMemo(()=>({
 
 learningResult,
 setLearningResult,
@@ -104,6 +103,17 @@ setLearningExplanation,
 learningAttemptCount,
 setLearningAttemptCount,
 
-}
+}),[
+learningResult,
+session,
+status,
+currentProblem,
+startLearningSession,
+learningLoading,
+learningError,
+learningHint,
+learningExplanation,
+learningAttemptCount
+])
 
 }

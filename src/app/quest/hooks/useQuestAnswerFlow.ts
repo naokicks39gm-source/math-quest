@@ -151,6 +151,11 @@ export function useQuestAnswerFlow(args: any) {
     if (!answerText.trim()) return;
 
     const verdict = judgeCurrentAnswer(answerText);
+    console.log("ANSWER SUBMIT",{
+      answer: answerText,
+      correct: verdict.ok,
+      attemptCount: quest.learningAttemptCount
+    })
     setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
     setQuestionResults((prev: any) => ({
       ...prev,

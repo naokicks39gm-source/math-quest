@@ -346,6 +346,8 @@ const parseSession = (value: unknown): Session | undefined => {
 
   return {
     mode: value.mode,
+    isFallbackSession: value.isFallbackSession === true,
+    sessionType: value.sessionType === "fallback" ? "fallback" : "normal",
     skillId: typeof value.skillId === "string" ? value.skillId : undefined,
     startedDifficulty: Math.max(1, Math.min(5, Math.trunc(parseNumber(value.startedDifficulty, 1)))),
     currentDifficulty: Math.max(1, Math.min(5, Math.trunc(parseNumber(value.currentDifficulty, parseNumber(value.startedDifficulty, 1))))),
