@@ -99,6 +99,35 @@ correct
 
 })
 
+if(data.session){
+setSession(data.session)
+}
+
+if(data.problem){
+setCurrentProblem(data.problem)
+}
+
+if(data.attemptCount !== undefined){
+setLearningAttemptCount(data.attemptCount)
+}
+
+if(data.hint){
+setLearningHint(data.hint)
+}
+
+if(data.explanation){
+setLearningExplanation(data.explanation)
+}
+if(data.finished){
+
+await runFinishLearningSession(
+learningState,
+learningSessionId,
+null,
+quest
+)
+
+}
 return data
 
 }
