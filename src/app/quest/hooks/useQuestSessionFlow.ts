@@ -80,6 +80,11 @@ export function useQuestSessionFlow(args: any) {
       recentProblems?: any;
     }
   ) => {
+    console.log("START SESSION skillId:", skillId, {
+      fresh: options?.fresh === true,
+      carryoverHistory: Array.isArray(options?.carryoverHistory) ? options.carryoverHistory.length : 0,
+      recentProblems: Array.isArray(options?.recentProblems) ? options.recentProblems.length : 0
+    });
     sessionStartTrackedRef.current = false;
     quest.setLearningLoading(true);
     setLearningError(null);

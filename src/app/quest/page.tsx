@@ -2,7 +2,7 @@
  'use client';
 
 import { Suspense, useRef } from "react";
-
+import { useLearningSessionController } from "./hooks/useLearningSessionController";
 import { useLearningActions } from "./hooks/useLearningActions";
 import { useQuestOrchestration } from "./hooks/useQuestOrchestration";
 import { useQuestPanelProps } from "./hooks/useQuestPanelProps";
@@ -394,7 +394,47 @@ function QuestPageInner() {
       getAutoJudgeDelayMs
     }
   });
+useLearningSessionController({
 
+isLearningSessionMode: selection.isLearningSessionMode,
+
+skillIdFromQuery: selection.skillIdFromQuery,
+
+questSession: quest.session,
+
+questStatus: quest.status,
+
+questLearningResult: quest.learningResult,
+
+questLearningLoading: quest.learningLoading,
+
+setLearningError: quest.setLearningError,
+
+setLearningLoading: quest.setLearningLoading,
+
+setLearningResult: quest.setLearningResult,
+
+syncLearningUiFromSession: orchestration.learningOrchestrator.syncLearningUiFromSession,
+
+clearLearningRecoveryStorage: ()=>{},
+
+loadLearningRecovery: ()=>null,
+
+freshFromQuery: selection.freshFromQuery,
+
+retryFromQuery: selection.retryFromQuery,
+
+purgeFreshLearningRecovery: ()=>{},
+
+clearPersistedLearningSession,
+
+resetLearningSessionUi: ()=>{},
+
+resumeLearningSession: ()=>{},
+
+startLearningSession: quest.startLearningSession
+
+})
   const panelProps = useQuestPanelProps({
     header: {
       quest,
@@ -421,7 +461,10 @@ function QuestPageInner() {
       currentItem: orchestration.learningView.currentItem,
       currentType: orchestration.learningView.currentType,
       learningProblem: orchestration.learningView.learningProblem,
-      getPracticeSkill: undefined,
+      getPracticeSkill:(id:string)=>({
+ id,
+ title:id
+}),
       currentLearningSkillId: orchestration.currentLearningSkillId,
       currentSkillXP: orchestration.currentSkillXP,
       currentSkillRequiredXP: orchestration.currentSkillRequiredXP,
@@ -529,6 +572,7 @@ function QuestPageInner() {
       learningOrchestrator: orchestration.learningOrchestrator,
       setInput: state.setInput,
       setResultMark: state.setResultMark,
+      setMessage: state.setMessage,
       clearQuadraticFractionAutoMoveTimer: orchestration.keypad.clearQuadraticFractionAutoMoveTimer,
       setQuadraticFractionInputs: state.setQuadraticFractionInputs,
       setQuadraticAnswers: state.setQuadraticAnswers,

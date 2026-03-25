@@ -71,7 +71,18 @@ useEffect(()=>{
 
 console.log("DEBUG controller effect fired")
 
+console.log("MODE",isLearningSessionMode)
+
+console.log("CONTROLLER STATE",{
+ session: questSessionRef.current,
+ loading: questLearningLoadingRef.current,
+ result: questLearningResultRef.current,
+ started: startedRequestKeyRef.current
+})
+
 if(!isLearningSessionMode || !skillIdFromQuery){
+
+if(!questSessionRef.current){
 
 startedRequestKeyRef.current = null
 
@@ -84,6 +95,8 @@ setLearningResultRef.current(null)
 syncLearningUiFromSessionRef.current(null,null)
 
 clearLearningRecoveryStorageRef.current()
+
+}
 
 return
 
@@ -104,6 +117,14 @@ const recovery = loadLearningRecoveryRef.current()
 
 const forceFreshStart =
 Boolean((freshFromQueryRef.current || retryFromQueryRef.current) && !questLearningResultRef.current)
+
+console.log("freshFromQuery",freshFromQueryRef.current)
+
+console.log("retryFromQuery",retryFromQueryRef.current)
+
+console.log("questStatus",questStatusRef.current)
+
+console.log("forceFreshStart",forceFreshStart)
 
 if(forceFreshStart && questStatusRef.current !== "cleared"){
 
@@ -126,6 +147,7 @@ clearPersistedLearningSessionRef.current(skillIdFromQuery)
 resetLearningSessionUiRef.current()
 
 console.log("DEBUG startLearningSession")
+console.log("CALLING START SESSION", skillIdFromQuery)
 void startLearningSessionRef.current(
 skillIdFromQuery,
 { fresh:true }
@@ -171,6 +193,7 @@ console.log("DEBUG start condition", {
 if(startedRequestKeyRef.current === requestKey) return
 
 console.log("DEBUG startLearningSession")
+console.log("CALLING START SESSION", skillIdFromQuery)
 void startLearningSessionRef.current(skillIdFromQuery)
 
 startedRequestKeyRef.current = requestKey

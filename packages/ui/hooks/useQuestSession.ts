@@ -20,9 +20,17 @@ const [learningHint,setLearningHint]=useState<string|null>(null)
 const [learningExplanation,setLearningExplanation]=useState<string|null>(null)
 const [learningAttemptCount,setLearningAttemptCount]=useState(0)
 
+const startLearningSession = useCallback(async(
+ skillId:string,
+ options?:{fresh?:boolean}
+)=>{
 
-const startLearningSession = useCallback(async(skillId:string)=>{
-console.log("START SESSION skillId:",skillId)
+console.log(
+ "START SESSION skillId:",
+ skillId,
+ options
+)
+    console.log("START SESSION skillId:",skillId)
 setStatus("playing")
 
 setLearningResult(null)
@@ -55,9 +63,49 @@ mode:"skill"
 
 const data=await res.json()
 
+console.log("DATA FULL",data)
+
+console.log("SESSION EXISTS",!!data.session)
+
+console.log("PROBLEMS",data.session?.problems)
+
+console.log("FIRST",data.firstProblem)
+
 setSession(data.session)
 
-setCurrentProblem(data.firstProblem)
+console.log("START RESPONSE",data)
+
+console.log(
+ "SESSION PROBLEMS",
+ data.session?.problems?.length
+)
+
+console.log(
+ "FIRST PROBLEM",
+ data.firstProblem
+)
+
+
+setSession(data.session)
+
+if(data.firstProblem){
+
+ setCurrentProblem(data.firstProblem)
+
+}else if(data.session?.problems?.length){
+
+ setCurrentProblem(
+  data.session.problems[0]
+ )
+
+}else{
+
+ console.error(
+  "SESSION HAS NO PROBLEMS",
+  data.session
+ )
+
+}
 
 }catch(e){
 

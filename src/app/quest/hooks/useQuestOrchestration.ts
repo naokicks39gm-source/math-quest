@@ -431,7 +431,14 @@ export function useQuestOrchestration(args: any) {
     resetLearningSessionUi: learningOrchestrator.resetLearningSessionUi
   });
 
-  console.log("DEBUG orchestration calling controller");
+  console.log("DEBUG orchestration calling controller", {
+    skillId: selection.skillIdFromQuery,
+    fresh: selection.freshFromQuery,
+    retry: selection.retryFromQuery,
+    session: quest.session?.skillId ?? null,
+    currentProblem: quest.currentProblem?.problemId ?? null,
+    stock: typeStocks?.size ?? 0
+  });
   useLearningSessionController({
     isLearningSessionMode: Boolean(selection.skillIdFromQuery),
     skillIdFromQuery: selection.skillIdFromQuery,
