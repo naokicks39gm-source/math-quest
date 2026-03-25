@@ -45,6 +45,11 @@ export function useQuestAnswerFlow(args: any) {
     setQuadraticActiveIndex,
     setMessage
   } = args;
+console.log("DEBUG setMessage value", setMessage);
+console.log("DEBUG typeof", typeof setMessage);
+  console.log("DEBUG setMessage", setMessage);
+console.log("DEBUG typeof", typeof setMessage);
+
 
   const buildAnswerText = () => {
     return isQuadraticRootsQuestion

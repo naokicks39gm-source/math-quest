@@ -251,7 +251,7 @@ export function useQuestOrchestration(args: any) {
     setRecognizedNumber,
     setQuadraticActiveIndex,
     setPreviewImages,
-    setMessage: quest.setMessage,
+    setMessage: state.setMessage,
     canvasRef: refs.canvasRef,
     sessionStartTrackedRef
   });
@@ -386,7 +386,7 @@ export function useQuestOrchestration(args: any) {
     setQuestionResults: learningOrchestrator.setQuestionResults,
     setItemIndex,
     setCombo,
-    setMessage: quest.setMessage,
+    setMessage: state.setMessage,
     resetQuestionUi,
     setLearningState,
     setLearningResult: quest.setLearningResult,
@@ -413,7 +413,7 @@ export function useQuestOrchestration(args: any) {
     setLearningSessionId,
     updateDailyStreak,
     setLearningResult: quest.setLearningResult,
-    setMessage: quest.setMessage,
+    setMessage: state.setMessage,
     setResultMark,
     finishGuardRef,
     advanceGuardRef,
@@ -523,7 +523,7 @@ export function useQuestOrchestration(args: any) {
     setQuadraticAnswers,
     setQuadraticFractionInputs,
     setQuadraticActiveIndex,
-    setMessage: quest.setMessage,
+    setMessage: state.setMessage,
     hasPatternQuery: stockView.hasPatternQuery,
     patternIdFromQuery: selection.patternIdFromQuery,
     levelGradeId: selection.levelGradeId,
@@ -608,7 +608,7 @@ export function useQuestOrchestration(args: any) {
     trackAnalyticsEvent,
     setLearningResultSkillIdRef: setLearningResultSkillId,
     setLearningResult: quest.setLearningResult,
-    setMessage: quest.setMessage,
+    setMessage: state.setMessage,
     setResultMark,
     setLearningError: quest.setLearningError,
     setQuizBuildError,
@@ -685,7 +685,7 @@ export function useQuestOrchestration(args: any) {
     trackAnalyticsEvent,
     setLearningResultSkillId,
     setLearningResult: quest.setLearningResult,
-    setMessage: quest.setMessage,
+    setMessage: state.setMessage,
     setResultMark,
     setLearningError: quest.setLearningError,
     setQuizBuildError,
@@ -763,7 +763,7 @@ export function useQuestOrchestration(args: any) {
     nextQuestion: callbacks.onNextQuestion,
     EMPTY_FRACTION_EDITOR,
     setQuadraticActiveIndex,
-    setMessage: quest.setMessage
+    setMessage: state.setMessage
   });
 
   useQuestGestures({
@@ -847,7 +847,7 @@ export function useQuestOrchestration(args: any) {
     setHasStarted,
     setStartPopup,
     setIsStarting: state.setIsStarting,
-    setMessage: quest.setMessage
+    setMessage: state.setMessage
   });
 
   return {
