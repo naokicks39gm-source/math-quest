@@ -41,9 +41,9 @@ export const renderPrompt = (item: ExampleItemLike | null | undefined, typeId?: 
   if (typeId?.includes("E1_NUM_COUNT") || typeId?.includes("E1_NUMBER_COUNT") || typeId?.includes("E1-NUM-COUNT-")) {
     const count = parseCountValue(item);
     return (
-      <span className="inline-flex flex-col items-center gap-3 whitespace-pre-line text-center leading-tight">
-        <span className="min-h-[1.5em]">{renderCountDotGroups(count)}</span>
-        <span>いくつ？</span>
+      <span className="inline-flex flex-col items-start gap-0 whitespace-pre-line text-center leading-tight">
+        <span >{renderCountDotGroups(count)}</span>
+        <span className="mt-1">いくつ？</span>
       </span>
     );
   }

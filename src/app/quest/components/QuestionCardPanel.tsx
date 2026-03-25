@@ -260,7 +260,8 @@ return(
 
             <div
               ref={currentCardRef}
-              className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 px-6 py-4 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] h-[200px] sm:h-[185px] flex items-center justify-center"
+              className="relative overflow-hidden rounded-2xl border-x-[10px] border-t-[10px] border-b-[14px] border-x-amber-700 border-t-amber-700 border-b-slate-300 bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 
+              mt-25 px-6 py-1 text-emerald-50 text-2xl font-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.08),inset_0_0_45px_rgba(0,0,0,0.45),0_10px_28px_rgba(0,0,0,0.35)] min-h-[200px] sm:min-h-[240px] flex items-center justify-center"
             >
               <div className="pointer-events-none absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_12%_20%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_70%,rgba(255,255,255,0.10),transparent_34%),repeating-linear-gradient(12deg,rgba(255,255,255,0.05)_0px,rgba(255,255,255,0.05)_2px,transparent_2px,transparent_8px)]" />
               {combo >= 2 && (
@@ -290,8 +291,8 @@ return(
                 ref={qaRowRef}
                 className={
                   useSingleLineQa
-                    ? "relative z-10 w-full flex flex-wrap items-center justify-start gap-2 sm:gap-3"
-                    : "relative z-10 w-full flex flex-col justify-center gap-1 sm:gap-2"
+                    ? "relative z-10 w-full flex flex-wrap items-start justify-start gap-5  sm:gap-3"
+                    : "relative z-10 w-full flex flex-col justify-start gap-1 pt-1 sm:gap-2"
                 }
               >
                 <div

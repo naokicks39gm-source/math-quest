@@ -78,9 +78,9 @@ export const renderMaybeMath = (text?: string): ReactNode => {
   if (isEquationText) {
     const tex = toEquationTex(safeText);
     return (
-      <span className="inline-flex max-w-full items-center overflow-x-auto whitespace-nowrap align-middle">
+      <div className="flex flex-col items-start gap-0 leading-tight">
         <InlineMath math={tex} renderError={() => <span>{safeText}</span>} />
-      </span>
+      </div>
     );
   }
 
@@ -174,7 +174,7 @@ export const renderCountDotGroups = (count: number) => {
   const rest = count % 5;
 
   return (
-    <span className="flex flex-col gap-3">
+    <span className="flex flex-col gap-2">
       {Array.from({ length: groups }).map((_, groupIndex) => (
         <span key={`count-group-${groupIndex}`} className="flex gap-2">
           {Array.from({ length: 5 }).map((__, dotIndex) => (
