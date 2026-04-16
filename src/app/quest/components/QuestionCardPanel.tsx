@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { InlineMath } from "react-katex";
 import SecondaryExplanationPanel from "@/components/SecondaryExplanationPanel";
 import { QuestMemoPanel } from "./QuestMemoPanel";
@@ -134,7 +135,7 @@ shouldRenderElementaryExplanationPanel:boolean;
 
 };
 
-export function QuestionCardPanel({
+function QuestionCardPanelComponent({
 
 quest,
 currentItem,
@@ -252,6 +253,8 @@ handleMemoPointerEnd,
 shouldRenderElementaryExplanationPanel
 
 }:Props){
+
+console.log("TRACE_QCP_RENDER");
 
 return(
 
@@ -667,3 +670,4 @@ isStarting={isStarting}
 );
 
 }
+export default memo(QuestionCardPanelComponent);

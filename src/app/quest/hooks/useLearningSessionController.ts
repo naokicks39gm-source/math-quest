@@ -69,16 +69,7 @@ startedRequestKeyRef.current = null
 
 useEffect(()=>{
 
-console.log("DEBUG controller effect fired")
-
-console.log("MODE",isLearningSessionMode)
-
-console.log("CONTROLLER STATE",{
- session: questSessionRef.current,
- loading: questLearningLoadingRef.current,
- result: questLearningResultRef.current,
- started: startedRequestKeyRef.current
-})
+console.log("TRACE_USE_EFFECT_START")
 
 if(!isLearningSessionMode || !skillIdFromQuery){
 
@@ -118,23 +109,9 @@ const recovery = loadLearningRecoveryRef.current()
 const forceFreshStart =
 Boolean((freshFromQueryRef.current || retryFromQueryRef.current) && !questLearningResultRef.current)
 
-console.log("freshFromQuery",freshFromQueryRef.current)
-
-console.log("retryFromQuery",retryFromQueryRef.current)
-
-console.log("questStatus",questStatusRef.current)
-
-console.log("forceFreshStart",forceFreshStart)
-
 if(forceFreshStart && questStatusRef.current !== "cleared"){
 
 const requestKey = `fresh:${skillIdFromQuery}:${freshFromQueryRef.current ? "1" : "0"}:${retryFromQueryRef.current ? "1" : "0"}`
-
-console.log("DEBUG start condition", {
- learningLoading: questLearningLoadingRef.current,
- key: requestKey,
- started: startedRequestKeyRef.current
-})
 
 if(startedRequestKeyRef.current === requestKey) return
 
@@ -146,7 +123,6 @@ clearPersistedLearningSessionRef.current(skillIdFromQuery)
 
 resetLearningSessionUiRef.current()
 
-console.log("DEBUG startLearningSession")
 console.log("CALLING START SESSION", skillIdFromQuery)
 void startLearningSessionRef.current(
 skillIdFromQuery,
@@ -163,12 +139,6 @@ if(recovery?.sessionId){
 
 const requestKey = `resume:${skillIdFromQuery}:${recovery.sessionId}`
 
-console.log("DEBUG start condition", {
- learningLoading: questLearningLoadingRef.current,
- key: requestKey,
- started: startedRequestKeyRef.current
-})
-
 if(startedRequestKeyRef.current === requestKey) return
 
 void resumeLearningSessionRef.current(
@@ -184,17 +154,23 @@ return
 
 const requestKey = `start:${skillIdFromQuery}`
 
-console.log("DEBUG start condition", {
- learningLoading: questLearningLoadingRef.current,
- key: requestKey,
- started: startedRequestKeyRef.current
-})
-
 if(startedRequestKeyRef.current === requestKey) return
 
-console.log("DEBUG startLearningSession")
 console.log("CALLING START SESSION", skillIdFromQuery)
 void startLearningSessionRef.current(skillIdFromQuery)
+
+setTimeout(() => {
+  const session = questSessionRef.current;
+
+  if (session?.problems?.length) {
+    console.log("FORCE SET CURRENT PROBLEM");
+
+    syncLearningUiFromSessionRef.current(
+      session,
+      session.problems[0]
+    );
+  }
+}, 0);
 
 startedRequestKeyRef.current = requestKey
 

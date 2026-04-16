@@ -140,9 +140,30 @@ VARIABLE_SYMBOLS
 
 }:Props){
 
+// console.log("TRACE_HANDLE_ATTACK_DEFINED", typeof handleAttack);
+const currentProblem = quest.currentProblem ?? null;
+const session = quest.session ?? null;
+const loading = sessionActionLoading;
+const noProblem = !currentProblem;
+const noSession = !session;
+const isLoading = loading;
+// console.log("TRACE_DISABLED_FULL", {
+//   noProblem,
+//   noSession,
+//   isLoading,
+//   currentProblem,
+//   session,
+//   loading
+// });
+
 return (
 
- <div className="w-full pt-2 pb-3 sticky bottom-0 bg-slate-50/95 backdrop-blur-sm z-20 space-y-2">
+ <div
+          className="w-full pt-2 pb-3 sticky bottom-0 bg-slate-50/95 backdrop-blur-sm z-20 space-y-2"
+          style={{
+            outline: "2px solid blue"
+          }}
+        >
           <div className="flex justify-end">
             <button
               type="button"
@@ -204,7 +225,11 @@ VARIABLE_SYMBOLS
 )
 }
               onDelete={handleDelete}
-              onJudge={handleAttack}
+              onJudge={() => {
+                // console.log("TRACE_JUDGE_CLICK");
+                // console.log("TRACE_BUTTON_CLICK");
+                handleAttack?.();
+              }}
               onEnd={endLearningSession}
               judgeLabel={uiText.judge}
               endLabel="おわり"
@@ -262,70 +287,67 @@ VARIABLE_SYMBOLS
 )
 }
               onDelete={handleDelete}
-              onJudge={handleAttack}
+              onJudge={() => {
+                // console.log("TRACE_JUDGE_CLICK");
+                // console.log("TRACE_BUTTON_CLICK");
+                handleAttack?.();
+              }}
               onEnd={endLearningSession}
               judgeLabel={uiText.judge}
               endLabel="おわり"
               endDisabled={sessionActionLoading}
             />
           ) : (
+            // console.log("TRACE_USING_ELEMENTARY_KEYPAD"),
+            (
             <ElementaryKeypad
               isPlaying={quest.status === "playing"}
               isStarting={isStarting}
               isAnswerLocked={isAnswerLockedByExplanation}
               canSubmit={canSubmitResolved}
               canUseKeyToken={canUseKeyToken}
-              onInput={(token)=>
-learningOrchestrator.handleInput(
-
-token,
-
-quest,
-isStarting,
-isAnswerLockedByExplanation,
-
-input,
-setInput,
-setResultMark,
-
-isQuadraticRootsQuestion,
-quadraticAnswers,
-quadraticActiveIndex,
-
-isHighSchoolQuest,
-
-clearQuadraticFractionAutoMoveTimer,
-setQuadraticFractionInputs,
-
-setQuadraticAnswers,
-
-clearFractionAutoMoveTimer,
-setFractionInput,
-fractionInput,
-
-quadraticFractionInputs,
-
-isFractionPartTokenValid,
-
-quadraticFractionAutoMoveTimerRefs,
-
-FRACTION_AUTO_MOVE_DELAY_MS,
-
-fractionAutoMoveTimerRef,
-
-isSecondaryQuest,
-
-VARIABLE_SYMBOLS
-
-)
-}
+              onInput={(token) => {
+                // console.log("TRACE_KEYPAD_INPUT", token);
+                // console.log("TRACE_HANDLE_DIGIT_DEFINED", typeof learningOrchestrator.handleInput);
+                return learningOrchestrator.handleInput(
+                  token,
+                  quest,
+                  isStarting,
+                  isAnswerLockedByExplanation,
+                  input,
+                  setInput,
+                  setResultMark,
+                  isQuadraticRootsQuestion,
+                  quadraticAnswers,
+                  quadraticActiveIndex,
+                  isHighSchoolQuest,
+                  clearQuadraticFractionAutoMoveTimer,
+                  setQuadraticFractionInputs,
+                  setQuadraticAnswers,
+                  clearFractionAutoMoveTimer,
+                  setFractionInput,
+                  fractionInput,
+                  quadraticFractionInputs,
+                  isFractionPartTokenValid,
+                  quadraticFractionAutoMoveTimerRefs,
+                  FRACTION_AUTO_MOVE_DELAY_MS,
+                  fractionAutoMoveTimerRef,
+                  isSecondaryQuest,
+                  VARIABLE_SYMBOLS
+                );
+              }}
               onDelete={handleDelete}
-              onJudge={handleAttack}
+              onJudge={() => {
+                // console.log("TRACE_JUDGE_CLICK");
+                // console.log("TRACE_BUTTON_CLICK");
+                handleAttack?.();
+              }}
               onEnd={endLearningSession}
               judgeLabel={uiText.judge}
               endLabel="おわり"
               endDisabled={sessionActionLoading}
             />
+            )
           )}
         </div>
 

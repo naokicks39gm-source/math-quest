@@ -86,6 +86,17 @@ const DIFFICULTY_MULTIPLIERS = {
   5: 1.6
 } as const;
 
+const shuffle = <T>(items: T[]): T[] => {
+  const copied = [...items];
+  for (let i = copied.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const temp = copied[i];
+    copied[i] = copied[j];
+    copied[j] = temp;
+  }
+  return copied;
+};
+
 const formatExplanationText = (sessionProblem: SessionProblem): string => {
   const lines = [...sessionProblem.explanation.steps];
   if (sessionProblem.explanation.summary) {
@@ -94,26 +105,136 @@ const formatExplanationText = (sessionProblem: SessionProblem): string => {
   return lines.join("\n");
 };
 
-const buildReplacementFallback = (sessionProblem: SessionProblem): SessionProblem => {
-  if (sessionProblem.fallbackCount >= 2) {
+const toReplacementProblem = (
+  currentProblem: SessionProblem,
+  replacement: NonNullable<ReturnType<typeof generateRuntimeProblems>[number]>,
+  patternKey: string,
+  targetDifficulty: number
+): SessionProblem => {
+  const {
+    hint: _hint,
+    explanation: _explanation,
+    attemptCount: _attemptCount,
+    showHint: _showHint,
+    showExplanation: _showExplanation,
+    isFallback: _isFallback,
+    ...replacementBase
+  } = currentProblem;
+  const hint = generateHint(replacement);
+  const explanation = generateExplanation(replacement);
+  return {
+    ...replacementBase,
+    problemId: replacement.id,
+    problem: replacement,
+    hint,
+    explanation,
+    attemptCount: 0,
+    showHint: false,
+    showExplanation: false,
+    isFallback: false,
+    fallbackCount: 0,
+    patternKey,
+    difficulty: clampSessionDifficulty(replacement.meta?.difficulty ?? targetDifficulty)
+  };
+};
+
+const isReplacementCandidateAllowed = (
+  replacement: NonNullable<ReturnType<typeof generateRuntimeProblems>[number]>,
+  currentProblem: SessionProblem,
+  usedProblemIds: Set<string>,
+  recentQuestions: string[],
+  targetDifficulty: number,
+  options?: {
+    ignoreDifficulty?: boolean;
+    ignoreRecentQuestions?: boolean;
+  }
+) => {
+  if (usedProblemIds.has(replacement.id)) {
+    return false;
+  }
+  if (replacement.id === currentProblem.problemId) {
+    return false;
+  }
+  if (replacement.question === currentProblem.problem.question) {
+    return false;
+  }
+  if (!options?.ignoreRecentQuestions && recentQuestions.includes(replacement.question)) {
+    return false;
+  }
+  if (
+    !options?.ignoreDifficulty &&
+    typeof replacement.meta?.difficulty === "number" &&
+    clampSessionDifficulty(replacement.meta.difficulty) > targetDifficulty
+  ) {
+    return false;
+  }
+  return true;
+};
+
+const findReplacementFromPatterns = (
+  patterns: ReturnType<typeof resolveSkillPatterns>,
+  currentProblem: SessionProblem,
+  usedProblemIds: Set<string>,
+  recentQuestions: string[],
+  targetDifficulty: number,
+  options?: {
+    ignoreDifficulty?: boolean;
+    ignoreRecentQuestions?: boolean;
+  }
+): SessionProblem | null => {
+  for (const pattern of patterns) {
+    const generated = shuffle(generateRuntimeProblems(pattern, 10));
+    for (const replacement of generated) {
+      if (
+        isReplacementCandidateAllowed(
+          replacement,
+          currentProblem,
+          usedProblemIds,
+          recentQuestions,
+          targetDifficulty,
+          options
+        )
+      ) {
+        return toReplacementProblem(currentProblem, replacement, pattern.key, targetDifficulty);
+      }
+    }
+  }
+  return null;
+};
+
+const buildReplacementFallback = (
+  state: LearningState,
+  currentProblem: SessionProblem,
+  targetDifficulty: number
+): SessionProblem => {
+  const rebuiltSession = buildSession(
+    {
+      ...state,
+      session: state.session
+        ? {
+            ...state.session,
+            recentProblems: [...state.session.recentProblems, currentProblem.problemId].slice(-10)
+          }
+        : state.session
+    },
+    currentProblem.skillId,
+    targetDifficulty,
+    state.session?.mode ?? "skill"
+  );
+  const replacement = rebuiltSession.problems.find(
+    (problem) =>
+      problem.problemId !== currentProblem.problemId &&
+      problem.problem.question !== currentProblem.problem.question
+  );
+  if (replacement) {
     return {
-      ...sessionProblem,
-      attemptCount: 0,
-      showHint: false,
-      showExplanation: false,
-      isFallback: false,
-      fallbackCount: 0
+      ...replacement,
+      isFallback: true,
+      fallbackCount: currentProblem.fallbackCount + 1
     };
   }
 
-  return {
-    ...sessionProblem,
-    attemptCount: 2,
-    showHint: true,
-    showExplanation: true,
-    isFallback: true,
-    fallbackCount: sessionProblem.fallbackCount + 1
-  };
+  throw new Error("replacement_problem_unavailable");
 };
 
 const getRequiredXP = (skillId: string) => skills.find((skill) => skill.id === skillId)?.requiredXP ?? DEFAULT_REQUIRED_XP;
@@ -192,56 +313,45 @@ const buildReplacementProblem = (
     throw new Error("pattern mismatch");
   }
 
-  const usedProblemIds = state.session?.problems.map((problem) => problem.problemId) ?? [];
+  const usedProblemIds = new Set(state.session?.problems.map((problem) => problem.problemId) ?? []);
   const recentQuestions = (state.session?.history ?? [])
     .slice(-5)
     .map((entry) => entry.question);
-  let tries = 0;
-  while (tries < 10) {
-    const replacement = generateRuntimeProblems(matchedPattern, 1)[0];
-    if (!replacement) {
-      return buildReplacementFallback(currentProblem);
-    }
-    tries += 1;
-    if (replacement.meta?.patternId !== patternId) {
-      throw new Error("pattern mismatch");
-    }
-    if (
-      usedProblemIds.includes(replacement.id) ||
-      replacement.question === currentProblem.problem.question ||
-      recentQuestions.includes(replacement.question) ||
-      (typeof replacement.meta?.difficulty === "number" && clampSessionDifficulty(replacement.meta.difficulty) > targetDifficulty)
-    ) {
-      continue;
-    }
-
-    const {
-      hint: _hint,
-      explanation: _explanation,
-      attemptCount: _attemptCount,
-      showHint: _showHint,
-      showExplanation: _showExplanation,
-      isFallback: _isFallback,
-      ...replacementBase
-    } = currentProblem;
-    const hint = generateHint(replacement);
-    const explanation = generateExplanation(replacement);
-    return {
-      ...replacementBase,
-      problemId: replacement.id,
-      problem: replacement,
-      hint,
-      explanation,
-      attemptCount: 0,
-      showHint: false,
-      showExplanation: false,
-      isFallback: false,
-      fallbackCount: 0,
-      difficulty: clampSessionDifficulty(replacement.meta?.difficulty ?? targetDifficulty)
-    };
+  const strictReplacement = findReplacementFromPatterns(
+    [matchedPattern],
+    currentProblem,
+    usedProblemIds,
+    recentQuestions,
+    targetDifficulty
+  );
+  if (strictReplacement) {
+    return strictReplacement;
   }
 
-  return buildReplacementFallback(currentProblem);
+  const sameSkillReplacement = findReplacementFromPatterns(
+    patterns.filter((pattern) => pattern.key !== matchedPattern.key),
+    currentProblem,
+    usedProblemIds,
+    recentQuestions,
+    targetDifficulty
+  );
+  if (sameSkillReplacement) {
+    return sameSkillReplacement;
+  }
+
+  const relaxedReplacement = findReplacementFromPatterns(
+    patterns,
+    currentProblem,
+    usedProblemIds,
+    recentQuestions,
+    targetDifficulty,
+    { ignoreDifficulty: true, ignoreRecentQuestions: true }
+  );
+  if (relaxedReplacement) {
+    return relaxedReplacement;
+  }
+
+  return buildReplacementFallback(state, currentProblem, targetDifficulty);
 };
 
 const dedupeWeakPatterns = (patterns: WeakPattern[]): WeakPattern[] => {
@@ -395,6 +505,11 @@ const recordAnswerWithoutProgression = (currentState: LearningState, session: Se
   });
   const resolvedSession = nextState.session as Session;
   const finished = result.correct && resolvedSession.index >= resolvedSession.problems.length;
+  console.log("NEXT_PROBLEM_ENGINE", {
+    index: resolvedSession.index,
+    problemId: resolvedSession.problems[resolvedSession.index]?.problemId,
+    question: resolvedSession.problems[resolvedSession.index]?.problem.question
+  });
 
   return {
     state: nextState,
@@ -644,6 +759,23 @@ export function recordAnswer(state: LearningState, result: RecordAnswerInput): R
   });
   const resolvedSession = nextState.session as Session;
   const finished = result.correct && resolvedSession.index >= resolvedSession.problems.length;
+  console.log("TRACE_NEXT_PROBLEM_SELECT", {
+    sessionIndex: session.index,
+    nextSessionIndex: resolvedSession.index,
+    recentProblems: nextRecentProblems,
+    currentProblemId: currentProblem.problemId,
+    nextProblemId: resolvedSession.problems[resolvedSession.index]?.problemId ?? null,
+    nextPattern: resolvedSession.problems[resolvedSession.index]?.patternKey ?? null,
+    sessionProblemIds: resolvedSession.problems.map((problem) => problem.problemId)
+  });
+  console.log("TRACE_K_ENGINE_RETURN", {
+    fromIndex: session.index,
+    toIndex: resolvedSession.index,
+    currentProblemId: currentProblem.problemId,
+    nextProblemId: resolvedSession.problems[resolvedSession.index]?.problemId ?? null,
+    nextQuestion: resolvedSession.problems[resolvedSession.index]?.problem.question ?? null,
+    correct: result.correct
+  });
 
   return {
   state: nextState,

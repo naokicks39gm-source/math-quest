@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 export function useQuestUiWiring(args: any) {
   const {
     headerProps,
@@ -123,7 +125,7 @@ export function useQuestUiWiring(args: any) {
     </div>
   ) : null;
 
-  const memoProps = {
+  const memoProps = useMemo(() => ({
     undoMemo: memoCanvas.undoMemo,
     clearMemo: memoCanvas.clearMemo,
     memoCanvasHostRef,
@@ -133,14 +135,19 @@ export function useQuestUiWiring(args: any) {
     handleMemoPointerMove: memoCanvas.handleMemoPointerMove,
     handleMemoPointerEnd: memoCanvas.handleMemoPointerEnd,
     shouldRenderElementaryExplanationPanel
-  };
+  }), [
+    drawAreaRef,
+    memoCanvas.clearMemo,
+    memoCanvas.handleMemoPointerDown,
+    memoCanvas.handleMemoPointerEnd,
+    memoCanvas.handleMemoPointerMove,
+    memoCanvas.undoMemo,
+    memoCanvasHostRef,
+    memoCanvasRef,
+    shouldRenderElementaryExplanationPanel
+  ]);
 
-  return {
-    displayedAnswer,
-    resultOverlay,
-    memoProps,
-    headerProps,
-    questionCardProps: {
+  const questionCardProps = useMemo(() => ({
       quest,
       currentItem,
       currentType,
@@ -215,7 +222,88 @@ export function useQuestUiWiring(args: any) {
       skipFromExplanation,
       currentElementaryHintText,
       ...memoProps
-    },
+    }), [
+      activePickMeta,
+      activeStockInfo,
+      combo,
+      currentAid,
+      currentCardRef,
+      currentElementaryAid,
+      currentElementaryHintText,
+      currentItem,
+      currentLearningFallbackCount,
+      currentLearningIndex,
+      currentLearningIsFallback,
+      currentPatternPool,
+      currentSessionSeed,
+      currentSkillProgress,
+      currentType,
+      describeStockReason,
+      devMode,
+      displayedAnswer,
+      emptyMessage,
+      fractionInput,
+      isE1TwoLineQuestionLevel,
+      isE2EqualShareType,
+      isElementaryQuest,
+      isH1ReferenceOnlyQuestion,
+      isHighSchoolQuest,
+      isLearningSessionMode,
+      isQuadraticRootsQuestion,
+      isSecondaryQuest,
+      isStarting,
+      learningProblem,
+      learningState,
+      memoProps,
+      nextQuestion,
+      qaAnswerContentRef,
+      qaAnswerFontPx,
+      qaAnswerOffsetPx,
+      qaAnswerRef,
+      qaPromptContentRef,
+      qaPromptFontPx,
+      qaPromptRef,
+      qaRowRef,
+      quadraticActiveIndex,
+      quadraticAnswers,
+      quadraticFractionInputs,
+      quizBuildError,
+      quizItems,
+      quizSize,
+      renderAnswerWithSuperscript,
+      renderFractionEditorValue,
+      renderPrompt,
+      resultOverlay,
+      router,
+      setQuadraticActiveIndex,
+      setRetryNonce,
+      setShowElementaryExplanation,
+      setShowElementaryHint,
+      setShowHighSchoolHint,
+      setShowSecondaryExplanation,
+      setShowSecondaryHint,
+      shouldAutoFinishLearningSession,
+      showElementaryExplanation,
+      showElementaryHint,
+      showHighSchoolHint,
+      showLearningExplanation,
+      showLearningHint,
+      showSecondaryExplanation,
+      showSecondaryHint,
+      skipFromExplanation,
+      stockShortages,
+      uiText,
+      useFastLearningLoop,
+      useSingleLineQa,
+      quest
+    ]);
+
+  return {
+    displayedAnswer,
+    resultOverlay,
+    memoProps,
+    headerProps,
+    questionCardProps,
     keypadProps: {
       quest,
       isStarting,

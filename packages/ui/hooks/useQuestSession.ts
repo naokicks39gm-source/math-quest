@@ -8,7 +8,7 @@ const [learningResult, setLearningResult] = useState(null)
 
 const [status, setStatus] = useState<'playing' | 'cleared' | 'blocked'>('playing')
 
-const [session, setSession] = useState<Session | null>(null)
+const [session, setSessionState] = useState<Session | null>(null)
 
 const [currentProblem, setCurrentProblem] = useState<SessionProblem | null>(null)
 
@@ -20,17 +20,40 @@ const [learningHint,setLearningHint]=useState<string|null>(null)
 const [learningExplanation,setLearningExplanation]=useState<string|null>(null)
 const [learningAttemptCount,setLearningAttemptCount]=useState(0)
 
+const setSession = useCallback((update: any) => {
+setSessionState((prev) => {
+const next = typeof update === "function" ? update(prev) : update
+
+if (prev === next) {
+console.log("TRACE_SKIP_SET_SESSION")
+return prev
+}
+
+if (!prev || !next) {
+return next
+}
+
+if (
+prev.index === next.index &&
+prev.mode === next.mode &&
+prev.correct === next.correct &&
+prev.wrong === next.wrong &&
+prev.problems === next.problems
+) {
+console.log("TRACE_SKIP_SET_SESSION")
+return prev
+}
+
+return next
+})
+}, [])
+
 const startLearningSession = useCallback(async(
  skillId:string,
  options?:{fresh?:boolean}
 )=>{
 
-console.log(
- "START SESSION skillId:",
- skillId,
- options
-)
-    console.log("START SESSION skillId:",skillId)
+console.log("TRACE_START_SESSION_CALLED")
 setStatus("playing")
 
 setLearningResult(null)
@@ -63,39 +86,18 @@ mode:"skill"
 
 const data=await res.json()
 
-console.log("DATA FULL",data)
+const session = data.session
+const firstProblem = data.firstProblem
+const sessionId = data.session?.sessionId ?? data.sessionId ?? null
 
-console.log("SESSION EXISTS",!!data.session)
+setSession(session)
 
-console.log("PROBLEMS",data.session?.problems)
+if(firstProblem){
+ setCurrentProblem(firstProblem)
 
-console.log("FIRST",data.firstProblem)
-
-setSession(data.session)
-
-console.log("START RESPONSE",data)
-
-console.log(
- "SESSION PROBLEMS",
- data.session?.problems?.length
-)
-
-console.log(
- "FIRST PROBLEM",
- data.firstProblem
-)
-
-
-setSession(data.session)
-
-if(data.firstProblem){
-
- setCurrentProblem(data.firstProblem)
-
-}else if(data.session?.problems?.length){
-
+}else if(session?.problems?.length){
  setCurrentProblem(
-  data.session.problems[0]
+  session.problems[0]
  )
 
 }else{

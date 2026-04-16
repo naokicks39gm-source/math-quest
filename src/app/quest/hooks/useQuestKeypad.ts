@@ -95,6 +95,18 @@ export function useQuestKeypad(args: any) {
   });
 
   const canSubmitResolved = isH1ReferenceOnlyQuestion ? false : canSubmitCurrentAnswer;
+  console.log("TRACE_DISABLED_FULL", {
+    noProblem: !quest.currentProblem,
+    noSession: !quest.session,
+    isLoading: false,
+    answer: answerText,
+    input,
+    canSubmitCurrentAnswer,
+    canSubmitResolved,
+    isH1ReferenceOnlyQuestion,
+    keypadAnswerKind,
+    fractionEnabled: fractionInput.enabled
+  });
 
   const { handleAttack, handleDelete } = useQuestAnswerFlow({
     quest,

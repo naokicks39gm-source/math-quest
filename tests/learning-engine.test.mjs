@@ -159,9 +159,10 @@ const createProblemEngineStub = (outputPath) => {
   );
 };
 
-const loadLearningEngineModules = async () => {
+const loadLearningEngineModules = async (options = {}) => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "learning-engine-"));
   const learningRoot = path.join(root, "packages/learning-engine");
+  const problemEngineStubFactory = options.problemEngineStubFactory ?? createProblemEngineStub;
 
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-basic.json"), path.join(tempDir, "add-basic.mjs"));
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E1/add-make10.json"), path.join(tempDir, "add-make10.mjs"));
@@ -175,7 +176,7 @@ const loadLearningEngineModules = async () => {
   writeJsonModule(path.join(root, "packages/problem-engine/patterns/E2/sub-2digit.json"), path.join(tempDir, "sub-2digit.mjs"));
   writeJsonModule(path.join(root, "packages/skill-system/skills.json"), path.join(tempDir, "skills.mjs"));
   createSkillSystemStub(path.join(tempDir, "skill-system.mjs"));
-  createProblemEngineStub(path.join(tempDir, "problem-engine.mjs"));
+  problemEngineStubFactory(path.join(tempDir, "problem-engine.mjs"));
   await transpileTsModule(path.join(root, "packages/problem-hint/hintTypes.ts"), path.join(tempDir, "hintTypes.mjs"));
   await transpileTsModule(path.join(root, "packages/problem-hint/hintRegistry.ts"), path.join(tempDir, "hintRegistry.mjs"), [
     ['from "packages/problem-engine"', 'from "./problem-engine.mjs"'],
@@ -261,6 +262,44 @@ const loadLearningEngineModules = async () => {
     learningEngine: await load("learningEngine"),
     index: await load("index")
   };
+};
+
+const createStickyReplacementProblemEngineStub = (outputPath) => {
+  fs.writeFileSync(
+    outputPath,
+    [
+      "let batch = 0;",
+      "const difficultyByPattern = {",
+      '  "E1-ADD-BASIC-01": 1,',
+      '  "E1-ADD-BASIC-02": 1,',
+      '  "E1-ADD-BASIC-03": 1,',
+      '  "E1-ADD-BASIC-04": 1,',
+      '  "E1-ADD-BASIC-05": 1',
+      "};",
+      "export const getPatternMeta = (key) => ({ key, difficulty: difficultyByPattern[key] ?? 1 });",
+      "export const generateProblems = (pattern, count) => generateRuntimeProblems(pattern, count);",
+      "export const generateRuntimeProblems = (pattern, count) => {",
+      "  batch += 1;",
+      '  if (pattern.key === "E1-ADD-BASIC-01") {',
+      "    return Array.from({ length: count }, () => ({",
+      '      id: "sticky-problem",',
+      '      question: "sticky question",',
+      '      answer: "1",',
+      '      patternKey: pattern.key,',
+      '      meta: { difficulty: 1, patternId: pattern.key, source: "runtime-pattern" }',
+      "    }));",
+      "  }",
+      "  return Array.from({ length: count }, (_, index) => ({",
+      '    id: `${pattern.key}::${batch}::${index}`,',
+      '    question: `${pattern.key} alt ${batch}-${index}`,',
+      '    answer: `${index + 1}`,',
+      '    patternKey: pattern.key,',
+      '    meta: { difficulty: 1, patternId: pattern.key, source: "runtime-pattern" }',
+      "  }));",
+      "};"
+    ].join("\n"),
+    "utf8"
+  );
 };
 
 test("studentStore only exposes client load and serialize helpers", async () => {
@@ -879,7 +918,8 @@ test("sessionBuilder source includes random skill-pattern top-up fallback", () =
 
   assert.equal(source.includes("ignoreDifficulty: true"), true);
   assert.equal(source.includes("topUpWithRandomSkillPatterns"), true);
-  assert.equal(source.includes("const additions = uniqueBatch.length > 0 ? uniqueBatch : generated;"), true);
+  assert.equal(source.includes("const additions = uniqueBatch.length > 0 ? uniqueBatch : generated;"), false);
+  assert.equal(source.includes("for (const problem of uniqueBatch)"), true);
   assert.equal(source.includes("const MAX_PATTERN_PER_SESSION = 2;"), true);
   assert.equal(source.includes("patternCounts"), true);
   assert.equal(source.includes("const computeMaxPatternPerSession"), true);
@@ -1463,6 +1503,58 @@ test("fallback finishSession clears session without progression updates", async 
   assert.equal(finished.state.student.difficulty, 4);
   assert.equal(finished.state.student.xpSession, 80);
   assert.equal(finished.state.session, undefined);
+});
+
+test("replacement fallback promotes a different problem when same-pattern generation is stuck", async () => {
+  const { learningEngine, studentStore } = await loadLearningEngineModules({
+    problemEngineStubFactory: createStickyReplacementProblemEngineStub
+  });
+  const started = learningEngine.startSession(studentStore.createLearningState(), { mode: "skill", skillId: "E1_ADD_BASIC" });
+  const forcedState = studentStore.serializeState({
+    ...started.state,
+    session: {
+      ...started.session,
+      problems: started.session.problems.map((problem, index) =>
+        index === 0
+          ? {
+              ...problem,
+              problemId: "sticky-problem",
+              patternKey: "E1-ADD-BASIC-01",
+              difficulty: 1,
+              problem: {
+                ...problem.problem,
+                id: "sticky-problem",
+                question: "sticky question",
+                answer: "1",
+                patternKey: "E1-ADD-BASIC-01",
+                meta: {
+                  ...(problem.problem.meta ?? {}),
+                  difficulty: 1,
+                  patternId: "E1-ADD-BASIC-01"
+                }
+              }
+            }
+          : problem
+      )
+    }
+  });
+
+  const wrongOnce = learningEngine.recordAnswer(forcedState, { correct: false });
+  const wrongTwice = learningEngine.recordAnswer(wrongOnce.state, { correct: false });
+  const wrongThrice = learningEngine.recordAnswer(wrongTwice.state, { correct: false });
+  const replacement = wrongThrice.session.problems[0];
+
+  assert.notEqual(replacement.problemId, "sticky-problem");
+  assert.notEqual(replacement.problem.question, "sticky question");
+  assert.equal(replacement.attemptCount, 0);
+  assert.equal(replacement.showHint, false);
+  assert.equal(replacement.showExplanation, false);
+});
+
+test("top-up fallback does not reuse generated duplicates when uniqueBatch is empty", () => {
+  const source = fs.readFileSync(path.join(root, "packages/learning-engine/sessionBuilder.ts"), "utf8");
+  assert.equal(source.includes("const additions = uniqueBatch.length > 0 ? uniqueBatch : generated;"), false);
+  assert.equal(source.includes("for (const problem of uniqueBatch)"), true);
 });
 
 test("session difficulty rises after three correct answers and falls after two misses", async () => {

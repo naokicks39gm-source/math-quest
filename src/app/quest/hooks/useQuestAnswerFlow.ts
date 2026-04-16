@@ -1,5 +1,6 @@
 import { gradeAnswer } from "@/lib/grader";
 import { fractionEditorToAnswerText } from "@/utils/answerValidation";
+import { useRef } from "react";
 
 export function useQuestAnswerFlow(args: any) {
   const {
@@ -45,10 +46,6 @@ export function useQuestAnswerFlow(args: any) {
     setQuadraticActiveIndex,
     setMessage
   } = args;
-console.log("DEBUG setMessage value", setMessage);
-console.log("DEBUG typeof", typeof setMessage);
-  console.log("DEBUG setMessage", setMessage);
-console.log("DEBUG typeof", typeof setMessage);
 
 
   const buildAnswerText = () => {
@@ -150,86 +147,199 @@ console.log("DEBUG typeof", typeof setMessage);
     setResultMark(null);
   };
 
-  const handleAttack = () => {
+  const isHandlingRef = useRef(false);
+ const handleAttack = async () => {
+  if (isHandlingRef.current) {
+    console.log("SKIP HANDLE_ATTACK");
+    return;
+  }
+
+  isHandlingRef.current = true;
+  console.log("HANDLE_ATTACK_START");
+
+  try {
+    // console.log("SUBMIT_TRIGGER_START");
+    // console.log("TRACE_ATTACK_ENTRY");
     if (!canExecuteAttack()) return;
+
     const answerText = buildAnswerText();
+    // console.log("SUBMIT_INPUT_CHECK_FIXED", { input, answerText });
+    // console.log("FINAL_SUBMIT", { input, answerText });
     if (!answerText.trim()) return;
 
     const verdict = judgeCurrentAnswer(answerText);
-    console.log("ANSWER SUBMIT",{
-      answer: answerText,
-      correct: verdict.ok,
-      attemptCount: quest.learningAttemptCount
-    })
-    setPracticeResult({ ok: verdict.ok, correctAnswer: currentItem.answer });
-    setQuestionResults((prev: any) => ({
-      ...prev,
-      [currentQuestionIndex]: (() => {
-        const prevEntry = prev[currentQuestionIndex];
-        const everWrong = (prevEntry?.everWrong ?? false) || !verdict.ok;
-        const firstWrongAnswer =
-          prevEntry?.firstWrongAnswer ??
-          (!verdict.ok ? answerText : undefined);
-        return {
-          prompt: currentItem.prompt,
-          promptTex: currentItem.prompt_tex,
-          userAnswer: answerText,
-          correct: !everWrong,
-          correctAnswer: currentItem.answer,
-          everWrong,
-          firstWrongAnswer
-        };
-      })()
-    }));
 
-    void processAnswer(answerText, verdict);
+    setPracticeResult((prev: any) => {
+  if (
+    prev &&
+    prev.ok === verdict.ok &&
+    prev.correctAnswer === currentItem.answer
+  ) {
+    console.log("SKIP setPracticeResult");
+    return prev;
+  }
 
-    if (verdict.ok) {
-      const newCombo = combo + 1;
-      setCombo(newCombo);
-      const charData = CHARACTERS[character];
-      let hitMsg = charData.hits[Math.floor(Math.random() * charData.hits.length)];
-      if (newCombo >= 3) hitMsg += ` （れんぞく ${newCombo} かい！）`;
-      setMessage(hitMsg);
-      if (useFastLearningLoop) {
-        queueAdvanceAfterFeedback(verdict);
-      } else if (autoNextEnabled) {
-        cooldownUntilRef.current = Date.now() + AUTO_ADVANCE_MS;
-        if (autoNextTimerRef.current) window.clearTimeout(autoNextTimerRef.current);
-        autoNextTimerRef.current = window.setTimeout(() => {
-          autoNextTimerRef.current = null;
-          nextQuestion();
-        }, AUTO_ADVANCE_MS);
-      }
+  console.log("SET setPracticeResult");
+
+  return {
+    ok: verdict.ok,
+    correctAnswer: currentItem.answer
+  };
+});
+
+    console.log("CALL setQuestionResults"); 
+
+   setQuestionResults((prev: any) => {
+  const prevEntry = prev[currentQuestionIndex];
+
+  const everWrong = (prevEntry?.everWrong ?? false) || !verdict.ok;
+  const firstWrongAnswer =
+    prevEntry?.firstWrongAnswer ??
+    (!verdict.ok ? answerText : undefined);
+
+  const nextEntry = {
+    prompt: currentItem.prompt,
+    promptTex: currentItem.prompt_tex,
+    userAnswer: answerText,
+    correct: !everWrong,
+    correctAnswer: currentItem.answer,
+    everWrong,
+    firstWrongAnswer
+  };
+
+  // ★ここが超重要（完全一致チェック）
+  if (prevEntry && JSON.stringify(prevEntry) === JSON.stringify(nextEntry)) {
+    console.log("SKIP setQuestionResults (STRICT SAFE)");
+    return prev;
+  }
+
+  console.log("SET setQuestionResults (STRICT SAFE)");
+
+  return {
+    ...prev,
+    [currentQuestionIndex]: nextEntry
+  };
+});
+
+    if (isLearningSessionMode) {
+      // console.log("SUBMIT_INPUT_CHECK", { input, answerText, time: Date.now() });
+      // console.log("SUBMIT_BEFORE_API", { answerText, input });
+      // console.log("SUBMIT_TRIGGER");
+      // console.log("TRACE_SUBMIT_CALLED");
+      await quest.submitLearningAnswer(
+        quest.learningState,
+        quest.learningSessionId,
+        quest,
+        answerText,
+        verdict.ok
+      );
     } else {
-      setCombo(0);
-      const charData = CHARACTERS[character];
-      setMessage(charData.misses[Math.floor(Math.random() * charData.misses.length)]);
-      if (useFastLearningLoop && !isLearningSessionMode) {
-        queueAdvanceAfterFeedback(verdict);
-      } else {
-        if (wrongMarkTimerRef.current) {
-          window.clearTimeout(wrongMarkTimerRef.current);
-        }
-        setResultMark("wrong");
-        wrongMarkTimerRef.current = window.setTimeout(() => {
-          setResultMark(null);
-          wrongMarkTimerRef.current = null;
-        }, FEEDBACK_FLASH_MS);
-      }
+      void processAnswer(answerText, verdict);
     }
+if (verdict.ok) {
+  setCombo((prev: number) => {
+    const next = prev + 1;
+
+    if (prev === next) {
+      console.log("SKIP setCombo");
+      return prev;
+    }
+
+    console.log("SET setCombo");
+    return next;
+  });
+
+  const charData = CHARACTERS[character];
+  let hitMsg =
+    charData.hits[
+      Math.floor(Math.random() * charData.hits.length)
+    ];
+
+  if (combo + 1 >= 3) {
+    hitMsg += ` （れんぞく ${combo + 1} かい！）`;
+  }
+
+  setMessage((prev: any) => {
+    if (prev === hitMsg) {
+      console.log("SKIP setMessage");
+      return prev;
+    }
+
+    console.log("SET setMessage");
+    return hitMsg;
+  });
+
+} else {
+  setCombo((prev: number) => {
+    const next = 0;
+
+    if (prev === next) {
+      console.log("SKIP setCombo");
+      return prev;
+    }
+
+    console.log("SET setCombo");
+    return next;
+  });
+
+  const charData = CHARACTERS[character];
+  const missMsg =
+    charData.misses[
+      Math.floor(Math.random() * charData.misses.length)
+    ];
+
+  setMessage((prev: any) => {
+    if (prev === missMsg) {
+      console.log("SKIP setMessage");
+      return prev;
+    }
+
+    console.log("SET setMessage");
+    return missMsg;
+  });
+}
+
 
     if (isQuadraticRootsQuestion) {
       clearQuadraticFractionAutoMoveTimer(0);
       clearQuadraticFractionAutoMoveTimer(1);
       setQuadraticAnswers(["", ""]);
-      setQuadraticFractionInputs([{ ...EMPTY_FRACTION_EDITOR }, { ...EMPTY_FRACTION_EDITOR }]);
+     setQuadraticFractionInputs((prev: any) => {
+  const next = [
+    { ...EMPTY_FRACTION_EDITOR },
+    { ...EMPTY_FRACTION_EDITOR }
+  ];
+
+  if (JSON.stringify(prev) === JSON.stringify(next)) {
+    console.log("SKIP setQuadraticFractionInputs");
+    return prev;
+  }
+
+  console.log("SET setQuadraticFractionInputs");
+
+  return next;
+});
       setQuadraticActiveIndex(0);
     } else {
       clearFractionAutoMoveTimer();
-      setInput("");
-      setFractionInput({ ...EMPTY_FRACTION_EDITOR });
+      // setInput("");
+      console.log("TRACE_SKIP_INPUT_CLEAR");
+     setFractionInput((prev: any) => {
+  const next = EMPTY_FRACTION_EDITOR;
+
+  if (JSON.stringify(prev) === JSON.stringify(next)) {
+    console.log("SKIP setFractionInput");
+    return prev;
+  }
+
+  console.log("SET setFractionInput");
+
+  return { ...EMPTY_FRACTION_EDITOR };
+});
     }
+    } finally {
+    isHandlingRef.current = false;
+  }
   };
 
   return {
@@ -238,4 +348,6 @@ console.log("DEBUG typeof", typeof setMessage);
     handleAttack,
     handleDelete
   };
+
+  
 }

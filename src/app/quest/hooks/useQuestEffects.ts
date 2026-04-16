@@ -94,17 +94,25 @@ export function useQuestEffects(args: any) {
     sessionStartTrackedRef.current = true;
   }, [hasStarted, isLearningSessionMode, quest.status]);
 
+  const normalizedLearningSessionIndex = normalizedLearningSession?.index ?? null;
+
   useEffect(() => {
-    if (!quest.session || !normalizedLearningSession) {
+    if (normalizedLearningSessionIndex === null) {
       return;
     }
-    if (normalizedLearningSession.index !== quest.session.index) {
-      quest.setSession({
-        ...quest.session,
-        index: normalizedLearningSession.index
-      });
-    }
-  }, [quest.session, normalizedLearningSession]);
+    quest.setSession((prev: any) => {
+      if (!prev || prev.index === normalizedLearningSessionIndex) {
+        if (prev) {
+          console.log("TRACE_SKIP_SET_SESSION");
+        }
+        return prev;
+      }
+      return {
+        ...prev,
+        index: normalizedLearningSessionIndex
+      };
+    });
+  }, [normalizedLearningSessionIndex, quest.setSession]);
 
   useEffect(() => {
     memoStrokesRef.current = memoStrokes;

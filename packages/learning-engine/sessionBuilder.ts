@@ -133,6 +133,18 @@ const uniqueByProblemId = (problems: SessionProblem[]): SessionProblem[] => {
   });
 };
 
+const pushUniqueProblems = (selected: SessionProblem[], candidates: SessionProblem[], count = SESSION_SIZE) => {
+  for (const candidate of candidates) {
+    if (selected.length >= count) {
+      break;
+    }
+    if (selected.some((entry) => entry.problemId === candidate.problemId)) {
+      continue;
+    }
+    selected.push(candidate);
+  }
+};
+
 const getPatternCount = (patternCounts: Map<string, number>, patternKey: string) =>
   patternCounts.get(patternKey) ?? 0;
 
@@ -327,14 +339,12 @@ const topUpWithRandomSkillPatterns = (
       })
     ).map(attachLearningAids);
 
-    const uniqueBatch = generated.filter(
+    const uniqueBatch = uniqueByProblemId(generated).filter(
       (candidate) =>
         !excludedProblemIds.includes(candidate.problemId) &&
         !selected.some((entry) => entry.problemId === candidate.problemId)
     );
-    const additions = uniqueBatch.length > 0 ? uniqueBatch : generated;
-
-    for (const problem of additions) {
+    for (const problem of uniqueBatch) {
       if (selected.length >= SESSION_SIZE) {
         break;
       }
@@ -416,11 +426,11 @@ const buildSessionOnce = (
 
   const selectedWeak = takeProblems(weaknessCandidates, WEAK_TARGET, usedPatternKeys, patternCounts, maxPatternPerSession);
   const selectedSkill = takeProblems(skillCandidates, SKILL_TARGET, usedPatternKeys, patternCounts, maxPatternPerSession);
-  const selectedProblems = [...selectedSkill, ...selectedWeak];
+  const selectedProblems = uniqueByProblemId([...selectedSkill, ...selectedWeak]);
 
   if (selectedProblems.length < SESSION_SIZE) {
     const fallback = takeProblems(skillCandidates, SESSION_SIZE - selectedProblems.length, usedPatternKeys, patternCounts, maxPatternPerSession);
-    selectedProblems.push(...fallback);
+    pushUniqueProblems(selectedProblems, fallback);
   }
 
   if (selectedProblems.length < SESSION_SIZE) {
@@ -497,17 +507,27 @@ const buildSessionOnce = (
     topUpWithRandomSkillPatterns(selectedProblems, skillId, targetDifficulty, patternCounts, maxPatternPerSession, excludedProblemIds);
   }
 
-  console.log("FINAL CANDIDATES", selectedProblems.length);
-  console.log("FILTER AFTER DIVERSITY", selectedProblems.length);
+  const finalSelectedProblems = uniqueByProblemId(selectedProblems);
+  console.log("FINAL CANDIDATES", finalSelectedProblems.length);
+  console.log("FILTER AFTER DIVERSITY", finalSelectedProblems.length);
   let isFallbackSession = false;
   let sessionType: "normal" | "fallback" = "normal";
-  let orderedProblems = reorderProblemsWithPatternDiversity(shuffle(selectedProblems)).slice(0, SESSION_SIZE);
-  if (selectedProblems.length === 0) {
+  let orderedProblems = reorderProblemsWithPatternDiversity(shuffle(finalSelectedProblems)).slice(0, SESSION_SIZE);
+  if (finalSelectedProblems.length < SESSION_SIZE) {
+    topUpWithRandomSkillPatterns(orderedProblems, skillId, targetDifficulty, patternCounts, maxPatternPerSession, excludedProblemIds);
+    orderedProblems = reorderProblemsWithPatternDiversity(uniqueByProblemId(orderedProblems)).slice(0, SESSION_SIZE);
+  }
+  if (orderedProblems.length === 0) {
     console.warn("SELECTION EMPTY FALLBACK");
     orderedProblems = generateFallbackProblem(skillId, targetDifficulty);
     isFallbackSession = orderedProblems.length > 0;
     sessionType = isFallbackSession ? "fallback" : "normal";
   }
+  console.log("TRACE_SESSION_PROBLEMS", orderedProblems.map((problem) => ({
+    problemId: problem.problemId,
+    patternKey: problem.patternKey,
+    question: problem.problem.question
+  })));
   console.log("SELECTED PROBLEMS", orderedProblems.length);
 
   return {

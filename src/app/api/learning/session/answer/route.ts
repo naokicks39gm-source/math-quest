@@ -5,6 +5,7 @@ import { getLearningSessionById, upsertLearningSession } from "@/lib/server/db";
 
 export async function POST(req: Request) {
   try {
+    console.log("API_ROUTE_HIT");
     const body = (await req.json()) as Partial<LearningSessionAnswerRequest>;
     const sessionId = body.sessionId?.trim() ?? "";
 
@@ -35,6 +36,14 @@ export async function POST(req: Request) {
     const result = recordAnswer(state, {
       correct: body.correct,
       userAnswer: body.answer
+    });
+    console.log("TRACE_J_ROUTE_RESULT", {
+      sessionId,
+      currentIndexBefore: currentIndex,
+      nextIndex: result.session?.index ?? null,
+      nextProblemId: result.nextProblem?.problemId ?? null,
+      nextQuestion: result.nextProblem?.problem?.question ?? null,
+      finished: result.finished
     });
     upsertLearningSession({
       sessionId,

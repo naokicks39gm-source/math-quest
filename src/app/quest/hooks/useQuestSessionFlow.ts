@@ -110,6 +110,8 @@ export function useQuestSessionFlow(args: any) {
       if (!data?.session?.problems?.length) {
         throw new Error("learning_session_problem_unavailable");
       }
+      quest.setSession(data.session);
+      quest.setCurrentProblem(data.session.problems?.[0] ?? null);
       console.log("DEBUG session response", response);
       learningRecovery.persistLearningState(data.state, {
         sessionId: data.sessionId,

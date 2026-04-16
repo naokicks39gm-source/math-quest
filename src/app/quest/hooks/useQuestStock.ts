@@ -339,8 +339,6 @@ export function useQuestStock(args: any) {
     };
   }, [stockView, patternIdFromQuery, levelInfo, typeStocks, difficultyFromQuery]);
 
-  console.log("DEBUG stock size", typeStocks?.size);
-
   return useMemo(
     () => ({
       stockView,

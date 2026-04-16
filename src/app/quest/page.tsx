@@ -11,7 +11,7 @@ import { describeStockReason } from "./hooks/useQuestStock";
 import { useQuestState } from "./hooks/useQuestState";
 import { useQuestSession } from "../../../packages/ui/hooks/useQuestSession";
 import { QuestHeaderPanel } from "./components/QuestHeaderPanel";
-import { QuestionCardPanel } from "./components/QuestionCardPanel";
+import  QuestionCardPanel  from "./components/QuestionCardPanel";
 import { QuestLayout } from "./components/QuestLayout";
 import { QuestResultPanel } from "./components/QuestResultPanel";
 import { QuestPopupShell } from "./components/QuestPopupShell";
@@ -348,9 +348,6 @@ function QuestPageInner() {
     EMPTY_FRACTION_EDITOR
   });
 
-  const skillId = selection.skillIdFromQuery;
-  console.log("DEBUG skillId", skillId);
-
   const orchestration = useQuestOrchestration({
     quest,
     selection,
@@ -598,12 +595,28 @@ startLearningSession: quest.startLearningSession
       />
     );
   }
+const currentProblem =
+  quest.currentProblem ??
+  quest.session?.problems?.[quest.session?.index ?? 0]?.problem;
+  console.log("FULL_SESSION", quest.session);
 
-  const question = orchestration.learningOrchestrator.question;
-  console.log("DEBUG question", question);
-  console.log("DEBUG session", quest.session);
-  console.log("DEBUG currentProblem", quest.currentProblem);
+  console.log("FULL_SESSION_DEEP", JSON.stringify(quest.session, null, 2));
 
+ console.log("TRACE_RENDER_CURRENT_PROBLEM", {
+  sessionIndex: quest.session?.index,
+  currentProblemId:
+    currentProblem && typeof currentProblem === "object" && "problemId" in currentProblem
+      ? currentProblem.problemId
+      : null,
+  prompt:
+    currentProblem && typeof currentProblem === "object" && "problem" in currentProblem
+      ? currentProblem.problem?.question
+      : currentProblem && typeof currentProblem === "object" && "question" in currentProblem
+        ? currentProblem.question
+        : null,
+  attemptCount:
+    quest.session?.problems?.[quest.session?.index ?? 0]?.attemptCount
+});
   return (
       <QuestLayout>
       {/* Input Mode Toggle removed */}

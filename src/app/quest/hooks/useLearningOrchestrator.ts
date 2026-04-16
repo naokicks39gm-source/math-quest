@@ -133,6 +133,8 @@ export function useLearningOrchestrator(args: any) {
 
   const handleInput = useCallback(
     (num: string) => {
+      // console.log("TRACE_HANDLE_INPUT", num);
+      // console.log("TRACE_ON_DIGIT_CALLED", num);
       if (questStatus !== "playing" || isStarting || isAnswerLockedByExplanation) return;
 
       const currentText = isQuadraticRootsQuestion ? quadraticAnswers[quadraticActiveIndex] : input;
@@ -169,6 +171,7 @@ export function useLearningOrchestrator(args: any) {
             prev.enabled ? prev : ({ enabled: true, num: "", den: "", part: "num" } as FractionEditorState)
           );
           setInput("");
+          // console.log("TRACE_INPUT_AFTER");
         }
         setResultMark(null);
         return;
@@ -208,6 +211,7 @@ export function useLearningOrchestrator(args: any) {
           }, FRACTION_AUTO_MOVE_DELAY_MS);
         }
         setResultMark(null);
+        // console.log("TRACE_INPUT_AFTER");
         return;
       }
 
@@ -236,6 +240,7 @@ export function useLearningOrchestrator(args: any) {
           }, FRACTION_AUTO_MOVE_DELAY_MS);
         }
         setResultMark(null);
+        // console.log("TRACE_INPUT_AFTER");
         return;
       }
 
@@ -294,11 +299,21 @@ export function useLearningOrchestrator(args: any) {
           return next;
         });
         setResultMark(null);
+        // console.log("TRACE_INPUT_AFTER");
         return;
       }
 
       const appendInput = (symbol: string) => {
-        setInput((prev: string) => prev + symbol);
+        setInput((prev: string) => {
+          const next = prev + symbol;
+          // console.log("TRACE_INPUT_UPDATE", {
+          //   prev,
+          //   next,
+          //   symbol,
+          //   time: Date.now()
+          // });
+          return next;
+        });
       };
       if (input.length >= maxInputLength) return;
       if ((VARIABLE_SYMBOLS as readonly string[]).includes(normalizedToken)) {
@@ -307,6 +322,7 @@ export function useLearningOrchestrator(args: any) {
         appendInput(normalizedToken === "()" ? "()" : normalizedToken);
       }
       setResultMark(null);
+      // console.log("TRACE_INPUT_AFTER");
     },
     [
       FRACTION_AUTO_MOVE_DELAY_MS,
