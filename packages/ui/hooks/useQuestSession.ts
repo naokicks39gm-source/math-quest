@@ -25,7 +25,7 @@ setSessionState((prev) => {
 const next = typeof update === "function" ? update(prev) : update
 
 if (prev === next) {
-console.log("TRACE_SKIP_SET_SESSION")
+
 return prev
 }
 
@@ -33,16 +33,7 @@ if (!prev || !next) {
 return next
 }
 
-if (
-prev.index === next.index &&
-prev.mode === next.mode &&
-prev.correct === next.correct &&
-prev.wrong === next.wrong &&
-prev.problems === next.problems
-) {
-console.log("TRACE_SKIP_SET_SESSION")
-return prev
-}
+
 
 return next
 })

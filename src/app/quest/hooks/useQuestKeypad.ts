@@ -95,7 +95,7 @@ export function useQuestKeypad(args: any) {
   });
 
   const canSubmitResolved = isH1ReferenceOnlyQuestion ? false : canSubmitCurrentAnswer;
-  console.log("MODE_CHECK_KEYPAD", JSON.stringify({ isLearningSessionMode }));
+  
 
   const { handleAttack, handleDelete } = useQuestAnswerFlow({
     quest,

@@ -21,6 +21,8 @@ sessionId
 
 const data = await response.json()
 
+
+
 if(!response.ok){
 
 throw new Error(
@@ -54,14 +56,8 @@ learningStateExists:boolean
 learningSessionId:string|null
 sessionIndex:number | null | undefined
 })=>{
-console.log("TRACE_LEARNING_STATE", {
-learningStateExists,
-learningSessionId: learningSessionId,
-sessionIndex: sessionIndex,
-time: Date.now()
-});
-// console.log("API_CALL_START");
-// console.log("API_FETCH_START");
+
+
 const response = await fetch("/api/learning/session/answer",{
 method:"POST",
 headers:{ "Content-Type":"application/json"},
@@ -95,7 +91,6 @@ answerText:string,
 correct:boolean
 )=>{
 
-console.log("SESSION_ID_CHECK", learningSessionId);
 
 if(!learningSessionId){
   return null

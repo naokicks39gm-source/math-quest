@@ -35,10 +35,8 @@ export function useQuestSessionFlow(args: any) {
 
   const syncLearningUiFromAnswer = (response: any) => {
     if (response?.hint) {
-      console.log("HINT TRIGGER", response.attemptCount ?? 0);
-    }
+        }
     if (response?.explanation) {
-      console.log("EXPLANATION TRIGGER", response.attemptCount ?? 0);
     }
     quest.setCurrentProblem(response.problem ?? null);
     quest.setLearningAttemptCount(response.attemptCount ?? 0);
@@ -80,11 +78,7 @@ export function useQuestSessionFlow(args: any) {
       recentProblems?: any;
     }
   ) => {
-    console.log("START SESSION skillId:", skillId, {
-      fresh: options?.fresh === true,
-      carryoverHistory: Array.isArray(options?.carryoverHistory) ? options.carryoverHistory.length : 0,
-      recentProblems: Array.isArray(options?.recentProblems) ? options.recentProblems.length : 0
-    });
+   
     sessionStartTrackedRef.current = false;
     quest.setLearningLoading(true);
     setLearningError(null);
@@ -112,7 +106,8 @@ export function useQuestSessionFlow(args: any) {
       }
       quest.setSession(data.session);
       quest.setCurrentProblem(data.session.problems?.[0] ?? null);
-      console.log("DEBUG session response", response);
+      setLearningSessionId(data.sessionId);
+
       learningRecovery.persistLearningState(data.state, {
         sessionId: data.sessionId,
         recoveryAnswers: [],
@@ -127,7 +122,7 @@ export function useQuestSessionFlow(args: any) {
       });
       trackAnalyticsEvent("session_start");
       sessionStartTrackedRef.current = true;
-      console.log("STATUS CHANGE →", "playing");
+     
       quest.setStatus("playing");
       setQuizBuildError(null);
     } catch (error) {
@@ -144,11 +139,11 @@ export function useQuestSessionFlow(args: any) {
     finishGuardRef.current = false;
     quest.setLearningLoading(true);
     setLearningError(null);
-    console.log("LEARNING RESULT CLEARED");
+    
     quest.setLearningResult(null);
     setLearningResultSkillId(null);
     setQuestionResults({});
-    console.log("STATUS CHANGE →", "playing");
+    
     quest.setStatus("playing");
     resetQuestionUi();
 

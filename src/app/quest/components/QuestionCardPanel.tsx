@@ -254,7 +254,7 @@ shouldRenderElementaryExplanationPanel
 
 }:Props){
 
-console.log("TRACE_QCP_RENDER");
+
 
 return(
 

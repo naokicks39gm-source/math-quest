@@ -153,17 +153,12 @@ export function useQuestAnswerFlow(args: any) {
     return;
   }
 
-  console.log("MODE_CHECK", JSON.stringify({ isLearningSessionMode }));
-  isHandlingRef.current = true;
+   isHandlingRef.current = true;
 
   try {
-    // console.log("SUBMIT_TRIGGER_START");
-    // console.log("TRACE_ATTACK_ENTRY");
-    if (!canExecuteAttack()) return;
+   if (!canExecuteAttack()) return;
 
     const answerText = buildAnswerText();
-    // console.log("SUBMIT_INPUT_CHECK_FIXED", { input, answerText });
-    // console.log("FINAL_SUBMIT", { input, answerText });
     if (!answerText.trim()) return;
 
     const verdict = judgeCurrentAnswer(answerText);

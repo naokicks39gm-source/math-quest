@@ -300,6 +300,8 @@ const trailingBlock = splitIndex >= 0 ? lastStep.slice(splitIndex + 2).trim() : 
 */
 
 function QuestPageInner() {
+  const lastAnswerIndexRef = useRef<number | null>(null);
+
   const quest = useQuestSession();
   const learningActions = useLearningActions(quest);
   const state = useQuestState();
@@ -599,11 +601,19 @@ startLearningSession: quest.startLearningSession
 const currentProblem =
   quest.currentProblem ??
   quest.session?.problems?.[quest.session?.index ?? 0]?.problem;
+
+const currentIndex = quest.session?.index ?? null;
+
+if (currentIndex !== null && lastAnswerIndexRef.current !== currentIndex) {
+  lastAnswerIndexRef.current = currentIndex;
+
   console.log("ANSWER_FLOW", JSON.stringify({
     index: quest.session?.index,
     problemId: quest.currentProblem?.id,
     prompt: quest.currentProblem?.prompt
   }));
+
+}
   return (
       <QuestLayout>
       {/* Input Mode Toggle removed */}

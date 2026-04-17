@@ -61,13 +61,12 @@ export function useQuestEffects(args: any) {
 
   useEffect(() => {
     if (!quest.learningResult) return;
-    console.log(" quest.learningResult state:", quest.learningResult);
-    console.log("RENDER CLEAR");
+   
   }, [quest.learningResult]);
 
   useEffect(() => {
     if (skillId) return;
-    console.log("LEARNING RESULT CLEARED");
+   
     quest.setLearningResult(null);
     setLearningResultSkillId(null);
     quest.setCurrentProblem(null);
@@ -96,24 +95,7 @@ export function useQuestEffects(args: any) {
 
   const normalizedLearningSessionIndex = normalizedLearningSession?.index ?? null;
 
-  useEffect(() => {
-    if (normalizedLearningSessionIndex === null) {
-      return;
-    }
-    quest.setSession((prev: any) => {
-      if (!prev || prev.index === normalizedLearningSessionIndex) {
-        if (prev) {
-          console.log("TRACE_SKIP_SET_SESSION");
-        }
-        return prev;
-      }
-      return {
-        ...prev,
-        index: normalizedLearningSessionIndex
-      };
-    });
-  }, [normalizedLearningSessionIndex, quest.setSession]);
-
+  
   useEffect(() => {
     memoStrokesRef.current = memoStrokes;
   }, [memoStrokes]);
