@@ -95,25 +95,10 @@ answerText:string,
 correct:boolean
 )=>{
 
-// console.log("TRACE_D_ACTION_ENTER",{
-// learningStateExists: !!learningState,
-// learningSessionId,
-// sessionIndex: quest?.session?.index ?? null,
-// currentProblemId: quest?.currentProblem?.problemId ?? null,
-// answerText,
-// correct
-// })
+console.log("SESSION_ID_CHECK", learningSessionId);
 
-if(!learningState || !learningSessionId || !quest.session){
-
-// console.log("TRACE_E_ACTION_EARLY_RETURN",{
-// learningStateExists: !!learningState,
-// learningSessionId,
-// hasSession: !!quest?.session
-// })
-
-return null
-
+if(!learningSessionId){
+  return null
 }
 
 const answerIndex = quest.session.index
@@ -130,50 +115,21 @@ sessionIndex: quest?.session?.index ?? null
 
 })
 
-// console.log("TRACE_F_ACTION_RESPONSE",{
-// sessionIndex: data?.session?.index ?? null,
-// problemId: data?.problem?.problemId ?? null,
-// problemQuestion: data?.problem?.problem?.question ?? null,
-// finished: data?.finished ?? null
-// })
-// console.log("ANSWER_RESPONSE",data)
-// console.log("NEXT_PROBLEM_API",{
-// problemId:data.problem?.problemId ?? data.nextProblem?.problemId,
-// question:data.problem?.problem?.question ?? data.nextProblem?.problem?.question
-// })
 
 if(data.session){
 
-// console.log("TRACE_G_SET_SESSION",{
-// sessionIndex: data?.session?.index ?? null
-// })
-// console.log("SET_SESSION",data.session?.index)
 
 setSession(data.session)
 
 }
 
-if(data.problem){
-
-// console.log("TRACE_H_SET_CURRENT_PROBLEM",{
-// problemId: data?.problem?.problemId ?? data?.nextProblem?.problemId ?? null,
-// question: data?.problem?.problem?.question ?? data?.nextProblem?.problem?.question ?? null
-// })
-// console.log("SET_CURRENT_PROBLEM",data.problem?.problemId)
-
-setCurrentProblem(data.problem)
-
-}else if(data.nextProblem){
-
-// console.log("TRACE_H_SET_CURRENT_PROBLEM",{
-// problemId: data?.problem?.problemId ?? data?.nextProblem?.problemId ?? null,
-// question: data?.problem?.problem?.question ?? data?.nextProblem?.problem?.question ?? null
-// })
-// console.log("SET_CURRENT_PROBLEM",data.nextProblem?.problemId)
-
-setCurrentProblem(data.nextProblem)
-
+if(data.session){
+  setSession(data.session)
+  setCurrentProblem(
+    data.session.problems?.[data.session.index] ?? null
+  )
 }
+
 
 setLearningAttemptCount(
 data.attemptCount ?? 0
@@ -198,10 +154,7 @@ quest
 
 }
 
-// console.log("TRACE_I_ACTION_RETURN",{
-// sessionIndex: data?.session?.index ?? null,
-// problemId: data?.problem?.problemId ?? null
-// })
+
 
 return data
 }

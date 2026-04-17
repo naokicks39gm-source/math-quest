@@ -338,6 +338,7 @@ export function useQuestUiWiring(args: any) {
       FRACTION_AUTO_MOVE_DELAY_MS,
       fractionAutoMoveTimerRef,
       isSecondaryQuest,
+      isLearningSessionMode,
       VARIABLE_SYMBOLS
     }
   };

@@ -353,6 +353,7 @@ function QuestPageInner() {
     selection,
     state,
     refs,
+    isLearningSessionMode: true,
     learningActions,
     constants: {
       FEEDBACK_FLASH_MS: 150,
@@ -505,7 +506,7 @@ startLearningSession: quest.startLearningSession
       isElementaryQuest: orchestration.learningView.isElementaryQuest,
       isHighSchoolQuest: orchestration.learningView.isHighSchoolQuest,
       isJuniorQuest: orchestration.learningView.isJuniorQuest,
-      isLearningSessionMode: selection.isLearningSessionMode,
+      isLearningSessionMode: true,
       isQuadraticRootsQuestion: orchestration.learningView.isQuadraticRootsQuestion,
       isH1ReferenceOnlyQuestion: orchestration.learningView.isH1ReferenceOnlyQuestion,
       isE1TwoLineQuestionLevel: orchestration.learningView.isE1TwoLineQuestionLevel,
@@ -598,25 +599,11 @@ startLearningSession: quest.startLearningSession
 const currentProblem =
   quest.currentProblem ??
   quest.session?.problems?.[quest.session?.index ?? 0]?.problem;
-  console.log("FULL_SESSION", quest.session);
-
-  console.log("FULL_SESSION_DEEP", JSON.stringify(quest.session, null, 2));
-
- console.log("TRACE_RENDER_CURRENT_PROBLEM", {
-  sessionIndex: quest.session?.index,
-  currentProblemId:
-    currentProblem && typeof currentProblem === "object" && "problemId" in currentProblem
-      ? currentProblem.problemId
-      : null,
-  prompt:
-    currentProblem && typeof currentProblem === "object" && "problem" in currentProblem
-      ? currentProblem.problem?.question
-      : currentProblem && typeof currentProblem === "object" && "question" in currentProblem
-        ? currentProblem.question
-        : null,
-  attemptCount:
-    quest.session?.problems?.[quest.session?.index ?? 0]?.attemptCount
-});
+  console.log("ANSWER_FLOW", JSON.stringify({
+    index: quest.session?.index,
+    problemId: quest.currentProblem?.id,
+    prompt: quest.currentProblem?.prompt
+  }));
   return (
       <QuestLayout>
       {/* Input Mode Toggle removed */}

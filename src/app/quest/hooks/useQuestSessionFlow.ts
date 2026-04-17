@@ -228,17 +228,34 @@ export function useQuestSessionFlow(args: any) {
     });
   };
 
-  const sendLearningAnswer = async (answerText: string, verdict: { ok: boolean }) => {
-    if (!isLearningSessionMode) return;
-    try {
-      await learningActions.submitLearningAnswer(learningState, learningSessionId, quest, answerText, verdict.ok);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "learning_session_answer_failed";
-      setLearningError(message);
-      quest.setStatus("blocked");
-      setQuizBuildError(`こたえの とうろくに しっぱいしました: ${message}`);
+ const sendLearningAnswer = async (answerText: string, verdict: { ok: boolean }) => {
+  if (!isLearningSessionMode) return;
+
+  try {
+    const data = await learningActions.submitLearningAnswer(
+      learningState,
+      learningSessionId,
+      quest,
+      answerText,
+      verdict.ok
+    );
+
+    console.log("ANSWER_API", JSON.stringify(data));
+
+    if (data?.session) {
+      quest.setSession(data.session);
+      quest.setCurrentProblem(
+        data.session.problems?.[data.session.index] ?? null
+      );
     }
-  };
+
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "learning_session_answer_failed";
+    setLearningError(message);
+    quest.setStatus("blocked");
+    setQuizBuildError(`こたえの とうろくに しっぱいしました: ${message}`);
+  }
+};
 
   const processAnswer = async (
     answerText: string,

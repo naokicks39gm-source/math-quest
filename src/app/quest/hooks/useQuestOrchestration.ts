@@ -24,6 +24,7 @@ import { learningPatternCatalog } from "@/lib/learningPatternCatalog";
 import { getSkillTree } from "packages/skill-system/skillTree";
 
 export function useQuestOrchestration(args: any) {
+  const { isLearningSessionMode } = args;
   const {
     quest,
     selection,
@@ -732,6 +733,7 @@ export function useQuestOrchestration(args: any) {
     currentItem: learningView.currentItem,
     currentType: learningView.currentType,
     isH1ReferenceOnlyQuestion: learningView.isH1ReferenceOnlyQuestion,
+    isLearningSessionMode,
     resolveExpectedFormFromPrompt,
     processAnswer: (answerText: string, verdict: { ok: boolean }) =>
       session.processAnswer(answerText, verdict, { currentItem: learningView.currentItem, currentType: learningView.currentType }),
