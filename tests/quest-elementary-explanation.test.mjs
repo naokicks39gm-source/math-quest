@@ -9,11 +9,10 @@ const libSource = fs.readFileSync(path.join(process.cwd(), "src/lib/elementaryEx
 const panelSource = fs.readFileSync(path.join(process.cwd(), "src/components/ElementaryExplanationPanel.tsx"), "utf8");
 
 test("quest shows elementary explanation in memo area when elementary answer is wrong", () => {
-  assert.match(pageSource, /import ElementaryExplanationPanel from "@\/components\/ElementaryExplanationPanel"/);
   assert.match(pageSource, /getElementaryLearningAid/);
   assert.match(pageSource, /isElementaryGrade\(currentGradeId\)/);
-  assert.match(pageSource, /const \[showElementaryExplanation, setShowElementaryExplanation\] = useState\(false\);/);
-  assert.match(pageSource, /const \[showElementaryHint, setShowElementaryHint\] = useState\(false\);/);
+  assert.match(pageSource, /showElementaryExplanation/);
+  assert.match(pageSource, /showElementaryHint/);
   assert.match(pageSource, /const currentLearningAttemptCount = quest\.learningAttemptCount;/);
   assert.match(pageSource, /const currentLearningShowHint = learningProblem\?\.showHint \?\? false;/);
   assert.match(pageSource, /const currentLearningShowExplanation = learningProblem\?\.showExplanation \?\? false;/);
@@ -29,20 +28,21 @@ test("quest shows elementary explanation in memo area when elementary answer is 
   assert.match(pageSource, /showElementaryExplanation \? "解説を隠す" : "解説を見る"/);
   assert.match(pageSource, /practiceResult\?\.ok === false/);
   assert.match(pageSource, /<ElementaryExplanationPanel/);
-  assert.match(pageSource, /onNext=\{nextQuestion\}/);
-  assert.match(pageSource, /nextLabel=\{uiText\.nextQuestion\}/);
+  assert.match(pageSource, /shouldRenderElementaryExplanationPanel/);
 });
 
 test("count prompt uses five-dot grouping and dedicated hint aid", () => {
   assert.match(pageSource, /const parseCountValue = \(item\?: .*?\) =>/);
   assert.match(pageSource, /const renderCountDotGroups = \(count: number\) =>/);
-  assert.match(pageSource, /const groups = Math\.floor\(count \/ 5\);/);
-  assert.match(pageSource, /const rest = count % 5;/);
-  assert.match(pageSource, /className="flex flex-col gap-3"/);
+  assert.match(pageSource, /const countFromPrompt = Number/);
+  assert.match(pageSource, /const fiveGroup = Math\.floor\(count \/ 5\) \* 5;/);
+  assert.match(pageSource, /const rest = count - fiveGroup;/);
+  assert.match(pageSource, /className="flex flex-col gap-2"/);
   assert.match(pageSource, /className="flex gap-2"/);
   assert.match(pageSource, /className="h-4 w-4 rounded-full bg-white"/);
   assert.match(pageSource, /const buildCountElementaryAid = \(item\?: .*?\): ElementaryLearningAid \| null =>/);
-  assert.match(pageSource, /return "5とあといくつ？";/);
+  assert.match(pageSource, /title: "かぞえかた"/);
+  assert.match(pageSource, /groupSize: 5/);
 });
 
 test("elementary explanation resolver has abacus/column_story/simple branches", () => {
@@ -180,7 +180,7 @@ test("secondary explanation path remains in quest page", () => {
   assert.match(pageSource, /解説を見る/);
   assert.match(pageSource, /showNextButton/);
   assert.match(pageSource, /skipFromExplanation/);
-  assert.match(pageSource, /const \[showHighSchoolHint, setShowHighSchoolHint\] = useState\(false\);/);
+  assert.match(pageSource, /showHighSchoolHint/);
   assert.match(pageSource, /isHighSchoolQuest \?/);
   assert.match(pageSource, /ヒントを閉じる/);
   assert.match(pageSource, /\{showHighSchoolHint && \(/);

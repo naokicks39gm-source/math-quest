@@ -12,7 +12,8 @@ test("quest uses keypad answer flow and calc memo canvas", () => {
   assert.equal(questSource.includes("numpad"), true);
   assert.match(questSource, /data-testid="calc-memo-area"/);
   assert.match(questSource, /計算メモ（2本指ピンチで縮小）/);
-  assert.match(questSource, /onJudge=\{handleAttack\}/);
+  assert.match(questSource, /onJudge=\{\(\) => \{/);
+  assert.match(questSource, /handleAttack\?\.\(\);/);
   assert.match(hsKeypadSource, /onClick=\{onJudge\}/);
   assert.match(questSource, /onClick=\{undoMemo\}/);
   assert.match(questSource, /onClick=\{clearMemo\}/);

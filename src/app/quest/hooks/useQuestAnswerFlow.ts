@@ -1,6 +1,7 @@
 import { gradeAnswer } from "@/lib/grader";
 import { fractionEditorToAnswerText } from "@/utils/answerValidation";
 import { useRef } from "react";
+import { validateFraction } from "../utils/validateFraction";
 
 export function useQuestAnswerFlow(args: any) {
   const {
@@ -77,6 +78,20 @@ export function useQuestAnswerFlow(args: any) {
     if (isH1ReferenceOnlyQuestion) return false;
 
     return true;
+  };
+
+  const hasValidFractionAnswer = () => {
+    if (isQuadraticRootsQuestion) {
+      for (const editor of quadraticFractionInputs) {
+        if (!editor?.enabled) continue;
+        const result = validateFraction(editor.num?.trim() ?? "", editor.den?.trim() ?? "");
+        if (!result.ok) return false;
+      }
+      return true;
+    }
+
+    if (!fractionInput.enabled) return true;
+    return validateFraction(fractionInput.num?.trim() ?? "", fractionInput.den?.trim() ?? "").ok;
   };
 
   const judgeCurrentAnswer = (answerText: string) => {
@@ -157,6 +172,7 @@ export function useQuestAnswerFlow(args: any) {
 
   try {
    if (!canExecuteAttack()) return;
+    if (!hasValidFractionAnswer()) return;
 
     const answerText = buildAnswerText();
     if (!answerText.trim()) return;

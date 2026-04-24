@@ -1,10 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { readQuestSource } from "./helpers/quest-source.mjs";
-
-const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 test("quest auto-judge delay mapping is digit-based", () => {
   const source = readQuestSource();
@@ -16,7 +12,7 @@ test("quest auto-judge delay mapping is digit-based", () => {
 
 test("quest uses digit-based delay in all auto-judge scheduling paths", () => {
   const source = readQuestSource();
-  const useCount = (source.match(/getAutoJudgeDelayMs\(getAnswerDigits\(\)\)/g) ?? []).length;
+  const useCount = (source.match(/getAutoJudgeDelayMs\((recognition\.)?getAnswerDigits\(\)\)/g) ?? []).length;
   assert.equal(useCount >= 3, true, "digit-based delay should be used in 3+ scheduling paths");
   assert.doesNotMatch(source, /const delayMs = 1500;/);
 });

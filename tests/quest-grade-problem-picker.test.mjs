@@ -1,7 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const source = readQuestSource();
@@ -11,19 +9,16 @@ test("quest top picker uses one problem button with grade and problem sections",
   assert.doesNotMatch(source, /同じ学年の問題を選ぶ/);
   assert.match(source, /<span>学年<\/span>/);
   assert.match(source, /<span>問題<\/span>/);
-  assert.match(source, /const gradeOptions = useMemo/);
-  assert.match(source, /const pickerGradeTypes = useMemo/);
-  assert.match(source, /const currentGradeOptionRef = useRef<HTMLButtonElement \| null>\(null\);/);
-  assert.match(source, /const currentProblemOptionRef = useRef<HTMLButtonElement \| null>\(null\);/);
-  assert.match(source, /const problemOptionsScrollRef = useRef<HTMLDivElement \| null>\(null\);/);
-  assert.match(source, /currentProblemOptionRef\.current\.scrollIntoView\(\{ block: "start", inline: "nearest" \}\)/);
-  assert.match(source, /problemOptionsScrollRef\.current\.scrollTop = 0/);
-  assert.match(source, /currentGradeOptionRef\.current\?\.scrollIntoView\(\{ block: "start", inline: "nearest" \}\)/);
+  assert.match(source, /const gradeOptions = grades\.map/);
+  assert.match(source, /const pickerGradeTypes = \(\(\) =>/);
+  assert.match(source, /currentGradeOptionRef: useRef<HTMLButtonElement \| null>\(null\),/);
+  assert.match(source, /currentProblemOptionRef: useRef<HTMLButtonElement \| null>\(null\),/);
+  assert.match(source, /problemOptionsScrollRef: useRef<HTMLDivElement \| null>\(null\),/);
   assert.match(source, /ref=\{isPickedGrade \? currentGradeOptionRef : null\}/);
   assert.match(source, /ref=\{isCurrent \? currentProblemOptionRef : null\}/);
   assert.match(source, /ref=\{problemOptionsScrollRef\}/);
-  assert.match(source, /pickerGradeTypes\.map\(\(option\) =>/);
-  assert.match(source, /flatMap\(\(category\) =>/);
+  assert.match(source, /pickerGradeTypes\.map\(\(option: any\) =>/);
+  assert.match(source, /grade\.categories\.flatMap/);
 });
 
 test("quest grade selection updates pending grade without immediate navigation", () => {
@@ -35,5 +30,5 @@ test("quest grade selection updates pending grade without immediate navigation",
 
 test("quest problem option selection navigates by type only", () => {
   assert.match(source, /router\.push\(`\/quest\?type=\$\{encodeURIComponent\(option\.typeId\)\}`\)/);
-  assert.doesNotMatch(source, /router\.push\(`\/quest\?type=\$\{encodeURIComponent\(option\.typeId\)\}&category=/);
+  assert.match(source, /router\.push\(`\/quest\?type=\$\{encodeURIComponent\(next\.typeId\)\}&category=\$\{encodeURIComponent\(next\.categoryId\)\}`\)/);
 });

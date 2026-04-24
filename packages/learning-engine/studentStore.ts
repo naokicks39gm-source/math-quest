@@ -330,6 +330,21 @@ const parseSession = (value: unknown): Session | undefined => {
         typeof problem.problemId === "string" && problem.problemId.length > 0
           ? problem.problemId
           : parseGeneratedProblem(problem.problem)!.id,
+      id:
+        typeof problem.id === "string" && problem.id.length > 0
+          ? problem.id
+          : (
+            typeof problem.problemId === "string" && problem.problemId.length > 0
+              ? problem.problemId
+              : parseGeneratedProblem(problem.problem)!.id
+          ),
+      prompt:
+        typeof problem.prompt === "string"
+          ? problem.prompt
+          : (
+            parseGeneratedProblem(problem.problem)!.question ??
+            ""
+          ),
       problem: parseGeneratedProblem(problem.problem)!,
       hint: parseHint(problem.hint)!,
       explanation: parseExplanation(problem.explanation)!,

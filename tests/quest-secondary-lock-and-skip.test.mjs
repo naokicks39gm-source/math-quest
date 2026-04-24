@@ -11,7 +11,7 @@ test("answer operations are locked while secondary explanation is open", () => {
   assert.match(source, /const isAnswerLockedByExplanation =/);
   assert.match(source, /\(isSecondaryQuest && (args\.)?showSecondaryExplanation\)/);
   assert.match(source, /\(isElementaryQuest && shouldRenderElementaryExplanationPanel\)/);
-  assert.match(source, /if \(status !== 'playing' \|\| isStarting \|\| isAnswerLockedByExplanation\) return;/);
+  assert.match(source, /if \(quest\.status !== "playing" \|\| isStarting \|\| isAnswerLockedByExplanation\) return;/);
   assert.match(source, /isAnswerLocked=\{isAnswerLockedByExplanation\}/);
   assert.match(source, /canSubmit=\{canSubmitResolved\}/);
   assert.match(hsKeypadSource, /disabled=\{baseDisabled \|\| !canSubmit\}/);
@@ -20,8 +20,8 @@ test("answer operations are locked while secondary explanation is open", () => {
 });
 
 test("skip from explanation is recorded and advances to next question", () => {
-  assert.match(source, /const skipFromExplanation = \(\) => \{/);
-  assert.match(source, /skipped: true/);
+  assert.match(source, /const skipFromExplanation = \(\)=>\{/);
+  assert.match(source, /skipped:true/);
   assert.match(source, /setShowSecondaryExplanation\(false\)/);
   assert.match(source, /setShowSecondaryHint\(false\)/);
   assert.match(source, /nextQuestion\(\)/);

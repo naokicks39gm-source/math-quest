@@ -8,7 +8,7 @@ const walk = (dir) => {
   return entries.flatMap((entry) => {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) return walk(fullPath);
-    if (!/\.(ts|tsx)(\.bak-.+)?$/.test(entry.name)) return [];
+    if (!/\.(ts|tsx)$/.test(entry.name)) return [];
     return [fullPath];
   });
 };

@@ -35,5 +35,6 @@ test("quest page can start H1 even when fewer than five examples exist", () => {
 test("quest page treats H1 expr lessons as reference-only cards", () => {
   assert.equal(questSource.includes("const isH1ReferenceOnlyType"), true);
   assert.equal(questSource.includes("このカードは例題表示のみです。右下の「次へ」で進めます。"), true);
-  assert.equal(questSource.includes("const canSubmitResolved = isH1ReferenceOnlyQuestion ? false : canSubmitCurrentAnswer;"), true);
+  assert.equal(questSource.includes("const canSubmitResolved = isH1ReferenceOnlyQuestion"), true);
+  assert.equal(questSource.includes("? false"), true);
 });

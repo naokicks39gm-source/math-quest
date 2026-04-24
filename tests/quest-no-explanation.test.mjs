@@ -1,7 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { readQuestSource } from "./helpers/quest-source.mjs";
 
 const source = readQuestSource();

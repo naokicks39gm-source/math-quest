@@ -2,6 +2,7 @@
  'use client';
 
 import { Suspense, useRef } from "react";
+import { isFractionEditorReady } from "./utils/isFractionEditorReady";
 import { useLearningSessionController } from "./hooks/useLearningSessionController";
 import { useLearningActions } from "./hooks/useLearningActions";
 import { useQuestOrchestration } from "./hooks/useQuestOrchestration";

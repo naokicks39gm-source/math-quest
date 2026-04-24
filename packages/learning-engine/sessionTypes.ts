@@ -6,6 +6,8 @@ import type { Hint } from "packages/problem-hint";
 
 export type SessionProblem = {
   problemId: string;
+  readonly id: string;
+  readonly prompt: string;
   readonly problem: GeneratedProblem;
   readonly hint: Hint;
   readonly explanation: Explanation;

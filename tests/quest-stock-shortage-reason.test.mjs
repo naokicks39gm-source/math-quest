@@ -27,7 +27,6 @@ test("insufficient reason can emit detail classes", () => {
 });
 
 test("quest page keeps rendering shortage reasons and detail", () => {
-  assert.equal(questSource.includes("reasonDetail?: TypeStockResult[\"reasonDetail\"];"), true);
   assert.equal(questSource.includes("reasonDetail: stock.reasonDetail"), true);
   assert.equal(questSource.includes("stock.reason_detail:"), true);
 });

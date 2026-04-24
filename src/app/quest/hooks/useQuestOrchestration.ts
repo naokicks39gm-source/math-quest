@@ -727,6 +727,7 @@ export function useQuestOrchestration(args: any) {
     fractionAutoMoveTimerRef,
     setFractionInput,
     fractionInput,
+    inputMode,
     setInput,
     setResultMark,
     input,

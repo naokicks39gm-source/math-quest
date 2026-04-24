@@ -1,7 +1,7 @@
 import { useCanSubmitAnswer } from "./useCanSubmitAnswer";
 import { useQuestAnswerFlow } from "./useQuestAnswerFlow";
+import { isFractionEditorReady } from "../utils/isFractionEditorReady";
 import {
-  isFractionEditorReady,
   isValidAnswerText
 } from "../../../utils/answerValidation";
 
@@ -23,6 +23,7 @@ export function useQuestKeypad(args: any) {
     fractionInput,
     setInput,
     setResultMark,
+    inputMode,
     input,
     currentItem,
     currentType,
@@ -94,7 +95,11 @@ export function useQuestKeypad(args: any) {
     isValidAnswerText
   });
 
-  const canSubmitResolved = isH1ReferenceOnlyQuestion ? false : canSubmitCurrentAnswer;
+  const canSubmitResolved = isH1ReferenceOnlyQuestion
+    ? false
+    : inputMode === "fraction"
+      ? isFractionEditorReady(fractionInput)
+      : canSubmitCurrentAnswer;
   
 
   const { handleAttack, handleDelete } = useQuestAnswerFlow({

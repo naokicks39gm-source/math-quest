@@ -1,10 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { readQuestSource } from "./helpers/quest-source.mjs";
-
-const read = (p) => fs.readFileSync(path.join(process.cwd(), p), "utf8");
 
 test("quest hides next item preview in playing card", () => {
   const source = readQuestSource();
@@ -24,7 +20,7 @@ test("quest current card uses blackboard-themed classes", () => {
   assert.match(source, /aria-label="board-chalk-pink"/);
   assert.match(source, /aria-label="board-chalk-blue"/);
   assert.match(source, /renderPrompt\(currentItem, currentType\?\.type_id, currentType\?\.display_name \?\? currentType\?\.type_name\)/);
-  assert.match(source, /\{status === "playing" && \(/);
+  assert.match(source, /\{quest\.status === "playing" && \(/);
   assert.match(source, /問題を選ぶ/);
   assert.match(source, /fixed left-1\/2 top-2 z-40 w-full max-w-md -translate-x-1\/2 px-4/);
   assert.match(source, /aria-hidden="true" className="h-\[292px\] sm:h-\[276px\]"/);

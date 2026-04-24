@@ -15,7 +15,8 @@ test("quest is keypad-only and memo canvas does not trigger handwriting judge", 
   assert.match(source, /aria-label=\"calc-memo-canvas\"/);
   assert.match(source, /draggable=\{false\}/);
   assert.match(source, /MAX_MEMO_ZOOM/);
-  assert.match(source, /onJudge=\{handleAttack\}/);
+  assert.match(source, /onJudge=\{\(\) => \{/);
+  assert.match(source, /handleAttack\?\.\(\);/);
   assert.match(hsKeypad, /onClick=\{onJudge\}/);
   assert.doesNotMatch(source, /onClick=\{\(\) => runInference\(\)\}/);
 });

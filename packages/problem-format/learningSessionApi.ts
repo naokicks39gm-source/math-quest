@@ -42,6 +42,8 @@ export type LearningGeneratedProblem = {
 
 export type LearningSessionProblem = {
   problemId: string;
+  id: string;
+  prompt: string;
   problem: LearningGeneratedProblem;
   hint: Hint;
   explanation: Explanation;

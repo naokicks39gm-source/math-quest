@@ -36,7 +36,7 @@ const clampDifficulty = (difficulty: number) => Math.max(1, Math.min(5, Math.tru
 
 type SessionProblemWithoutLearningAids = Omit<
   SessionProblem,
-  "problemId" | "hint" | "explanation" | "attemptCount" | "showHint" | "showExplanation" | "isFallback" | "fallbackCount"
+  "problemId" | "id" | "prompt" | "hint" | "explanation" | "attemptCount" | "showHint" | "showExplanation" | "isFallback" | "fallbackCount"
 >;
 
 export const attachLearningAids = (sessionProblem: SessionProblemWithoutLearningAids): SessionProblem => {
@@ -46,6 +46,8 @@ export const attachLearningAids = (sessionProblem: SessionProblemWithoutLearning
   return {
     ...sessionProblem,
     problemId: sessionProblem.problem.id,
+    id: sessionProblem.problem.id,
+    prompt: sessionProblem.problem.question,
     problem: sessionProblem.problem,
     hint,
     explanation,
